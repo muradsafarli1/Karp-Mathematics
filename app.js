@@ -81,9 +81,26 @@ let __fb=null;
 let __authReady=null;
 async function fb(){
   if(!__fb){
-    __fb=await import('/firebase.js');
+    const [{initializeApp},{getAuth},{getFirestore}]=await Promise.all([
+      import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js'),
+      import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js')
+    ]);
+    const firebaseConfig={
+      apiKey:"AIzaSyAjEd4pN33WpoJlT2rsAgDFMO3A4Uh-M4s",
+      authDomain:"able-2ca24.firebaseapp.com",
+      projectId:"able-2ca24",
+      storageBucket:"able-2ca24.firebasestorage.app",
+      messagingSenderId:"784635231366",
+      appId:"1:784635231366:web:fbde7a6daaf4e3e4f0e507",
+      measurementId:"G-L9C4YX8MEJ"
+    };
+    const app=initializeApp(firebaseConfig);
+    const auth=getAuth(app);
+    const db=getFirestore(app);
+    __fb={app,auth,db};
     __authReady=new Promise(resolve=>{
-      const off=__fb.auth.onAuthStateChanged(user=>{off();resolve(user);});
+      const off=auth.onAuthStateChanged(user=>{off();resolve(user);});
     });
   }
   return __fb;
