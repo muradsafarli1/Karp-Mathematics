@@ -24,3 +24,20 @@
 .exam-top{display:none!important}
 .exam-clock-only{width:100%;display:flex;justify-content:center;align-items:center;background:transparent;border:0;box-shadow:none;padding:8px 0 18px;margin:0}
 .exam-clock-only .exam-clock{font-family:'Space Grotesk';font-variant-numeric:tabular-nums;font-size:58px;font-weight:800;letter-spacing:1px;line-height:1;background:transparent;border:0;box-shadow:none;padding:0}
+
+/* Tools dropdown — isolated addition */
+.nav-tool{position:relative;height:76px;display:flex;align-items:center}
+.nav-tool-label{color:#b8bcc4;font-size:14px;cursor:default;display:flex;align-items:center;height:100%;transition:.18s}
+.nav-tool:hover .nav-tool-label{color:#fff}
+.tools-menu{position:absolute;top:calc(100% - 7px);left:50%;transform:translate(-50%,8px);width:220px;padding:8px;background:rgba(16,18,22,.98);border:1px solid #292d34;border-radius:14px;box-shadow:0 20px 55px rgba(0,0,0,.35);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s ease,transform .16s ease,visibility .16s ease;backdrop-filter:blur(18px)}
+.nav-tool:hover .tools-menu,.nav-tool:focus-within .tools-menu{opacity:1;visibility:visible;pointer-events:auto;transform:translate(-50%,0)}
+.tools-menu a{display:flex!important;flex-direction:column;gap:2px;padding:11px 12px;border-radius:9px;color:#f2f4f7!important;font-size:14px!important;line-height:1.25}
+.tools-menu a:hover{background:#1d2026;color:#fff!important}
+.tools-menu small{color:#858b96;font-size:11px}
+html[data-theme="light"] .nav-tool-label{color:#656a72}
+html[data-theme="light"] .nav-tool:hover .nav-tool-label{color:#111}
+html[data-theme="light"] .tools-menu{background:rgba(255,255,255,.98);border-color:#dedfe2;box-shadow:0 20px 55px rgba(0,0,0,.12)}
+html[data-theme="light"] .tools-menu a{color:#17191c!important}
+html[data-theme="light"] .tools-menu a:hover{background:#f0f1f2;color:#111!important}
+html[data-theme="light"] .tools-menu small{color:#70757e}
+@media(max-width:900px){.nav-tool{display:none}}
