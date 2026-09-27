@@ -93,29 +93,22 @@
       --bg:#f7f7f5;--panel:#fff;--panel2:#f1f2f3;--line:#dedfe2;--text:#17191c;--muted:#626770;
     }
     body,.section,.pagehero,.contest-page,.article-page,.account-page,.auth{background:var(--bg)!important;color:var(--text)!important}
-    .top,.footer,.card,.exam-card,.bigcard,.account-card,.account-stat,.authbox,.admin-side,.admin-main,.editor-card{background:var(--panel)!important;color:var(--text)!important;border-color:var(--line)!important}
+    .top,.footer,.card,.exam-card,.bigcard,.account-card,.account-stat,.authbox,.admin-side,.admin-main,.editor-card{background:var(--panel)!important;color:var(--text)!important;border-color:transparent!important}
     .card p,.exam-card p,.lead,.small,.card-subtitle,.profile-meta span,.account-stat-label,.trend-label,.topic-line,.pace-grid span,.exam-history-row .small{color:var(--muted)!important}
-    .btn,.google-btn,.theme-toggle,.language-switch{background:var(--panel2)!important;color:var(--text)!important;border-color:var(--line)!important}
-    .btn.primary,.submit{background:#17191c!important;color:#fff!important;border-color:#17191c!important}
-    html[data-theme="dark"] .btn.primary,html[data-theme="dark"] .submit{background:#eef0ff!important;color:#101218!important;border-color:#eef0ff!important}
-    .cards .card > .tag{background:var(--panel2)!important;color:var(--text)!important;border-color:var(--line)!important}
-    html[data-theme="light"] .cards .card > .tag{background:#fff!important;color:#17191c!important;border-color:#d9dbde!important}
+    .btn,.google-btn,.theme-toggle,.language-switch{background:var(--panel2)!important;color:var(--text)!important;border-color:transparent!important}
     .problem-page .section,.contest-page .section,.article-page .section,.problem-page .pagehero,.contest-hero,.article-page .pagehero,.problem-detail,.problem-solution,.contest-paper,.article-paper,.contest-problem,.detail-actions{background:var(--bg)!important;color:var(--text)!important}
     .problem-detail,.problem-solution,.contest-paper,.article-paper,.contest-problem *{color:var(--text)!important}
-    .detail-actions,.contest-problem+.contest-problem,.solution-content{border-color:var(--line)!important}
-    .authbox .input,.input,.select,.textarea{background:var(--bg)!important;color:var(--text)!important;border-color:var(--line)!important}
-    html[data-theme="light"] .authbox .input,html[data-theme="light"] .input,html[data-theme="light"] .select,html[data-theme="light"] .textarea{background:#fff!important;color:#17191c!important;border-color:#d4d7da!important}
+    .detail-actions,.contest-problem+.contest-problem,.solution-content{border-color:transparent!important}
+    .authbox .input,.input,.select,.textarea{background:var(--bg)!important;color:var(--text)!important;border-color:transparent!important}
 
-    /* Restore comfortable original detail proportions */
+    /* Restore the earlier, balanced detail proportions */
+    .problem-page .section,.contest-page .section,.article-page .section{padding-top:70px!important;padding-bottom:70px!important}
     .problem-page .section>.wrap,.contest-page .section>.wrap,.article-page .section>.wrap{width:min(calc(100% - 42px),1240px)!important;max-width:1240px!important}
     .problem-detail,.article-paper,.contest-paper .question-text{font-size:19px!important;line-height:1.9!important}
     .problem-detail{min-height:0!important}.article-paper{min-height:0!important}
-    .contest-problem{padding:38px 0!important;min-height:0!important}
-    .contest-problem-heading{font-size:20px!important;margin-bottom:22px!important}
-    .contest-problem-heading span{min-width:0!important;height:auto!important;font-size:21px!important}
+    .contest-problem{padding:38px 0!important;min-height:0!important;border-top-color:transparent!important;border-bottom-color:transparent!important}
     .detail-image{max-height:520px!important;margin:28px auto!important}
-    .detail-actions{margin-top:55px!important;padding-top:0!important}
-
+    .detail-actions{margin-top:55px!important;padding-top:0!important;border-top-color:transparent!important;box-shadow:none!important}
   document.head.appendChild(style);
 })();
 
