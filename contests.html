@@ -19,7 +19,7 @@
     const d=await api('/api/content');
     const contests=d.contests||[];
     function render(list){
-      return list.map(c=>`<article class="card"><div class="tag">${escapeHtml(c.type||'Contest')} · ${escapeHtml(c.year||'')}</div><h3>${escapeHtml(localized(c,'title')||c.titleEn||c.titleAz||c.title||'Untitled contest')}</h3><p>${escapeHtml(localized(c,'description')||c.descriptionEn||c.descriptionAz||c.description||'')}</p><div class="meta"><a href="/contest.html?id=${encodeURIComponent(c.id)}">Read →</a></div></article>`).join('')||'<div class="empty">No contests found.</div>';
+      return list.map(c=>`<article class="card" style="cursor:pointer" onclick="location.href='/contest.html?id=${encodeURIComponent(c.id)}'"><div class="tag">${escapeHtml(c.type||'Contest')} · ${escapeHtml(c.year||'')}</div><h3>${escapeHtml(localized(c,'title')||c.titleEn||c.titleAz||c.title||'Untitled contest')}</h3><p>${escapeHtml(localized(c,'description')||c.descriptionEn||c.descriptionAz||c.description||'')}</p></article>`).join('')||'<div class="empty">No contests found.</div>';
     }
     shell('Contests','Contests',`<section class="pagehero"><div class="wrap"><div class="eyebrow">02 — Contests</div><h1>Collections worth<br>solving.</h1><p class="lead">IMO, BMO, national olympiads and other contest material — complete statements in one clean place.</p></div></section><section class="section"><div class="wrap"><div class="toolbar"><input id="contestSearch" class="input" type="search" placeholder="Search contests..." aria-label="Search contests"></div><div id="contestCards" class="cards">${render(contests)}</div></div></section>`);
     const input=document.getElementById('contestSearch');
