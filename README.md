@@ -1,6 +1,6 @@
-# ABLE v2
+# KARP v2
 
-A multi-page ABLE Olympiad Mathematics platform with:
+A multi-page KARP Olympiad Mathematics platform with:
 - cinematic animated gradient/glow homepage (no astronaut image)
 - separate Problems, Contests, Articles, Archive and About Us pages
 - real server-side signup/login using Node's built-in crypto.scrypt
@@ -27,14 +27,14 @@ On first run an admin is created automatically:
 - Password: `ChangeMe123!`
 
 For a real deployment, set environment variables before the first run:
-- `ABLE_ADMIN_EMAIL`
-- `ABLE_ADMIN_PASSWORD`
+- `KARP_ADMIN_EMAIL`
+- `KARP_ADMIN_PASSWORD`
 
 Example PowerShell:
 
 ```powershell
-$env:ABLE_ADMIN_EMAIL="your-admin-email@example.com"
-$env:ABLE_ADMIN_PASSWORD="a-strong-password"
+$env:KARP_ADMIN_EMAIL="your-admin-email@example.com"
+$env:KARP_ADMIN_PASSWORD="a-strong-password"
 npm start
 ```
 
