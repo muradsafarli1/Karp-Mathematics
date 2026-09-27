@@ -208,7 +208,8 @@ async function api(path, opts = {}) {
         }
         return {exams};
       }
-      return type==='videos'?{videos:snap.docs.map(x=>({id:x.id,...x.data()}))}:snap.docs.map(x=>({id:x.id,...x.data()}));
+      const items=snap.docs.map(x=>({id:x.id,...x.data()}));
+      return {[type]:items};
     }
     if(method==='POST'){
       const item={...body,id:crypto.randomUUID(),createdAt:new Date().toISOString()};
