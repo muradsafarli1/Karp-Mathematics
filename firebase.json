@@ -80,6 +80,10 @@
       {
         "source": "/calculator",
         "destination": "/calculator.html"
+      },
+      {
+        "source": "/mock",
+        "destination": "/mock.html"
       }
     ],
     "redirects": [
