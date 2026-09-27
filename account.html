@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ABLE — Account</title>
+<title>KARP — Account</title>
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js"></script>
 </head>
@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div class="wrap">
             <div class="account-hero-grid">
               <div>
-                <div class="eyebrow">ABLE ACCOUNT</div>
+                <div class="eyebrow">KARP ACCOUNT</div>
                 <h1>Your mathematics dashboard</h1>
                 <p class="lead">Track your problems, study rhythm, exam history and olympiad progress from one focused workspace.</p>
               </div>
@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                   <img id="hero-photo" class="profile-avatar-large" src="${escapeHtml(u.photoURL||'')}" alt="" style="${u.photoURL?'':'display:none'}">
                   <div id="hero-initial" class="profile-avatar-large profile-initial" style="${u.photoURL?'display:none':''}">${initial}</div>
                 </div>
-                <div class="hero-profile-name">${escapeHtml(u.name||'ABLE Member')}</div>
+                <div class="hero-profile-name">${escapeHtml(u.name||'KARP Member')}</div>
                 <div class="hero-profile-email">${escapeHtml(u.email||'')}</div>
               </div>
             </div>
@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                   <img id="profile-photo" class="profile-avatar" src="${escapeHtml(u.photoURL||'')}" alt="Profile photo" style="${u.photoURL?'':'display:none'}">
                   <div id="profile-initial" class="profile-avatar profile-initial" style="${u.photoURL?'display:none':''}">${initial}</div>
                 </div>
-                <h2>${escapeHtml(u.name||'ABLE Member')}</h2>
+                <h2>${escapeHtml(u.name||'KARP Member')}</h2>
                 <p class="small">${escapeHtml(u.email||'')}</p>
                 <label class="btn profile-upload" for="profile-file">Change profile photo</label>
                 <input id="profile-file" type="file" accept="image/png,image/jpeg,image/webp" style="display:none">
@@ -265,7 +265,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             <section class="account-card account-section-card">
               <div class="account-card-head">
-                <div><div class="tag">EXAMS</div><h2>Exam history</h2><p class="card-subtitle">Your completed ABLE exams.</p></div>
+                <div><div class="tag">EXAMS</div><h2>Exam history</h2><p class="card-subtitle">Your completed KARP exams.</p></div>
                 <a class="text-link" href="/exams.html">View exams →</a>
               </div>
               ${history.length?history.slice(0,8).map(h=>'<div class="exam-history-row"><div><strong>'+escapeHtml(h.titleEn||h.title||'Exam')+'</strong><span class="small">Submitted '+(h.submittedAt?new Date(h.submittedAt).toLocaleString():'—')+'</span></div><a class="btn" href="/exam.html?id='+encodeURIComponent(h.examId)+'">Review</a></div>').join(''):'<div class="empty account-empty">No completed exams yet.</div>'}
