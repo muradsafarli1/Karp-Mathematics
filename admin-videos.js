@@ -1,4 +1,4 @@
-/* ABLE video administration */
+/* KARP video administration */
 (function(){
   const escV=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const originalRender=window.render;
