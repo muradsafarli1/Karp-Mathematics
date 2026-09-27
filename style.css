@@ -98,3 +98,6 @@ html[data-theme="dark"] .brand{color:#f3f4f6!important}
 html[data-theme="light"] .auth,.authbox{background:var(--panel)!important}
 html[data-theme="light"] .authbox .input{background:#fff!important}
 html[data-theme="light"] .google-btn{background:#fff!important;color:#17191c!important;border-color:#d9dbde!important}
+
+.google-spinner{width:17px;height:17px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:googleSpin .7s linear infinite}
+@keyframes googleSpin{to{transform:rotate(360deg)}}
