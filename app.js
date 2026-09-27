@@ -91,10 +91,11 @@ let __fb=null;
 let __authReady=null;
 async function fb(){
   if(!__fb){
-    const [{initializeApp},{getAuth},{getFirestore}]=await Promise.all([
+    const [{initializeApp},{getAuth},{getFirestore},{getStorage}]=await Promise.all([
       import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js'),
       import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js'),
-      import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js')
+      import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js'),
+      import('https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js')
     ]);
     const firebaseConfig={
       apiKey:"AIzaSyAjEd4pN33WpoJlT2rsAgDFMO3A4Uh-M4s",
@@ -108,7 +109,8 @@ async function fb(){
     const app=initializeApp(firebaseConfig);
     const auth=getAuth(app);
     const db=getFirestore(app);
-    __fb={app,auth,db};
+    const storage=getStorage(app);
+    __fb={app,auth,db,storage};
     __authReady=new Promise(resolve=>{
       const off=auth.onAuthStateChanged(user=>{off();resolve(user);});
     });
@@ -145,7 +147,7 @@ async function api(path, opts = {}) {
       const userDoc=await getDoc(doc(db,'users',uid));
       if(userDoc.exists()) user={id:uid,...userDoc.data()};
     }
-    return {user:user?{id:user.id,name:user.name,email:user.email,role:user.role||'user',createdAt:user.createdAt}:null};
+    return {user:user?{id:user.id,name:user.name,email:user.email,role:user.role||'user',createdAt:user.createdAt,photoURL:user.photoURL||''}:null};
   }
   if(path==='/api/logout'){await (await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js')).signOut(auth);return {ok:true};}
   if(uid && (path.startsWith('/api/exams/history') || path.match(/^\/api\/exams\/[^/]+\/(register|submit)$/) || path.startsWith('/api/admin/'))){
