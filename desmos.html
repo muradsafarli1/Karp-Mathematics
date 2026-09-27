@@ -5,7 +5,15 @@
 #desmos-calculator,#ggb-element{width:100%;height:100%}
 html[data-theme="light"] .tool-page{background:#f7f7f5}
 @media(max-width:700px){.tool-page{height:calc(100vh - 76px);padding:0}.tool-frame{border-radius:0}}
-</style><script src="https://www.desmos.com/api/v1.7/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script></head><body><script>
+</style><script src="https://www.desmos.com/api/v1.8/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script></head><body><script>
 shell('Tools','Desmos',`<main class="tool-page"><div class="tool-inner"><div class="tool-frame"><div id="desmos-calculator"></div></div></div></main>`);
-window.addEventListener('load',()=>{const el=document.getElementById('desmos-calculator');if(el&&window.Desmos)Desmos.GraphingCalculator(el,{keypad:true,graphpaper:true,expressions:true,settingsMenu:true});});
+window.addEventListener('load',()=>{
+  const el=document.getElementById('desmos-calculator');
+  if(!el)return;
+  if(window.Desmos){
+    Desmos.GraphingCalculator(el,{keypad:true,graphpaper:true,expressions:true,settingsMenu:true});
+  }else{
+    el.innerHTML='<div style="display:grid;place-items:center;height:100%;font-family:DM Sans,sans-serif;color:#555">Desmos could not be loaded. Please refresh the page.</div>';
+  }
+});
 </script></body></html>
