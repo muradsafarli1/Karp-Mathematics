@@ -3,6 +3,16 @@
   document.documentElement.dataset.theme = saved === 'light' ? 'light' : 'dark';
 })();
 
+(function ensureFavicon(){
+  if(!document.querySelector('link[rel="icon"]')){
+    const link=document.createElement('link');
+    link.rel='icon';
+    link.type='image/svg+xml';
+    link.href='/favicon.svg';
+    document.head.appendChild(link);
+  }
+})();
+
 (function injectSharedStyles(){
   const style = document.createElement('style');
   style.textContent = `
