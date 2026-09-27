@@ -85,7 +85,7 @@
     }
   `;
 
-    /* KARP final visual normalization */
+  style.textContent += `/* KARP final visual normalization */
     html[data-theme="dark"]{
       --bg:#08090b;--panel:#101216;--panel2:#15171c;--line:#292d34;--text:#f3f4f6;--muted:#969ba5;
     }
@@ -108,7 +108,7 @@
     .problem-detail{min-height:0!important}.article-paper{min-height:0!important}
     .contest-problem{padding:38px 0!important;min-height:0!important;border-top-color:transparent!important;border-bottom-color:transparent!important}
     .detail-image{max-height:520px!important;margin:28px auto!important}
-    .detail-actions{margin-top:55px!important;padding-top:0!important;border-top-color:transparent!important;box-shadow:none!important}
+    .detail-actions{margin-top:55px!important;padding-top:0!important;border-top-color:transparent!important;box-shadow:none!important}`;
   document.head.appendChild(style);
 })();
 
