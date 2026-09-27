@@ -125,3 +125,39 @@ html[data-theme="light"] .contest-problem+.contest-problem{border-color:#dedfe2!
  .contest-problem{padding:50px 0 62px!important;min-height:0}
  .contest-problem-heading{font-size:21px!important}
 }
+
+/* KARP global theme consistency */
+html[data-theme="dark"]{
+  --site-bg:#08090b;--site-panel:#101216;--site-panel2:#15171c;--site-line:#292d34;--site-text:#f3f4f6;--site-muted:#969ba5;
+}
+html[data-theme="light"]{
+  --site-bg:#f7f7f5;--site-panel:#ffffff;--site-panel2:#f1f2f3;--site-line:#dedfe2;--site-text:#17191c;--site-muted:#626770;
+}
+body,main,.section,.pagehero,.contest-page,.article-page,.account-page,.auth{background:var(--site-bg)!important;color:var(--site-text)!important}
+.top,.footer,.card,.exam-card,.bigcard,.account-card,.account-stat,.authbox,.admin-side,.admin-main,.editor-card{
+  background:var(--site-panel)!important;color:var(--site-text)!important;border-color:var(--site-line)!important;
+}
+.card:hover,.exam-card:hover{border-color:var(--site-line)!important}
+.card p,.exam-card p,.lead,.small,.card-subtitle,.profile-meta span,.account-stat-label,.trend-label,.topic-line,.pace-grid span,.exam-history-row .small{color:var(--site-muted)!important}
+.btn,.google-btn,.theme-toggle,.language-switch{background:var(--site-panel2)!important;color:var(--site-text)!important;border-color:var(--site-line)!important}
+.btn.primary,.submit{background:#17191c!important;color:#fff!important;border-color:#17191c!important}
+html[data-theme="dark"] .btn.primary,html[data-theme="dark"] .submit{background:#eef0ff!important;color:#101218!important;border-color:#eef0ff!important}
+.btn:hover,.google-btn:hover{background:var(--site-panel2)!important;border-color:var(--site-line)!important}
+.cards .card > .tag{
+  background:var(--site-panel2)!important;color:var(--site-text)!important;border-color:var(--site-line)!important;
+}
+html[data-theme="light"] .cards .card > .tag{background:#fff!important;color:#17191c!important;border-color:#d9dbde!important}
+.problem-page .section,.contest-page .section,.article-page .section,
+.problem-page .pagehero,.contest-hero,.article-page .pagehero,
+.problem-detail,.problem-solution,.contest-paper,.article-paper,.detail-actions,
+.contest-problem{background:var(--site-bg)!important;color:var(--site-text)!important}
+.problem-detail,.problem-solution,.contest-paper,.article-paper,.contest-problem *{color:var(--site-text)!important}
+.detail-actions,.contest-problem+.contest-problem,.solution-content{border-color:var(--site-line)!important}
+.authbox .input,.input,.select,.textarea{background:var(--site-bg)!important;color:var(--site-text)!important;border-color:var(--site-line)!important}
+html[data-theme="light"] .authbox .input,html[data-theme="light"] .input,html[data-theme="light"] .select,html[data-theme="light"] .textarea{background:#fff!important;color:#17191c!important;border-color:#d4d7da!important}
+html[data-theme="dark"] .trend-bar,html[data-theme="dark"] .topic-progress i{background:#eef0ff!important}
+html[data-theme="light"] .trend-bar,html[data-theme="light"] .topic-progress i{background:#17191c!important}
+html[data-theme="dark"] .topic-ring{background:conic-gradient(#eef0ff var(--pct),#282d35 0)!important}
+html[data-theme="light"] .topic-ring{background:conic-gradient(#17191c var(--pct),#e4e6e8 0)!important}
+html[data-theme="dark"] .topic-ring:after{background:#101216!important}
+html[data-theme="light"] .topic-ring:after{background:#fff!important}
