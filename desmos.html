@@ -6,7 +6,7 @@
 <title>KARP — Desmos</title>
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js"></script>
-<script src="https://www.desmos.com/api/v1.8/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+<script src="https://www.desmos.com/api/v1.13/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6&lang=en"></script>
 <style>
 .tool-page{height:calc(100vh - 76px);min-height:0;padding:0;background:#fff;overflow:hidden}
 .tool-inner,.tool-frame,#desmos-calculator{width:100%;height:100%;margin:0}
@@ -41,7 +41,7 @@ shell('Tools','Desmos',`<main class="tool-page"><div class="tool-inner"><div cla
         zoomButtons:true
       });
       started=true;
-      window.__karpDesmos=calculator;
+      window.__karpDesmos=calculator;window.__desmosReady=true;
       setTimeout(()=>calculator.resize(),100);
       window.addEventListener('resize',()=>calculator.resize());
     }catch(err){
