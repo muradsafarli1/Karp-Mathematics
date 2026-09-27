@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ABLE</title>
+<style>
+html,body{margin:0;background:#08090b;color:#f3f4f6;font-family:system-ui,sans-serif}
+main{min-height:100vh;display:grid;place-items:center;text-align:center}
+p{color:#969ba5}
+a{color:#aeb7ff}
+</style>
+</head>
+<body>
+<main><div><h1>ABLE</h1><p>Redirecting…</p><a href="/">Go home</a></div></main>
+<script>
+(function(){
+  const path=location.pathname.replace(/\/+$/,'')||'/';
+  const routes={
+    '/account':'/account.html',
+    '/problems':'/problems.html',
+    '/contests':'/contests.html',
+    '/articles':'/articles.html',
+    '/exams':'/exams.html',
+    '/videos':'/videos.html',
+    '/about':'/about.html',
+    '/desmos':'/desmos.html',
+    '/geogebra':'/geogebra.html',
+    '/calculator':'/calculator.html',
+    '/login':'/login.html',
+    '/signup':'/signup.html',
+    '/admin':'/admin.html',
+    '/problem':'/problem.html',
+    '/contest':'/contest.html',
+    '/article':'/article.html',
+    '/exam':'/exam.html'
+  };
+  const target=routes[path];
+  if(target) location.replace(target+location.search+location.hash);
+  else if(path!=='/' && !/\.html$/.test(path)) setTimeout(()=>location.replace('/'),50);
+})();
+</script>
+</body>
+</html>
