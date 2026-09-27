@@ -8,7 +8,7 @@ html[data-theme="light"] .exam-paper .language-switch button.active { color:#fff
 html[data-theme="light"] .exam-question { border-color:#dedfe2 !important; }
 html[data-theme="light"] mjx-container { color:#17191c !important; }
 .exam-paper-title{text-align:center}
-.exam-paper-title h2{text-align:center}
+.exam-paper-title h2,.exam-paper-title p,.exam-paper-title .eyebrow{text-align:center}
 </style><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script></head><body><script>
 (async()=>{const u=await requireUser();if(!u)return;const id=new URLSearchParams(location.search).get('id');if(!id){location.href='/exams.html';return}try{const d=await api('/api/exams/'+encodeURIComponent(id));const e=d.exam;if(!e){location.href='/exams.html';return}const hd=await api('/api/exams/history').catch(()=>({history:[]})),previous=(hd.history||[]).find(x=>x.examId===id),storageKey='able_exam_'+id;let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{};let startedAt=saved.startedAt||null,end=saved.end||null,finished=!!previous||!!saved.submitted,timer=null;
 const fmt=ms=>{const total=Math.max(0,Math.ceil(ms/1000)),h=Math.floor(total/3600),m=Math.floor(total%3600/60),s=total%60;return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`};
