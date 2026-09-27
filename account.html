@@ -13,150 +13,212 @@ document.addEventListener('DOMContentLoaded', async () => {
   const u = await requireUser();
   if (!u) return;
 
-  let history = [];
-  try { history = (await api('/api/exams/history')).history || []; } catch {}
+  const {db,storage} = await fb();
+  const fs = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const {doc,setDoc} = fs;
+  const st = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js');
+  const {ref,uploadBytes,getDownloadURL} = st;
 
-  const completed = history.length;
-  const activity = Array.from({length: 28}, (_, i) => {
-    const day = new Date();
-    day.setDate(day.getDate() - (27 - i));
-    return { date: day, count: 0 };
+  let history=[];
+  let content={problems:[],articles:[],contests:[],videos:[]};
+  try { history=(await api('/api/exams/history')).history||[]; } catch {}
+  try { content=await api('/api/content'); } catch {}
+
+  function solvedMap(){
+    try{return JSON.parse(localStorage.getItem('able_solved_problems')||'{}')}catch{return {}}
+  }
+  function solvedEntries(){
+    const map=solvedMap();
+    return Object.entries(map).map(([id,v])=>({id,topic:v?.topic||'Other',dates:Array.isArray(v?.dates)?v.dates:[]}));
+  }
+  function allSolvedEvents(){
+    return solvedEntries().flatMap(x=>x.dates.map(d=>({date:new Date(d),topic:x.topic,id:x.id}))).filter(x=>!Number.isNaN(x.date.getTime()));
+  }
+  const events=allSolvedEvents();
+  const solvedCount=solvedEntries().length;
+  const savedCount=(content.problems||[]).filter(p=>localStorage.getItem('able_saved_problem_'+p.id)==='1').length;
+  const completed=history.length;
+
+  function dayKey(d){return d.toISOString().slice(0,10)}
+  function countRange(start,end){return events.filter(e=>e.date>=start&&e.date<end).length}
+  const now=new Date();
+  const startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const tomorrow=new Date(startToday);tomorrow.setDate(tomorrow.getDate()+1);
+  const weekAgo=new Date(startToday);weekAgo.setDate(weekAgo.getDate()-6);
+  const monthStart=new Date(now.getFullYear(),now.getMonth(),1);
+  const yearStart=new Date(now.getFullYear(),0,1);
+  const todayCount=countRange(startToday,tomorrow);
+  const weekCount=countRange(weekAgo,tomorrow);
+  const monthCount=countRange(monthStart,tomorrow);
+  const yearCount=countRange(yearStart,tomorrow);
+
+  const topicDefs=[
+    ['Algebra','Algebra'],
+    ['Number Theory','Number Theory'],
+    ['Geometry','Geometry'],
+    ['Combinatorics','Combinatorics']
+  ];
+  const topicCounts=Object.fromEntries(topicDefs.map(([k])=>[k,0]));
+  solvedEntries().forEach(x=>{
+    const t=String(x.topic||'').toLowerCase();
+    const hit=topicDefs.find(([label,key])=>t===key.toLowerCase()||t.includes(key.toLowerCase())||(key==='Algebra'&&t.includes('functional equation')));
+    if(hit)topicCounts[hit[0]]++;
   });
 
-  const activityCells = activity.map(x => {
-    const label = x.date.toLocaleDateString(undefined, {month:'short', day:'numeric'});
-    return '<div class="activity-cell level-' + Math.min(x.count,4) + '" title="' + label + ': ' + x.count + ' problems"></div>';
-  }).join('');
-
-  const activityLabels = ['Fri','Sat','Sun','Mon','Tue','Wed','Thu'];
+  function series(mode){
+    const arr=[];
+    if(mode==='week'){
+      for(let i=6;i>=0;i--){const d=new Date(startToday);d.setDate(d.getDate()-i);const next=new Date(d);next.setDate(next.getDate()+1);arr.push({label:d.toLocaleDateString(undefined,{weekday:'short'}),count:countRange(d,next)});}
+    }else if(mode==='month'){
+      const days=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+      for(let d=1;d<=days;d++){const a=new Date(now.getFullYear(),now.getMonth(),d),b=new Date(a);b.setDate(b.getDate()+1);arr.push({label:String(d),count:countRange(a,b)});}
+    }else{
+      for(let m=0;m<12;m++){const a=new Date(now.getFullYear(),m,1),b=new Date(now.getFullYear(),m+1,1);arr.push({label:a.toLocaleDateString(undefined,{month:'short'}),count:countRange(a,b)});}
+    }
+    return arr;
+  }
+  function chart(mode){
+    const data=series(mode),max=Math.max(1,...data.map(x=>x.count));
+    return '<div class="trend-chart">'+data.map(x=>'<div class="trend-col"><div class="trend-value">'+(x.count||'')+'</div><div class="trend-bar-wrap"><div class="trend-bar" style="height:'+Math.max(3,Math.round(x.count/max*100))+'%"></div></div><div class="trend-label">'+escapeHtml(x.label)+'</div></div>').join('')+'</div>';
+  }
+  function renderChart(mode){
+    const box=document.getElementById('trend-chart');if(box)box.innerHTML=chart(mode);
+    document.querySelectorAll('.trend-tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+    const label=document.getElementById('trend-total');if(label)label.textContent=(mode==='week'?weekCount:mode==='month'?monthCount:yearCount)+' solved';
+  }
 
   shell('', 'Account', `
     <main class="account-page">
       <section class="account-hero">
         <div class="wrap">
-          <div class="eyebrow">ABLE ACCOUNT</div>
-          <h1>Welcome, ${escapeHtml(u.name)}.</h1>
-          <p class="lead">Track your olympiad progress, exams and saved problems in one place.</p>
+          <div class="account-hero-grid">
+            <div>
+              <div class="eyebrow">ABLE ACCOUNT</div>
+              <h1>Welcome, ${escapeHtml(u.name)}.</h1>
+              <p class="lead">Your olympiad progress, solved problems, exams and activity — all in one place.</p>
+            </div>
+            <div class="profile-photo-head">
+              <img id="hero-photo" class="profile-avatar-large" src="${escapeHtml(u.photoURL||'')}" alt="" style="${u.photoURL?'':'display:none'}">
+              <div id="hero-initial" class="profile-avatar-large profile-initial" style="${u.photoURL?'display:none':''}">${escapeHtml((u.name||'A').trim().charAt(0).toUpperCase())}</div>
+            </div>
+          </div>
         </div>
       </section>
 
       <section class="section">
         <div class="wrap">
           <div class="account-stats">
-            <div class="account-stat">
-              <div class="account-stat-value">0</div>
-              <div class="account-stat-label">Solved Problems</div>
-            </div>
-            <div class="account-stat">
-              <div class="account-stat-value">${completed}</div>
-              <div class="account-stat-label">Taken Exams</div>
-            </div>
-            <div class="account-stat">
-              <div class="account-stat-value">0</div>
-              <div class="account-stat-label">Saved Problems</div>
-            </div>
+            <div class="account-stat"><div class="account-stat-value">${solvedCount}</div><div class="account-stat-label">Solved Problems</div></div>
+            <div class="account-stat"><div class="account-stat-value">${completed}</div><div class="account-stat-label">Taken Exams</div></div>
+            <div class="account-stat"><div class="account-stat-value">${savedCount}</div><div class="account-stat-label">Saved Problems</div></div>
+            <div class="account-stat"><div class="account-stat-value">${todayCount}</div><div class="account-stat-label">Solved Today</div></div>
           </div>
 
           <div class="account-grid">
             <section class="account-card activity-card">
               <div class="account-card-head">
-                <div>
-                  <div class="tag">ACTIVITY</div>
-                  <h2>Problem activity</h2>
-                </div>
-                <span class="small">Last 4 weeks</span>
+                <div><div class="tag">ACTIVITY</div><h2>Problems solved</h2></div>
+                <span id="trend-total" class="small">${weekCount} solved</span>
               </div>
-              <div class="activity-wrap">
-                <div class="activity-days">${activityLabels.map(x=>'<span>'+x+'</span>').join('')}</div>
-                <div class="activity-grid">${activityCells}</div>
-              </div>
-              <div class="activity-legend"><span>Less</span><i class="activity-cell level-0"></i><i class="activity-cell level-1"></i><i class="activity-cell level-2"></i><i class="activity-cell level-3"></i><i class="activity-cell level-4"></i><span>More</span></div>
+              <div class="trend-tabs"><button class="trend-tab active" data-mode="week">Week</button><button class="trend-tab" data-mode="month">Month</button><button class="trend-tab" data-mode="year">Year</button></div>
+              <div id="trend-chart">${chart('week')}</div>
             </section>
 
             <section class="account-card profile-card">
               <div class="tag">PROFILE</div>
-              <div class="profile-avatar">${escapeHtml((u.name||'A').trim().charAt(0).toUpperCase())}</div>
+              <img id="profile-photo" class="profile-avatar" src="${escapeHtml(u.photoURL||'')}" alt="Profile photo" style="${u.photoURL?'':'display:none'}">
+              <div id="profile-initial" class="profile-avatar profile-initial" style="${u.photoURL?'display:none':''}">${escapeHtml((u.name||'A').trim().charAt(0).toUpperCase())}</div>
               <h2>${escapeHtml(u.name)}</h2>
               <p class="small">${escapeHtml(u.email)}</p>
+              <label class="btn profile-upload" for="profile-file">Change profile photo</label>
+              <input id="profile-file" type="file" accept="image/png,image/jpeg,image/webp" style="display:none">
               <div class="profile-meta">
                 <div><span>Role</span><strong>${escapeHtml(u.role||'user')}</strong></div>
-                <div><span>Member since</span><strong>${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</strong></div>
+                <div><span>Member since</span><strong>${u.createdAt?new Date(u.createdAt).toLocaleDateString():'—'}</strong></div>
               </div>
-              <div class="profile-actions">
-                ${u.role==='admin' ? '<a class="btn primary" href="/admin.html">Admin Panel</a>' : ''}
-                <button class="btn" onclick="logout()">Log out</button>
-              </div>
+              <div class="profile-actions">${u.role==='admin'?'<a class="btn primary" href="/admin.html">Admin Panel</a>':''}<button class="btn" onclick="logout()">Log out</button></div>
+              <div id="photo-status" class="notice"></div>
             </section>
           </div>
 
           <section class="account-card account-section-card">
-            <div class="account-card-head">
-              <div><div class="tag">SECTIONS</div><h2>Your progress</h2></div>
-            </div>
+            <div class="account-card-head"><div><div class="tag">TOPICS</div><h2>Problems by topic</h2></div><span class="small">${solvedCount} total solved</span></div>
             <div class="topic-grid">
-              <div class="topic-card"><strong>Algebra</strong><span>0 solved</span></div>
-              <div class="topic-card"><strong>Number Theory</strong><span>0 solved</span></div>
-              <div class="topic-card"><strong>Combinatorics</strong><span>0 solved</span></div>
-              <div class="topic-card"><strong>Geometry</strong><span>0 solved</span></div>
+              ${topicDefs.map(([label])=>'<div class="topic-card"><div class="topic-ring"><span>'+topicCounts[label]+'</span></div><strong>'+label+'</strong><span>'+topicCounts[label]+' solved</span></div>').join('')}
             </div>
           </section>
 
           <section class="account-card account-section-card">
-            <div class="account-card-head">
-              <div><div class="tag">EXAMS</div><h2>Taken Exams</h2></div>
+            <div class="account-card-head"><div><div class="tag">RHYTHM</div><h2>Your pace</h2></div></div>
+            <div class="pace-grid">
+              <div><strong>${todayCount}</strong><span>Today</span></div>
+              <div><strong>${weekCount}</strong><span>Last 7 days</span></div>
+              <div><strong>${monthCount}</strong><span>This month</span></div>
+              <div><strong>${yearCount}</strong><span>This year</span></div>
             </div>
-            ${history.length ? history.map(h=>`
-              <div class="exam-history-row">
-                <div><strong>${escapeHtml(h.titleEn||h.title||'Exam')}</strong><span class="small">Submitted ${h.submittedAt ? new Date(h.submittedAt).toLocaleString() : '—'}</span></div>
-                <a class="btn" href="/exam.html?id=${encodeURIComponent(h.examId)}">Review</a>
-              </div>
-            `).join('') : '<div class="empty account-empty">No completed exams yet.</div>'}
+          </section>
+
+          <section class="account-card account-section-card">
+            <div class="account-card-head"><div><div class="tag">EXAMS</div><h2>Taken Exams</h2></div></div>
+            ${history.length?history.map(h=>`
+              <div class="exam-history-row"><div><strong>${escapeHtml(h.titleEn||h.title||'Exam')}</strong><span class="small">Submitted ${h.submittedAt?new Date(h.submittedAt).toLocaleString():'—'}</span></div><a class="btn" href="/exam.html?id=${encodeURIComponent(h.examId)}">Review</a></div>
+            `).join(''):'<div class="empty account-empty">No completed exams yet.</div>'}
           </section>
         </div>
       </section>
     </main>
     <style>
       .account-page{min-height:70vh}
-      .account-hero{padding:70px 0 42px;border-bottom:1px solid var(--line,#292d34);background:radial-gradient(circle at 80% 0,rgba(100,110,220,.11),transparent 35%)}
+      .account-hero{padding:64px 0 44px;border-bottom:1px solid var(--line,#292d34);background:radial-gradient(circle at 80% 0,rgba(100,110,220,.11),transparent 35%)}
+      .account-hero-grid{display:flex;align-items:center;justify-content:space-between;gap:30px}
       .account-hero h1{font-size:clamp(42px,6vw,72px);letter-spacing:-3px;margin:10px 0 14px}
-      .account-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:18px}
+      .profile-photo-head{display:flex;justify-content:flex-end}
+      .profile-avatar-large{width:108px;height:108px;border-radius:50%;object-fit:cover;border:1px solid var(--line,#292d34)}
+      .account-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
       .account-stat,.account-card{border:1px solid var(--line,#292d34);background:var(--panel,#101216);border-radius:18px}
-      .account-stat{padding:25px 26px}
-      .account-stat-value{font-size:36px;font-weight:800;letter-spacing:-1px}
-      .account-stat-label{margin-top:5px;color:#858b96;font-size:13px}
-      .account-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,.8fr);gap:18px}
-      .account-card{padding:26px}
-      .account-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-bottom:24px}
-      .account-card h2{margin:7px 0 0;font-size:25px;letter-spacing:-.7px}
-      .activity-wrap{overflow-x:auto}
-      .activity-days{display:grid;grid-template-columns:repeat(7,minmax(32px,1fr));gap:7px;margin-bottom:8px;color:#747a84;font-size:11px}
-      .activity-days span{text-align:center}
-      .activity-grid{display:grid;grid-template-columns:repeat(7,minmax(32px,1fr));grid-auto-rows:32px;gap:7px}
-      .activity-cell{display:block;width:100%;height:100%;border-radius:7px;background:#1b1f25;border:1px solid rgba(255,255,255,.035)}
-      .activity-cell.level-1{background:#343a45}.activity-cell.level-2{background:#535b69}.activity-cell.level-3{background:#747d8c}.activity-cell.level-4{background:#aab3c2}
-      .activity-legend{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-top:13px;color:#747a84;font-size:11px}
-      .activity-legend .activity-cell{width:13px;height:13px;border:0}
-      .profile-card{text-align:center}
-      .profile-avatar{width:76px;height:76px;margin:3px auto 17px;border-radius:50%;display:grid;place-items:center;background:#20242b;border:1px solid #343943;font-size:28px;font-weight:800}
-      .profile-card h2{font-size:26px}.profile-card p{margin:6px 0 20px}
-      .profile-meta{border-top:1px solid var(--line,#292d34);border-bottom:1px solid var(--line,#292d34);padding:16px 0;margin:20px 0;display:grid;gap:13px}
-      .profile-meta div{display:flex;justify-content:space-between;gap:15px;text-align:left}.profile-meta span{color:#747a84}.profile-meta strong{font-size:13px}
-      .profile-actions{display:flex;justify-content:center;gap:9px;flex-wrap:wrap}
-      .account-section-card{margin-top:18px}
-      .topic-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-      .topic-card{padding:19px;border:1px solid var(--line,#292d34);border-radius:13px;background:rgba(255,255,255,.018)}
-      .topic-card strong{display:block;font-size:15px}.topic-card span{display:block;color:#747a84;font-size:12px;margin-top:7px}
-      .exam-history-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:17px 0;border-top:1px solid var(--line,#292d34)}
-      .exam-history-row strong{display:block}.exam-history-row .small{display:block;margin-top:5px}
-      .account-empty{padding:15px 0}
+      .account-stat{padding:22px 24px}.account-stat-value{font-size:34px;font-weight:800;letter-spacing:-1px}.account-stat-label{margin-top:4px;color:#858b96;font-size:12px}
+      .account-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(290px,.75fr);gap:18px}
+      .account-card{padding:26px}.account-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-bottom:20px}.account-card h2{margin:7px 0 0;font-size:25px;letter-spacing:-.7px}
+      .trend-tabs{display:flex;gap:6px;margin-bottom:18px}.trend-tab{border:1px solid var(--line,#292d34);background:transparent;color:#8d94a0;border-radius:9px;padding:7px 12px;font-size:12px}.trend-tab.active{background:#fff;color:#15171a;border-color:#fff}
+      .trend-chart{height:270px;display:flex;align-items:stretch;gap:7px;padding:12px 0 0;border-top:1px solid var(--line,#292d34)}
+      .trend-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0;gap:6px}.trend-value{font-size:10px;color:#7f8792;height:14px}.trend-bar-wrap{height:190px;width:100%;display:flex;align-items:flex-end}.trend-bar{width:100%;max-width:28px;margin:auto;background:#eef0ff;border-radius:7px 7px 3px 3px;min-height:3px}.trend-label{font-size:10px;color:#747a84}
+      .profile-card{text-align:center}.profile-avatar{width:82px;height:82px;border-radius:50%;object-fit:cover;margin:2px auto 17px;border:1px solid #343943}.profile-initial{display:grid;place-items:center;background:#20242b;font-size:28px;font-weight:800;color:#fff}.profile-card h2{font-size:26px}.profile-card p{margin:6px 0 15px}.profile-upload{display:inline-block;margin-bottom:10px}
+      .profile-meta{border-top:1px solid var(--line,#292d34);border-bottom:1px solid var(--line,#292d34);padding:15px 0;margin:16px 0}.profile-meta div{display:flex;justify-content:space-between;gap:15px;text-align:left;padding:5px 0}.profile-meta span{color:#747a84}.profile-meta strong{font-size:13px}
+      .profile-actions{display:flex;justify-content:center;gap:9px;flex-wrap:wrap}.notice{min-height:18px}
+      .account-section-card{margin-top:18px}.topic-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.topic-card{padding:20px;border:1px solid var(--line,#292d34);border-radius:14px;background:rgba(255,255,255,.018);text-align:center}.topic-card strong{display:block;font-size:15px;margin-top:12px}.topic-card span{display:block;color:#747a84;font-size:12px;margin-top:5px}.topic-ring{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;margin:auto;border:2px solid #3a3f48}.topic-ring span{color:var(--text);font-size:18px;font-weight:800;margin:0}
+      .pace-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.pace-grid>div{padding:20px;border:1px solid var(--line,#292d34);border-radius:14px;text-align:center}.pace-grid strong{display:block;font-size:28px}.pace-grid span{display:block;color:#747a84;font-size:12px;margin-top:4px}
+      .exam-history-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:17px 0;border-top:1px solid var(--line,#292d34)}.exam-history-row strong{display:block}.exam-history-row .small{display:block;margin-top:5px}.account-empty{padding:15px 0}
       html[data-theme="light"] .account-stat,html[data-theme="light"] .account-card{background:#fff;border-color:#dedfe2}
       html[data-theme="light"] .account-hero{background:radial-gradient(circle at 80% 0,rgba(110,120,220,.10),transparent 35%);border-color:#dedfdd}
-      html[data-theme="light"] .activity-cell{background:#eef0f2;border-color:#e1e3e5}.activity-cell.level-1{background:#d8dce1}.activity-cell.level-2{background:#bdc3ca}.activity-cell.level-3{background:#9da5ae}.activity-cell.level-4{background:#777f89}
-      html[data-theme="light"] .profile-avatar{background:#eef0f2;border-color:#d9dbde}
-      @media(max-width:800px){.account-stats,.topic-grid{grid-template-columns:1fr 1fr}.account-grid{grid-template-columns:1fr}}
-      @media(max-width:520px){.account-stats,.topic-grid{grid-template-columns:1fr}.account-card,.account-stat{padding:20px}.account-hero{padding:50px 0 32px}}
+      html[data-theme="light"] .profile-initial{background:#eef0f2;color:#17191c;border-color:#d9dbde}
+      html[data-theme="light"] .trend-tab.active{background:#17191c;color:#fff;border-color:#17191c}
+      html[data-theme="light"] .trend-bar{background:#17191c}
+      @media(max-width:850px){.account-stats{grid-template-columns:repeat(2,1fr)}.account-grid{grid-template-columns:1fr}.topic-grid,.pace-grid{grid-template-columns:repeat(2,1fr)}.account-hero-grid{align-items:flex-start}}
+      @media(max-width:520px){.account-stats,.topic-grid,.pace-grid{grid-template-columns:1fr}.account-card,.account-stat{padding:20px}.account-hero{padding:50px 0 32px}.account-hero-grid{flex-direction:column}.profile-photo-head{justify-content:flex-start}.trend-chart{gap:3px}.trend-value{font-size:9px}}
     </style>
   `);
+
+  document.querySelectorAll('.trend-tab').forEach(b=>b.onclick=()=>renderChart(b.dataset.mode));
+  document.getElementById('profile-file').onchange=async e=>{
+    const file=e.target.files?.[0];
+    if(!file)return;
+    const status=document.getElementById('photo-status');
+    if(file.size>5*1024*1024){status.className='notice error';status.textContent='Please choose an image under 5 MB.';return}
+    status.className='notice';status.textContent='Uploading…';
+    try{
+      const imageRef=ref(storage,`users/${u.id}/profile/avatar`);
+      await uploadBytes(imageRef,file,{contentType:file.type});
+      const url=await getDownloadURL(imageRef);
+      await setDoc(doc(db,'users',u.id),{photoURL:url},{merge:true});
+      document.getElementById('profile-photo').src=url;
+      document.getElementById('profile-photo').style.display='';
+      document.getElementById('profile-initial').style.display='none';
+      document.getElementById('hero-photo').src=url;
+      document.getElementById('hero-photo').style.display='';
+      document.getElementById('hero-initial').style.display='none';
+      status.className='notice success';status.textContent='Profile photo updated.';
+    }catch(err){status.className='notice error';status.textContent=err.message}
+  };
 });
 </script>
 </body>
