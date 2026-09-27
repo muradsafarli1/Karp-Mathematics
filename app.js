@@ -84,6 +84,38 @@
       .detail-content{color:#111!important}.detail-image{max-height:430px}
     }
   `;
+
+    /* KARP final visual normalization */
+    html[data-theme="dark"]{
+      --bg:#08090b;--panel:#101216;--panel2:#15171c;--line:#292d34;--text:#f3f4f6;--muted:#969ba5;
+    }
+    html[data-theme="light"]{
+      --bg:#f7f7f5;--panel:#fff;--panel2:#f1f2f3;--line:#dedfe2;--text:#17191c;--muted:#626770;
+    }
+    body,.section,.pagehero,.contest-page,.article-page,.account-page,.auth{background:var(--bg)!important;color:var(--text)!important}
+    .top,.footer,.card,.exam-card,.bigcard,.account-card,.account-stat,.authbox,.admin-side,.admin-main,.editor-card{background:var(--panel)!important;color:var(--text)!important;border-color:var(--line)!important}
+    .card p,.exam-card p,.lead,.small,.card-subtitle,.profile-meta span,.account-stat-label,.trend-label,.topic-line,.pace-grid span,.exam-history-row .small{color:var(--muted)!important}
+    .btn,.google-btn,.theme-toggle,.language-switch{background:var(--panel2)!important;color:var(--text)!important;border-color:var(--line)!important}
+    .btn.primary,.submit{background:#17191c!important;color:#fff!important;border-color:#17191c!important}
+    html[data-theme="dark"] .btn.primary,html[data-theme="dark"] .submit{background:#eef0ff!important;color:#101218!important;border-color:#eef0ff!important}
+    .cards .card > .tag{background:var(--panel2)!important;color:var(--text)!important;border-color:var(--line)!important}
+    html[data-theme="light"] .cards .card > .tag{background:#fff!important;color:#17191c!important;border-color:#d9dbde!important}
+    .problem-page .section,.contest-page .section,.article-page .section,.problem-page .pagehero,.contest-hero,.article-page .pagehero,.problem-detail,.problem-solution,.contest-paper,.article-paper,.contest-problem,.detail-actions{background:var(--bg)!important;color:var(--text)!important}
+    .problem-detail,.problem-solution,.contest-paper,.article-paper,.contest-problem *{color:var(--text)!important}
+    .detail-actions,.contest-problem+.contest-problem,.solution-content{border-color:var(--line)!important}
+    .authbox .input,.input,.select,.textarea{background:var(--bg)!important;color:var(--text)!important;border-color:var(--line)!important}
+    html[data-theme="light"] .authbox .input,html[data-theme="light"] .input,html[data-theme="light"] .select,html[data-theme="light"] .textarea{background:#fff!important;color:#17191c!important;border-color:#d4d7da!important}
+
+    /* Restore comfortable original detail proportions */
+    .problem-page .section>.wrap,.contest-page .section>.wrap,.article-page .section>.wrap{width:min(calc(100% - 42px),1240px)!important;max-width:1240px!important}
+    .problem-detail,.article-paper,.contest-paper .question-text{font-size:19px!important;line-height:1.9!important}
+    .problem-detail{min-height:0!important}.article-paper{min-height:0!important}
+    .contest-problem{padding:38px 0!important;min-height:0!important}
+    .contest-problem-heading{font-size:20px!important;margin-bottom:22px!important}
+    .contest-problem-heading span{min-width:0!important;height:auto!important;font-size:21px!important}
+    .detail-image{max-height:520px!important;margin:28px auto!important}
+    .detail-actions{margin-top:55px!important;padding-top:0!important}
+
   document.head.appendChild(style);
 })();
 
@@ -111,8 +143,11 @@ async function fb(){
     const db=getFirestore(app);
     const storage=getStorage(app);
     __fb={app,auth,db,storage};
-    __authReady=new Promise(resolve=>{
-      const off=auth.onAuthStateChanged(user=>{off();resolve(user);});
+    __authReady=new Promise(async resolve=>{
+      try{
+        const {onAuthStateChanged}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
+        const off=onAuthStateChanged(auth,user=>{off();resolve(user);});
+      }catch{resolve(null);}
     });
   }
   return __fb;
