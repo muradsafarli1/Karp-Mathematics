@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ABLE — Calculator</title>
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js"></script>
+<style>
+.calculator-wrap{min-height:calc(100vh - 77px);padding:70px 20px;display:grid;place-items:center;background:radial-gradient(circle at 50% 0,rgba(129,143,255,.12),transparent 34%),#08090b}
+.calculator{width:min(430px,100%);padding:22px;border:1px solid #292d34;border-radius:22px;background:#101216;box-shadow:0 25px 80px rgba(0,0,0,.35)}
+.calc-title{margin:0 0 18px;font-family:'Space Grotesk';font-size:28px;letter-spacing:-1px}
+.calc-display{width:100%;min-height:76px;padding:16px;border:1px solid #30343c;border-radius:12px;background:#0b0d10;color:#f4f5f7;font-family:'Space Grotesk';font-size:30px;text-align:right;outline:0;margin-bottom:12px}
+.calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.calc-grid button{height:58px;border:1px solid #30343c;border-radius:10px;background:#181b20;color:#f2f4f7;font-size:18px;font-weight:700}
+.calc-grid button:hover{background:#23272e}
+.calc-grid .op{background:#20242b}
+.calc-grid .equals{background:#eef0ff;color:#101218;border-color:#eef0ff}
+.calc-grid .wide{grid-column:span 2}
+html[data-theme="light"] .calculator-wrap{background:#f7f7f5}
+html[data-theme="light"] .calculator{background:#fff;border-color:#dedfe2}
+html[data-theme="light"] .calc-display{background:#f3f4f5;color:#17191c;border-color:#d4d7da}
+html[data-theme="light"] .calc-grid button{background:#f0f1f2;color:#17191c;border-color:#d4d7da}
+html[data-theme="light"] .calc-grid button:hover{background:#e4e6e8}
+html[data-theme="light"] .calc-grid .equals{background:#17191c;color:#fff;border-color:#17191c}
+</style>
+</head>
+<body>
+<script>
+shell('Tools','Calculator',`<main class="calculator-wrap"><div class="calculator">
+<h1 class="calc-title">Calculator</h1>
+<input id="calc-display" class="calc-display" value="0" inputmode="decimal" aria-label="Calculator display">
+<div class="calc-grid">
+<button class="op" onclick="clearCalc()">AC</button><button class="op" onclick="backCalc()">⌫</button><button class="op" onclick="appendCalc('(')">(</button><button class="op" onclick="appendCalc(')')">)</button>
+<button onclick="appendCalc('7')">7</button><button onclick="appendCalc('8')">8</button><button onclick="appendCalc('9')">9</button><button class="op" onclick="appendCalc('/')">÷</button>
+<button onclick="appendCalc('4')">4</button><button onclick="appendCalc('5')">5</button><button onclick="appendCalc('6')">6</button><button class="op" onclick="appendCalc('*')">×</button>
+<button onclick="appendCalc('1')">1</button><button onclick="appendCalc('2')">2</button><button onclick="appendCalc('3')">3</button><button class="op" onclick="appendCalc('-')">−</button>
+<button class="wide" onclick="appendCalc('0')">0</button><button onclick="appendCalc('.')">.</button><button class="op" onclick="appendCalc('+')">+</button>
+<button class="op" onclick="appendCalc('Math.sqrt(')">√</button><button class="op" onclick="appendCalc('**2')">x²</button><button class="op" onclick="appendCalc('%')">%</button><button class="equals" onclick="calculate()">=</button>
+</div></div></main>`);
+function display(){return document.getElementById('calc-display')}
+function appendCalc(v){const d=display();if(d.value==='0'||d.value==='Error')d.value='';d.value+=v}
+function clearCalc(){display().value='0'}
+function backCalc(){const d=display();d.value=d.value.length>1?d.value.slice(0,-1):'0'}
+function calculate(){const d=display();try{if(!/^[0-9+\-*/().%\sMathsqrt]+$/.test(d.value.replace('Math.sqrt','Mathsqrt')))throw 0;d.value=String(Function('return ('+d.value+')')())}catch{d.value='Error'}}
+document.addEventListener('keydown',e=>{if(/[0-9.+\-*/%()]/.test(e.key))appendCalc(e.key);if(e.key==='Enter')calculate();if(e.key==='Escape')clearCalc();if(e.key==='Backspace')backCalc()});
+</script>
+</body>
+</html>
