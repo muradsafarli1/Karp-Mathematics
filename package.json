@@ -2,7 +2,7 @@
   "name": "able-math-platform",
   "version": "2.1.0",
   "private": true,
-  "description": "ABLE Olympiad Mathematics platform",
+  "description": "KARP Olympiad Mathematics platform",
   "scripts": {
     "start": "node db-check.js && node server.js",
     "reset-firebase": "node reset-firebase.mjs"
