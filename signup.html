@@ -1,17 +1,22 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ABLE — Join Us</title><link rel="stylesheet" href="/style.css"></head><body><header class="top"><div class="wrap nav"><a class="brand" href="/">ABLE</a><a class="btn" href="/login.html">Log in</a></div></header><main class="auth"><form class="authbox" id="form"><div class="eyebrow">Join ABLE</div><h1>Create your account.</h1><p>One account for the ABLE platform.</p><div class="field"><label>Name</label><input class="input" name="name" required autocomplete="name"></div><div class="field"><label>Email</label><input class="input" name="email" type="email" required autocomplete="email"></div><div class="field"><label>Password</label><input class="input" name="password" type="password" minlength="8" required autocomplete="new-password"><div class="small">At least 8 characters.</div></div><button class="submit">Create account</button><div style="display:flex;align-items:center;gap:12px;margin:18px 0;color:#777"><span style="height:1px;flex:1;background:currentColor;opacity:.25"></span><span class="small">or</span><span style="height:1px;flex:1;background:currentColor;opacity:.25"></span></div><button type="button" class="btn" id="google-signup" style="width:100%">Continue with Google</button><div class="notice" id="notice"></div></form></main><script type="module">
 import { auth, db } from "/firebase.js";
-import { createUserWithEmailAndPassword, updateProfile, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { createUserWithEmailAndPassword, updateProfile, signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 const notice=document.getElementById("notice");
-async function googleSignup(){
-  const cred=await signInWithPopup(auth,new GoogleAuthProvider());
+async function finishGoogleSignup(cred){
   const ref=doc(db,"users",cred.user.uid);
   const snap=await getDoc(ref);
-  if(!snap.exists()) await setDoc(ref,{name:cred.user.displayName||cred.user.email?.split("@")[0]||"User",email:cred.user.email||"",role:"user",createdAt:new Date().toISOString()});
+  if(!snap.exists()) await setDoc(ref,{name:cred.user.displayName||cred.user.email?.split("@")[0]||"User",email:cred.user.email||"",role:"user",createdAt:new Date().toISOString(),photoURL:cred.user.photoURL||""});
   const profile=(await getDoc(ref)).data();
   notice.className="notice success";notice.textContent="Account ready. Redirecting…";
   location.href=profile?.role==="admin"?"/admin.html":"/account.html";
 }
+getRedirectResult(auth).then(result=>{
+  if(result?.user) return finishGoogleSignup(result);
+}).catch(err=>{
+  notice.className="notice error";
+  notice.textContent=err.code==="auth/unauthorized-domain"?"This domain is not authorized in Firebase Authentication.":err.message;
+});
 document.getElementById("form").onsubmit=async e=>{
   e.preventDefault();const f=new FormData(e.target);
   try{
@@ -21,5 +26,16 @@ document.getElementById("form").onsubmit=async e=>{
     notice.className="notice success";notice.textContent="Account created. Redirecting…";setTimeout(()=>location.href="/account.html",400);
   }catch(err){notice.className="notice error";notice.textContent=err.code==="auth/email-already-in-use"?"An account with this email already exists.":err.message}
 };
-document.getElementById("google-signup").onclick=async()=>{try{await googleSignup()}catch(err){notice.className="notice error";notice.textContent=err.message}};
+document.getElementById("google-signup").onclick=async()=>{
+  try{
+    const provider=new GoogleAuthProvider();
+    provider.setCustomParameters({prompt:"select_account"});
+    notice.className="notice";
+    notice.textContent="Opening Google…";
+    await signInWithRedirect(auth,provider);
+  }catch(err){
+    notice.className="notice error";
+    notice.textContent=err.message;
+  }
+};
 </script></body></html>
