@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ABLE — Problems</title>
+<title>KARP — Problems</title>
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js"></script>
 <style>
@@ -27,7 +27,7 @@
       function filter() { const q=document.getElementById('search').value.toLowerCase(); const t=document.getElementById('topic').value; const filtered=all.filter(p=>(!q||localized(p,'title').toLowerCase().includes(q))&&(t==='All topics'||p.topic===t)); document.getElementById('cards').innerHTML=filtered.map(card).join('')||'<div class="empty">No problems found.</div>'; }
     }
     render();
-  } catch (e) { console.error(e); document.body.innerHTML=`<div class="error-page"><h1>Unable to load problems</h1><p>${escapeHtml(e.message)}</p><a href="/">← Back to ABLE</a></div>`; }
+  } catch (e) { console.error(e); document.body.innerHTML=`<div class="error-page"><h1>Unable to load problems</h1><p>${escapeHtml(e.message)}</p><a href="/">← Back to KARP</a></div>`; }
 })();
 </script>
 </body>
