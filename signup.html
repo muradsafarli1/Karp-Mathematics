@@ -1,6 +1,6 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ABLE — Join Us</title><link rel="stylesheet" href="/style.css"></head><body><header class="top"><div class="wrap nav"><a class="brand" href="/">ABLE</a><a class="btn" href="/login.html">Log in</a></div></header><main class="auth"><form class="authbox" id="form"><div class="eyebrow">Join ABLE</div><h1>Create your account.</h1><p>One account for the ABLE platform.</p><div class="field"><label>Name</label><input class="input" name="name" required autocomplete="name"></div><div class="field"><label>Email</label><input class="input" name="email" type="email" required autocomplete="email"></div><div class="field"><label>Password</label><input class="input" name="password" type="password" minlength="8" required autocomplete="new-password"><div class="small">At least 8 characters.</div></div><button class="submit">Create account</button><div style="display:flex;align-items:center;gap:12px;margin:18px 0;color:#777"><span style="height:1px;flex:1;background:currentColor;opacity:.25"></span><span class="small">or</span><span style="height:1px;flex:1;background:currentColor;opacity:.25"></span></div><button type="button" class="btn" id="google-signup" style="width:100%">Continue with Google</button><div class="notice" id="notice"></div></form></main><script type="module">
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ABLE — Join Us</title><link rel="stylesheet" href="/style.css"><script src="/app.js"></script></head><body><header class="top"><div class="wrap nav"><a class="brand" href="/">ABLE</a><a class="btn" href="/login.html">Log in</a></div></header><main class="auth"><form class="authbox" id="form"><div class="eyebrow">Join ABLE</div><h1>Create your account.</h1><p>One account for the ABLE platform.</p><div class="field"><label>Name</label><input class="input" name="name" required autocomplete="name"></div><div class="field"><label>Email</label><input class="input" name="email" type="email" required autocomplete="email"></div><div class="field"><label>Password</label><input class="input" name="password" type="password" minlength="8" required autocomplete="new-password"><div class="small">At least 8 characters.</div></div><button class="submit">Create account</button><div class="auth-divider"><span></span><small>OR</small><span></span></div><button type="button" class="google-btn" id="google-signup"><svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.55-.22-2.27H12v4.3h6.45a5.51 5.51 0 0 1-2.39 3.62v3.01h3.87c2.27-2.09 3.56-5.17 3.56-8.66Z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.9l-3.87-3.01c-1.07.72-2.44 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.95H1.27v3.1A12 12 0 0 0 12 24Z"/><path fill="#FBBC05" d="M5.27 14.29A7.22 7.22 0 0 1 4.9 12c0-.79.14-1.57.37-2.29V6.61H1.27A12 12 0 0 0 0 12c0 1.94.47 3.78 1.27 5.39l4-3.1Z"/><path fill="#EA4335" d="M12 4.76c1.76 0 3.34.61 4.58 1.81l3.43-3.43C17.95 1.19 15.23 0 12 0A12 12 0 0 0 1.27 6.61l4 3.1C6.22 6.87 8.87 4.76 12 4.76Z"/></svg><span>Continue with Google</span></button><div class="notice" id="notice"></div></form></main><script type="module">
 import { auth, db } from "/firebase.js";
-import { createUserWithEmailAndPassword, updateProfile, signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { createUserWithEmailAndPassword, updateProfile, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 const notice=document.getElementById("notice");
 async function finishGoogleSignup(cred){
@@ -27,15 +27,25 @@ document.getElementById("form").onsubmit=async e=>{
   }catch(err){notice.className="notice error";notice.textContent=err.code==="auth/email-already-in-use"?"An account with this email already exists.":err.message}
 };
 document.getElementById("google-signup").onclick=async()=>{
+  const btn=document.getElementById("google-signup");
+  btn.disabled=true;btn.innerHTML="<span class=\"google-spinner\"></span><span>Connecting to Google…</span>";
   try{
     const provider=new GoogleAuthProvider();
     provider.setCustomParameters({prompt:"select_account"});
-    notice.className="notice";
-    notice.textContent="Opening Google…";
-    await signInWithRedirect(auth,provider);
+    try{
+      const cred=await signInWithPopup(auth,provider);
+      await finishGoogleSignup(cred);
+    }catch(popupErr){
+      if(["auth/popup-blocked","auth/popup-closed-by-user","auth/cancelled-popup-request"].includes(popupErr.code)){
+        await signInWithRedirect(auth,provider);
+      }else{
+        throw popupErr;
+      }
+    }
   }catch(err){
+    btn.disabled=false;btn.innerHTML="<svg class=\"google-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill=\"#4285F4\" d=\"M23.49 12.27c0-.79-.07-1.55-.22-2.27H12v4.3h6.45a5.51 5.51 0 0 1-2.39 3.62v3.01h3.87c2.27-2.09 3.56-5.17 3.56-8.66Z\"/><path fill=\"#34A853\" d=\"M12 24c3.24 0 5.96-1.07 7.94-2.9l-3.87-3.01c-1.07.72-2.44 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.95H1.27v3.1A12 12 0 0 0 12 24Z\"/><path fill=\"#FBBC05\" d=\"M5.27 14.29A7.22 7.22 0 0 1 4.9 12c0-.79.14-1.57.37-2.29V6.61H1.27A12 12 0 0 0 0 12c0 1.94.47 3.78 1.27 5.39l4-3.1Z\"/><path fill=\"#EA4335\" d=\"M12 4.76c1.76 0 3.34.61 4.58 1.81l3.43-3.43C17.95 1.19 15.23 0 12 0A12 12 0 0 0 1.27 6.61l4 3.1C6.22 6.87 8.87 4.76 12 4.76Z\"/></svg><span>Continue with Google</span>";
     notice.className="notice error";
-    notice.textContent=err.message;
+    notice.textContent=err.code==="auth/unauthorized-domain"?"This domain is not authorized in Firebase Authentication.":err.message;
   }
 };
 </script></body></html>
