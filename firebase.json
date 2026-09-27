@@ -81,6 +81,23 @@
         "source": "/calculator",
         "destination": "/calculator.html"
       }
+    ],
+    "redirects": [
+      {
+        "source": "/firebase.js",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/hosting",
+        "destination": "/",
+        "type": 302
+      },
+      {
+        "source": "/hosting/**",
+        "destination": "/",
+        "type": 302
+      }
     ]
   }
 }
