@@ -1,6 +1,6 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ABLE — Login</title><link rel="stylesheet" href="/style.css"></head><body><header class="top"><div class="wrap nav"><a class="brand" href="/">ABLE</a><a class="btn" href="/signup.html">Create account</a></div></header><main class="auth"><div class="authbox"><form id="form"><div class="eyebrow">ABLE Account</div><h1>Welcome back.</h1><p>Sign in to your ABLE account.</p><div class="field"><label>Email</label><input class="input" name="email" type="email" required autocomplete="email"></div><div class="field"><label>Password</label><input class="input" name="password" type="password" required autocomplete="current-password"></div><button class="submit">Log in</button><div style="display:flex;align-items:center;gap:12px;margin:18px 0;color:#777"><span style="height:1px;flex:1;background:currentColor;opacity:.25"></span><span class="small">or</span><span style="height:1px;flex:1;background:currentColor;opacity:.25"></span></div><button type="button" class="btn" id="google-login" style="width:100%">Continue with Google</button><div class="notice" id="notice"></div></form></div></main><script type="module">
 import { auth, db } from "/firebase.js";
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { signInWithEmailAndPassword, signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 const notice=document.getElementById("notice");
 async function finishLogin(cred){
@@ -20,10 +20,22 @@ document.getElementById("form").onsubmit=async e=>{
   try{await finishLogin(await signInWithEmailAndPassword(auth,f.get("email"),f.get("password")))}
   catch(err){notice.className="notice error";notice.textContent=err.code==="auth/invalid-credential"?"Email or password is incorrect.":err.message}
 };
+getRedirectResult(auth).then(result=>{
+  if(result?.user) return finishLogin(result);
+}).catch(err=>{
+  notice.className="notice error";
+  notice.textContent=err.code==="auth/unauthorized-domain"?"This domain is not authorized in Firebase Authentication.":err.message;
+});
 document.getElementById("google-login").onclick=async()=>{
   try{
     const provider=new GoogleAuthProvider();
-    await finishLogin(await signInWithPopup(auth,provider));
-  }catch(err){notice.className="notice error";notice.textContent=err.message}
+    provider.setCustomParameters({prompt:"select_account"});
+    notice.className="notice";
+    notice.textContent="Opening Google…";
+    await signInWithRedirect(auth,provider);
+  }catch(err){
+    notice.className="notice error";
+    notice.textContent=err.message;
+  }
 };
 </script></body></html>
