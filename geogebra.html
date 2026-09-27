@@ -6,14 +6,13 @@
 html[data-theme="light"] .tool-page{background:#f7f7f5}
 @media(max-width:700px){.tool-page{height:calc(100vh - 76px);padding:0}.tool-frame{border-radius:0}}
 </style><script src="https://www.geogebra.org/apps/deployggb.js"></script></head><body><script>
-shell('Tools','GeoGebra',`<main class="tool-page"><div class="tool-inner"><div class="tool-frame"><div id="ggb-element"></div></div></div></main>`);
+shell('Tools','GeoGebra',`<main class="tool-page"><div class="tool-inner"><div id="ggb-element" class="tool-frame"></div></div></main>`);
 window.addEventListener('load',()=>{
   const el=document.getElementById('ggb-element');
   if(el&&window.GGBApplet){
-    const h=Math.max(300,window.innerHeight-(document.querySelector('.top')?.offsetHeight||76));
-    const params={appName:'graphing',width:window.innerWidth,height:h,showToolBar:true,showAlgebraInput:true,showMenuBar:true,showFullscreenButton:true,showResetIcon:true,enableShiftDragZoom:true};
+    const params={appName:'graphing',scaleContainerClass:'tool-frame',autoHeight:false,allowUpscale:true,showToolBar:true,showAlgebraInput:true,showMenuBar:true,showFullscreenButton:true,showResetIcon:true,enableShiftDragZoom:true};
     const applet=new GGBApplet(params,true); applet.inject('ggb-element');
-    setTimeout(()=>{const f=el.querySelector('iframe');if(f){f.style.width='100%';f.style.height='100%';f.style.border='0';}},500);
+    setTimeout(()=>{const f=el.querySelector('iframe');if(f){f.style.width='100%';f.style.height='100%';f.style.border='0';}},700);
   }
 });
 window.addEventListener('resize',()=>{const f=document.querySelector('#ggb-element iframe');if(f){f.style.width='100%';f.style.height='100%';}});
