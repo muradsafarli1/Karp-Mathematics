@@ -1,51 +1,54 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KARP — Login</title><link rel="stylesheet" href="/style.css"><script src="/app.js"></script></head><body><header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><a class="btn" href="/signup.html">Create account</a></div></header><main class="auth"><div class="authbox"><form id="form"><div class="eyebrow">KARP Account</div><h1>Welcome back.</h1><p>Sign in to your KARP account.</p><div class="field"><label>Email</label><input class="input" name="email" type="email" required autocomplete="email"></div><div class="field"><label>Password</label><input class="input" name="password" type="password" required autocomplete="current-password"></div><button class="submit">Log in</button><div class="auth-divider"><span></span><small>OR</small><span></span></div><button type="button" class="google-btn" id="google-login"><svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.55-.22-2.27H12v4.3h6.45a5.51 5.51 0 0 1-2.39 3.62v3.01h3.87c2.27-2.09 3.56-5.17 3.56-8.66Z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.9l-3.87-3.01c-1.07.72-2.44 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.95H1.27v3.1A12 12 0 0 0 12 24Z"/><path fill="#FBBC05" d="M5.27 14.29A7.22 7.22 0 0 1 4.9 12c0-.79.14-1.57.37-2.29V6.61H1.27A12 12 0 0 0 0 12c0 1.94.47 3.78 1.27 5.39l4-3.1Z"/><path fill="#EA4335" d="M12 4.76c1.76 0 3.34.61 4.58 1.81l3.43-3.43C17.95 1.19 15.23 0 12 0A12 12 0 0 0 1.27 6.61l4 3.1C6.22 6.87 8.87 4.76 12 4.76Z"/></svg><span>Continue with Google</span></button><div class="notice" id="notice"></div></form></div></main><script type="module">
-import { auth, db } from "/firebase.js";
-import { signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
-const notice=document.getElementById("notice");
-async function finishLogin(cred){
-  const ref=doc(db,"users",cred.user.uid);
-  const snap=await getDoc(ref);
-  if(!snap.exists()){
-    await setDoc(ref,{name:cred.user.displayName||cred.user.email?.split("@")[0]||"User",email:cred.user.email||"",role:"user",createdAt:new Date().toISOString()});
-  }
-  const profile=(await getDoc(ref)).data();
-  notice.className="notice success";
-  notice.textContent="Logged in. Redirecting…";
-  location.href=profile?.role==="admin"?"/admin.html":"/account.html";
-}
-document.getElementById("form").onsubmit=async e=>{
-  e.preventDefault();
-  const f=new FormData(e.target);
-  try{await finishLogin(await signInWithEmailAndPassword(auth,f.get("email"),f.get("password")))}
-  catch(err){notice.className="notice error";notice.textContent=err.code==="auth/invalid-credential"?"Email or password is incorrect.":err.message}
-};
-getRedirectResult(auth).then(result=>{
-  if(result?.user) return finishLogin(result);
-}).catch(err=>{
-  notice.className="notice error";
-  notice.textContent=err.code==="auth/unauthorized-domain"?"This domain is not authorized in Firebase Authentication.":err.message;
-});
-document.getElementById("google-login").onclick=async()=>{
-  const btn=document.getElementById("google-login");
-  btn.disabled=true;btn.innerHTML="<span class=\"google-spinner\"></span><span>Connecting to Google…</span>";
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KARP — Login</title><link rel="stylesheet" href="/style.css"><script src="/app.js"></script></head><body>
+<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><div class="auth-nav-actions"><button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()">☀</button><a class="btn" href="/signup.html">Create account</a></div></div></header>
+<main class="auth"><div class="authbox"><form id="form"><div class="eyebrow">KARP ACCOUNT</div><h1>Welcome back.</h1><p>Sign in to your KARP account.</p>
+<div class="field"><label>Email</label><input class="input" name="email" type="email" required autocomplete="email"></div>
+<div class="field"><label>Password</label><input class="input" name="password" type="password" required autocomplete="current-password"></div>
+<button class="submit" id="email-submit">Log in</button>
+<div class="auth-divider"><span></span><small>OR</small><span></span></div>
+<button type="button" class="google-btn" id="google-login"><svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.55-.22-2.27H12v4.3h6.45a5.51 5.51 0 0 1-2.39 3.62v3.01h3.87c2.27-2.09 3.56-5.17 3.56-8.66Z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.9l-3.87-3.01c-1.07.72-2.44 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.95H1.27v3.1A12 12 0 0 0 12 24Z"/><path fill="#FBBC05" d="M5.27 14.29A7.22 7.22 0 0 1 4.9 12c0-.79.14-1.57.37-2.29V6.61H1.27A12 12 0 0 0 0 12c0 1.94.47 3.78 1.27 5.39l4-3.1Z"/><path fill="#EA4335" d="M12 4.76c1.76 0 3.34.61 4.58 1.81l3.43-3.43C17.95 1.19 15.23 0 12 0A12 12 0 0 0 1.27 6.61l4 3.1C6.22 6.87 8.87 4.76 12 4.76Z"/></svg><span>Continue with Google</span></button>
+<div class="notice" id="notice"></div></form></div></main>
+<script>
+(async function(){
+  const notice=document.getElementById('notice');
+  const googleBtn=document.getElementById('google-login');
+  const emailBtn=document.getElementById('email-submit');
   try{
-    const provider=new GoogleAuthProvider();
-    provider.setCustomParameters({prompt:"select_account"});
-    try{
-      const cred=await signInWithPopup(auth,provider);
-      await finishLogin(cred);
-    }catch(popupErr){
-      if(["auth/popup-blocked","auth/popup-closed-by-user","auth/cancelled-popup-request"].includes(popupErr.code)){
-        await signInWithRedirect(auth,provider);
-      }else{
-        throw popupErr;
-      }
+    const [{auth,db},{signInWithEmailAndPassword,signInWithPopup,signInWithRedirect,getRedirectResult,GoogleAuthProvider}] =
+      await Promise.all([
+        fb(),
+        import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js')
+      ]);
+    async function finishLogin(cred){
+      const ref=doc(db,'users',cred.user.uid);
+      const snap=await getDoc(ref);
+      if(!snap.exists()) await setDoc(ref,{name:cred.user.displayName||cred.user.email?.split('@')[0]||'User',email:cred.user.email||'',role:'user',createdAt:new Date().toISOString(),photoURL:cred.user.photoURL||''});
+      const profile=(await getDoc(ref)).data()||{};
+      notice.className='notice success';notice.textContent='Signed in. Opening KARP…';
+      location.replace(profile.role==='admin'?'/admin.html':'/account.html');
     }
+    const [{doc,getDoc,setDoc}]=await Promise.all([import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js')]);
+    try{const result=await getRedirectResult(auth);if(result?.user) await finishLogin(result)}catch(err){notice.className='notice error';notice.textContent=err.code==='auth/unauthorized-domain'?'Add this website to Firebase Authentication → Settings → Authorized domains.':err.message}
+    document.getElementById('form').onsubmit=async e=>{
+      e.preventDefault();emailBtn.disabled=true;emailBtn.textContent='Signing in…';
+      const f=new FormData(e.target);
+      try{await finishLogin(await signInWithEmailAndPassword(auth,f.get('email'),f.get('password')))}
+      catch(err){emailBtn.disabled=false;emailBtn.textContent='Log in';notice.className='notice error';notice.textContent=err.code==='auth/invalid-credential'?'Email or password is incorrect.':err.message}
+    };
+    googleBtn.onclick=async()=>{
+      googleBtn.disabled=true;googleBtn.innerHTML='<span class="google-spinner"></span><span>Connecting to Google…</span>';
+      const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});
+      try{await finishLogin(await signInWithPopup(auth,provider))}
+      catch(err){
+        if(['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request'].includes(err.code)){
+          try{await signInWithRedirect(auth,provider);return}catch(redErr){err=redErr}
+        }
+        googleBtn.disabled=false;googleBtn.innerHTML="<svg class=\"google-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill=\"#4285F4\" d=\"M23.49 12.27c0-.79-.07-1.55-.22-2.27H12v4.3h6.45a5.51 5.51 0 0 1-2.39 3.62v3.01h3.87c2.27-2.09 3.56-5.17 3.56-8.66Z\"/><path fill=\"#34A853\" d=\"M12 24c3.24 0 5.96-1.07 7.94-2.9l-3.87-3.01c-1.07.72-2.44 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.95H1.27v3.1A12 12 0 0 0 12 24Z\"/><path fill=\"#FBBC05\" d=\"M5.27 14.29A7.22 7.22 0 0 1 4.9 12c0-.79.14-1.57.37-2.29V6.61H1.27A12 12 0 0 0 0 12c0 1.94.47 3.78 1.27 5.39l4-3.1Z\"/><path fill=\"#EA4335\" d=\"M12 4.76c1.76 0 3.34.61 4.58 1.81l3.43-3.43C17.95 1.19 15.23 0 12 0A12 12 0 0 0 1.27 6.61l4 3.1C6.22 6.87 8.87 4.76 12 4.76Z\"/></svg><span>Continue with Google</span>";
+        notice.className='notice error';notice.textContent=err.code==='auth/unauthorized-domain'?'Add this website to Firebase Authentication → Settings → Authorized domains.':err.code==='auth/operation-not-allowed'?'Enable Google in Firebase Authentication → Sign-in method.':err.message;
+      }
+    };
   }catch(err){
-    btn.disabled=false;btn.innerHTML="<svg class=\"google-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill=\"#4285F4\" d=\"M23.49 12.27c0-.79-.07-1.55-.22-2.27H12v4.3h6.45a5.51 5.51 0 0 1-2.39 3.62v3.01h3.87c2.27-2.09 3.56-5.17 3.56-8.66Z\"/><path fill=\"#34A853\" d=\"M12 24c3.24 0 5.96-1.07 7.94-2.9l-3.87-3.01c-1.07.72-2.44 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.95H1.27v3.1A12 12 0 0 0 12 24Z\"/><path fill=\"#FBBC05\" d=\"M5.27 14.29A7.22 7.22 0 0 1 4.9 12c0-.79.14-1.57.37-2.29V6.61H1.27A12 12 0 0 0 0 12c0 1.94.47 3.78 1.27 5.39l4-3.1Z\"/><path fill=\"#EA4335\" d=\"M12 4.76c1.76 0 3.34.61 4.58 1.81l3.43-3.43C17.95 1.19 15.23 0 12 0A12 12 0 0 0 1.27 6.61l4 3.1C6.22 6.87 8.87 4.76 12 4.76Z\"/></svg><span>Continue with Google</span>";
-    notice.className="notice error";
-    notice.textContent=err.code==="auth/unauthorized-domain"?"This domain is not authorized in Firebase Authentication.":err.message;
+    notice.className='notice error';notice.textContent='KARP authentication could not initialize: '+(err.message||err);
   }
-};
-</script></body></html>
+})();
+</script>
+<style>.auth-nav-actions{display:flex;align-items:center;gap:9px}</style></body></html>
