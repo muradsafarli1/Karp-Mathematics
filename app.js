@@ -87,10 +87,10 @@
 
   style.textContent += `/* KARP final visual normalization */
     html[data-theme="dark"]{
-      --bg:#08090b;--panel:#101216;--panel2:#15171c;--line:#292d34;--text:#f3f4f6;--muted:#969ba5;
+      --bg:#08090b;--panel:#08090b;--panel2:#111317;--line:transparent;--text:#f3f4f6;--muted:#969ba5;
     }
     html[data-theme="light"]{
-      --bg:#f7f7f5;--panel:#fff;--panel2:#f1f2f3;--line:#dedfe2;--text:#17191c;--muted:#626770;
+      --bg:#f7f7f5;--panel:#f7f7f5;--panel2:#ffffff;--line:transparent;--text:#17191c;--muted:#626770;
     }
     body,.section,.pagehero,.contest-page,.article-page,.account-page,.auth{background:var(--bg)!important;color:var(--text)!important}
     .top,.footer,.card,.exam-card,.bigcard,.account-card,.account-stat,.authbox,.admin-side,.admin-main,.editor-card{background:var(--panel)!important;color:var(--text)!important;border-color:transparent!important}
