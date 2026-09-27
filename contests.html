@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ABLE — Contests</title>
+<title>KARP — Contests</title>
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js"></script>
 <style>
@@ -23,7 +23,7 @@
     shell('Contests','Contests',`<section class="pagehero"><div class="wrap"><div class="eyebrow">02 — Contests</div><h1>Collections worth<br>solving.</h1><p class="lead">IMO, BMO, national olympiads and other contest material — complete statements in one clean place.</p></div></section><section class="section"><div class="wrap"><div class="toolbar"><input id="contestSearch" class="input" type="search" placeholder="Search contests..." aria-label="Search contests"></div><div id="contestCards" class="cards">${render(contests)}</div></div></section>`);
     const input=document.getElementById('contestSearch');
     input.addEventListener('input',()=>{const q=input.value.trim().toLowerCase();document.getElementById('contestCards').innerHTML=render(contests.filter(c=>[c.title,c.titleEn,c.titleAz,c.type,c.year,c.description,c.descriptionEn,c.descriptionAz].filter(Boolean).some(v=>String(v).toLowerCase().includes(q))));});
-  }catch(e){console.error(e);document.body.innerHTML=`<div class="error-page"><h1>Unable to load contests</h1><p>${escapeHtml(e.message)}</p><a href="/">← Back to ABLE</a></div>`}
+  }catch(e){console.error(e);document.body.innerHTML=`<div class="error-page"><h1>Unable to load contests</h1><p>${escapeHtml(e.message)}</p><a href="/">← Back to KARP</a></div>`}
 })();
 </script>
 </body>
