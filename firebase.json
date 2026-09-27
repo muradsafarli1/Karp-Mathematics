@@ -11,6 +11,76 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/problems",
+        "destination": "/problems.html"
+      },
+      {
+        "source": "/contests",
+        "destination": "/contests.html"
+      },
+      {
+        "source": "/articles",
+        "destination": "/articles.html"
+      },
+      {
+        "source": "/exams",
+        "destination": "/exams.html"
+      },
+      {
+        "source": "/videos",
+        "destination": "/videos.html"
+      },
+      {
+        "source": "/about",
+        "destination": "/about.html"
+      },
+      {
+        "source": "/account",
+        "destination": "/account.html"
+      },
+      {
+        "source": "/admin",
+        "destination": "/admin.html"
+      },
+      {
+        "source": "/login",
+        "destination": "/login.html"
+      },
+      {
+        "source": "/signup",
+        "destination": "/signup.html"
+      },
+      {
+        "source": "/problem",
+        "destination": "/problem.html"
+      },
+      {
+        "source": "/contest",
+        "destination": "/contest.html"
+      },
+      {
+        "source": "/article",
+        "destination": "/article.html"
+      },
+      {
+        "source": "/exam",
+        "destination": "/exam.html"
+      },
+      {
+        "source": "/desmos",
+        "destination": "/desmos.html"
+      },
+      {
+        "source": "/geogebra",
+        "destination": "/geogebra.html"
+      },
+      {
+        "source": "/calculator",
+        "destination": "/calculator.html"
+      }
     ]
   }
 }
