@@ -84,7 +84,7 @@ async function clearStorage() {
   }
 }
 
-console.log('\nABLE Firebase reset');
+console.log('\nKARP Firebase reset');
 console.log('This deletes old content, old non-admin accounts, legacy user profiles, and Storage files.');
 console.log('The Firebase admin@able.local account is preserved.\n');
 
@@ -98,4 +98,4 @@ for (const name of CONTENT_COLLECTIONS) {
 await clearStorage();
 
 console.log('\nRESET COMPLETE.');
-console.log('Firebase is now ready for fresh ABLE content.\n');
+console.log('Firebase is now ready for fresh KARP content.\n');
