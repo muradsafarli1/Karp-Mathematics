@@ -32,7 +32,7 @@
   function card(p){
     const title=p.title||('MathNet — '+p.id);
     const meta=[p.country,p.competition].filter(Boolean).join(' · ');
-    return '<article class="card" style="cursor:pointer" onclick="location.href=\'/problem.html?id='+encodeURIComponent(p.id)+'\'">'
+    return '<article class="card" style="cursor:pointer" onclick="location.href=\'/problem.html?id='+encodeURIComponent(p.id)+'&offset='+encodeURIComponent(p.sourceIndex)+'\'">'
       +'<div class="tag">'+escapeHtml(p.category||'Problem')+' · Proof</div>'
       +'<h3>'+escapeHtml(title)+'</h3>'
       +(meta?'<div class="problem-meta">'+escapeHtml(meta)+'</div>':'')
