@@ -248,7 +248,13 @@ async function mathnetFetchRows(config,offset,length,onError){
   try{return await task}finally{MATHNET_INFLIGHT.delete(key);}
 }
 
-async function mathnetRows(offset,length){return mathnetFetchRows(MATHNET.config,offset,length);}
+async function mathnetRows(offset,length){
+  const result=await mathnetFetchRows(MATHNET.config,offset,length);
+  result.rows=result.rows.map(function(row){
+    return {...row,statement:mathnetMarkdown({problem_markdown:row.statement||''},false)};
+  });
+  return result;
+}
 
 async function mathnetLoadAllIndex(onProgress){
   if(__mathnetAllPromise)return __mathnetAllPromise;
