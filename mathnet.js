@@ -252,15 +252,19 @@ async function mathnetRows(offset,length){
   return mathnetFetchRows(MATHNET.config,offset,length,null,false);
 }
 
-async function mathnetLoadAllIndex(onProgress){
+async function mathnetLoadAllIndex(onProgress,onInitial){
   if(__mathnetAllPromise)return __mathnetAllPromise;
   __mathnetAllPromise=(async()=>{
     const existing=await dbGetAll();
     const complete=await dbMeta('complete');
     if(complete&&existing.length){
       existing.sort(mathnetSort);
+      if(onInitial)onInitial(existing);
       if(onProgress)onProgress(existing.length,existing.length,true);
       return existing;
+    }
+    if(existing.length&&onInitial){
+      try{onInitial(existing.slice().sort(mathnetSort));}catch{}
     }
 
     let first;
@@ -279,6 +283,9 @@ async function mathnetLoadAllIndex(onProgress){
     await dbPutBatch(firstBatch);
     let loadedRaw=first.rows.length;
     let saved=firstBatch.length;
+    if(onInitial){
+      try{onInitial((await dbGetAll()).sort(mathnetSort));}catch{}
+    }
     if(onProgress)onProgress(loadedRaw,total,false);
 
     const offsets=[];
