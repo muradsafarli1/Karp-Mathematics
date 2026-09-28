@@ -43,6 +43,21 @@
 .preview-question-title{font-size:12px;font-weight:800;margin-bottom:11px}
 .preview-statement{font-size:18px;line-height:1.9}
 .preview-actions{display:flex;justify-content:flex-end;margin-top:24px}
+
+.past-mocks-box{background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:34px;margin-bottom:18px}
+.past-mocks-head{display:flex;justify-content:space-between;align-items:end;gap:16px}
+.past-mocks-title{font-family:'Space Grotesk';font-size:32px;letter-spacing:-1.3px;margin:0}
+.past-mocks-note{font-size:12px;color:var(--muted);line-height:1.7;margin:7px 0 0}
+.past-mocks-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+.past-mock-card{appearance:none;width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:20px;text-align:left;cursor:pointer;transition:transform .15s}
+.past-mock-card:hover{transform:translateY(-2px)}
+.past-mock-title{font-size:14px;font-weight:800}.past-mock-date{font-size:11px;color:var(--muted);margin-top:7px}.past-mock-meta{font-size:11px;color:var(--muted);margin-top:14px}
+.past-mock-review{margin-top:18px;padding:22px;border-radius:18px;background:var(--panel2)}
+.past-mock-review h3{font-family:'Space Grotesk';font-size:24px;margin:0 0 5px}.past-mock-review-meta{font-size:11px;color:var(--muted);margin-bottom:12px}
+.past-review-question{padding:18px 0;border-top:1px solid var(--line)}.past-review-statement{font-size:17px;line-height:1.85}.past-review-solution{margin-top:9px}.past-review-body{display:none;margin-top:10px;font-size:16px;line-height:1.85}.past-review-body.open{display:block}
+.session-solution{margin-top:10px}.session-solution button{font-size:11px}.session-solution-body{display:none;margin-top:10px;font-size:16px;line-height:1.85}.session-solution-body.open{display:block}
+@media(max-width:900px){.past-mocks-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.past-mocks-box{padding:22px}.past-mocks-grid{grid-template-columns:1fr}}
 .mock-session{min-height:100vh;background:var(--bg);padding:0 0 55px}
 .mock-session-head{position:sticky;top:0;z-index:30;background:var(--bg);padding:22px 20px 18px;text-align:center}
 .mock-session-kicker{font-size:10px;letter-spacing:2px;color:var(--muted);font-weight:800}
@@ -82,12 +97,49 @@
     return [q.country,q.year,q.problemNumber].filter(Boolean).join(' · ');
   }
 
+
+  function mockHistory(){
+    try{return JSON.parse(localStorage.getItem("karp_mock_history")||"[]")}catch{return []}
+  }
+  function mockDate(v){return v?new Date(v).toLocaleString():"—";}
+  function renderPastMocks(){
+    const grid=document.getElementById("past-mocks-grid"),reviewHost=document.getElementById("past-mock-review");
+    if(!grid)return;
+    const items=mockHistory();
+    if(!items.length){grid.innerHTML='<div style="grid-column:1/-1;color:var(--muted);font-size:13px;padding:10px 0">No completed mocks yet.</div>';return}
+    grid.innerHTML=items.map((x,i)=>'<button type="button" class="past-mock-card" data-past="'+i+'"><div class="past-mock-title">Mock '+(items.length-i)+'</div><div class="past-mock-date">'+esc(mockDate(x.completedAt))+'</div><div class="past-mock-meta">'+esc((x.questions?.length||0)+" questions · "+(x.minutes||0)+" min")+'</div></button>').join("");
+    grid.querySelectorAll("[data-past]").forEach(btn=>btn.onclick=()=>{
+      const x=items[Number(btn.dataset.past)];
+      reviewHost.innerHTML="";
+      const review=document.createElement("section");review.className="past-mock-review";
+      review.innerHTML='<h3>Mock '+(items.length-Number(btn.dataset.past))+'</h3><div class="past-mock-review-meta">'+esc(mockDate(x.completedAt))+' · '+esc((x.questions?.length||0)+" questions · "+(x.minutes||0)+" min")+'</div>';
+      (x.questions||[]).forEach((q,i)=>{
+        const sec=document.createElement("div");sec.className="past-review-question";
+        sec.innerHTML='<div class="past-review-statement"><strong>Question '+(i+1)+'</strong><div>'+md(q.statement)+'</div></div>';
+        const action=document.createElement("div");action.className="past-review-solution";
+        const b=document.createElement("button");b.className="btn";b.textContent="Show solution";
+        const body=document.createElement("div");body.className="past-review-body";
+        body.innerHTML=(q.solutions||[]).map((s,j)=>'<div style="margin-top:8px"><div style="font-size:10px;letter-spacing:1px;color:var(--muted)">SOLUTION '+(j+1)+'</div>'+md(s)+'</div>').join("");
+        b.onclick=()=>{const open=body.classList.toggle("open");b.textContent=open?"Hide solution":"Show solution";if(open)typesetMath(body)};
+        action.appendChild(b);action.appendChild(body);sec.appendChild(action);review.appendChild(sec);
+      });
+      reviewHost.appendChild(review);typesetMath(review);
+      reviewHost.scrollIntoView({behavior:"smooth",block:"start"});
+    });
+  }
+
   function renderBuilder(){
     shell('Mocks','Mocks',`
       <main class="mock-page">
         <section class="pagehero"><div class="wrap"><div class="eyebrow">KARP · MOCKS</div><h1>Custom Mock</h1><p class="lead">Build a clean Olympiad-style paper from the cached English proof archive.</p></div></section>
         <section class="section"><div class="mock-wrap">
-          <div class="mock-builder">
+          <div class="past-mocks-box">
+            <div class="mock-kicker">HISTORY</div>
+            <div class="past-mocks-head"><div><h2 class="past-mocks-title">Past Mocks</h2><p class="past-mocks-note">Your completed mocks are listed here with their names and completion dates.</p></div></div>
+            <div id="past-mocks-grid" class="past-mocks-grid"></div>
+            <div id="past-mock-review"></div>
+          </div>
+          <div class="mock-builder" style="margin-top:18px">
             <div class="mock-head"><div><div class="mock-kicker">CUSTOM PAPER</div><h2>Choose your setup.</h2><p>Only English problems with supplied proof solutions are used. Solutions are never shown before the mock is finished.</p></div><div class="mock-badge">MATHNET</div></div>
             <div class="mock-grid">
               <div class="mock-field wide"><label class="mock-label">Topics</label><div class="choice-grid">
@@ -106,6 +158,7 @@
           <div id="mock-output"></div>
         </div></section>
       </main>`);
+    renderPastMocks();
     document.getElementById('generate').onclick=()=>generate(false);
     document.getElementById('randomize').onclick=()=>{document.getElementById('mock-sequence').value='';generate(true);};
   }
@@ -167,12 +220,32 @@
   }
 
   function finishMock(auto){
+    if(finished)return;
     clearInterval(timer);
+    finished=true;
+    mock={...mock,completedAt:new Date().toISOString(),timedOut:!!auto};
     let history=[];
     try{history=JSON.parse(localStorage.getItem('karp_mock_history')||'[]')}catch{}
-    history.unshift({...mock,completedAt:new Date().toISOString(),timedOut:!!auto});
+    history.unshift(mock);
     localStorage.setItem('karp_mock_history',JSON.stringify(history.slice(0,20)));
-    location.replace('/account.html?mock=completed');
+
+    const finish=document.getElementById("finish-mock");
+    if(finish){finish.textContent="Mock Finished";finish.disabled=true;finish.classList.remove("primary");}
+    const bottom=finish?.parentElement;
+    if(bottom){
+      const note=document.createElement("span");note.className="session-finished";note.textContent=auto?"Time expired. Solutions are now available below.":"Mock finished. Solutions are now available below.";bottom.insertBefore(note,bottom.firstChild);
+      const back=document.createElement("button");back.className="btn";back.textContent="Back to Mocks";back.onclick=()=>location.reload();bottom.appendChild(back);
+    }
+    document.querySelectorAll(".session-question").forEach((sec,i)=>{
+      const q=mock.questions[i];
+      const box=document.createElement("div");box.className="session-solution";
+      const b=document.createElement("button");b.className="btn";b.textContent="Show solution";
+      const body=document.createElement("div");body.className="session-solution-body";
+      body.innerHTML=(q.solutions||[]).map((s,j)=>'<div style="margin-top:8px"><div style="font-size:10px;letter-spacing:1px;color:var(--muted)">SOLUTION '+(j+1)+'</div>'+md(s)+'</div>').join("")||'<div style="color:var(--muted)">No supplied solution.</div>';
+      b.onclick=()=>{const open=body.classList.toggle("open");b.textContent=open?"Hide solution":"Show solution";if(open)typesetMath(body)};
+      box.appendChild(b);box.appendChild(body);sec.appendChild(box);
+    });
+    typesetMath(document.querySelector(".mock-session-paper"));
   }
 
   document.addEventListener('DOMContentLoaded',renderBuilder);
