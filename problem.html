@@ -110,6 +110,13 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
     typesetMath(box);
   }
 
+  window.goBackToProblems=()=>{
+    try{
+      const ref=document.referrer?new URL(document.referrer,location.href):null;
+      if(ref&&ref.origin===location.origin&&ref.pathname.endsWith('/problems.html')){history.back();return;}
+    }catch{}
+    location.href='/problems.html';
+  };
   window.showSolution=()=>{
     const s=document.getElementById('solution-section');
     const b=document.getElementById('solution-btn');
