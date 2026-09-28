@@ -229,7 +229,8 @@
       let numbered=0,cleaned=0;
       for(const ex of docs){
         const pno=storedProblemNumber(ex);
-        const sourceCandidate=[ex.sourceBooklet,ex.bookletSource,ex.competition].find(v=>String(v||'').trim())||'';
+        const sourceFields=[ex.sourceBooklet,ex.bookletSource,ex.competition,ex.title].map(v=>String(v||'').trim()).filter(Boolean);
+        const sourceCandidate=sourceFields.find(v=>/(?:Problem|P)\s*#?\s*\d+\b/i.test(v)) || sourceFields.sort((a,b)=>b.length-a.length)[0] || 'MathNet';
         const cleanedTitle=cleanSourceTitle(sourceCandidate)||String(ex.competition||ex.title||'MathNet').trim();
         const fields={};
         if(cleanedTitle && String(ex.title||'')!==cleanedTitle)fields.title=cleanedTitle;
