@@ -302,6 +302,17 @@ async function logout(){try{await api('/api/logout',{method:'POST'})}finally{loc
 async function requireUser(){const u=await me();if(!u){location.href='/login.html';return null}return u}
 async function requireAdmin(){const u=await me();if(!u||u.role!=='admin'){location.href='/login.html';return null}return u}
 function escapeHtml(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function normalizeMathMarkdown(value=''){
+  let s=String(value??'').replace(/\\r\\n?/g,'\\n');
+  s=s.replace(/\\$\\$([\\s\\S]*?)\\$\\$/g,'\\\\[$1\\\\]');
+  s=s.replace(/(^|[^\\\\])\\$([^$\\n]+?)\\$(?!\\$)/g,'$1\\\\($2\\\\)');
+  return s;
+}
+function richMarkdown(value=''){
+  const source=normalizeMathMarkdown(value);
+  if(window.marked&&window.DOMPurify)return DOMPurify.sanitize(marked.parse(source,{breaks:true}));
+  return escapeHtml(source).replace(/\\n/g,'<br>');
+}
 function nav(active){const links=[['Problems','/problems.html'],['Contests','/contests.html'],['Articles','/articles.html'],['Exams','/exams.html'],['Mocks','/mock.html'],['Videos','/videos.html']];const light=document.documentElement.dataset.theme==='light';const toolsMenu='<div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a><a href="/calculator.html"><span>Calculator</span><small>Scientific Calculator</small></a><a href="/desmos.html"><span>Desmos</span><small>Graphing Calculator</small></a></div></div>';return `<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks">${links.map(x=>`<a class="${active===x[0]?'active':''}" href="${x[1]}">${x[0]}</a>`).join('')}${toolsMenu}<a class="${active==='About'?'active':''}" href="/about.html">About</a></nav><div class="actions" id="nav-actions"><button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()">${light?'☾':'☀'}</button><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header>`}
 async function updateNavUser(){const box=document.getElementById('nav-actions');if(!box)return;const u=await me();if(!u)return;const light=document.documentElement.dataset.theme==='light';const avatar=u.photoURL?`<img src="${escapeHtml(u.photoURL)}" alt="" class="nav-profile-img">`:`<span class="nav-profile-initial">${escapeHtml((u.name||'K').charAt(0).toUpperCase())}</span>`;box.innerHTML=`<button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()">${light?'☾':'☀'}</button><a class="nav-profile" href="/account.html" aria-label="Account" title="Account">${avatar}</a>${u.role==='admin'?'<a class="btn nav-admin" href="/admin.html">Admin</a>':''}<button class="nav-logout" onclick="logout()">Log out</button>`}
 function shell(active,title,body){document.title=`KARP — ${title}`;document.body.innerHTML=nav(active)+body+footer();updateNavUser()}
@@ -311,15 +322,17 @@ function setLanguage(lang){localStorage.setItem('able_lang',lang);return lang}
 function localized(item,field,lang=currentLanguage()){const az=item?.[`${field}Az`],en=item?.[`${field}En`],old=item?.[field];return lang==='az'?(az||en||old||''):(en||az||old||'')}
 function languageSwitch(){const lang=currentLanguage();return `<div class="language-switch" role="group" aria-label="Language"><button type="button" class="${lang==='az'?'active':''}" data-lang="az">AZE</button><button type="button" class="${lang==='en'?'active':''}" data-lang="en">ENG</button></div>`}
 function bindLanguageSwitch(renderFn){document.querySelectorAll('.language-switch button').forEach(b=>b.onclick=()=>{setLanguage(b.dataset.lang);renderFn()})}
-async function typesetMath(root,retries=30){
-  if(!root)return;
+async function typesetMath(root,retries=40){
+  if(!root)return false;
+  if(window.MathJax?.startup?.promise){
+    try{await MathJax.startup.promise}catch{}
+  }
   if(window.MathJax?.typesetPromise){
     try{
-      if(MathJax.startup?.promise)await MathJax.startup.promise;
       if(MathJax.typesetClear)MathJax.typesetClear([root]);
       await MathJax.typesetPromise([root]);
       return true;
-    }catch(e){console.error(e)}
+    }catch(e){if(retries<=1)console.error(e)}
   }
   if(retries>0)setTimeout(()=>typesetMath(root,retries-1),250);
   return false;
