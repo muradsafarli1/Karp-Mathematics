@@ -35,6 +35,9 @@
 .mock-review-statement{font-size:17px;line-height:1.85}
 .mock-review-solution{margin-top:8px}.mock-review-solution button{font-size:11px}
 .mock-review-body{display:none;margin-top:10px;font-size:16px;line-height:1.85}.mock-review-body.open{display:block}
+
+.history-stack{margin-top:28px;display:grid;gap:14px}.history-box{background:var(--panel2);border-radius:18px;padding:26px}.history-box h2{font-family:'Space Grotesk';font-size:27px;letter-spacing:-1px;margin:0 0 15px}.history-box .account-row:first-of-type{border-top:0}
+.mock-history-review{margin-top:15px;padding-top:15px;border-top:1px solid var(--line)}.mock-history-question{padding:17px 0;border-top:1px solid var(--line)}.mock-history-question:first-child{border-top:0}.mock-history-statement{font-size:16px;line-height:1.8}.mock-history-solution{margin-top:8px}.mock-history-body{display:none;margin-top:10px;font-size:15px;line-height:1.8}.mock-history-body.open{display:block}
 .account-bottom{display:flex;justify-content:center;margin-top:22px;gap:8px;flex-wrap:wrap}
 @media(max-width:900px){.account-stats{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:600px){.account-identity{padding-top:52px}.account-content{width:calc(100% - 28px)}.account-stats{grid-template-columns:repeat(2,1fr)}.account-panel{padding:20px}}
@@ -124,6 +127,37 @@
     panel('exams','Exams',exams.length,examRows)+
     panel('mocks','Mocks',mocks.length,mockRows)+
     panel('streak','Study streak',streak,(streak?'<div class="account-row"><div class="account-row-main"><div class="account-row-title">'+streak+' consecutive day'+(streak===1?'':'s')+'</div><div class="account-row-meta">Based on your solved-problem activity.</div></div></div>':'<div class="empty">Solve a problem today to start your streak.</div>'));
+
+
+  const historyStack=document.createElement("div");
+  historyStack.className="history-stack";
+  historyStack.innerHTML='<section id="exam-history" class="history-box"><h2>Exam History</h2>'+(
+    exams.map(e=>'<a class="account-row" href="/exam.html?id='+encodeURIComponent(e.examId||e.id||"")+'"><div class="account-row-main"><div class="account-row-title">'+escapeHtml(e.titleEn||e.title||"Exam")+'</div><div class="account-row-meta">Submitted · '+escapeHtml(e.submittedAt?new Date(e.submittedAt).toLocaleString():"—")+'</div></div><span class="account-row-arrow">→</span></a>').join("")||
+    '<div class="account-row"><div class="account-row-main"><div class="account-row-title">No completed exams yet.</div></div></div>'
+  )+'</section><section id="mock-history" class="history-box"><h2>Mock History</h2><div id="mock-history-list"></div></section>';
+  panels.after(historyStack);
+  const mockList=document.getElementById("mock-history-list");
+  if(!mocks.length){
+    mockList.innerHTML='<div class="account-row"><div class="account-row-main"><div class="account-row-title">No completed mocks yet.</div><div class="account-row-meta">Your finished mocks will appear here.</div></div></div>';
+  }else{
+    mockList.innerHTML=mocks.map((x,i)=>'<button type="button" class="account-row" data-mock-history="'+i+'" style="width:100%;background:none;border:0;border-top:1px solid var(--line);text-align:left;cursor:pointer"><div class="account-row-main"><div class="account-row-title">Mock '+(mocks.length-i)+'</div><div class="account-row-meta">'+escapeHtml(x.completedAt?new Date(x.completedAt).toLocaleString():"—")+' · '+escapeHtml((x.questions?.length||0)+" questions · "+(x.minutes||0)+" min")+'</div></div><span class="account-row-arrow">⌄</span></button>').join("");
+    mockList.querySelectorAll("[data-mock-history]").forEach(btn=>btn.onclick=()=>{
+      const old=document.querySelector(".mock-history-review");if(old)old.remove();
+      const x=mocks[Number(btn.dataset.mockHistory)];
+      const review=document.createElement("div");review.className="mock-history-review";
+      (x.questions||[]).forEach((q,i)=>{
+        const sec=document.createElement("div");sec.className="mock-history-question";
+        sec.innerHTML='<div class="mock-history-statement"><strong>Question '+(i+1)+'</strong><div>'+DOMPurify.sanitize(marked.parse(String(q.statement||""),{breaks:true}))+'</div></div>';
+        const action=document.createElement("div");action.className="mock-history-solution";
+        const b=document.createElement("button");b.className="btn";b.textContent="Show solution";
+        const body=document.createElement("div");body.className="mock-history-body";
+        body.innerHTML=(q.solutions||[]).map((s,j)=>'<div style="margin-top:8px"><div style="font-size:10px;letter-spacing:1px;color:var(--muted)">SOLUTION '+(j+1)+'</div>'+DOMPurify.sanitize(marked.parse(String(s||""),{breaks:true}))+'</div>').join("");
+        b.onclick=()=>{const open=body.classList.toggle("open");b.textContent=open?"Hide solution":"Show solution";if(open)typesetMath(body)};
+        action.appendChild(b);action.appendChild(body);sec.appendChild(action);review.appendChild(sec);
+      });
+      btn.after(review);typesetMath(review);
+    });
+  }
 
   document.querySelectorAll('.account-stat-button').forEach(btn=>btn.onclick=()=>{
     const id=btn.dataset.panel;
