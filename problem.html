@@ -1,37 +1,150 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KARP — Problem</title><link rel="stylesheet" href="/style.css"><script src="/app.js"></script><style>
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KARP — Problem</title>
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js"></script>
+<script src="/mathnet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+<style>
 html[data-theme="light"] .problem-detail,
 html[data-theme="light"] .problem-solution,
 html[data-theme="light"] .problem-detail *,
 html[data-theme="light"] .problem-solution *,
-html[data-theme="light"] .detail-content,
-html[data-theme="light"] .detail-content * { color:#17191c !important; }
-html[data-theme="light"] .problem-solution { border-color:#d9dbde !important; }
+html[data-theme="light"] .detail-content{color:#17191c!important}
 .problem-page .pagehero .wrap{text-align:center!important}
 .problem-page .pagehero h1,.problem-page .pagehero .eyebrow{text-align:center!important}
 .problem-page .pagehero .lead{display:none!important}
-html[data-theme="light"] mjx-container { color:#17191c !important; }
-</style><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script></head><body><script>
-(async()=>{const id=new URLSearchParams(location.search).get('id');if(!id){location.href='/problems.html';return}try{const d=await api('/api/content');const p=(d.problems||[]).find(x=>x.id===id);if(!p){location.href='/problems.html';return}function render(){const title=localized(p,'title'),statement=localized(p,'statement'),solution=localized(p,'solution');shell('Problems',title,`<main class="problem-page"><section class="pagehero"><div class="wrap" style="max-width:920px"><div class="eyebrow">${escapeHtml(p.topic||'Problem')}${p.difficulty?' · '+escapeHtml(p.difficulty):''}</div><h1>${escapeHtml(title)}</h1></div></section><section class="section"><div class="wrap" style="max-width:920px"><div style="display:flex;justify-content:flex-end">${languageSwitch()}</div><article id="problem-content" class="problem-detail detail-content">${escapeHtml(statement||'The problem statement has not been added yet.')}</article>${solution?`<div class="solution-reveal"><button id="solution-btn" class="btn primary" onclick="showSolution()">Show solution</button></div><section id="solution-section" class="problem-solution solution-content"><div class="eyebrow">Solution:</div><div id="solution-content" class="detail-content">${escapeHtml(solution)}</div></section>`:''}<div class="detail-actions"><a class="btn" href="/problems.html">← Back to Problems</a><div class="detail-actions-right"><button id="save-btn" class="btn save-btn" onclick="toggleSave()">Save</button><button id="solved-btn" class="btn solved-btn" onclick="toggleSolved()">Solved</button></div></div></div></section></main>`);bindLanguageSwitch(render);typesetMath(document.getElementById('problem-content'));syncSaveButton();syncSolvedButton()}window.showSolution=()=>{const s=document.getElementById('solution-section'),b=document.getElementById('solution-btn');if(!s)return;s.classList.add('open');if(b)b.style.display='none';typesetMath(document.getElementById('solution-content'));setTimeout(()=>s.scrollIntoView({behavior:'smooth',block:'start'}),80)};
-window.toggleSave=()=>{const key='able_saved_problem_'+id;const saved=localStorage.getItem(key)==='1';if(saved)localStorage.removeItem(key);else localStorage.setItem(key,'1');const b=document.getElementById('save-btn');if(b)b.textContent=localStorage.getItem(key)==='1'?'Saved ✓':'Save'};
-function syncSaveButton(){const b=document.getElementById('save-btn');if(b)b.textContent=localStorage.getItem('able_saved_problem_'+id)==='1'?'Saved ✓':'Save'}
-function getSolved(){try{return JSON.parse(localStorage.getItem('able_solved_problems')||'{}')}catch{return {}}}
-function toggleSolved(){
-  const key='able_solved_problems';
-  const data=getSolved();
-  if(data[id]){
-    delete data[id];
-  }else{
-    data[id]={topic:p.topic||'Other',dates:[new Date().toISOString()]};
+.problem-source{margin-top:10px;color:var(--muted);font-size:13px;text-align:center}
+.problem-content-markdown p{margin:0 0 22px}
+.problem-content-markdown img{display:block;max-width:100%;height:auto;margin:28px auto;border-radius:10px}
+.problem-content-markdown ul,.problem-content-markdown ol{padding-left:28px}
+.problem-content-markdown blockquote{margin:22px 0;padding-left:18px;border-left:3px solid var(--panel2);color:var(--muted)}
+.solution-group{margin-bottom:34px}
+.solution-group:last-child{margin-bottom:0}
+.solution-heading{font-family:'Space Grotesk';font-weight:700;font-size:15px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+</style>
+<script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+<script>
+(async()=>{
+  const id=new URLSearchParams(location.search).get('id');
+  if(!id){location.href='/problems.html';return}
+
+  function md(value){
+    const source=String(value||'').trim();
+    if(!source)return '';
+    if(window.marked) return DOMPurify.sanitize(marked.parse(source,{breaks:true}));
+    return escapeHtml(source).replace(/\n/g,'<br>');
   }
-  localStorage.setItem(key,JSON.stringify(data));
-  syncSolvedButton();
-}
-function syncSolvedButton(){
-  const b=document.getElementById('solved-btn');
-  if(!b)return;
-  const solved=!!getSolved()[id];
-  b.textContent=solved?'Solved ✓':'Solved';
-  b.classList.toggle('solved-active',solved);
-}
-render()}catch(e){console.error(e);document.body.innerHTML=`<div class="error-page"><h1>Unable to load problem</h1><p>${escapeHtml(e.message)}</p><a href="/problems.html">← Back to Problems</a></div>`}})();
-</script></body></html>
+
+  function getSolved(){
+    try{return JSON.parse(localStorage.getItem('able_solved_problems')||'{}')}catch{return {}}
+  }
+
+  function toggleSave(){
+    const key='able_saved_problem_'+id;
+    if(localStorage.getItem(key)==='1')localStorage.removeItem(key);
+    else localStorage.setItem(key,'1');
+    syncSaveButton();
+  }
+
+  function syncSaveButton(){
+    const b=document.getElementById('save-btn');
+    if(b)b.textContent=localStorage.getItem('able_saved_problem_'+id)==='1'?'Saved ✓':'Save';
+  }
+
+  function toggleSolved(){
+    const data=getSolved();
+    if(data[id]) delete data[id];
+    else data[id]={topic:currentProblem.category||'Other',dates:[new Date().toISOString()]};
+    localStorage.setItem('able_solved_problems',JSON.stringify(data));
+    syncSolvedButton();
+  }
+
+  function syncSolvedButton(){
+    const b=document.getElementById('solved-btn');
+    if(!b)return;
+    const solved=!!getSolved()[id];
+    b.textContent=solved?'Solved ✓':'Solved';
+    b.classList.toggle('solved-active',solved);
+  }
+
+  function renderSolutions(){
+    const box=document.getElementById('solution-list');
+    if(!box)return;
+    const solutions=currentProblem.solutions||[];
+    box.innerHTML=solutions.map((s,i)=>
+      '<div class="solution-group">'
+      +'<div class="solution-heading">Solution '+(i+1)+'</div>'
+      +'<div class="detail-content problem-content-markdown">'+md(s)+'</div>'
+      +'</div>'
+    ).join('');
+    typesetMath(box);
+  }
+
+  window.showSolution=()=>{
+    const s=document.getElementById('solution-section');
+    const b=document.getElementById('solution-btn');
+    if(!s)return;
+    s.classList.add('open');
+    if(b)b.style.display='none';
+    renderSolutions();
+    setTimeout(()=>s.scrollIntoView({behavior:'smooth',block:'start'}),80);
+  };
+  window.toggleSave=toggleSave;
+  window.toggleSolved=toggleSolved;
+
+  let currentProblem=null;
+
+  try{
+    currentProblem=await mathnetProblemById(id);
+    if(!currentProblem || !currentProblem.hasSolution || currentProblem.language.toLowerCase()!=='en'
+      || !/^(proof only|proof and answer)$/i.test(currentProblem.problemType||'')){
+      location.href='/problems.html';
+      return;
+    }
+
+    const title=currentProblem.title||('MathNet — '+currentProblem.id);
+    const source=[currentProblem.country,currentProblem.competition].filter(Boolean).join(' · ');
+
+    shell('Problems',title,`
+      <main class="problem-page">
+        <section class="pagehero">
+          <div class="wrap" style="max-width:1100px">
+            <div class="eyebrow">${escapeHtml(currentProblem.category||'Problem')} · Proof</div>
+            <h1>${escapeHtml(title)}</h1>
+            <div class="problem-source">${escapeHtml(source)}</div>
+          </div>
+        </section>
+        <section class="section">
+          <div class="wrap" style="max-width:1100px">
+            <article id="problem-content" class="problem-detail detail-content problem-content-markdown">${md(currentProblem.statement)}</article>
+            ${currentProblem.solutions?.length?'<div class="solution-reveal"><button id="solution-btn" class="btn primary" onclick="showSolution()">Show solution</button></div><section id="solution-section" class="problem-solution solution-content"><div id="solution-list"></div></section>':''}
+            <div class="detail-actions">
+              <a class="btn" href="/problems.html">← Back to Problems</a>
+              <div class="detail-actions-right">
+                <button id="save-btn" class="btn save-btn" onclick="toggleSave()">Save</button>
+                <button id="solved-btn" class="btn solved-btn" onclick="toggleSolved()">Solved</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>`);
+
+    typesetMath(document.getElementById('problem-content'));
+    syncSaveButton();
+    syncSolvedButton();
+  }catch(e){
+    console.error(e);
+    document.body.innerHTML='<div class="error-page"><div><h1>Unable to load problem</h1><p>'+escapeHtml(e.message||String(e))+'</p><a href="/problems.html">← Back to Problems</a></div></div>';
+  }
+})();
+</script>
+</body>
+</html>
