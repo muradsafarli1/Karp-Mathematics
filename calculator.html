@@ -17,7 +17,7 @@
 </head>
 <body>
 <script>
-shell('Tools','Calculator',\`<main class="calc-page"><section class="calculator">
+shell('Tools','Calculator',`<main class="calc-page"><section class="calculator">
   <div class="calc-top"><h1 class="calc-title">Calculator</h1><span class="calc-mode">Expression mode</span></div>
   <div class="calc-screen"><div id="calc-expression" class="calc-expression"></div><div id="calc-result" class="calc-result">0</div></div>
   <div class="calc-grid">
@@ -29,7 +29,7 @@ shell('Tools','Calculator',\`<main class="calc-page"><section class="calculator"
     <button class="calc-btn fn" data-act="neg">±</button><button class="calc-btn" data-val="0">0</button><button class="calc-btn" data-val="1">1</button><button class="calc-btn" data-val="2">2</button><button class="calc-btn" data-val="3">3</button>
     <button class="calc-btn span2" data-act="ans">ANS</button><button class="calc-btn op" data-val="+">+</button><button class="calc-btn equals span2" data-act="eval">=</button>
   </div>
-</section></main>\`);
+</section></main>`);
 
 let expr='',last=0;
 const expressionEl=()=>document.getElementById('calc-expression'),resultEl=()=>document.getElementById('calc-result');
