@@ -242,7 +242,10 @@ async function mathnetFilteredRows(offset,length){
     MATHNET_ARCHIVE_CACHE.sourceOffset += batch.rows.length;
 
     for(const row of batch.rows){
-      if(mathnetQualifies(row)) MATHNET_ARCHIVE_CACHE.rows.push(row);
+      if(!row||!row.id||!mathnetQualifies(row))continue;
+      if(!MATHNET_ARCHIVE_CACHE.rows.some(function(x){return x.id===row.id;})){
+        MATHNET_ARCHIVE_CACHE.rows.push(row);
+      }
     }
     if(!batch.rows.length || batch.rows.length<100 || MATHNET_ARCHIVE_CACHE.sourceOffset>=MATHNET_ARCHIVE_CACHE.total){
       MATHNET_ARCHIVE_CACHE.exhausted=true;
