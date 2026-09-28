@@ -145,52 +145,57 @@ async function mathnetFind(options={}){
     :null;
   const wanted=sequence&&sequence.length===count?sequence:Array.from({length:count},(_,i)=>categories[i%categories.length]);
 
-  const {db}=await fb();
-  const {doc,getDoc,collection,query,where,orderBy,startAt,limit,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const runtime=await mathnetRuntimeCollections(db,getDoc,doc);
+  // Use the already-built Firebase shard index for random selection.
+  // This avoids Firestore composite queries such as category + orderBy(randomKey),
+  // so mock generation does not require a manually-created composite index.
+  const index=await mathnetLoadAllIndex();
   const used=new Set();
   const selected=[];
 
-  async function pick(cat){
-    const constraints=[where('category','==',cat)];
-    if(difficulty==='easy'||difficulty==='hard')constraints.push(where('difficulty','==',difficulty));
-    const r=Math.random();
-    let snap=await getDocs(query(collection(db,runtime.problems),...constraints,orderBy('randomKey'),startAt(r),limit(6)));
-    let docs=snap.docs.filter(x=>!used.has(x.id));
-    if(!docs.length){
-      snap=await getDocs(query(collection(db,runtime.problems),...constraints,orderBy('randomKey'),limit(6)));
-      docs=snap.docs.filter(x=>!used.has(x.id));
-    }
-    const chosen=docs[Math.floor(Math.random()*docs.length)];
-    return chosen||null;
+  function candidates(cat){
+    return index.filter(p=>{
+      if(p.category!==cat)return false;
+      if((difficulty==='easy'||difficulty==='hard')&&p.difficulty!==difficulty)return false;
+      return !used.has(p.id);
+    });
+  }
+
+  function pick(cat){
+    const docs=candidates(cat);
+    if(!docs.length)return null;
+    return docs[Math.floor(Math.random()*docs.length)]||null;
   }
 
   for(const cat of wanted){
-    const chosen=await pick(cat);
+    const chosen=pick(cat);
     if(chosen){used.add(chosen.id);selected.push(chosen.id)}
   }
 
   if(selected.length<count){
-    const remaining=categories.filter(Boolean);
-    for(const cat of remaining){
+    for(const cat of categories){
       if(selected.length>=count)break;
-      const constraints=[where('category','==',cat)];
-      if(difficulty==='easy'||difficulty==='hard')constraints.push(where('difficulty','==',difficulty));
-      const snap=await getDocs(query(collection(db,runtime.problems),...constraints,limit(20)));
-      for(const d of snap.docs){
-        if(!used.has(d.id)){used.add(d.id);selected.push(d.id);if(selected.length>=count)break}
+      const docs=candidates(cat);
+      for(const d of docs){
+        if(!used.has(d.id)){
+          used.add(d.id);
+          selected.push(d.id);
+          if(selected.length>=count)break;
+        }
       }
     }
   }
 
-  const docsById=new Map();
-  for(let i=0;i<selected.length;i+=30){
-    const ids=selected.slice(i,i+30);
-    const snap=await getDocs(query(collection(db,runtime.problems),where('__name__','in',ids)));
-    snap.forEach(s=>docsById.set(s.id,{...s.data(),id:s.id}));
+  const {db}=await fb();
+  const {doc,getDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const runtime=await mathnetRuntimeCollections(db,getDoc,doc);
+  const questions=[];
+  for(const id of selected){
+    const snap=await getDoc(doc(db,runtime.problems,id));
+    if(snap.exists()){
+      const q=snap.data();
+      questions.push({...q,id:snap.id,sourceType:'mathnet',category:mathnetCategory(q),title:q.title||mathnetTitle(q),hasSolution:true});
+    }
   }
-  const questions=selected.map(id=>docsById.get(id)).filter(Boolean)
-    .map(q=>({...q,sourceType:'mathnet',category:mathnetCategory(q),title:q.title||mathnetTitle(q),hasSolution:true}));
   return {questions,total:questions.length,source:'ShadenA/MathNet'};
 }
 function mathnetSaveMock(mock){localStorage.setItem('karp_last_mock',JSON.stringify({...mock,savedAt:new Date().toISOString()}))}
