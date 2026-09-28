@@ -80,6 +80,22 @@ function normalizeMathnetRow(raw,offset){
   };
 }
 
+async function mathnetRows(offset,length){
+  const url=new URL(MATHNET.endpoint);
+  url.searchParams.set('dataset',MATHNET.dataset);
+  url.searchParams.set('config',MATHNET.config);
+  url.searchParams.set('split',MATHNET.split);
+  url.searchParams.set('offset',String(Math.max(0,Math.floor(offset||0))));
+  url.searchParams.set('length',String(Math.min(100,Math.max(1,length||100))));
+  const res=await fetch(url,{headers:{Accept:'application/json'}});
+  if(!res.ok) throw new Error('MathNet request failed ('+res.status+')');
+  const data=await res.json();
+  return {
+    total:Number(data.num_rows_total||0),
+    rows:(data.rows||[]).map(function(x,i){return normalizeMathnetRow(x,(offset||0)+i);})
+  };
+}
+
 const MATHNET_ARCHIVE_CACHE = {
   rows: [],
   sourceOffset: 0,
