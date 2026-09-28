@@ -149,9 +149,12 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
       };
     }else{
       currentProblem=await mathnetProblemById(id,sourceConfig,sourceIndex,sourceShard);
+      const lang=String(currentProblem?.language||'').toLowerCase();
+      const ptype=String(currentProblem?.problemType||'').trim().toLowerCase();
+      const proofType=/^proof(?: only| and answer)?$/.test(ptype)||!ptype;
       if(!currentProblem || !currentProblem.hasSolution
-        || !['english','en'].includes(currentProblem.language.toLowerCase())
-        || !/^(proof only|proof and answer)$/i.test(currentProblem.problemType||'')){
+        || !(['english','en'].includes(lang)||lang.startsWith('en-'))
+        || !proofType){
         location.href='/problems.html';
         return;
       }
