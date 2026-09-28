@@ -1,43 +1,36 @@
-# KARP v2
+# KARP
 
-A multi-page KARP Olympiad Mathematics platform with:
-- cinematic animated gradient/glow homepage (no astronaut image)
-- separate Problems, Contests, Articles, Archive and About Us pages
-- real server-side signup/login using Node's built-in crypto.scrypt
-- cookie sessions
-- admin panel for Problems, Articles and Contests CRUD + user list
-- JSON data store in `data/db.json` (no external database dependency)
+KARP is a Firebase-hosted Olympiad Mathematics platform.
 
-## Run locally
+## Firebase architecture
 
-1. Install Node.js 18+.
-2. Open a terminal in this folder.
-3. Run:
+- Firebase Hosting serves the static site.
+- Firebase Authentication handles accounts.
+- Cloud Firestore stores KARP content and the complete synced MathNet problem archive.
+- Firebase Storage stores uploaded assets.
+- `mathnet-sync.html` is an admin-only one-time/refresh importer from `ShadenA/MathNet` on Hugging Face.
+- After synchronization, Problems and Mocks use Firestore only; Hugging Face is not queried during normal site usage.
+
+## Deploy
+
+From the repository root:
 
 ```bash
-npm start
+npm install -g firebase-tools
+firebase login
+firebase use able-2ca24
+firebase deploy --only hosting,firestore:rules,storage
 ```
 
-4. Open http://localhost:3000
+## MathNet import
 
-## Admin
+After deploying, sign in with the KARP admin account and open `/mathnet-sync.html`.
+Press **Start / Resume Sync**.
 
-On first run an admin is created automatically:
-- Email: `admin@able.local`
-- Password: `ChangeMe123!`
+The importer keeps only English statements, proof/proof-only/proof-and-answer problem types, problems with at least one supplied solution, and problems whose supplied solutions are also fully English.
 
-For a real deployment, set environment variables before the first run:
-- `KARP_ADMIN_EMAIL`
-- `KARP_ADMIN_PASSWORD`
+Lightweight metadata is stored in Firestore index shards; complete statement and solution content is stored in `mathnetProblems`. Mock generation selects directly from Firestore using per-problem random keys, so normal mock generation does not download or scan the full archive from Hugging Face.
 
-Example PowerShell:
+## Firestore quota note
 
-```powershell
-$env:KARP_ADMIN_EMAIL="your-admin-email@example.com"
-$env:KARP_ADMIN_PASSWORD="a-strong-password"
-npm start
-```
-
-## Important for public deployment
-
-This is a complete working starter/local platform, not a hardened production SaaS. For public launch, move the JSON store to PostgreSQL/SQLite, use persistent sessions, HTTPS, CSRF protection, rate limiting, email verification and password-reset flows.
+Firebase's current free Firestore quota includes 20,000 document writes/day and 50,000 document reads/day. A first import of roughly 28k accepted problems can therefore exceed the free daily write quota; check the project's billing/quota status before starting the full import.
