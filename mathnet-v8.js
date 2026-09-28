@@ -12,7 +12,7 @@ function mathnetCategory(row){return ['A','C','G','N'].includes(row?.category)?r
 async function mathnetLoadAllIndex(onProgress,onInitial){
   if(__mathnetIndexPromise)return __mathnetIndexPromise;
   __mathnetIndexPromise=(async()=>{
-    const response=await fetch(MATHNET_API+'/index',{headers:{Accept:'application/json'},cache:'no-store'});
+    const response=await fetch(MATHNET_API+'/index',{headers:{Accept:'application/json'},cache:'force-cache'});
     const data=await response.json();
     if(!response.ok){
       const e=new Error(data.error||'MathNet archive is still warming up.');
