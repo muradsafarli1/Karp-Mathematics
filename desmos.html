@@ -5,49 +5,53 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KARP — Desmos</title>
 <link rel="stylesheet" href="/style.css">
-<script src="https://www.desmos.com/api/v1.0/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+<script src="https://www.desmos.com/api/v1.8/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6&lang=en"></script>
 <style>
 html,body{margin:0;height:100%;overflow:hidden}
-.desmos-nav{height:76px;display:flex;align-items:center;gap:28px;padding:0 21px;box-sizing:border-box;background:var(--site-bg,#08090b);color:var(--site-text,#f3f4f6);border-bottom:1px solid transparent;font-family:'DM Sans',system-ui,sans-serif}
+.desmos-nav{height:76px;display:flex;align-items:center;gap:28px;padding:0 21px;background:var(--site-bg,#08090b);color:var(--site-text,#f3f4f6);font-family:'DM Sans',system-ui,sans-serif}
 .desmos-brand{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:26px;letter-spacing:-1.5px;text-decoration:none;color:inherit}
-.desmos-back{font-size:14px;color:inherit;text-decoration:none;opacity:.72}
+.desmos-back{font-size:14px;color:inherit;opacity:.72;text-decoration:none}
 .desmos-back:hover{opacity:1}
 .desmos-page{height:calc(100vh - 76px);width:100%;background:#fff;overflow:hidden}
 #calculator{width:100%;height:100%}
-.desmos-loading{height:100%;display:grid;place-items:center;align-content:center;gap:12px;color:#20242a;font-family:'DM Sans',system-ui,sans-serif;background:#fff}
-.desmos-loading span{font-size:12px;color:#777c84}
+.desmos-fallback{height:100%;display:grid;place-items:center;align-content:center;gap:12px;text-align:center;background:#fff;color:#20242a;font-family:'DM Sans',system-ui,sans-serif}
+.desmos-fallback span{max-width:520px;color:#777c84;font-size:12px;line-height:1.6}
 .desmos-spinner{width:30px;height:30px;border:3px solid #d9dce0;border-top-color:#16191d;border-radius:50%;animation:spin .75s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 <header class="desmos-nav"><a class="desmos-brand" href="/">KARP</a><a class="desmos-back" href="/">← Back</a></header>
-<main class="desmos-page"><div id="calculator"><div class="desmos-loading"><div class="desmos-spinner"></div><strong>Loading Desmos…</strong><span>Preparing your graphing workspace</span></div></div></main>
+<main class="desmos-page"><div id="calculator"><div class="desmos-fallback"><div class="desmos-spinner"></div><strong>Loading Desmos…</strong><span>The interactive graphing workspace is loading.</span></div></div></main>
 <script>
 (function(){
+  var done=false,timer=0;
+  function fail(message){
+    if(done)return;
+    done=true;
+    clearTimeout(timer);
+    var el=document.getElementById('calculator');
+    if(!el)return;
+    el.innerHTML='<div class="desmos-fallback"><strong>Desmos could not load inside KARP.</strong><span>'+String(message||'The embedded calculator library did not respond.').replace(/[&<>]/g,'')+'</span><a class="btn primary" href="https://www.desmos.com/calculator" target="_blank" rel="noopener">Open Desmos</a></div>';
+  }
   function start(){
-    var elt=document.getElementById('calculator');
-    if(!elt||!window.Desmos||typeof window.Desmos.GraphingCalculator!=='function'){
-      setTimeout(start,200);
-      return;
-    }
-    try{
-      elt.innerHTML='';
-      var calculator=window.Desmos.GraphingCalculator(elt,{
-        keypad:true,
-        graphpaper:true,
-        expressions:true,
-        settingsMenu:true,
-        zoomButtons:true,
-        autosize:true
-      });
-      window.__karpDesmos=calculator;
-      setTimeout(function(){calculator.resize()},100);
-      window.addEventListener('resize',function(){calculator.resize()});
-    }catch(error){
-      elt.innerHTML='<div class="desmos-loading"><strong>Desmos could not be initialized.</strong><span>'+String(error&&error.message||error).replace(/[&<>]/g,'')+'</span></div>';
+    if(done)return;
+    var el=document.getElementById('calculator');
+    if(!el)return;
+    if(window.Desmos&&typeof window.Desmos.GraphingCalculator==='function'){
+      try{
+        el.innerHTML='';
+        var calc=window.Desmos.GraphingCalculator(el,{keypad:true,graphpaper:true,expressions:true,settingsMenu:true,zoomButtons:true});
+        done=true;
+        window.__karpDesmos=calc;
+        setTimeout(function(){calc.resize()},100);
+        window.addEventListener('resize',function(){calc.resize()});
+      }catch(err){fail(err&&err.message?err.message:'Calculator initialization failed.')}
+    }else{
+      setTimeout(start,150);
     }
   }
+  timer=setTimeout(function(){fail('Desmos API did not become available after 15 seconds.')},15000);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
