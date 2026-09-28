@@ -37,6 +37,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
   const id=params.get('id');
   const sourceConfig=params.get('config')||'all';
   const sourceIndex=params.get('offset');
+  const sourceShard=params.get('shard');
   const customId=params.get('custom');
   if(!id&&!customId){location.href='/problems.html';return}
 
@@ -61,7 +62,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
     return {id:currentProblem?.id||id,title:currentProblem?.title||'MathNet Problem',topic:currentProblem?.category||'Other',
       category:currentProblem?.category||'',country:currentProblem?.country||'',competition:currentProblem?.competition||'',year:currentProblem?.year||'',
       problemNumber:currentProblem?.problemNumber||'',sourceType:currentProblem?.sourceType||'mathnet',customId:currentProblem?.customId||'',
-      sourceConfig:currentProblem?.sourceConfig||'all',sourceIndex:currentProblem?.sourceIndex??0};
+      sourceConfig:currentProblem?.sourceConfig||'all',sourceIndex:currentProblem?.sourceIndex??0,sourceShard:currentProblem?.sourceShard??null};
   }
 
   function getSaved(){
@@ -150,7 +151,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
         title:p.titleEn||p.title||'KARP Problem'
       };
     }else{
-      currentProblem=await mathnetProblemById(id,sourceConfig,sourceIndex);
+      currentProblem=await mathnetProblemById(id,sourceConfig,sourceIndex,sourceShard);
       if(!currentProblem || !currentProblem.hasSolution
         || !['english','en'].includes(currentProblem.language.toLowerCase())
         || !/^(proof only|proof and answer)$/i.test(currentProblem.problemType||'')){
