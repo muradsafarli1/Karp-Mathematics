@@ -140,9 +140,11 @@ function normalizeMathnetRow(raw,offset){
   };
 }
 
+const MATHNET_INFLIGHT = new Map();
+
 async function mathnetRows(offset,length){
   const cleanOffset=Math.max(0,Math.floor(offset||0));
-  const cleanLength=Math.min(200,Math.max(1,length||100));
+  const cleanLength=Math.min(100,Math.max(1,length||100));
   const url=new URL(MATHNET.endpoint);
   url.searchParams.set('dataset',MATHNET.dataset);
   url.searchParams.set('config',MATHNET.config);
@@ -150,48 +152,66 @@ async function mathnetRows(offset,length){
   url.searchParams.set('offset',String(cleanOffset));
   url.searchParams.set('length',String(cleanLength));
 
-  const cacheName='karp-mathnet-v1';
+  const cacheName='karp-mathnet-v2';
   const cacheKey=url.toString();
 
-  try{
-    if('caches' in window){
-      const cache=await caches.open(cacheName);
-      const cached=await cache.match(cacheKey);
-      if(cached){
-        const data=await cached.clone().json();
-        return {
-          total:Number(data.num_rows_total||0),
-          rows:(data.rows||[]).map(function(x,i){return normalizeMathnetRow(x,cleanOffset+i);})
-        };
+  if(MATHNET_INFLIGHT.has(cacheKey)) return MATHNET_INFLIGHT.get(cacheKey);
+
+  const request=(async function(){
+    try{
+      if('caches' in window){
+        const cache=await caches.open(cacheName);
+        const cached=await cache.match(cacheKey);
+        if(cached){
+          const data=await cached.clone().json();
+          const rows=(data.rows||[]).map(function(x,i){return normalizeMathnetRow(x,cleanOffset+i);});
+          return {total:Number(data.num_rows_total||0),rows:rows};
+        }
+      }
+    }catch{}
+
+    let lastError=null;
+    for(let attempt=0;attempt<3;attempt++){
+      let controller=null, timeout=null;
+      try{
+        controller=new AbortController();
+        timeout=setTimeout(function(){controller.abort()},12000);
+        const res=await fetch(cacheKey,{method:'GET',mode:'cors',signal:controller.signal});
+        clearTimeout(timeout);
+        if(!res.ok)throw new Error('MathNet request failed ('+res.status+')');
+        const data=await res.json();
+        const rows=(data.rows||[]).map(function(x,i){return normalizeMathnetRow(x,cleanOffset+i);});
+
+        try{
+          if('caches' in window){
+            const cache=await caches.open(cacheName);
+            await cache.put(cacheKey,new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}}));
+          }
+        }catch{}
+
+        // Feed every successful request into the in-memory qualifying pool.
+        if(typeof MATHNET_ARCHIVE_CACHE!=='undefined'){
+          for(const row of rows){
+            if(!row||!row.id||!mathnetQualifies(row))continue;
+            if(!MATHNET_ARCHIVE_CACHE.rows.some(function(x){return x.id===row.id;})){
+              MATHNET_ARCHIVE_CACHE.rows.push(row);
+            }
+          }
+          MATHNET_ARCHIVE_CACHE.total=Number(data.num_rows_total||0);
+        }
+
+        return {total:Number(data.num_rows_total||0),rows:rows};
+      }catch(error){
+        if(timeout)clearTimeout(timeout);
+        lastError=error;
+        if(attempt<2)await new Promise(function(resolve){setTimeout(resolve,400*(attempt+1));});
       }
     }
-  }catch{}
+    throw lastError||new Error('Failed to fetch MathNet.');
+  })();
 
-  let lastError=null;
-  for(let attempt=0;attempt<3;attempt++){
-    try{
-      const res=await fetch(cacheKey,{headers:{Accept:'application/json'}});
-      if(!res.ok)throw new Error('MathNet request failed ('+res.status+')');
-      const data=await res.json();
-
-      try{
-        if('caches' in window){
-          const cache=await caches.open(cacheName);
-          const response=new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}});
-          await cache.put(cacheKey,response);
-        }
-      }catch{}
-
-      return {
-        total:Number(data.num_rows_total||0),
-        rows:(data.rows||[]).map(function(x,i){return normalizeMathnetRow(x,cleanOffset+i);})
-      };
-    }catch(error){
-      lastError=error;
-      await new Promise(function(resolve){setTimeout(resolve,700*(attempt+1));});
-    }
-  }
-  throw lastError||new Error('Failed to fetch MathNet.');
+  MATHNET_INFLIGHT.set(cacheKey,request);
+  try{return await request}finally{MATHNET_INFLIGHT.delete(cacheKey)}
 }
 
 const MATHNET_ARCHIVE_CACHE = {
@@ -288,41 +308,31 @@ async function mathnetFind(options){
   const categories=Array.isArray(options.categories)&&options.categories.length?options.categories:['A','C','G','N'];
   const difficulty=options.difficulty||'any';
   const count=Math.max(1,Math.min(30,Number(options.count||6)));
-  const requestedTypes=['proof','proof-answer'];
-
-  // Sample across the whole MathNet source instead of relying on the broken
-  // Dataset Viewer /filter endpoint or only the first few hundred rows.
-  const batches=[];
-  const batchCount=10;
-  const maxOffset=Math.max(0,MATHNET.maxPreferredRows-100);
-  const seed=Number(options.seed||Date.now());
-  for(let i=0;i<batchCount;i++){
-    const pseudo=Math.abs(Math.sin(seed*0.000001+i*12.9898)*43758.5453);
-    const offset=Math.floor((pseudo-Math.floor(pseudo))*maxOffset);
-    batches.push(offset);
-  }
-
-  const pool=[];
-  const seen=new Set();
-  for(const offset of batches){
-    let batch;
-    try{batch=await mathnetRows(offset,100)}catch{continue}
-    for(const q of batch.rows){
-      if(!q || !q.id || seen.has(q.id))continue;
-      seen.add(q.id);
-      if(!mathnetQualifies(q))continue;
-      if(categories.indexOf(q.category)<0)continue;
-      if(difficulty!=='any'&&q.difficulty!==difficulty)continue;
-      if(requestedTypes.indexOf(q.type)<0)continue;
-      pool.push(q);
-    }
-    if(pool.length>=Math.max(80,count*6))break;
-  }
-
-  // Prefer a balanced spread across the selected topics.
   const sequence=Array.isArray(options.sequence)&&options.sequence.length===count?options.sequence:null;
+  const seed=Number(options.seed||Date.now());
+
+  function acceptable(q){
+    return q&&q.id&&mathnetQualifies(q)
+      &&categories.indexOf(q.category)>=0
+      &&(difficulty==='any'||q.difficulty===difficulty);
+  }
+
+  let pool=MATHNET_ARCHIVE_CACHE.rows.filter(acceptable);
+
+  // First use whatever Problems has already loaded. Only fetch a small bounded
+  // number of additional slices when the current pool is insufficient.
+  if(pool.length<count){
+    const maxOffset=Math.max(0,MATHNET.maxPreferredRows-100);
+    for(let i=0;i<6 && pool.length<Math.max(count*3,24);i++){
+      const pseudo=Math.abs(Math.sin(seed*0.000001+(i+1)*12.9898)*43758.5453);
+      const offset=Math.floor((pseudo-Math.floor(pseudo))*maxOffset);
+      try{await mathnetRows(offset,100)}catch{}
+      pool=MATHNET_ARCHIVE_CACHE.rows.filter(acceptable);
+    }
+  }
+
   const byCat={A:[],C:[],G:[],N:[]};
-  pool.forEach(function(q){(byCat[q.category]||(byCat[q.category]=[])).push(q)});
+  pool.forEach(function(q){if(!byCat[q.category])byCat[q.category]=[];byCat[q.category].push(q)});
 
   const picked=[],used=new Set();
   for(let i=0;i<count;i++){
@@ -331,15 +341,15 @@ async function mathnetFind(options){
     let candidate=null;
 
     if(list.length){
-      const start=(seed+i*17)%list.length;
+      const start=Math.abs(Math.floor(seed+i*31))%list.length;
       for(let j=0;j<list.length;j++){
         const q=list[(start+j)%list.length];
-        if(!used.has(q.id)){candidate=q;break}
+        if(q&&q.id&&!used.has(q.id)){candidate=q;break}
       }
     }
     if(!candidate){
       for(const q of pool){
-        if(!used.has(q.id)){candidate=q;break}
+        if(q&&q.id&&!used.has(q.id)){candidate=q;break}
       }
     }
     if(!candidate)break;
