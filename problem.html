@@ -45,6 +45,11 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
     return escapeHtml(source).replace(/\n/g,'<br>');
   }
 
+  function labelsForProblem(p){
+    var names={A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'};
+    return (names[p.category]||'Problem')+' · '+(p.problemNumber||'Proof');
+  }
+
   function getSolved(){
     try{return JSON.parse(localStorage.getItem('able_solved_problems')||'{}')}catch{return {}}
   }
@@ -120,7 +125,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
       <main class="problem-page">
         <section class="pagehero">
           <div class="wrap" style="max-width:1100px">
-            <div class="eyebrow">${escapeHtml(currentProblem.category||'Problem')} · Proof</div>
+            <div class="eyebrow">${escapeHtml(labelsForProblem(currentProblem))}</div>
             <h1>${escapeHtml(title)}</h1>
             <div class="problem-source">${escapeHtml(source)}</div>
           </div>
