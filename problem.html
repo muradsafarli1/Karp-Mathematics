@@ -47,8 +47,8 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
   }
 
   function labelsForProblem(p){
-    var pieces=[p.country,p.competition,p.year,p.problemNumber].filter(function(x){return x!=null&&String(x).trim()});
-    return pieces.length?pieces.join(' · '):'MathNet Problem';
+    var pieces=[p.country,p.year,p.problemNumber].filter(function(x){return x!=null&&String(x).trim()});
+    return pieces.join(' · ') || 'MathNet Problem';
   }
 
   function getSolved(){
@@ -140,7 +140,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
           <div class="wrap" style="max-width:1100px">
             <div class="eyebrow">${escapeHtml(labelsForProblem(currentProblem))}</div>
             <h1>${escapeHtml(title)}</h1>
-            <div class="problem-source">${escapeHtml(source)}</div>
+            <div class="problem-source">${escapeHtml([currentProblem.country,currentProblem.competition,currentProblem.year,currentProblem.problemNumber].filter(Boolean).join(" · "))}</div>
           </div>
         </section>
         <section class="section">
@@ -148,7 +148,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
             <article id="problem-content" class="problem-detail detail-content problem-content-markdown">${md(currentProblem.statement)}</article>
             ${currentProblem.solutions?.length?'<div class="solution-reveal"><button id="solution-btn" class="btn primary" onclick="showSolution()">Show solution</button></div><section id="solution-section" class="problem-solution solution-content"><div id="solution-list"></div></section>':''}
             <div class="detail-actions">
-              <a class="btn" href="/problems.html">← Back to Problems</a>
+              <button class="btn" type="button" onclick="goBackToProblems()">← Back to Problems</button>
               <div class="detail-actions-right">
                 <button id="save-btn" class="btn save-btn" onclick="toggleSave()">Save ✓</button>
                 <button id="solved-btn" class="btn solved-btn" onclick="toggleSolved()">Solved ✓</button>
