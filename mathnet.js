@@ -107,7 +107,7 @@ const MATHNET_ARCHIVE_CACHE = {
 function mathnetQualifies(row){
   const language=String(row.language||'').trim().toLowerCase();
   const type=String(row.problemType||'').trim().toLowerCase();
-  return (language==='english' || language==='en')
+  return (language==='english' || language==='en' || language.startsWith('en-'))
     && row.hasSolution
     && (type==='proof only' || type==='proof and answer');
 }
@@ -142,34 +142,45 @@ async function mathnetFilteredRows(offset,length){
 async function mathnetProblemById(id){
   const target=String(id||'').trim();
   if(!target)return null;
-  const cached=MATHNET_ARCHIVE_CACHE.rows.find(function(q){return q.id===target;});
-  if(cached)return cached;
 
-  try{
-    const result=await mathnetSearch(target,0,100);
-    return result.rows.find(function(q){return q.id===target;})||null;
-  }catch{
-    return null;
+  let checked=0;
+  while(!MATHNET_ARCHIVE_CACHE.exhausted && checked<MATHNET.maxPreferredRows){
+    const cached=MATHNET_ARCHIVE_CACHE.rows.find(function(q){return q.id===target;});
+    if(cached)return cached;
+
+    const before=MATHNET_ARCHIVE_CACHE.sourceOffset;
+    await mathnetFilteredRows(MATHNET_ARCHIVE_CACHE.rows.length,100);
+    if(MATHNET_ARCHIVE_CACHE.sourceOffset===before)break;
+    checked=MATHNET_ARCHIVE_CACHE.sourceOffset;
   }
+  return MATHNET_ARCHIVE_CACHE.rows.find(function(q){return q.id===target;})||null;
 }
 
 async function mathnetSearch(query,offset,length){
   const key=String(query||'').trim().toLowerCase();
-  if(!key) return mathnetFilteredRows(offset,length);
+  const wantedOffset=Math.max(0,Math.floor(offset||0));
+  const wantedLength=Math.min(100,Math.max(1,length||100));
+  if(!key) return mathnetFilteredRows(wantedOffset,wantedLength);
 
-  const url=new URL('https://datasets-server.huggingface.co/search');
-  url.searchParams.set('dataset',MATHNET.dataset);
-  url.searchParams.set('config',MATHNET.config);
-  url.searchParams.set('split',MATHNET.split);
-  url.searchParams.set('query',key);
-  url.searchParams.set('offset',String(Math.max(0,Math.floor(offset||0))));
-  url.searchParams.set('length',String(Math.min(100,Math.max(1,length||100))));
-  const res=await fetch(url,{headers:{Accept:'application/json'}});
-  if(!res.ok) throw new Error('MathNet search request failed ('+res.status+')');
-  const data=await res.json();
-  const rows=(data.rows||[]).map(function(x,i){return normalizeMathnetRow(x,i);})
-    .filter(mathnetQualifies);
-  return {total:rows.length,rows:rows,partial:false};
+  const matches=[];
+  let scan=0;
+  while(matches.length<wantedOffset+wantedLength && !MATHNET_ARCHIVE_CACHE.exhausted && scan<MATHNET.maxPreferredRows){
+    const before=MATHNET_ARCHIVE_CACHE.sourceOffset;
+    await mathnetFilteredRows(MATHNET_ARCHIVE_CACHE.rows.length,100);
+    for(const q of MATHNET_ARCHIVE_CACHE.rows.slice(0)){
+      const hay=(q.id+' '+q.title+' '+q.competition+' '+q.country+' '+q.statement).toLowerCase();
+      if(hay.includes(key) && !matches.some(function(x){return x.id===q.id;})) matches.push(q);
+    }
+    if(MATHNET_ARCHIVE_CACHE.sourceOffset===before)break;
+    scan=MATHNET_ARCHIVE_CACHE.sourceOffset;
+  }
+
+  return {
+    total:MATHNET_ARCHIVE_CACHE.exhausted?matches.length:null,
+    qualifyingTotal:MATHNET_ARCHIVE_CACHE.exhausted?matches.length:null,
+    rows:matches.slice(wantedOffset,wantedOffset+wantedLength),
+    partial:!MATHNET_ARCHIVE_CACHE.exhausted
+  };
 }
 
 function mathnetSaveMock(mock){
