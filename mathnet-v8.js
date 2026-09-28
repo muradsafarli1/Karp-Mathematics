@@ -308,10 +308,25 @@ async function mathnetLoadAllIndex(onProgress,onInitial){
     }
 
     let first;
-    try{first=await mathnetFetchFiltered(MATHNET.config,0,100);}
-    catch(error){
+    try{
+      // Fetch a small filtered page first so Problems/Mocks become usable
+      // immediately. The remaining archive continues in the background.
+      first=await mathnetFetchFiltered(MATHNET.config,0,60);
+    }catch(error){
       if(existing.length)return existing.sort(mathnetSort);
-      throw new Error('MathNet archive could not be reached. Please refresh once.');
+      // Fallback: the HF filter endpoint can occasionally be slow. Read
+      // ordinary rows and keep the first qualifying English proof problems.
+      try{
+        let offset=0,found=[];
+        while(found.length<24&&offset<1200){
+          const batch=await mathnetFetchRows(MATHNET.config,offset,100,null,false);
+          found.push(...batch.rows.filter(mathnetQualifies));
+          offset+=100;
+        }
+        if(found.length){
+          first={total:found.length,partial:true,rows:found.slice(0,60)};
+        }else throw error;
+      }catch{throw new Error('MathNet archive could not be reached. Please refresh once.');}
     }
 
     const total=first.total;
