@@ -10,7 +10,7 @@ const MATHNET={
   maxRows:30676
 };
 
-const MATHNET_DB_NAME='KARP_MATHNET_ARCHIVE_V3';
+const MATHNET_DB_NAME='KARP_MATHNET_ARCHIVE_V7';
 const MATHNET_DB_VERSION=2;
 const MATHNET_STORE='problems';
 const MATHNET_META='meta';
@@ -219,30 +219,70 @@ async function mathnetFetchRows(config,offset,length,onError,includeImages=false
   url.searchParams.set('length',String(cleanLength));
   const key=url.toString();
   if(MATHNET_INFLIGHT.has(key))return MATHNET_INFLIGHT.get(key);
-
   const task=(async()=>{
     let lastError=null;
-    for(let attempt=0;attempt<5;attempt++){
+    for(let attempt=0;attempt<4;attempt++){
       let timer=null;
       try{
         const controller=new AbortController();
-        timer=setTimeout(()=>controller.abort(),12000);
+        timer=setTimeout(()=>controller.abort(),15000);
         const response=await fetch(key,{mode:'cors',headers:{Accept:'application/json'},signal:controller.signal});
         clearTimeout(timer);
         if(!response.ok)throw new Error('HTTP '+response.status);
         const data=await response.json();
         return{
           total:Number(data.num_rows_total||0),
-          rows:(data.rows||[]).map((x,i)=>normalizeMathnetRow(x,cleanOffset+i,safeConfig,false))
+          rows:(data.rows||[]).map(x=>normalizeMathnetRow(x,x?.row_idx??cleanOffset,safeConfig,false))
         };
       }catch(error){
         if(timer)clearTimeout(timer);
         lastError=error;
-        if(attempt<4)await new Promise(r=>setTimeout(r,500*Math.pow(1.8,attempt)));
+        if(attempt<3)await new Promise(r=>setTimeout(r,600*Math.pow(1.8,attempt)));
       }
     }
     if(onError)onError(lastError);
     throw lastError||new Error('MathNet request failed.');
+  })();
+  MATHNET_INFLIGHT.set(key,task);
+  try{return await task}finally{MATHNET_INFLIGHT.delete(key);}
+}
+
+async function mathnetFetchFiltered(config,offset,length){
+  const safeConfig=String(config||MATHNET.config);
+  const cleanOffset=Math.max(0,Math.floor(offset||0));
+  const cleanLength=Math.min(100,Math.max(1,length||100));
+  const url=new URL('https://datasets-server.huggingface.co/filter');
+  url.searchParams.set('dataset',MATHNET.dataset);
+  url.searchParams.set('config',safeConfig);
+  url.searchParams.set('split',MATHNET.split);
+  url.searchParams.set('where',"language"='English' AND ("problem_type"='proof only' OR "problem_type"='proof and answer')");
+  url.searchParams.set('offset',String(cleanOffset));
+  url.searchParams.set('length',String(cleanLength));
+  const key=url.toString();
+  if(MATHNET_INFLIGHT.has(key))return MATHNET_INFLIGHT.get(key);
+  const task=(async()=>{
+    let lastError=null;
+    for(let attempt=0;attempt<4;attempt++){
+      let timer=null;
+      try{
+        const controller=new AbortController();
+        timer=setTimeout(()=>controller.abort(),15000);
+        const response=await fetch(key,{mode:'cors',headers:{Accept:'application/json'},signal:controller.signal});
+        clearTimeout(timer);
+        if(!response.ok)throw new Error('HTTP '+response.status);
+        const data=await response.json();
+        return{
+          total:Number(data.num_rows_total||0),
+          partial:!!data.partial,
+          rows:(data.rows||[]).map(x=>normalizeMathnetRow(x,x?.row_idx??cleanOffset,safeConfig,false))
+        };
+      }catch(error){
+        if(timer)clearTimeout(timer);
+        lastError=error;
+        if(attempt<3)await new Promise(r=>setTimeout(r,600*Math.pow(1.8,attempt)));
+      }
+    }
+    throw lastError||new Error('MathNet filter request failed.');
   })();
   MATHNET_INFLIGHT.set(key,task);
   try{return await task}finally{MATHNET_INFLIGHT.delete(key);}
@@ -260,7 +300,7 @@ async function mathnetLoadAllIndex(onProgress,onInitial){
     if(complete&&existing.length){
       existing.sort(mathnetSort);
       if(onInitial)onInitial(existing);
-      if(onProgress)onProgress(existing.length,existing.length,true);
+      if(onProgress)onProgress(existing.length,existing.length,true,existing.length);
       return existing;
     }
     if(existing.length&&onInitial){
@@ -268,65 +308,59 @@ async function mathnetLoadAllIndex(onProgress,onInitial){
     }
 
     let first;
-    try{
-      first=await mathnetRows(0,100);
-    }catch(error){
-      if(existing.length){
-        if(onProgress)onProgress(existing.length,existing.length,false);
-        return existing.sort(mathnetSort);
-      }
-      throw new Error('MathNet could not be reached. Refresh once; the archive will resume from the last saved batch.');
+    try{first=await mathnetFetchFiltered(MATHNET.config,0,100);}
+    catch(error){
+      if(existing.length)return existing.sort(mathnetSort);
+      throw new Error('MathNet archive could not be reached. Please refresh once.');
     }
 
     const total=first.total;
-    const firstBatch=first.rows.filter(mathnetQualifies).map(r=>normalizeForCache(r));
-    await dbPutBatch(firstBatch);
-    let loadedRaw=first.rows.length;
-    let saved=firstBatch.length;
+    const firstGood=first.rows.filter(mathnetQualifies).map(normalizeForCache);
+    if(firstGood.length)await dbPutBatch(firstGood);
+    let loaded=first.rows.length,saved=firstGood.length;
     if(onInitial){
       try{onInitial((await dbGetAll()).sort(mathnetSort));}catch{}
     }
-    if(onProgress)onProgress(loadedRaw,total,false);
+    if(onProgress)onProgress(loaded,total,false,saved);
 
     const offsets=[];
-    for(let offset=100;offset<first.total;offset+=100)offsets.push(offset);
-
+    for(let offset=100;offset<total;offset+=100)offsets.push(offset);
     let cursor=0,failed=[];
     const workers=Math.min(6,Math.max(2,navigator.hardwareConcurrency?Math.floor(navigator.hardwareConcurrency/2):4));
     async function worker(){
       while(cursor<offsets.length){
         const offset=offsets[cursor++];
         try{
-          const batch=await mathnetRows(offset,100);
-          loadedRaw+=batch.rows.length;
-          const good=batch.rows.filter(mathnetQualifies).map(r=>normalizeForCache(r));
+          const batch=await mathnetFetchFiltered(MATHNET.config,offset,100);
+          loaded+=batch.rows.length;
+          const good=batch.rows.filter(mathnetQualifies).map(normalizeForCache);
           if(good.length){await dbPutBatch(good);saved+=good.length;}
-          if(onProgress)onProgress(loadedRaw,total,false,saved);
+          if(onProgress)onProgress(loaded,total,false,saved);
         }catch{failed.push(offset);}
       }
     }
     await Promise.all(Array.from({length:workers},()=>worker()));
 
-    for(let round=0;round<3&&failed.length;round++){
+    for(let round=0;round<2&&failed.length;round++){
       const retry=failed.splice(0);
       for(const offset of retry){
         try{
-          const batch=await mathnetRows(offset,100);
-          loadedRaw+=batch.rows.length;
-          const good=batch.rows.filter(mathnetQualifies).map(r=>normalizeForCache(r));
+          const batch=await mathnetFetchFiltered(MATHNET.config,offset,100);
+          loaded+=batch.rows.length;
+          const good=batch.rows.filter(mathnetQualifies).map(normalizeForCache);
           if(good.length){await dbPutBatch(good);saved+=good.length;}
-          if(onProgress)onProgress(loadedRaw,total,false,saved);
+          if(onProgress)onProgress(loaded,total,false,saved);
         }catch{failed.push(offset);}
       }
     }
 
     const finalRows=await dbGetAll();
-    const finished=finalRows.length>0 && loadedRaw>=first.total && failed.length===0;
-    await dbSetMeta('total',first.total);
+    const finished=finalRows.length>0&&loaded>=total&&failed.length===0&&!first.partial;
+    await dbSetMeta('total',total);
     await dbSetMeta('complete',finished);
     await dbSetMeta('savedCount',finalRows.length);
     finalRows.sort(mathnetSort);
-    if(onProgress)onProgress(loadedRaw,first.total,finished,finalRows.length);
+    if(onProgress)onProgress(loaded,total,finished,finalRows.length);
     return finalRows;
   })();
   try{return await __mathnetAllPromise}finally{__mathnetAllPromise=null;}
