@@ -6,7 +6,7 @@
 <title>KARP — Desmos</title>
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js"></script>
-<script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+<script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6&v=2"></script>
 <style>
 .tool-page{height:calc(100vh - 76px);min-height:0;padding:0;background:var(--bg,#08090b);overflow:hidden}
 .tool-inner{width:100%;height:100%}.tool-frame{width:100%;height:100%;border:0;border-radius:0;overflow:hidden;background:#fff}
@@ -17,14 +17,55 @@
 <body>
 <script>
 shell('Tools','Desmos',`<main class="tool-page"><div class="tool-inner"><div id="desmos-calculator" class="tool-frame"></div></div></main>`);
-window.addEventListener('load',()=>{
-  const el=document.getElementById('desmos-calculator');
-  if(el&&window.Desmos){
-    window.karpDesmos=Desmos.GraphingCalculator(el,{expressions:true,settingsMenu:true,zoomButtons:true,keypad:true,graphpaper:true,expressionsCollapsed:false,border:false});
-    window.karpDesmos.resize();
+
+(function initDesmos(){
+  let tries=0,timer=null;
+  const maxTries=100;
+  function boot(){
+    const el=document.getElementById('desmos-calculator');
+    if(!el)return false;
+    if(window.karpDesmos){
+      try{window.karpDesmos.resize()}catch{}
+      return true;
+    }
+    if(window.Desmos&&typeof window.Desmos.GraphingCalculator==='function'){
+      try{
+        window.karpDesmos=window.Desmos.GraphingCalculator(el,{
+          expressions:true,
+          settingsMenu:true,
+          zoomButtons:true,
+          keypad:true,
+          graphpaper:true,
+          expressionsCollapsed:false,
+          border:false
+        });
+        requestAnimationFrame(()=>{try{window.karpDesmos.resize()}catch{}});
+        setTimeout(()=>{try{window.karpDesmos.resize()}catch{}},300);
+        setTimeout(()=>{try{window.karpDesmos.resize()}catch{}},1000);
+        return true;
+      }catch(err){
+        console.error('Desmos initialization failed:',err);
+      }
+    }
+    return false;
   }
-});
-window.addEventListener('resize',()=>window.karpDesmos?.resize());
-</script>
+  function start(){
+    if(boot())return;
+    clearInterval(timer);
+    tries=0;
+    timer=setInterval(()=>{
+      tries++;
+      if(boot()||tries>=maxTries){
+        clearInterval(timer);
+        if(!window.karpDesmos)console.error('Desmos failed to load after retries.');
+      }
+    },150);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
+  else start();
+  window.addEventListener('load',boot);
+  window.addEventListener('pageshow',boot);
+  window.addEventListener('resize',()=>window.karpDesmos?.resize());
+})();</script>
 </body>
 </html>
