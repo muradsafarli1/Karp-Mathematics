@@ -37,7 +37,8 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
   const id=params.get('id');
   const sourceConfig=params.get('config')||'all';
   const sourceIndex=params.get('offset');
-  if(!id){location.href='/problems.html';return}
+  const customId=params.get('custom');
+  if(!id&&!customId){location.href='/problems.html';return}
 
   function md(value){
     const source=String(value||'').trim();
@@ -57,9 +58,10 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
   }
 
   function saveRecord(){
-    return {id:id,title:currentProblem?.title||'MathNet Problem',topic:currentProblem?.category||'Other',
-      country:currentProblem?.country||'',competition:currentProblem?.competition||'',year:currentProblem?.year||'',
-      problemNumber:currentProblem?.problemNumber||'',sourceConfig:currentProblem?.sourceConfig||'all',sourceIndex:currentProblem?.sourceIndex||0};
+    return {id:currentProblem?.id||id,title:currentProblem?.title||'MathNet Problem',topic:currentProblem?.category||'Other',
+      category:currentProblem?.category||'',country:currentProblem?.country||'',competition:currentProblem?.competition||'',year:currentProblem?.year||'',
+      problemNumber:currentProblem?.problemNumber||'',sourceType:currentProblem?.sourceType||'mathnet',customId:currentProblem?.customId||'',
+      sourceConfig:currentProblem?.sourceConfig||'all',sourceIndex:currentProblem?.sourceIndex??0};
   }
 
   function getSaved(){
@@ -123,16 +125,33 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
   let currentProblem=null;
 
   try{
-    currentProblem=await mathnetProblemById(id,sourceConfig,sourceIndex);
-    if(!currentProblem || !currentProblem.hasSolution
-      || !['english','en'].includes(currentProblem.language.toLowerCase())
-      || !/^(proof only|proof and answer)$/i.test(currentProblem.problemType||'')){
-      location.href='/problems.html';
-      return;
+    if(customId){
+      const content=await api('/api/content');
+      const p=(content.problems||[]).find(x=>String(x.id)===String(customId));
+      if(!p||!String(p.statementEn||p.statement||'').trim()){location.href='/problems.html';return;}
+      const statement=p.statementEn||p.statement||'';
+      const solution=p.solutionEn||p.solution||'';
+      const topic=String(p.topic||'').toLowerCase();
+      const category=topic.includes('geometry')?'G':topic.includes('combinator')?'C':topic.includes('number')?'N':'A';
+      currentProblem={
+        id:'custom-'+String(p.id),customId:String(p.id),sourceType:'custom',country:'KARP',
+        competition:p.titleEn||p.title||'KARP Problem',year:p.year||'',
+        problemNumber:p.code||'',section:'KARP Problems',language:'English',problemType:'proof only',
+        statement,solutions:solution?[solution]:[],category,hasSolution:!!solution,
+        title:p.titleEn||p.title||'KARP Problem'
+      };
+    }else{
+      currentProblem=await mathnetProblemById(id,sourceConfig,sourceIndex);
+      if(!currentProblem || !currentProblem.hasSolution
+        || !['english','en'].includes(currentProblem.language.toLowerCase())
+        || !/^(proof only|proof and answer)$/i.test(currentProblem.problemType||'')){
+        location.href='/problems.html';
+        return;
+      }
     }
 
     const title=currentProblem.title||('MathNet — '+currentProblem.id);
-    const source=[currentProblem.country,currentProblem.competition].filter(Boolean).join(' · ');
+    const source=[currentProblem.country,currentProblem.competition,currentProblem.year,currentProblem.problemNumber].filter(Boolean).join(' · ');
 
     shell('Problems',title,`
       <main class="problem-page">
