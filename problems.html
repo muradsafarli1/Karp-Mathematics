@@ -53,23 +53,27 @@
     if(myToken!==requestToken)return;
 
     const filtered=result.rows.filter(matchesTopic);
-    const total=result.total;
-    const pageCount=Math.max(1,Math.ceil(total/PAGE_SIZE));
+    const total=result.qualifyingTotal;
+    const start=page*PAGE_SIZE+1;
+    const end=page*PAGE_SIZE+filtered.length;
+    const hasMore=result.partial || (total!=null && end<total) || filtered.length===PAGE_SIZE;
 
     document.getElementById('cards').innerHTML=filtered.map(card).join('')
       ||'<div class="empty">No matching MathNet problems on this page.</div>';
 
-    const start=total?Math.min(total,page*PAGE_SIZE+1):0;
-    const end=total?Math.min(total,page*PAGE_SIZE+PAGE_SIZE):0;
     const topicText=topic==='All topics'?'':(' · '+topic);
+    const totalText=total==null
+      ? 'qualifying MathNet problems loaded so far'
+      : 'qualifying MathNet problems';
     document.getElementById('archive-status').innerHTML=
-      '<span>Showing <strong>'+start+'–'+end+'</strong> of <strong>'+total+'</strong> qualifying MathNet problems'+topicText+'</span>';
+      '<span>Showing <strong>'+start+'–'+end+'</strong> '+totalText+topicText+
+      (total==null?'':' of <strong>'+total+'</strong>')+'</span>';
 
     document.getElementById('prev').disabled=page<=0;
-    document.getElementById('next').disabled=page>=pageCount-1;
+    document.getElementById('next').disabled=!hasMore;
 
     document.getElementById('archive-note').textContent=result.partial
-      ? 'MathNet reported a partial filter/search index; some rows may not be available through the Dataset Viewer API.'
+      ? 'Scanning the MathNet archive for all English proof problems…'
       : 'Source: ShadenA/MathNet · English statements with provided proof solutions only.';
   }
 
