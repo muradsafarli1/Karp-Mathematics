@@ -1,49 +1,62 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KARP — Calculator</title>
-<link rel="stylesheet" href="/style.css">
-<script src="/app.js"></script>
+<link rel="stylesheet" href="/style.css"><script src="/app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjs@latest/lib/browser/math.js"></script>
 <style>
-.calculator-wrap{min-height:calc(100vh - 77px);padding:70px 20px;display:grid;place-items:center;background:radial-gradient(circle at 50% 0,rgba(129,143,255,.12),transparent 34%),#08090b}
-.calculator{width:min(430px,100%);padding:22px;border:1px solid #292d34;border-radius:22px;background:#101216;box-shadow:0 25px 80px rgba(0,0,0,.35)}
-.calc-title{margin:0 0 18px;font-family:'Space Grotesk';font-size:28px;letter-spacing:-1px}
-.calc-display{width:100%;min-height:76px;padding:16px;border:1px solid #30343c;border-radius:12px;background:#0b0d10;color:#f4f5f7;font-family:'Space Grotesk';font-size:30px;text-align:right;outline:0;margin-bottom:12px}
-.calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.calc-grid button{height:58px;border:1px solid #30343c;border-radius:10px;background:#181b20;color:#f2f4f7;font-size:18px;font-weight:700}
-.calc-grid button:hover{background:#23272e}
-.calc-grid .op{background:#20242b}
-.calc-grid .equals{background:#eef0ff;color:#101218;border-color:#eef0ff}
-.calc-grid .wide{grid-column:span 2}
-html[data-theme="light"] .calculator-wrap{background:#f7f7f5}
-html[data-theme="light"] .calculator{background:#fff;border-color:#dedfe2}
-html[data-theme="light"] .calc-display{background:#f3f4f5;color:#17191c;border-color:#d4d7da}
-html[data-theme="light"] .calc-grid button{background:#f0f1f2;color:#17191c;border-color:#d4d7da}
-html[data-theme="light"] .calc-grid button:hover{background:#e4e6e8}
-html[data-theme="light"] .calc-grid .equals{background:#17191c;color:#fff;border-color:#17191c}
+.calc-page{min-height:calc(100vh - 76px);display:grid;place-items:center;padding:48px 18px;background:var(--bg)}
+.calculator{width:min(460px,100%);background:var(--panel2);border-radius:25px;padding:18px;box-shadow:0 25px 80px rgba(0,0,0,.2)}
+.calc-top{display:flex;justify-content:space-between;align-items:center;padding:4px 4px 14px}.calc-title{font-family:'Space Grotesk';font-size:26px;font-weight:800;letter-spacing:-1px;margin:0}.calc-mode{font-size:10px;color:var(--muted)}
+.calc-screen{background:var(--bg);border-radius:18px;padding:16px 18px;margin-bottom:12px;min-height:94px;display:flex;flex-direction:column;justify-content:flex-end}
+.calc-expression{min-height:20px;text-align:right;color:var(--muted);font-size:12px;overflow:auto;white-space:nowrap}.calc-result{margin-top:4px;text-align:right;font-family:'Space Grotesk';font-size:38px;font-weight:700;line-height:1.1;overflow:auto;white-space:nowrap}
+.calc-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.calc-btn{height:52px;border:0;border-radius:12px;background:var(--panel);color:var(--text);font-size:15px;font-weight:700;cursor:pointer}.calc-btn:hover{background:var(--bg)}.calc-btn.fn{font-size:12px;color:var(--muted)}.calc-btn.op{background:var(--panel);font-size:19px}.calc-btn.equals{background:var(--text);color:var(--bg);font-size:19px}.calc-btn.danger{color:#c36}.span2{grid-column:span 2}
+@media(max-width:520px){.calculator{padding:14px}.calc-btn{height:48px}.calc-result{font-size:32px}.calc-grid{gap:6px}}
 </style>
 </head>
 <body>
 <script>
-shell('Tools','Calculator',`<main class="calculator-wrap"><div class="calculator">
-<h1 class="calc-title">Calculator</h1>
-<input id="calc-display" class="calc-display" value="0" inputmode="decimal" aria-label="Calculator display">
-<div class="calc-grid">
-<button class="op" onclick="clearCalc()">AC</button><button class="op" onclick="backCalc()">⌫</button><button class="op" onclick="appendCalc('(')">(</button><button class="op" onclick="appendCalc(')')">)</button>
-<button onclick="appendCalc('7')">7</button><button onclick="appendCalc('8')">8</button><button onclick="appendCalc('9')">9</button><button class="op" onclick="appendCalc('/')">÷</button>
-<button onclick="appendCalc('4')">4</button><button onclick="appendCalc('5')">5</button><button onclick="appendCalc('6')">6</button><button class="op" onclick="appendCalc('*')">×</button>
-<button onclick="appendCalc('1')">1</button><button onclick="appendCalc('2')">2</button><button onclick="appendCalc('3')">3</button><button class="op" onclick="appendCalc('-')">−</button>
-<button class="wide" onclick="appendCalc('0')">0</button><button onclick="appendCalc('.')">.</button><button class="op" onclick="appendCalc('+')">+</button>
-<button class="op" onclick="appendCalc('Math.sqrt(')">√</button><button class="op" onclick="appendCalc('**2')">x²</button><button class="op" onclick="appendCalc('%')">%</button><button class="equals" onclick="calculate()">=</button>
-</div></div></main>`);
-function display(){return document.getElementById('calc-display')}
-function appendCalc(v){const d=display();if(d.value==='0'||d.value==='Error')d.value='';d.value+=v}
-function clearCalc(){display().value='0'}
-function backCalc(){const d=display();d.value=d.value.length>1?d.value.slice(0,-1):'0'}
-function calculate(){const d=display();try{if(!/^[0-9+\-*/().%\sMathsqrt]+$/.test(d.value.replace('Math.sqrt','Mathsqrt')))throw 0;d.value=String(Function('return ('+d.value+')')())}catch{d.value='Error'}}
-document.addEventListener('keydown',e=>{if(/[0-9.+\-*/%()]/.test(e.key))appendCalc(e.key);if(e.key==='Enter')calculate();if(e.key==='Escape')clearCalc();if(e.key==='Backspace')backCalc()});
+shell('Tools','Calculator',\`<main class="calc-page"><section class="calculator">
+  <div class="calc-top"><h1 class="calc-title">Calculator</h1><span class="calc-mode">Expression mode</span></div>
+  <div class="calc-screen"><div id="calc-expression" class="calc-expression"></div><div id="calc-result" class="calc-result">0</div></div>
+  <div class="calc-grid">
+    <button class="calc-btn danger" data-act="clear">AC</button><button class="calc-btn fn" data-act="back">DEL</button><button class="calc-btn fn" data-val="(">(</button><button class="calc-btn fn" data-val=")">)</button><button class="calc-btn op" data-val="/">÷</button>
+    <button class="calc-btn fn" data-val="sin(">sin</button><button class="calc-btn fn" data-val="cos(">cos</button><button class="calc-btn fn" data-val="tan(">tan</button><button class="calc-btn fn" data-val="sqrt(">√</button><button class="calc-btn op" data-val="*">×</button>
+    <button class="calc-btn fn" data-val="log(">log</button><button class="calc-btn fn" data-val="ln(">ln</button><button class="calc-btn fn" data-val="pi">π</button><button class="calc-btn fn" data-val="e">e</button><button class="calc-btn op" data-val="-">−</button>
+    <button class="calc-btn fn" data-val="^2">x²</button><button class="calc-btn fn" data-val="^">xʸ</button><button class="calc-btn" data-val="7">7</button><button class="calc-btn" data-val="8">8</button><button class="calc-btn" data-val="9">9</button>
+    <button class="calc-btn fn" data-val="!">x!</button><button class="calc-btn" data-val=".">.</button><button class="calc-btn" data-val="4">4</button><button class="calc-btn" data-val="5">5</button><button class="calc-btn" data-val="6">6</button>
+    <button class="calc-btn fn" data-act="neg">±</button><button class="calc-btn" data-val="0">0</button><button class="calc-btn" data-val="1">1</button><button class="calc-btn" data-val="2">2</button><button class="calc-btn" data-val="3">3</button>
+    <button class="calc-btn span2" data-act="ans">ANS</button><button class="calc-btn op" data-val="+">+</button><button class="calc-btn equals span2" data-act="eval">=</button>
+  </div>
+</section></main>\`);
+
+let expr='',last=0;
+const expressionEl=()=>document.getElementById('calc-expression'),resultEl=()=>document.getElementById('calc-result');
+function display(){expressionEl().textContent=expr;resultEl().textContent=expr?'':String(last)}
+function insert(v){if(!expr&&/^[+*/^)]/.test(v))return;expr+=v;display()}
+function clearCalc(){expr='';last=0;display()}
+function backCalc(){expr=expr.slice(0,-1);display()}
+function normalize(s){return s.replace(/π/g,'pi').replace(/−/g,'-')}
+function calculate(){
+  try{
+    const src=normalize(expr||'0');
+    const value=math.evaluate(src);
+    last=Number.isFinite(value)?value:value?.toString?.()??value;
+    document.getElementById('calc-result').textContent=String(last);
+    document.getElementById('calc-expression').textContent=expr;
+    expr='';
+  }catch{document.getElementById('calc-result').textContent='Error'}
+}
+function negate(){expr=expr?'-('+expr+')':'-';display()}
+function ans(){expr+=String(last);display()}
+document.querySelectorAll('.calc-btn').forEach(b=>b.onclick=()=>{const v=b.dataset.val,a=b.dataset.act;if(v!=null)insert(v);else if(a==='clear')clearCalc();else if(a==='back')backCalc();else if(a==='eval')calculate();else if(a==='neg')negate();else if(a==='ans')ans()});
+document.addEventListener('keydown',e=>{
+  const map={Enter:'eval',Escape:'clear',Backspace:'back'};
+  if(map[e.key]){e.preventDefault();document.querySelector('[data-act="'+map[e.key]+'"]')?.click();return}
+  if(/[0-9.+\-*/^()!]/.test(e.key))insert(e.key);
+});
+display();
 </script>
 </body>
 </html>
