@@ -140,7 +140,7 @@ function mathnetQualifies(row){
   const type=String(row.problemType||'').toLowerCase();
   return (language==='english'||language==='en'||language.startsWith('en-'))
     &&row.hasSolution
-    &&(type==='proof only'||type==='proof and answer')
+    &&(type==='proof'||type==='proof only'||type==='proof and answer')
     &&String(row.statement||'').trim().length>0;
 }
 
