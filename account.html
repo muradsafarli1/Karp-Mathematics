@@ -104,7 +104,7 @@
   const topicMax=Math.max(1,...Object.values(topicTotals));
 
   const body='<main class="account-page">'+
-    '<section class="account-profile"><h1>Account</h1>'+
+    '<section class="account-profile">'+
       '<img class="profile-avatar" src="'+escapeHtml(u.photoURL||'')+'" style="'+(u.photoURL?'':'display:none')+'" alt="">'+
       '<div class="profile-avatar profile-initial" style="'+(u.photoURL?'display:none':'')+'">'+escapeHtml((u.name||'K').charAt(0).toUpperCase())+'</div>'+
       '<div class="profile-name">'+escapeHtml(u.name||'KARP Member')+'</div><div class="profile-email">'+escapeHtml(u.email||'')+'</div>'+
