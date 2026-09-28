@@ -42,7 +42,7 @@ function calculate(){
   try{
     const src=normalize(expr||'0');
     const value=math.evaluate(src);
-    last=Number.isFinite(value)?value:value?.toString?.()??value;
+    last=Number.isFinite(value)?value:String(value);
     document.getElementById('calc-result').textContent=String(last);
     document.getElementById('calc-expression').textContent=expr;
     expr='';
