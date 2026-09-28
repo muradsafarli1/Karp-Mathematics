@@ -377,7 +377,12 @@ async function mathnetFind(options){
         const pseudo=Math.abs(Math.sin(seed*0.000001+(i+1)*17.17)*43758.5453);
         offset=Math.floor((pseudo-Math.floor(pseudo))*Math.max(1,total-100));
       }
-      try{await mathnetFetchRows(config,offset,100)}catch{}
+      try{
+        const batch=await mathnetFetchRows(config,offset,100);
+        MATHNET_ARCHIVE_CACHE.configTotals[config]=batch.total;
+        MATHNET_ARCHIVE_CACHE.configOffsets[config]=Math.max(Number(MATHNET_ARCHIVE_CACHE.configOffsets[config]||0),offset+batch.rows.length);
+        archiveAddRows(batch.rows);
+      }catch{}
       pool=MATHNET_ARCHIVE_CACHE.rows.filter(acceptable);
     }
   }
