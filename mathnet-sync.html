@@ -27,6 +27,7 @@
   const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
   const {doc,getDoc,setDoc,writeBatch}=fs;
 
+  const MATHNET_FIRESTORE={problems:'mathnetProblems',shards:'mathnetIndexShards',pools:'mathnetPools',meta:'mathnetMeta',state:'state'};
   const DATASET='ShadenA/MathNet',CONFIG='all',SPLIT='train',PAGE=100,CONCURRENCY=4;
   const VERSION='firebase-'+new Date().toISOString().slice(0,10)+'-'+Date.now();
   const state={running:false,completePages:new Set(),total:0,fetched:0,accepted:0,written:0,items:[],pools:new Map()};
