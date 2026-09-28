@@ -186,9 +186,9 @@ async function mathnetLoadQuickIndex(){
   if(__mathnetQuickPromise)return __mathnetQuickPromise;
   __mathnetQuickPromise=(async()=>{
     const existing=await dbGetAll();
-    const initial=[0,3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48];
+    const initial=[0,10,20,30,40];
     if(existing.length>=120){existing.sort(mathnetSort);return existing}
-    const sampled=await mathnetSampleShards(initial,220);
+    const sampled=await mathnetSampleShards(initial,120);
     const merged=[...existing,...sampled];
     const unique=[...new Map(merged.map(x=>[x.id,x])).values()].sort(mathnetSort);
     return unique;
@@ -248,27 +248,29 @@ async function mathnetFind(options){
   const count=Math.max(1,Math.min(30,Number(options.count||6)));
   const sequence=Array.isArray(options.sequence)&&options.sequence.length===count?options.sequence:null;
   const onProgress=typeof options.onProgress==='function'?options.onProgress:()=>{};
-  let all=await mathnetLoadQuickIndex();
 
-  function matchingPool(rows){
-    return rows.filter(q=>categories.includes(q.category)&&(difficulty==='any'||q.difficulty===difficulty));
+  // Do not force the Problems-page content index to finish before a mock can start.
+  let all=(await dbGetAll()).sort(mathnetSort);
+
+  function matching(q){
+    return categories.includes(q.category)&&(difficulty==='any'||q.difficulty===difficulty);
   }
   function choose(rows){
-    const pool=matchingPool(rows);
+    const pool=rows.filter(matching);
     const by={A:[],C:[],G:[],N:[]};
     pool.forEach(q=>(by[q.category]||(by[q.category]=[])).push(q));
-    const used=new Set(),picked=[];
-    const wantedAt=i=>sequence?sequence[i]:categories[i%categories.length];
-    const seed=Number(options.seed||Date.now());
-    for(let i=0;i<count;i++){
-      const wanted=wantedAt(i),list=by[wanted]||[];
-      const start=list.length?Math.abs(Math.floor(seed+i*37))%list.length:0;
+    const picked=[],used=new Set(),seed=Number(options.seed||Date.now());
+    const wanted=sequence||Array.from({length:count},(_,i)=>categories[i%categories.length]);
+    for(let i=0;i<wanted.length;i++){
+      const list=by[wanted[i]]||[];
+      const startIndex=list.length?Math.abs(Math.floor(seed+i*37))%list.length:0;
       let candidate=null;
       for(let j=0;j<list.length;j++){
-        const q=list[(start+j)%list.length];
+        const q=list[(startIndex+j)%list.length];
         if(!used.has(q.id)){candidate=q;break}
       }
-      if(!candidate&&!sequence){
+      if(!candidate){
+        if(sequence)break;
         for(const q of pool)if(!used.has(q.id)){candidate=q;break}
       }
       if(!candidate)break;
@@ -284,103 +286,79 @@ async function mathnetFind(options){
     return {questions:picked,total:all.length,source:'ShadenA/MathNet'};
   }
 
-  // Fast path: inspect only lightweight Parquet metadata across distributed shards.
-  // We do NOT download problem/solution text until candidate rows are known.
-  const missing=Math.max(1,count-picked.length);
-  const perSlot=difficulty==='any'?Math.min(6,Math.max(2,Math.ceil(missing*2))):Math.min(18,Math.max(6,Math.ceil(missing*6)));
+  const wanted=sequence||Array.from({length:count},(_,i)=>categories[i%categories.length]);
   const neededBy={A:0,C:0,G:0,N:0};
-  if(sequence)sequence.forEach(x=>neededBy[x]=(neededBy[x]||0)+1);
-  else categories.forEach((x,i)=>neededBy[x]=(neededBy[x]||0)+Math.ceil(missing/categories.length));
-  const targetRefs=Math.min(180,Math.max(24,missing*perSlot));
+  wanted.forEach(x=>{neededBy[x]=(neededBy[x]||0)+1});
+
+  // For difficulty filters we keep a larger shortlist, because difficulty is
+  // a derived heuristic and must be checked on the full problem text.
+  const shortlistPerQuestion=difficulty==='any'?2:8;
+  const targetBy={A:0,C:0,G:0,N:0};
+  Object.keys(neededBy).forEach(k=>targetBy[k]=Math.max(neededBy[k]*shortlistPerQuestion,3));
 
   const shardOrder=[0,3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,1,4,7,10,13,16,19,22,25,28,31,34,37,40,43,46,49,2,5,8,11,14,17,20,23,26,29,32,35,38,41,44,47];
-  const knownShards=new Set(all.map(q=>Number(q.sourceShard)));
-  const refs=[];
+  const known=new Set(all.map(q=>Number(q.sourceShard)));
+  const refsBy={A:[],C:[],G:[],N:[]};
+
+  function enoughRefs(){
+    return categories.every(cat=>(refsBy[cat]||[]).length>=targetBy[cat]);
+  }
+
+  // Metadata only: country/competition/topic/language/type. No long statements or solutions.
+  for(let batchStart=0;batchStart<shardOrder.length&&!enoughRefs();batchStart+=8){
+    const batch=shardOrder.slice(batchStart,batchStart+8).filter(s=>!known.has(s));
+    if(!batch.length)continue;
+    const meta=[];
+    await Promise.all(batch.map(async shard=>{
+      try{meta.push(...await readShardMeta(shard,0,100000))}catch{}
+    }));
+    for(const ref of meta){
+      if((refsBy[ref.category]||[]).length<targetBy[ref.category])refsBy[ref.category].push(ref);
+    }
+    onProgress(picked.length,count,'metadata');
+  }
+
+  const selectedRefs=[];const seenRef=new Set();
+  wanted.forEach(cat=>{
+    const list=refsBy[cat]||[];
+    const keyCount=neededBy[cat]||0;
+    // Take multiple candidates per requested slot so easy/hard filtering has room.
+    for(let i=0;i<Math.min(list.length,keyCount*shortlistPerQuestion);i++){
+      const r=list[i],key=r.shard+':'+r.index;
+      if(!seenRef.has(key)){seenRef.add(key);selectedRefs.push(r)}
+    }
+  });
+
+  // Read only shortlisted full records.
+  const full=[];
   let cursor=0;
-  async function scanWorker(){
-    while(cursor<shardOrder.length&&refs.length<targetRefs){
-      const shard=shardOrder[cursor++];
-      if(knownShards.has(shard))continue;
-      try{
-        const rows=await readShardMeta(shard,0,100000);
-        refs.push(...rows);
-        onProgress(picked.length,count,'metadata');
-      }catch{}
-    }
-  }
-  await Promise.all(Array.from({length:Math.min(8,shardOrder.length)},scanWorker));
-
-  const uniqRefs=[...new Map(refs.map(x=>[x.shard+':'+x.index,x])).values()];
-  const refByCategory={A:[],C:[],G:[],N:[]};
-  uniqRefs.forEach(r=>(refByCategory[r.category]||(refByCategory[r.category]=[])).push(r));
-
-  const selectedRefs=[];const selectedKeys=new Set();
-  const wantedList=sequence||Array.from({length:missing},(_,i)=>categories[i%categories.length]);
-  for(const wanted of wantedList){
-    const list=refByCategory[wanted]||[];
-    while(list.length){
-      const r=list.shift(),key=r.shard+':'+r.index;
-      if(selectedKeys.has(key))continue;
-      selectedKeys.add(key);selectedRefs.push(r);
-      break;
-    }
-  }
-  if(selectedRefs.length<missing&&!sequence){
-    for(const r of uniqRefs){
-      const key=r.shard+':'+r.index;
-      if(selectedKeys.has(key)||!categories.includes(r.category))continue;
-      selectedKeys.add(key);selectedRefs.push(r);
-      if(selectedRefs.length>=missing*3)break;
-    }
-  }
-
-  // Read only the shortlisted full rows, then apply the exact difficulty rule.
-  const fullCandidates=[];
-  let fullCursor=0;
-  async function fullWorker(){
-    while(fullCursor<selectedRefs.length){
-      const ref=selectedRefs[fullCursor++];
+  async function worker(){
+    while(cursor<selectedRefs.length){
+      const ref=selectedRefs[cursor++];
       try{
         const rows=await readShard(ref.shard,ref.index,ref.index+1);
         const q=rows[0];
-        if(q&&(!difficulty||difficulty==='any'||q.difficulty===difficulty)){
-          fullCandidates.push(q);await dbPutBatch([q]);
+        if(q&&categories.includes(q.category)&&(difficulty==='any'||q.difficulty===difficulty)){
+          full.push(q);
+          await dbPutBatch([q]);
+          onProgress(Math.min(count,full.length+picked.length),count,'candidates');
         }
-        onProgress(Math.min(count,picked.length+fullCandidates.length),count,'candidates');
       }catch{}
     }
   }
-  await Promise.all(Array.from({length:Math.min(8,selectedRefs.length||1)},fullWorker));
+  await Promise.all(Array.from({length:Math.min(8,selectedRefs.length||1)},worker));
 
-  all=[...all,...fullCandidates];
-  all=[...new Map(all.map(x=>[x.id,x])).values()].sort(mathnetSort);
+  all=[...all,...full];
+  all=[...new Map(all.map(q=>[q.id,q])).values()].sort(mathnetSort);
   picked=choose(all);
-  if(picked.length<count){
-    // A second lightweight pass uses the remaining shards when a strict topic/difficulty
-    // combination is rare. This is still metadata-first and much faster than a full archive scan.
-    const remaining=shardOrder.filter(s=>!knownShards.has(s)&&!selectedRefs.some(r=>r.shard===s));
-    for(let i=0;i<remaining.length&&picked.length<count;i+=8){
-      const batch=remaining.slice(i,i+8),more=[];
-      await Promise.all(batch.map(async shard=>{
-        try{more.push(...await readShardMeta(shard,0,100000))}catch{}
-      }));
-      const extra=more.slice(0,Math.max(60,count*8));
-      const exact=[];await Promise.all(extra.map(async ref=>{
-        if(exact.length>=count*8)return;
-        try{const rows=await readShard(ref.shard,ref.index,ref.index+1);if(rows[0]&&['any',difficulty].includes(difficulty)||difficulty==='any')exact.push(rows[0]);else if(rows[0]&&rows[0].difficulty===difficulty)exact.push(rows[0])}catch{}
-      }));
-      if(exact.length){await dbPutBatch(exact);all=[...new Map([...all,...exact].map(x=>[x.id,x])).values()].sort(mathnetSort);picked=choose(all)}
-      onProgress(picked.length,count,'archive');
-      if(picked.length>=count)break;
-    }
-  }
 
   if(picked.length<count){
     const reason=sequence
-      ? 'The archive has not provided enough English proof problems for this exact sequence and difficulty.'
-      : 'The archive has not provided enough English proof problems for the selected filters.';
+      ? 'The archive could not find enough English proof problems for this exact sequence and difficulty.'
+      : 'The archive could not find enough English proof problems for the selected filters.';
     return {questions:picked,total:all.length,source:'ShadenA/MathNet',reason};
   }
+
   mathnetBackgroundLoad().catch(()=>{});
   return {questions:picked,total:all.length,source:'ShadenA/MathNet'};
 }
