@@ -304,6 +304,10 @@ async function requireAdmin(){const u=await me();if(!u||u.role!=='admin'){locati
 function escapeHtml(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function normalizeMathMarkdown(value=''){
   let s=String(value??'').replace(/\\r\\n?/g,'\\n');
+  // MathNet contains several Markdown/LaTeX dialects. Normalize all common
+  // delimiters before marked/MathJax so raw $...$ never reaches the page.
+  s=s.replace(/\\\\\\\\\\[/g,'\\\\[').replace(/\\\\\\\\\\]/g,'\\\\]');
+  s=s.replace(/\\\\\\\\\\(/g,'\\\\(').replace(/\\\\\\\\\\)/g,'\\\\)');
   s=s.replace(/\\$\\$([\\s\\S]*?)\\$\\$/g,'\\\\[$1\\\\]');
   s=s.replace(/(^|[^\\\\])\\$([^$\\n]+?)\\$(?!\\$)/g,'$1\\\\($2\\\\)');
   return s;
