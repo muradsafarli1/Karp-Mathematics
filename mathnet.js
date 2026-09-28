@@ -99,6 +99,22 @@ async function mathnetFilteredRows(offset,length,whereExtra){
   };
 }
 
+async function mathnetSearch(query,offset,length){
+  const url=new URL('https://datasets-server.huggingface.co/search');
+  url.searchParams.set('dataset',MATHNET.dataset);
+  url.searchParams.set('config',MATHNET.config);
+  url.searchParams.set('split',MATHNET.split);
+  url.searchParams.set('query',String(query||''));
+  url.searchParams.set('offset',String(Math.max(0,Math.floor(offset||0))));
+  url.searchParams.set('length',String(Math.min(100,Math.max(1,length||100))));
+  const res=await fetch(url,{headers:{Accept:'application/json'}});
+  if(!res.ok) throw new Error('MathNet search request failed ('+res.status+')');
+  const data=await res.json();
+  const rows=(data.rows||[]).map(function(x,i){return normalizeMathnetRow(x,(offset||0)+i);})
+    .filter(function(q){return q.language.toLowerCase()==='en' && q.hasSolution && (q.problemType.toLowerCase()==='proof only' || q.problemType.toLowerCase()==='proof and answer');});
+  return {total:Number(data.num_rows_total||0),rows:rows,partial:Boolean(data.partial)};
+}
+
 async function mathnetProblemById(id){
   const safe=String(id||'').replace(/'/g,"''");
   const data=await mathnetFilteredRows(0,1,'"id"=\''+safe+'\'');
