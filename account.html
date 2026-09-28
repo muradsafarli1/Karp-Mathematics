@@ -43,7 +43,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   function events(){
     return solvedEntries().flatMap(x=>x.dates.map(d=>({
-      id:x.id,topic:x.topic,date:new Date(d)
+      id:x.id,topic:x.topic,title:x.title,country:x.country,competition:x.competition,
+      year:x.year,problemNumber:x.problemNumber,sourceIndex:x.sourceIndex,date:new Date(d)
     }))).filter(x=>!Number.isNaN(x.date.getTime()));
   }
   function savedProblems(){
@@ -271,7 +272,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
                 ${solvedEvents.length?[...solvedEvents].sort((a,b)=>b.date-a.date).slice(0,5).map(e=>{
                   const p=(content.problems||[]).find(x=>x.id===e.id);
-                  return '<a class="recent-row" href="/problem.html?id='+encodeURIComponent(e.id)+(e.sourceIndex!=null?'&offset='+encodeURIComponent(e.sourceIndex):'')+'"><span class="recent-dot"></span><div><strong>'+escapeHtml(p?localized(p,'title'):(e.title||'Problem'))+'</strong><span>'+escapeHtml(e.topic)+' · '+relativeDate(e.date)+'</span></div><span class="recent-arrow">→</span></a>';
+                  return '<a class="recent-row" href="/problem.html?id='+encodeURIComponent(e.id)+(e.sourceIndex!=null?'&offset='+encodeURIComponent(e.sourceIndex):'')+'"><span class="recent-dot"></span><div><strong>'+escapeHtml(p?localized(p,'title'):(e.title||'Problem'))+'</strong><span>'+escapeHtml(e.country||'')+(e.competition?' · '+escapeHtml(e.competition):'')+(e.year?' · '+escapeHtml(e.year):'')+(e.problemNumber?' · '+escapeHtml(e.problemNumber):'')+' · '+relativeDate(e.date)+'</span></div><span class="recent-arrow">→</span></a>';
                 }).join(''):'<div class="empty account-empty">No solved problems yet.</div>'}
               </section>
             </div>
