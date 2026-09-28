@@ -58,6 +58,20 @@ function mathnetMarkdown(row){
   });
   return md;
 }
+function mathnetProblemNumber(row){
+  const text=String(row.problem_markdown||'').replace(/<[^>]+>/g,' ').trim();
+  const patterns=[
+    /(?:^|\n)\s*(?:#+\s*)?(?:problem|question|p)\s*#?\s*(\d{1,2})\b/i,
+    /(?:^|\n)\s*\*{0,2}\s*(\d{1,2})\s*[\.)]\s*/,
+    /\bP\s*([1-9]\d?)\b/i
+  ];
+  for(const re of patterns){
+    const m=text.match(re);
+    if(m)return 'P'+m[1];
+  }
+  return '';
+}
+
 
 function normalizeMathnetRow(raw,offset){
   const row=raw&&raw.row?raw.row:(raw||{});
@@ -75,26 +89,65 @@ function normalizeMathnetRow(raw,offset){
     problemType:String(row.problem_type||''),
     language:String(row.language||''),
     hasSolution:Array.isArray(row.solutions_markdown)&&row.solutions_markdown.some(function(x){return String(x||'').trim()}),
-    title:String(row.title||row.competition||'MathNet Problem'),
+    problemNumber:mathnetProblemNumber(row),
+    title:String(row.title||row.competition||'MathNet Problem')+(mathnetProblemNumber(row)?' — '+mathnetProblemNumber(row):''),
     sourceIndex:Number((raw&&raw.row_idx)!=null?raw.row_idx:(offset||0)),
     finalAnswer:row.final_answer==null?'':String(row.final_answer)
   };
 }
 
 async function mathnetRows(offset,length){
+  const cleanOffset=Math.max(0,Math.floor(offset||0));
+  const cleanLength=Math.min(100,Math.max(1,length||100));
   const url=new URL(MATHNET.endpoint);
   url.searchParams.set('dataset',MATHNET.dataset);
   url.searchParams.set('config',MATHNET.config);
   url.searchParams.set('split',MATHNET.split);
-  url.searchParams.set('offset',String(Math.max(0,Math.floor(offset||0))));
-  url.searchParams.set('length',String(Math.min(100,Math.max(1,length||100))));
-  const res=await fetch(url,{headers:{Accept:'application/json'}});
-  if(!res.ok) throw new Error('MathNet request failed ('+res.status+')');
-  const data=await res.json();
-  return {
-    total:Number(data.num_rows_total||0),
-    rows:(data.rows||[]).map(function(x,i){return normalizeMathnetRow(x,(offset||0)+i);})
-  };
+  url.searchParams.set('offset',String(cleanOffset));
+  url.searchParams.set('length',String(cleanLength));
+
+  const cacheName='karp-mathnet-v1';
+  const cacheKey=url.toString();
+
+  try{
+    if('caches' in window){
+      const cache=await caches.open(cacheName);
+      const cached=await cache.match(cacheKey);
+      if(cached){
+        const data=await cached.clone().json();
+        return {
+          total:Number(data.num_rows_total||0),
+          rows:(data.rows||[]).map(function(x,i){return normalizeMathnetRow(x,cleanOffset+i);})
+        };
+      }
+    }
+  }catch{}
+
+  let lastError=null;
+  for(let attempt=0;attempt<3;attempt++){
+    try{
+      const res=await fetch(cacheKey,{headers:{Accept:'application/json'}});
+      if(!res.ok)throw new Error('MathNet request failed ('+res.status+')');
+      const data=await res.json();
+
+      try{
+        if('caches' in window){
+          const cache=await caches.open(cacheName);
+          const response=new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}});
+          await cache.put(cacheKey,response);
+        }
+      }catch{}
+
+      return {
+        total:Number(data.num_rows_total||0),
+        rows:(data.rows||[]).map(function(x,i){return normalizeMathnetRow(x,cleanOffset+i);})
+      };
+    }catch(error){
+      lastError=error;
+      await new Promise(function(resolve){setTimeout(resolve,700*(attempt+1));});
+    }
+  }
+  throw lastError||new Error('Failed to fetch MathNet.');
 }
 
 const MATHNET_ARCHIVE_CACHE = {
@@ -196,7 +249,7 @@ async function mathnetFind(options){
   // Sample across the whole MathNet source instead of relying on the broken
   // Dataset Viewer /filter endpoint or only the first few hundred rows.
   const batches=[];
-  const batchCount=28;
+  const batchCount=8;
   const maxOffset=Math.max(0,MATHNET.maxPreferredRows-100);
   const seed=Number(options.seed||Date.now());
   for(let i=0;i<batchCount;i++){
