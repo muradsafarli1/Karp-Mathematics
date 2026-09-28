@@ -76,6 +76,7 @@ async function mathnetLoadAllIndex(onProgress,onInitial){
     const rows=[];
     snaps.forEach(s=>{
       const d=s.data();
+      if(version && d.version!==version)return;
       (Array.isArray(d.items)?d.items:[]).forEach(x=>rows.push({...x,sourceType:'mathnet',category:mathnetCategory(x),title:x.title||mathnetTitle(x),hasSolution:true}));
     });
     rows.sort((a,b)=>{
@@ -138,7 +139,8 @@ async function mathnetFind(options={}){
   const used=new Set();
   for(const cat of wanted){
     let poolSnap=await getDoc(doc(db,MATHNET_FIRESTORE.pools,idPoolKey(cat)));
-    let pool=poolSnap.exists()&&Array.isArray(poolSnap.data().ids)?poolSnap.data().ids.slice():[];
+    let pool=poolSnap.exists()&&poolSnap.data().version && poolSnap.data().version===String(await mathnetCacheGet('version')||'') && Array.isArray(poolSnap.data().ids)
+      ?poolSnap.data().ids.slice():[];
     if(!pool.length){
       const fallback=await getDoc(doc(db,MATHNET_FIRESTORE.pools,cat+'-any'));
       pool=fallback.exists()&&Array.isArray(fallback.data().ids)?fallback.data().ids.slice():[];
