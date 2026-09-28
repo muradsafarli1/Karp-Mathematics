@@ -1,348 +1,156 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KARP — Account</title>
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js"></script>
+<style>
+.account-simple{min-height:calc(100vh - 76px)}
+.account-identity{text-align:center;padding:72px 20px 50px}
+.account-identity h1{font-family:'Space Grotesk';font-size:clamp(52px,7vw,88px);line-height:.95;letter-spacing:-4px;margin:0 0 24px}
+.account-avatar{width:112px;height:112px;border-radius:50%;object-fit:cover;margin:0 auto 14px;border:1px solid var(--line);background:var(--panel2)}
+.account-avatar-initial{display:grid;place-items:center;font-size:36px;font-weight:800;color:var(--text)}
+.account-name{font-size:16px;font-weight:800}.account-email{font-size:12px;color:var(--muted);margin-top:4px}
+.account-content{width:min(calc(100% - 42px),1180px);margin:0 auto;padding-bottom:70px}
+.account-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.account-stat-button{border:1px solid transparent;border-radius:16px;background:var(--panel2);color:var(--text);padding:22px 14px;text-align:center;cursor:pointer;transition:transform .15s,background .15s}
+.account-stat-button:hover{transform:translateY(-2px);background:var(--panel2)}
+.account-stat-button.active{outline:2px solid var(--text);outline-offset:-2px}
+.account-stat-number{font-family:'Space Grotesk';font-size:34px;font-weight:800;line-height:1}
+.account-stat-label{font-size:11px;color:var(--muted);margin-top:7px}
+.account-panel{display:none;margin-top:16px;padding:26px;border-radius:18px;background:var(--panel2)}
+.account-panel.open{display:block}
+.account-panel-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:15px}
+.account-panel-head h2{font-family:'Space Grotesk';font-size:27px;letter-spacing:-1px;margin:0}
+.account-panel-head span{font-size:11px;color:var(--muted)}
+.account-row{display:flex;align-items:center;gap:15px;padding:16px 0;border-top:1px solid var(--line);text-decoration:none;color:var(--text)}
+.account-row:first-child{border-top:0}.account-row-main{min-width:0;flex:1}.account-row-title{font-size:14px;font-weight:800}.account-row-meta{font-size:11px;color:var(--muted);margin-top:5px}.account-row-arrow{font-size:14px;color:var(--muted)}
+.mock-review{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+.mock-review-question{padding:18px 0;border-top:1px solid var(--line)}
+.mock-review-question:first-child{border-top:0}
+.mock-review-statement{font-size:17px;line-height:1.85}
+.mock-review-solution{margin-top:8px}.mock-review-solution button{font-size:11px}
+.mock-review-body{display:none;margin-top:10px;font-size:16px;line-height:1.85}.mock-review-body.open{display:block}
+.account-bottom{display:flex;justify-content:center;margin-top:22px;gap:8px;flex-wrap:wrap}
+@media(max-width:900px){.account-stats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.account-identity{padding-top:52px}.account-content{width:calc(100% - 28px)}.account-stats{grid-template-columns:repeat(2,1fr)}.account-panel{padding:20px}}
+</style>
 </head>
 <body>
 <script>
-document.addEventListener('DOMContentLoaded', async () => {
-  const u = await requireUser();
-  if (!u) return;
+(async()=>{
+  const u=await requireUser();
+  if(!u)return;
 
-  const {db,storage} = await fb();
-  const fs = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const {doc,setDoc} = fs;
-  const st = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js');
-  const {ref,uploadBytes,getDownloadURL} = st;
-
-  let history=[];
-  let content={problems:[],articles:[],contests:[],videos:[]};
-  try { history=(await api('/api/exams/history')).history||[]; } catch {}
-  try { content=await api('/api/content'); } catch {}
-
-  function solvedMap(){
+  const solvedMap=()=>{
     try{
-      const legacy=JSON.parse(localStorage.getItem('able_solved_problems')||'{}');
-      const modern=JSON.parse(localStorage.getItem('karp_solved_mathnet')||'{}');
-      return {...legacy,...modern};
+      const a=JSON.parse(localStorage.getItem('able_solved_problems')||'{}');
+      const b=JSON.parse(localStorage.getItem('karp_solved_mathnet')||'{}');
+      return {...a,...b};
     }catch{return {}}
-  }
-  function savedMap(){
+  };
+  const savedMap=()=>{
     try{return JSON.parse(localStorage.getItem('karp_saved_mathnet')||'{}')}catch{return {}}
+  };
+  const mockHistory=()=>{
+    try{return JSON.parse(localStorage.getItem('karp_mock_history')||'[]')}catch{return []}
+  };
+  const solved=Object.entries(solvedMap()).map(([id,v])=>({id,...v}));
+  const saved=Object.values(savedMap());
+  const exams=(await api('/api/exams/history').catch(()=>({history:[]}))).history||[];
+  const mocks=mockHistory();
+  const dates=solved.flatMap(x=>Array.isArray(x.dates)?x.dates:[]).map(x=>new Date(x)).filter(x=>!isNaN(x));
+  const dayKeys=new Set(dates.map(d=>new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime()));
+  let streak=0;for(let d=new Date();dayKeys.has(new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime());d.setDate(d.getDate()-1))streak++;
+
+  function labelTopic(p){
+    const m={A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'};
+    return p.topic||p.category&&m[p.category]||'Problem';
   }
-  function solvedEntries(){
-    return Object.entries(solvedMap()).map(([id,v])=>({
-      id,topic:v?.topic||v?.category||'Other',title:v?.title||'',country:v?.country||'',
-      competition:v?.competition||'',year:v?.year||'',problemNumber:v?.problemNumber||'',sourceConfig:v?.sourceConfig||'all',
-      sourceIndex:v?.sourceIndex||0,dates:Array.isArray(v?.dates)?v.dates:[]
-    }));
+  function problemHref(p){
+    return '/problem.html?id='+encodeURIComponent(p.id)+(p.sourceConfig?'&config='+encodeURIComponent(p.sourceConfig):'')+(p.sourceIndex!=null?'&offset='+encodeURIComponent(p.sourceIndex):'');
   }
-  function events(){
-    return solvedEntries().flatMap(x=>x.dates.map(d=>({
-      id:x.id,topic:x.topic,title:x.title,country:x.country,competition:x.competition,
-      year:x.year,problemNumber:x.problemNumber,sourceConfig:x.sourceConfig,sourceIndex:x.sourceIndex,date:new Date(d)
-    }))).filter(x=>!Number.isNaN(x.date.getTime()));
+  function meta(p){
+    return [p.country,p.competition,p.year,p.problemNumber].filter(Boolean).join(' · ');
   }
-  function savedProblems(){
-    const mathnet=Object.values(savedMap());
-    const legacy=(content.problems||[]).filter(p=>localStorage.getItem('able_saved_problem_'+p.id)==='1');
-    const seen=new Set();
-    return [...mathnet,...legacy].filter(p=>{if(seen.has(p.id))return false;seen.add(p.id);return true;});
+  function row(p,arrow=true){
+    return '<a class="account-row" href="'+problemHref(p)+'"><div class="account-row-main"><div class="account-row-title">'+escapeHtml(p.title||p.competition||'MathNet Problem')+'</div><div class="account-row-meta">'+escapeHtml(meta(p)||labelTopic(p))+'</div></div>'+(arrow?'<span class="account-row-arrow">→</span>':'')+'</a>';
   }
 
-  const solved=solvedEntries(), solvedEvents=events(), saved=savedProblems();
-  const solvedCount=solved.length, savedCount=saved.length, completed=history.length;
-  const totalProblems=0;
-
-  const now=new Date();
-  const startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-  const tomorrow=new Date(startToday);tomorrow.setDate(tomorrow.getDate()+1);
-  const weekStart=new Date(startToday);weekStart.setDate(weekStart.getDate()-6);
-  const monthStart=new Date(now.getFullYear(),now.getMonth(),1);
-  const yearStart=new Date(now.getFullYear(),0,1);
-
-  function countRange(start,end){return solvedEvents.filter(e=>e.date>=start&&e.date<end).length}
-  const todayCount=countRange(startToday,tomorrow);
-  const weekCount=countRange(weekStart,tomorrow);
-  const monthCount=countRange(monthStart,tomorrow);
-  const yearCount=countRange(yearStart,tomorrow);
-
-  function dateKey(d){
-    const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());
-    return x.getTime();
-  }
-  const activeDays=new Set(solvedEvents.map(e=>dateKey(e.date)));
-  let streak=0;
-  for(let d=new Date(startToday);;d.setDate(d.getDate()-1)){
-    if(activeDays.has(dateKey(d))) streak++;
-    else break;
-    if(streak>366) break;
+  function panel(id,title,count,body){
+    return '<section id="panel-'+id+'" class="account-panel"><div class="account-panel-head"><h2>'+title+'</h2><span>'+count+'</span></div>'+body+'</section>';
   }
 
-  function topicMatch(topic,key){
-    const t=String(topic||'').toLowerCase();
-    return t===key.toLowerCase() || t.includes(key.toLowerCase()) ||
-      (key==='Algebra' && (t.includes('functional equation')||t.includes('algebra')));
-  }
-  const topicDefs=[['Algebra','Algebra'],['Number Theory','Number Theory'],['Geometry','Geometry'],['Combinatorics','Combinatorics']];
-  const topicStats=topicDefs.map(([label,key])=>{
-    const items=(content.problems||[]).filter(p=>topicMatch(p.topic,key));
-    const solvedN=solved.filter(s=>topicMatch(s.topic,key)).length;
-    return {label,total:items.length,solved:solvedN,pct:items.length?Math.min(100,Math.round(solvedN/items.length*100)):0};
+  shell('','Account',`
+    <main class="account-simple">
+      <section class="account-identity">
+        <h1>Account</h1>
+        <img id="avatar-img" class="account-avatar" src="${escapeHtml(u.photoURL||'')}" style="${u.photoURL?'':'display:none'}" alt="">
+        <div id="avatar-initial" class="account-avatar account-avatar-initial" style="${u.photoURL?'display:none':''}">${escapeHtml((u.name||'K').charAt(0).toUpperCase())}</div>
+        <div class="account-name">${escapeHtml(u.name||'KARP Member')}</div>
+        <div class="account-email">${escapeHtml(u.email||'')}</div>
+      </section>
+
+      <section class="account-content">
+        <div class="account-stats">
+          <button class="account-stat-button" data-panel="solved"><div class="account-stat-number">${solved.length}</div><div class="account-stat-label">Solved</div></button>
+          <button class="account-stat-button" data-panel="saved"><div class="account-stat-number">${saved.length}</div><div class="account-stat-label">Saved</div></button>
+          <button class="account-stat-button" data-panel="exams"><div class="account-stat-number">${exams.length}</div><div class="account-stat-label">Exams</div></button>
+          <button class="account-stat-button" data-panel="mocks"><div class="account-stat-number">${mocks.length}</div><div class="account-stat-label">Mocks</div></button>
+          <button class="account-stat-button" data-panel="streak"><div class="account-stat-number">${streak}</div><div class="account-stat-label">Day streak</div></button>
+        </div>
+
+        <div id="panels"></div>
+        <div class="account-bottom">
+          ${u.role==='admin'?'<a class="btn" href="/admin.html">Admin</a>':''}
+          <button class="btn" onclick="logout()">Log out</button>
+        </div>
+      </section>
+    </main>`);
+
+  const panels=document.getElementById('panels');
+  const solvedRows=solved.slice().reverse().map(row).join('')||'<div class="empty">No solved problems yet.</div>';
+  const savedRows=saved.slice().reverse().map(row).join('')||'<div class="empty">No saved problems yet.</div>';
+  const examRows=exams.map(e=>'<a class="account-row" href="/exam.html?id='+encodeURIComponent(e.examId||e.id||'')+'"><div class="account-row-main"><div class="account-row-title">'+escapeHtml(e.titleEn||e.title||'Exam')+'</div><div class="account-row-meta">Submitted · '+escapeHtml(e.submittedAt?new Date(e.submittedAt).toLocaleString():'—')+'</div></div><span class="account-row-arrow">→</span></a>').join('')||'<div class="empty">No completed exams yet.</div>';
+  const mockRows=mocks.map(m=>'<div class="account-row"><div class="account-row-main"><div class="account-row-title">'+escapeHtml(m.questions?.length||0)+'-question mock · '+escapeHtml(String(m.minutes||0))+' min</div><div class="account-row-meta">'+escapeHtml(m.completedAt?new Date(m.completedAt).toLocaleString():'—')+'</div></div></div>').join('')||'<div class="empty">No completed mocks yet.</div>';
+
+  panels.innerHTML=
+    panel('solved','Solved',solved.length,solvedRows)+
+    panel('saved','Saved',saved.length,savedRows)+
+    panel('exams','Exams',exams.length,examRows)+
+    panel('mocks','Mocks',mocks.length,mockRows)+
+    panel('streak','Study streak',streak,(streak?'<div class="account-row"><div class="account-row-main"><div class="account-row-title">'+streak+' consecutive day'+(streak===1?'':'s')+'</div><div class="account-row-meta">Based on your solved-problem activity.</div></div></div>':'<div class="empty">Solve a problem today to start your streak.</div>'));
+
+  document.querySelectorAll('.account-stat-button').forEach(btn=>btn.onclick=()=>{
+    const id=btn.dataset.panel;
+    const p=document.getElementById('panel-'+id);
+    const was=p.classList.contains('open');
+    document.querySelectorAll('.account-panel').forEach(x=>x.classList.remove('open'));
+    document.querySelectorAll('.account-stat-button').forEach(x=>x.classList.remove('active'));
+    if(!was){p.classList.add('open');btn.classList.add('active');p.scrollIntoView({behavior:'smooth',block:'nearest'});}
   });
 
-  function series(mode){
-    const arr=[];
-    if(mode==='week'){
-      for(let i=6;i>=0;i--){
-        const d=new Date(startToday);d.setDate(d.getDate()-i);
-        const n=new Date(d);n.setDate(n.getDate()+1);
-        arr.push({label:d.toLocaleDateString(undefined,{weekday:'short'}),count:countRange(d,n)});
-      }
-    }else if(mode==='month'){
-      const days=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
-      for(let i=1;i<=days;i++){
-        const a=new Date(now.getFullYear(),now.getMonth(),i),b=new Date(a);b.setDate(b.getDate()+1);
-        arr.push({label:String(i),count:countRange(a,b)});
-      }
-    }else{
-      for(let i=0;i<12;i++){
-        const a=new Date(now.getFullYear(),i,1),b=new Date(now.getFullYear(),i+1,1);
-        arr.push({label:a.toLocaleDateString(undefined,{month:'short'}),count:countRange(a,b)});
-      }
-    }
-    return arr;
-  }
-
-  function chart(mode){
-    const data=series(mode),max=Math.max(1,...data.map(x=>x.count));
-    return '<div class="trend-chart">'+data.map(x=>'<div class="trend-col"><div class="trend-value">'+(x.count||'')+'</div><div class="trend-bar-wrap"><div class="trend-bar" style="height:'+Math.max(4,Math.round(x.count/max*100))+'%"></div></div><div class="trend-label">'+escapeHtml(x.label)+'</div></div>').join('')+'</div>';
-  }
-
-  function heatmap(){
-    const counts={};
-    solvedEvents.forEach(e=>{
-      const k=dateKey(e.date);
-      counts[k]=(counts[k]||0)+1;
+  const mockPanel=document.getElementById('panel-mocks');
+  mocks.slice(0,1).forEach(m=>{
+    if(!mockPanel)return;
+    const review=document.createElement('div');review.className='mock-review';
+    review.innerHTML='<div class="account-panel-head"><h2>Latest mock</h2><span>Solutions</span></div>';
+    (m.questions||[]).forEach((q,i)=>{
+      const sec=document.createElement('div');sec.className='mock-review-question';
+      sec.innerHTML='<div class="mock-review-statement"><strong>Question '+(i+1)+'</strong><div>'+String(q.statement||'')+'</div></div>';
+      const wrap=document.createElement('div');wrap.className='mock-review-solution';
+      const b=document.createElement('button');b.className='btn';b.textContent='Show solution';
+      const body=document.createElement('div');body.className='mock-review-body';
+      body.innerHTML=(q.solutions||[]).map((s,j)=>'<div style="margin-top:8px"><div style="font-size:10px;letter-spacing:1px;color:var(--muted)">SOLUTION '+(j+1)+'</div>'+String(s)+'</div>').join('');
+      b.onclick=()=>{const open=body.classList.toggle('open');b.textContent=open?'Hide solution':'Show solution';if(open)typesetMath(body)};
+      wrap.appendChild(b);wrap.appendChild(body);sec.appendChild(wrap);review.appendChild(sec);
     });
-    const days=[];
-    const start=new Date(startToday);start.setDate(start.getDate()-83);
-    for(let i=0;i<84;i++){
-      const d=new Date(start);d.setDate(start.getDate()+i);
-      const c=counts[dateKey(d)]||0;
-      const level=c===0?0:c===1?1:c===2?2:3;
-      days.push('<span class="heat-cell level-'+level+'" title="'+c+' solved · '+d.toLocaleDateString()+'"></span>');
-    }
-    return days.join('');
-  }
-
-  function relativeDate(d){
-    const x=new Date(d), diff=Math.floor((Date.now()-x.getTime())/86400000);
-    if(diff<=0)return 'Today';
-    if(diff===1)return 'Yesterday';
-    if(diff<7)return diff+' days ago';
-    return x.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
-  }
-
-  function topicForProblem(p){
-    const labels={A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'};
-    return p.topic || labels[p.category] || 'Problem';
-  }
-
-  function render(mode='week'){
-    const initial=escapeHtml((u.name||'A').trim().charAt(0).toUpperCase());
-    shell('', 'Account', `
-      <main class="account-page">
-        <section class="account-hero">
-          <div class="wrap">
-            <div class="account-hero-grid">
-              <div>
-                <div class="eyebrow">KARP ACCOUNT</div>
-                <h1>Your mathematics dashboard</h1>
-                <p class="lead">Track your problems, study rhythm, exam history and olympiad progress from one focused workspace.</p>
-              </div>
-              <div class="hero-profile">
-                <div class="hero-avatar-wrap">
-                  <img id="hero-photo" class="profile-avatar-large" src="${escapeHtml(u.photoURL||'')}" alt="" style="${u.photoURL?'':'display:none'}">
-                  <div id="hero-initial" class="profile-avatar-large profile-initial" style="${u.photoURL?'display:none':''}">${initial}</div>
-                </div>
-                <div class="hero-profile-name">${escapeHtml(u.name||'KARP Member')}</div>
-                <div class="hero-profile-email">${escapeHtml(u.email||'')}</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="section account-dashboard">
-          <div class="wrap">
-            <div class="account-stats">
-              <div class="account-stat stat-featured"><span class="stat-icon">✓</span><div><div class="account-stat-value">${solvedCount}</div><div class="account-stat-label">Solved problems</div></div><small>MathNet proof archive</small></div>
-              <div class="account-stat"><span class="stat-icon">↗</span><div><div class="account-stat-value">${completed}</div><div class="account-stat-label">Completed exams</div></div></div>
-              <div class="account-stat"><span class="stat-icon">☆</span><div><div class="account-stat-value">${savedCount}</div><div class="account-stat-label">Saved problems</div></div></div>
-              <div class="account-stat"><span class="stat-icon">◷</span><div><div class="account-stat-value">${streak}</div><div class="account-stat-label">Day streak</div></div></div>
-            </div>
-
-            <div class="account-grid">
-              <section class="account-card activity-card">
-                <div class="account-card-head">
-                  <div><div class="tag">ACTIVITY</div><h2>Problem-solving rhythm</h2><p class="card-subtitle">Your solved-problem activity over time.</p></div>
-                  <span id="trend-total" class="small"></span>
-                </div>
-                <div class="trend-tabs">
-                  <button class="trend-tab ${mode==='week'?'active':''}" data-mode="week">Week</button>
-                  <button class="trend-tab ${mode==='month'?'active':''}" data-mode="month">Month</button>
-                  <button class="trend-tab ${mode==='year'?'active':''}" data-mode="year">Year</button>
-                </div>
-                <div id="trend-chart">${chart(mode)}</div>
-                <div class="activity-summary">
-                  <div><strong>${todayCount}</strong><span>today</span></div>
-                  <div><strong>${weekCount}</strong><span>last 7 days</span></div>
-                  <div><strong>${monthCount}</strong><span>this month</span></div>
-                </div>
-              </section>
-
-              <section class="account-card profile-card">
-                <div class="tag">PROFILE</div>
-                <div class="profile-photo-stack">
-                  <img id="profile-photo" class="profile-avatar" src="${escapeHtml(u.photoURL||'')}" alt="Profile photo" style="${u.photoURL?'':'display:none'}">
-                  <div id="profile-initial" class="profile-avatar profile-initial" style="${u.photoURL?'display:none':''}">${initial}</div>
-                </div>
-                <h2>${escapeHtml(u.name||'KARP Member')}</h2>
-                <p class="small">${escapeHtml(u.email||'')}</p>
-                <label class="btn profile-upload" for="profile-file">Change profile photo</label>
-                <input id="profile-file" type="file" accept="image/png,image/jpeg,image/webp" style="display:none">
-                <div class="profile-meta">
-                  <div><span>Role</span><strong>${escapeHtml(u.role||'user')}</strong></div>
-                  <div><span>Member since</span><strong>${u.createdAt?new Date(u.createdAt).toLocaleDateString():'—'}</strong></div>
-                </div>
-                <div class="profile-actions">${u.role==='admin'?'<a class="btn primary" href="/admin.html">Admin Panel</a>':''}<button class="btn" onclick="logout()">Log out</button></div>
-                <div id="photo-status" class="notice"></div>
-              </section>
-            </div>
-
-            <div class="dashboard-two-col">
-              <section class="account-card account-section-card">
-                <div class="account-card-head">
-                  <div><div class="tag">CONSISTENCY</div><h2>Study activity</h2><p class="card-subtitle">Your last 12 weeks, day by day.</p></div>
-                  <span class="heat-legend"><i></i>Less <b></b>More</span>
-                </div>
-                <div class="heatmap">${heatmap()}</div>
-                <div class="heat-footer"><span>84-day window</span><strong>${solvedEvents.length} total solve events</strong></div>
-              </section>
-
-              <section class="account-card account-section-card">
-                <div class="account-card-head">
-                  <div><div class="tag">PACE</div><h2>Your pace</h2><p class="card-subtitle">A compact view of your current momentum.</p></div>
-                </div>
-                <div class="pace-grid">
-                  <div><strong>${todayCount}</strong><span>Today</span></div>
-                  <div><strong>${weekCount}</strong><span>7 days</span></div>
-                  <div><strong>${monthCount}</strong><span>This month</span></div>
-                  <div><strong>${yearCount}</strong><span>This year</span></div>
-                </div>
-              </section>
-            </div>
-
-            <section class="account-card account-section-card">
-              <div class="account-card-head">
-                <div><div class="tag">TOPICS</div><h2>Where you are solving</h2><p class="card-subtitle">Solved problems grouped against the current archive.</p></div>
-              </div>
-              <div class="topic-grid">
-                ${topicStats.map(t=>'<div class="topic-card"><div class="topic-ring" style="--pct:'+t.pct+'%"><span>'+t.solved+'</span></div><div class="topic-name">'+t.label+'</div><div class="topic-line"><span>'+t.solved+' solved</span><span>'+t.total+' in archive</span></div><div class="topic-progress"><i style="width:'+t.pct+'%"></i></div></div>').join('')}
-              </div>
-            </section>
-
-            <div class="dashboard-two-col lower-grid">
-              <section class="account-card account-section-card">
-                <div class="account-card-head">
-                  <div><div class="tag">SAVED</div><h2>Your saved problems</h2></div>
-                  <a class="text-link" href="/problems.html">Browse archive →</a>
-                </div>
-                ${saved.length?saved.slice(0,5).map(p=>'<a class="saved-row" href="/problem.html?id='+encodeURIComponent(p.id)+(p.sourceConfig?'&config='+encodeURIComponent(p.sourceConfig):'')+(p.sourceIndex!=null?'&offset='+encodeURIComponent(p.sourceIndex):'')+'"><div><strong>'+escapeHtml(localized(p,'title'))+'</strong><span>'+escapeHtml(topicForProblem(p))+(p.difficulty?' · '+escapeHtml(p.difficulty):'')+'</span></div><span class="saved-check">Saved ✓</span></a>').join(''):'<div class="empty account-empty">No saved problems yet. Open a problem and press Save.</div>'}
-              </section>
-
-              <section class="account-card account-section-card">
-                <div class="account-card-head">
-                  <div><div class="tag">RECENT</div><h2>Recently solved</h2></div>
-                  <a class="text-link" href="/problems.html">All problems →</a>
-                </div>
-                ${solvedEvents.length?[...solvedEvents].sort((a,b)=>b.date-a.date).slice(0,5).map(e=>{
-                  const p=(content.problems||[]).find(x=>x.id===e.id);
-                  return '<a class="recent-row" href="/problem.html?id='+encodeURIComponent(e.id)+(e.sourceConfig?'&config='+encodeURIComponent(e.sourceConfig):'')+(e.sourceIndex!=null?'&offset='+encodeURIComponent(e.sourceIndex):'')+'"><span class="recent-dot"></span><div><strong>'+escapeHtml(p?localized(p,'title'):(e.title||'Problem'))+'</strong><span>'+escapeHtml(e.country||'')+(e.competition?' · '+escapeHtml(e.competition):'')+(e.year?' · '+escapeHtml(e.year):'')+(e.problemNumber?' · '+escapeHtml(e.problemNumber):'')+' · '+relativeDate(e.date)+'</span></div><span class="recent-arrow">→</span></a>';
-                }).join(''):'<div class="empty account-empty">No solved problems yet.</div>'}
-              </section>
-            </div>
-
-            <section class="account-card account-section-card">
-              <div class="account-card-head">
-                <div><div class="tag">EXAMS</div><h2>Exam history</h2><p class="card-subtitle">Your completed KARP exams.</p></div>
-                <a class="text-link" href="/exams.html">View exams →</a>
-              </div>
-              ${history.length?history.slice(0,8).map(h=>'<div class="exam-history-row"><div><strong>'+escapeHtml(h.titleEn||h.title||'Exam')+'</strong><span class="small">Submitted '+(h.submittedAt?new Date(h.submittedAt).toLocaleString():'—')+'</span></div><a class="btn" href="/exam.html?id='+encodeURIComponent(h.examId)+'">Review</a></div>').join(''):'<div class="empty account-empty">No completed exams yet.</div>'}
-            </section>
-          </div>
-        </section>
-      </main>
-
-      <style>
-        .account-page{min-height:70vh}
-        .account-hero{padding:62px 0 50px;border-bottom:1px solid var(--line,#292d34);background:radial-gradient(circle at 82% 0,rgba(100,110,220,.13),transparent 35%),radial-gradient(circle at 8% 100%,rgba(60,210,230,.06),transparent 30%)}
-        .account-hero-grid{display:flex;align-items:center;justify-content:space-between;gap:42px}
-        .account-hero h1{font-family:'Space Grotesk';font-size:clamp(46px,6vw,78px);line-height:.98;letter-spacing:-4px;margin:8px 0 16px;max-width:760px}
-        .hero-profile{text-align:right;min-width:220px}.hero-avatar-wrap{display:flex;justify-content:flex-end}.profile-avatar-large{width:92px;height:92px;border-radius:50%;object-fit:cover;border:1px solid var(--line,#292d34);box-shadow:0 12px 35px rgba(0,0,0,.16)}
-        .profile-initial{display:grid;place-items:center;background:#20242b;font-size:30px;font-weight:800;color:#fff}.hero-profile-name{margin-top:12px;font-weight:800;font-size:16px}.hero-profile-email{font-size:12px;color:#7d838e;margin-top:3px}
-        .account-dashboard{padding-top:44px}
-        .account-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.account-stat{position:relative;display:flex;align-items:center;gap:13px;min-height:104px;padding:20px 21px;border:1px solid var(--line,#292d34);background:var(--panel,#101216);border-radius:18px;overflow:hidden}
-        .account-stat:after{content:"";position:absolute;right:-25px;top:-25px;width:92px;height:92px;border-radius:50%;background:radial-gradient(circle,rgba(150,160,255,.13),transparent 67%);pointer-events:none}
-        .account-stat.stat-featured{border-color:#3c4354}.stat-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;border:1px solid var(--line,#292d34);background:rgba(255,255,255,.03);font-size:16px}.account-stat-value{font-size:32px;font-weight:800;letter-spacing:-1.2px;line-height:1}.account-stat-label{margin-top:5px;color:#858b96;font-size:12px}.account-stat small{position:absolute;right:15px;bottom:12px;color:#69707b;font-size:10px}
-        .account-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,.72fr);gap:18px}.dashboard-two-col{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;margin-top:18px}
-        .account-card{border:1px solid var(--line,#292d34);background:var(--panel,#101216);border-radius:18px;padding:26px}.account-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:20px}.account-card h2{font-family:'Space Grotesk';font-size:27px;letter-spacing:-.9px;margin:7px 0 0}.card-subtitle{margin:6px 0 0;color:#747b86;font-size:12px}.account-section-card{margin-top:18px}
-        .trend-tabs{display:flex;gap:6px;margin-bottom:18px}.trend-tab{border:1px solid var(--line,#292d34);background:transparent;color:#8d94a0;border-radius:9px;padding:7px 12px;font-size:12px}.trend-tab.active{background:#fff;color:#15171a;border-color:#fff}
-        .trend-chart{height:250px;display:flex;align-items:stretch;gap:7px;padding:12px 0 0;border-top:1px solid var(--line,#292d34)}.trend-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0;gap:6px}.trend-value{font-size:10px;color:#7f8792;height:14px}.trend-bar-wrap{height:172px;width:100%;display:flex;align-items:flex-end}.trend-bar{width:100%;max-width:30px;margin:auto;background:#eef0ff;border-radius:7px 7px 3px 3px;min-height:3px;transition:height .25s ease}.trend-label{font-size:10px;color:#747a84}.activity-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:13px}.activity-summary>div{padding:12px;border:1px solid var(--line,#292d34);border-radius:12px}.activity-summary strong{display:block;font-size:18px}.activity-summary span{display:block;color:#747a84;font-size:11px;margin-top:2px}
-        .profile-card{text-align:center}.profile-photo-stack{min-height:84px;display:grid;place-items:center}.profile-avatar{width:84px;height:84px;border-radius:50%;object-fit:cover;margin:2px auto 15px;border:1px solid #343943}.profile-card h2{font-size:25px}.profile-card p{margin:5px 0 15px}.profile-upload{display:inline-block;margin-bottom:8px}.profile-meta{border-top:1px solid var(--line,#292d34);border-bottom:1px solid var(--line,#292d34);padding:14px 0;margin:16px 0}.profile-meta div{display:flex;justify-content:space-between;gap:15px;text-align:left;padding:5px 0}.profile-meta span{color:#747a84}.profile-meta strong{font-size:13px}.profile-actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}.notice{min-height:18px}
-        .heatmap{display:grid;grid-template-columns:repeat(21,1fr);gap:5px;padding:10px 0}.heat-cell{aspect-ratio:1;border-radius:4px;border:1px solid rgba(255,255,255,.035);background:#1b1e23}.heat-cell.level-1{background:#565d79}.heat-cell.level-2{background:#8b95c7}.heat-cell.level-3{background:#eef0ff}.heat-footer{display:flex;justify-content:space-between;gap:15px;color:#737a84;font-size:11px}.heat-footer strong{color:var(--text)}
-        .heat-legend{display:flex;align-items:center;gap:5px;color:#737a84;font-size:10px;white-space:nowrap}.heat-legend i,.heat-legend b{display:block;width:10px;height:10px;border-radius:3px;background:#1b1e23}.heat-legend b{background:#eef0ff}
-        .pace-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.pace-grid>div{padding:19px;border:1px solid var(--line,#292d34);border-radius:14px;text-align:center}.pace-grid strong{display:block;font-size:29px;letter-spacing:-1px}.pace-grid span{display:block;color:#747a84;font-size:11px;margin-top:4px}
-        .topic-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.topic-card{padding:20px;border:1px solid var(--line,#292d34);border-radius:14px;background:rgba(255,255,255,.016)}.topic-ring{--pct:0%;width:74px;height:74px;border-radius:50%;display:grid;place-items:center;margin:0 auto 13px;background:conic-gradient(#eef0ff var(--pct),#282d35 0);position:relative}.topic-ring:after{content:"";position:absolute;inset:6px;border-radius:50%;background:var(--panel,#101216)}.topic-ring span{position:relative;z-index:1;color:var(--text);font-size:20px;font-weight:800}.topic-name{text-align:center;font-weight:800;font-size:14px}.topic-line{display:flex;justify-content:space-between;gap:10px;margin-top:7px;color:#747a84;font-size:10px}.topic-progress{height:4px;background:#252930;border-radius:99px;overflow:hidden;margin-top:13px}.topic-progress i{display:block;height:100%;background:#eef0ff;border-radius:99px}
-        .text-link{color:#aeb7ff;font-size:12px;font-weight:700;margin-top:4px;white-space:nowrap}.saved-row,.recent-row{display:flex;align-items:center;gap:12px;padding:15px 0;border-top:1px solid var(--line,#292d34)}.saved-row>div,.recent-row>div{min-width:0;flex:1}.saved-row strong,.recent-row strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.saved-row span,.recent-row span{display:block;color:#747a84;font-size:11px;margin-top:4px}.saved-check{color:#aeb7ff!important;font-weight:700;white-space:nowrap}.recent-dot{width:8px;height:8px;border-radius:50%;background:#eef0ff;box-shadow:0 0 0 4px rgba(238,240,255,.08)}.recent-arrow{font-size:14px!important;color:#858c97!important}
-        .exam-history-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:16px 0;border-top:1px solid var(--line,#292d34)}.exam-history-row strong{display:block;font-size:13px}.exam-history-row .small{display:block;margin-top:4px}.account-empty{padding:16px 0}.empty{color:#747a84}
-        html[data-theme="light"] .account-stat,html[data-theme="light"] .account-card{background:#fff;border-color:#dedfe2}.account-stat.stat-featured{background:linear-gradient(145deg,var(--panel,#101216),rgba(150,160,255,.06))}html[data-theme="light"] .account-stat.stat-featured{background:linear-gradient(145deg,#fff,#f7f7ff)}
-        html[data-theme="light"] .profile-initial{background:#eef0f2;color:#17191c;border-color:#d9dbde}html[data-theme="light"] .trend-tab.active{background:#17191c;color:#fff;border-color:#17191c}html[data-theme="light"] .trend-bar{background:#17191c}html[data-theme="light"] .heat-cell{background:#eceef0;border-color:#e0e1e4}html[data-theme="light"] .heat-cell.level-1{background:#b9bdc6}html[data-theme="light"] .heat-cell.level-2{background:#777e8b}html[data-theme="light"] .heat-cell.level-3{background:#17191c}html[data-theme="light"] .topic-ring{background:conic-gradient(#17191c var(--pct),#e4e6e8 0)}html[data-theme="light"] .topic-ring:after{background:#fff}html[data-theme="light"] .topic-progress{background:#e3e5e7}html[data-theme="light"] .topic-progress i{background:#17191c}
-        @media(max-width:950px){.account-stats{grid-template-columns:repeat(2,1fr)}.account-grid,.dashboard-two-col{grid-template-columns:1fr}.topic-grid{grid-template-columns:repeat(2,1fr)}.account-hero-grid{align-items:flex-start}.hero-profile{min-width:180px}}
-        @media(max-width:600px){.account-stats,.topic-grid{grid-template-columns:1fr}.account-card,.account-stat{padding:20px}.account-hero{padding:48px 0 36px}.account-hero-grid{flex-direction:column}.hero-profile{text-align:left;width:100%}.hero-avatar-wrap{justify-content:flex-start}.trend-chart{gap:3px}.trend-value{font-size:9px}.heatmap{gap:3px}.account-card-head{gap:10px}.activity-summary{grid-template-columns:1fr 1fr 1fr}}
-      </style>
-    `);
-
-    const totalLabel=document.getElementById('trend-total');
-    if(totalLabel) totalLabel.textContent=(mode==='week'?weekCount:mode==='month'?monthCount:yearCount)+' solved';
-
-    document.querySelectorAll('.trend-tab').forEach(b=>b.onclick=()=>render(b.dataset.mode));
-
-    const file=document.getElementById('profile-file');
-    if(file) file.onchange=async e=>{
-      const image=e.target.files?.[0];
-      if(!image)return;
-      const status=document.getElementById('photo-status');
-      if(image.size>5*1024*1024){status.className='notice error';status.textContent='Please choose an image under 5 MB.';return}
-      status.className='notice';status.textContent='Uploading…';
-      try{
-        const imageRef=ref(storage,'users/'+u.id+'/profile/avatar');
-        await uploadBytes(imageRef,image,{contentType:image.type});
-        const url=await getDownloadURL(imageRef);
-        await setDoc(doc(db,'users',u.id),{photoURL:url},{merge:true});
-        ['profile-photo','hero-photo'].forEach(id=>{const el=document.getElementById(id);if(el){el.src=url;el.style.display=''}})
-        ['profile-initial','hero-initial'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none'})
-        status.className='notice success';status.textContent='Profile photo updated.';
-      }catch(err){status.className='notice error';status.textContent=err.message}
-    };
-  }
-
-  render('week');
-});
+    mockPanel.appendChild(review);
+    typesetMath(review);
+  });
+})();
 </script>
 </body>
 </html>
