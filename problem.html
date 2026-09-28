@@ -160,16 +160,18 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
       }
     }
 
-    const title=currentProblem.competition||currentProblem.title||('MathNet — '+currentProblem.id);
-    const source=[currentProblem.country,currentProblem.year,currentProblem.problemNumber].filter(Boolean).join(' · ');
+    const competition=currentProblem.competition||currentProblem.title||'MathNet Problem';
+    const sourceParts=[competition,currentProblem.section,currentProblem.problemNumber].filter(Boolean);
+    const title=sourceParts.join(' — ');
+    const sourceMeta=[currentProblem.country,currentProblem.year].filter(Boolean).join(' · ');
 
     shell('Problems',title,`
       <main class="problem-page">
         <section class="pagehero">
           <div class="wrap" style="max-width:1100px">
-            <div class="eyebrow">${escapeHtml(labelsForProblem(currentProblem))}</div>
+            <div class="eyebrow">MathNet</div>
             <h1>${escapeHtml(title)}</h1>
-            <div class="problem-source">${escapeHtml(source||'MathNet Problem')}</div>
+            <div class="problem-source">${escapeHtml(sourceMeta||'MathNet Problem')}</div>
           </div>
         </section>
         <section class="section">
