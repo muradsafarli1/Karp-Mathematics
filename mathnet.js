@@ -26,7 +26,14 @@ let __mathnetBackground=null;
 let __mathnetQuickPromise=null;
 
 function mathnetCategory(row){
-  const paths=(Array.isArray(row.topics_flat)?row.topics_flat:[]).join(' ').toLowerCase();
+  const topics=Array.isArray(row.topics_flat)?row.topics_flat:[];
+  const top=topics.map(x=>String(x||'').trim().toLowerCase()).find(Boolean)||'';
+  const direct=[
+    ['G',/^geometry\b/],['N',/^(number theory|number_theory)\b/],
+    ['C',/^combinatorics\b/],['A',/^algebra\b/]
+  ];
+  for(const [key,re] of direct)if(re.test(top))return key;
+  const paths=topics.join(' ').toLowerCase();
   const text=String(row.problem_markdown||'').toLowerCase();
   const rules=[
     ['G',/(geometry|triangle|circle|angle|polygon|quadrilateral|concyclic|similarity|incircle|circumcircle|orthocenter)/],
@@ -84,10 +91,11 @@ function normalizeMathnetRow(raw,position,shard){
   };
 }
 function mathnetQualifies(row){
-  const lang=String(row.language||'').toLowerCase(),type=String(row.problemType||'').toLowerCase();
-  return ['english','en'].includes(lang)||lang.startsWith('en-')
-    ? row.hasSolution&&(type==='proof only'||type==='proof and answer')&&String(row.statement||'').trim().length>0
-    : false;
+  const lang=String(row.language||'').trim().toLowerCase();
+  const type=String(row.problemType||'').trim().toLowerCase();
+  const english=['english','en'].includes(lang)||lang.startsWith('en-');
+  const proofType=/^proof(?: only| and answer)?$/.test(type)||!type;
+  return english&&row.hasSolution&&proofType&&String(row.statement||'').trim().length>0;
 }
 function openMathnetDB(){
   return new Promise(resolve=>{
@@ -137,16 +145,34 @@ function mathnetSort(a,b){
   return (a.title||'').localeCompare(b.title||'');
 }
 
+async function mathnetSampleShards(shards,rowEnd=220){
+  const chunks=[];let cursor=0;
+  const targets=[...new Set(shards.map(Number).filter(s=>s>=0&&s<MATHNET.parquetShards))];
+  const workers=Math.min(8,targets.length||1);
+  async function worker(){
+    while(cursor<targets.length){
+      const shard=targets[cursor++];
+      try{
+        const rows=await readShard(shard,0,rowEnd);
+        if(rows.length)chunks.push(...rows);
+      }catch{}
+    }
+  }
+  await Promise.all(Array.from({length:workers},worker));
+  const unique=[...new Map(chunks.map(x=>[x.id,x])).values()].sort(mathnetSort);
+  if(unique.length)await dbPutBatch(unique);
+  return unique;
+}
 async function mathnetLoadQuickIndex(){
   if(__mathnetQuickPromise)return __mathnetQuickPromise;
   __mathnetQuickPromise=(async()=>{
-    const existing=await dbGetAll();if(existing.length){existing.sort(mathnetSort);return existing}
-    const targets=Array.from({length:8},(_,i)=>i),chunks=[];
-    const workers=Math.min(4,targets.length);let cursor=0;
-    async function worker(){while(cursor<targets.length){const s=targets[cursor++];try{const rows=await readShard(s,0,180);if(rows.length)chunks.push(...rows)}catch{}}}
-    await Promise.all(Array.from({length:workers},worker));
-    const unique=[...new Map(chunks.map(x=>[x.id,x])).values()].sort(mathnetSort);
-    await dbPutBatch(unique);return unique;
+    const existing=await dbGetAll();
+    const initial=[0,3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48];
+    if(existing.length>=120){existing.sort(mathnetSort);return existing}
+    const sampled=await mathnetSampleShards(initial,220);
+    const merged=[...existing,...sampled];
+    const unique=[...new Map(merged.map(x=>[x.id,x])).values()].sort(mathnetSort);
+    return unique;
   })();
   try{return await __mathnetQuickPromise}finally{__mathnetQuickPromise=null}
 }
@@ -197,23 +223,73 @@ async function mathnetProblemById(id,sourceConfig,sourceIndex,sourceShard){
   return (await mathnetGetArchive()).find(r=>r.id===target)||null;
 }
 async function mathnetFind(options){
-  options=options||{};const categories=Array.isArray(options.categories)&&options.categories.length?options.categories:['A','C','G','N'];
-  const difficulty=options.difficulty||'any',count=Math.max(1,Math.min(30,Number(options.count||6)));
+  options=options||{};
+  const categories=Array.isArray(options.categories)&&options.categories.length?options.categories:['A','C','G','N'];
+  const difficulty=options.difficulty||'any';
+  const count=Math.max(1,Math.min(30,Number(options.count||6)));
   const sequence=Array.isArray(options.sequence)&&options.sequence.length===count?options.sequence:null;
+  const onProgress=typeof options.onProgress==='function'?options.onProgress:()=>{};
   let all=await mathnetLoadQuickIndex();
-  const running=mathnetBackgroundLoad().catch(()=>null);
-  let pool=all.filter(q=>categories.includes(q.category)&&(difficulty==='any'||q.difficulty===difficulty));
-  if(pool.length<count)pool=all.filter(q=>categories.includes(q.category));
-  if(pool.length<count)pool=all.filter(q=>mathnetQualifies(q));
-  const by={A:[],C:[],G:[],N:[]};pool.forEach(q=>(by[q.category]||(by[q.category]=[])).push(q));
-  const used=new Set(),picked=[];let seed=Number(options.seed||Date.now());
-  for(let i=0;i<count;i++){
-    const wanted=sequence?sequence[i]:categories[i%categories.length],list=by[wanted]||[];
-    let candidate=null;if(list.length){const start=Math.abs(Math.floor(seed+i*37))%list.length;for(let j=0;j<list.length;j++){const q=list[(start+j)%list.length];if(!used.has(q.id)){candidate=q;break}}}
-    if(!candidate)for(const q of pool){if(!used.has(q.id)){candidate=q;break}}
-    if(!candidate)break;used.add(candidate.id);picked.push(candidate);
+
+  function matchingPool(rows){
+    return rows.filter(q=>{
+      if(!categories.includes(q.category))return false;
+      if(difficulty!=='any'&&q.difficulty!==difficulty)return false;
+      return true;
+    });
   }
-  return {questions:picked,total:(await dbGetAll()).length,source:'ShadenA/MathNet'};
+  function choose(rows){
+    const pool=matchingPool(rows);
+    const by={A:[],C:[],G:[],N:[]};
+    pool.forEach(q=>(by[q.category]||(by[q.category]=[])).push(q));
+    const used=new Set(),picked=[];
+    const wantedAt=i=>sequence?sequence[i]:categories[i%categories.length];
+    let seed=Number(options.seed||Date.now());
+    for(let i=0;i<count;i++){
+      const wanted=wantedAt(i),list=by[wanted]||[];
+      const start=list.length?Math.abs(Math.floor(seed+i*37))%list.length:0;
+      let candidate=null;
+      for(let j=0;j<list.length;j++){
+        const q=list[(start+j)%list.length];
+        if(!used.has(q.id)){candidate=q;break}
+      }
+      if(!candidate&&!sequence){
+        for(const q of pool)if(!used.has(q.id)){candidate=q;break}
+      }
+      if(!candidate)break;
+      used.add(candidate.id);picked.push(candidate);
+    }
+    return picked;
+  }
+
+  let picked=choose(all);
+  onProgress(picked.length,count,'cache');
+
+  // The old version depended on only the first 1,440 rows of the archive.
+  // Sample many distributed shards until the requested sequence is actually available.
+  if(picked.length<count){
+    const moreShards=[1,2,4,5,7,8,10,11,13,14,16,17,19,20,22,23,25,26,28,29,31,32,34,35,37,38,40,41,43,44,46,47,49];
+    const known=new Set(all.map(q=>q.sourceShard));
+    const targets=moreShards.filter(s=>!known.has(s));
+    for(let i=0;i<targets.length&&picked.length<count;i+=8){
+      const batch=targets.slice(i,i+8);
+      const sampled=await mathnetSampleShards(batch,320);
+      if(sampled.length)all=[...new Map([...all,...sampled].map(x=>[x.id,x])).values()].sort(mathnetSort);
+      picked=choose(all);
+      onProgress(picked.length,count,'archive');
+      if(picked.length>=count)break;
+    }
+  }
+
+  // When a strict sequence was requested, never silently substitute another category.
+  if(picked.length<count){
+    const reason=sequence
+      ? 'The archive has not provided enough English proof problems for this exact sequence yet.'
+      : 'The archive has not provided enough English proof problems for the selected filters yet.';
+    return {questions:picked,total:all.length,source:'ShadenA/MathNet',reason};
+  }
+  mathnetBackgroundLoad().catch(()=>{});
+  return {questions:picked,total:all.length,source:'ShadenA/MathNet'};
 }
 function mathnetSaveMock(mock){localStorage.setItem('karp_last_mock',JSON.stringify({...mock,savedAt:new Date().toISOString()}))}
 function mathnetLoadMock(){try{return JSON.parse(localStorage.getItem('karp_last_mock')||'null')}catch{return null}}
