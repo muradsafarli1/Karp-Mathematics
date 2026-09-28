@@ -79,7 +79,7 @@
 <script>
 (async()=>{
   const labels={A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'};
-  let mock=null,timer=null,seconds=0;
+  let mock=null,timer=null,seconds=0,finished=false,finishSaved=false;
 
   function esc(x){return escapeHtml(x==null?'':String(x));}
   function md(x){return DOMPurify.sanitize(marked.parse(String(x||''),{breaks:true}));}
