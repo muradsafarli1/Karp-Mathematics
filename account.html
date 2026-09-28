@@ -101,26 +101,11 @@
 
   const examList=document.getElementById('exam-list');
   if(!exams.length)examList.innerHTML='<div class="empty">No completed exams yet.</div>';
-  else{
-    examList.innerHTML=exams.map((e,i)=>'<div class="history-card"><div class="history-card-title">'+escapeHtml(e.titleEn||e.title||'Exam')+'</div><div class="history-card-meta">'+escapeHtml(dateText(e.submittedAt))+'</div><div class="history-card-actions"><button class="btn" data-exam="'+i+'">Review</button></div><div id="exam-panel-'+i+'" class="review-panel"></div></div>').join('');
-    examList.querySelectorAll('[data-exam]').forEach(b=>b.onclick=()=>{
-      const i=Number(b.dataset.exam),p=document.getElementById('exam-panel-'+i),e=exams[i],open=p.classList.toggle('open');b.textContent=open?'Hide':'Review';if(!open)return;
-      p.innerHTML=(e.questions||[]).map((q,j)=>{const statement=q.statementEn||q.statement||q.text||q.statementAz||'';const ans=e.answers?.[q.id]??e.answers?.[q.code]??e.answers?.[String(j)]??'No answer';return '<div class="review-question"><div class="review-qtitle">Question '+(j+1)+(q.code?' · '+escapeHtml(q.code):'')+'</div><div class="review-body">'+md(statement)+'</div><div class="review-answer">Your answer: '+escapeHtml(Array.isArray(ans)?ans.join(', '):String(ans))+'</div></div>';}).join('')||'<div class="empty">No stored question data.</div>';
-      typesetMath(p);setTimeout(()=>p.scrollIntoView({behavior:'smooth',block:'nearest'}),60);
-    });
-  }
+  else examList.innerHTML=exams.map((e,i)=>'<div class="history-card"><div class="history-card-title">'+escapeHtml(e.titleEn||e.title||'Exam')+'</div><div class="history-card-meta">'+escapeHtml(dateText(e.submittedAt))+'</div><div class="history-card-actions"><a class="btn" href="/exam.html?id='+encodeURIComponent(e.examId||e.id||'')+'&review=1">Review</a></div></div>').join('');
 
   const mockList=document.getElementById('mock-list');
   if(!mocks.length)mockList.innerHTML='<div class="empty">No completed mocks yet.</div>';
-  else{
-    mockList.innerHTML=mocks.map((m,i)=>'<div class="history-card"><div class="history-card-title">Mock '+(mocks.length-i)+'</div><div class="history-card-meta">'+escapeHtml(dateText(m.completedAt))+' · '+escapeHtml((m.questions?.length||0)+' questions · '+(m.minutes||0)+' min')+'</div><div class="history-card-actions"><button class="btn" data-mock="'+i+'">Review</button></div><div id="mock-panel-'+i+'" class="review-panel"></div></div>').join('');
-    mockList.querySelectorAll('[data-mock]').forEach(b=>b.onclick=()=>{
-      const i=Number(b.dataset.mock),p=document.getElementById('mock-panel-'+i),m=mocks[i],open=p.classList.toggle('open');b.textContent=open?'Hide':'Review';if(!open)return;
-      p.innerHTML=(m.questions||[]).map((q,j)=>{const sol=(q.solutions||[]).map((s,k)=>'<div style="margin-top:7px"><div style="font-size:9px;letter-spacing:1px;color:var(--muted)">SOLUTION '+(k+1)+'</div>'+md(s)+'</div>').join('')||'<div class="review-answer">No supplied solution.</div>';return '<div class="review-question"><div class="review-qtitle">Question '+(j+1)+'</div><div class="review-body">'+md(q.statement)+'</div><div class="review-solution"><button class="btn" data-sol="'+i+'-'+j+'">Show solution</button><div id="sol-'+i+'-'+j+'" class="review-solution-body">'+sol+'</div></div></div>';}).join('')||'<div class="empty">No stored question data.</div>';
-      p.querySelectorAll('[data-sol]').forEach(x=>x.onclick=()=>{const body=document.getElementById('sol-'+x.dataset.sol),open=body.classList.toggle('open');x.textContent=open?'Hide solution':'Show solution';if(open)typesetMath(body);});
-      typesetMath(p);setTimeout(()=>p.scrollIntoView({behavior:'smooth',block:'nearest'}),60);
-    });
-  }
+  else mockList.innerHTML=mocks.map((m,i)=>'<div class="history-card"><div class="history-card-title">'+escapeHtml(m.title||('Mock '+(mocks.length-i)))+'</div><div class="history-card-meta">'+escapeHtml(dateText(m.completedAt))+' · '+escapeHtml((m.questions?.length||0)+' questions · '+(m.minutes||0)+' min')+'</div><div class="history-card-actions"><a class="btn" href="/mock.html?review='+encodeURIComponent(m.id||'')+'">Review</a></div></div>').join('');
 
   document.querySelectorAll('#activity-switch button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#activity-switch button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('activity-chart').innerHTML=chartHtml(b.dataset.mode);});
 })();
