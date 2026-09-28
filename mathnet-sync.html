@@ -51,13 +51,13 @@
     const m=s.match(/(?:^|[^0-9])(19\d{2}|20\d{2})(?:[^0-9]|$)/);return m?m[1]:'';
   }
   function pnoFor(r){
-    const direct=['problem_number','problemNumber','problem_no','problemNo','number'];
+    const direct=['problem_number','problemNumber','problem_no','problemNo'];
     for(const key of direct){
       const raw=r?.[key];
       if(raw!=null&&String(raw).trim()){
         const v=String(raw).trim();
-        const m=v.match(/(?:^|\s)P\s*([1-9]\d?)\b/i);
-        return m?'P'+m[1]:'P'+v.replace(/^0+/,'');
+        const m=v.match(/(?:^|\s)P\s*([1-9]\d?)\b/i)||v.match(/^([1-9]\d?)$/);
+        if(m)return'P'+m[1];
       }
     }
     const source=String([r?.source_booklet,r?.booklet_source].filter(Boolean).join(' '));
@@ -87,9 +87,7 @@
   }
   function safeId(sourceId){return 'mn_'+btoa(unescape(encodeURIComponent(sourceId))).replace(/[+/=]/g,'_');}
   function title(r){
-    const c=String(r.competition||'MathNet').trim(),y=yearFor(r),p=pnoFor(r),parts=[];
-    if(y&&!c.includes(y))parts.push(y);if(p&&!c.toLowerCase().includes(p.toLowerCase()))parts.push(p);
-    return parts.length?c+' — '+parts.join(' · '):c;
+    return String(r.competition||'MathNet').trim()||'MathNet';
   }
   function images(r){
     return Array.isArray(r.images)?r.images.map(x=>typeof x==='string'?x:x?.src||'').filter(Boolean):[];
@@ -110,7 +108,7 @@
       id,sourceId,sourceIndex:Number(raw.row_idx??-1),country:String(r.country||'').trim(),competition,year,
       section:String(r.section||'').trim(),problemNumber,sourceBooklet:String(r.source_booklet||'').trim(),
       bookletSource:String(r.booklet_source||'').trim(),language:'English',problemType:String(r.problem_type||'').trim(),
-      category,difficulty,title: (()=>{const parts=[];if(year&&!competition.includes(year))parts.push(year);if(problemNumber&&!competition.toLowerCase().includes(problemNumber.toLowerCase()))parts.push(problemNumber);return parts.length?competition+' — '+parts.join(' · '):competition})(),
+      category,difficulty,title:competition,
       statement,solutions:sols,finalAnswer:r.final_answer==null?'':String(r.final_answer||''),hasImages:images(r).length>0,
       version:VERSION,randomKey:Math.random(),randomBucket:Math.floor(Math.random()*100),poolKey:category+'-'+difficulty
     };
