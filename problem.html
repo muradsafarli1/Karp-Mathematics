@@ -33,7 +33,9 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
 <body>
 <script>
 (async()=>{
-  const id=new URLSearchParams(location.search).get('id');
+  const params=new URLSearchParams(location.search);
+  const id=params.get('id');
+  const sourceIndex=params.get('offset');
   if(!id){location.href='/problems.html';return}
 
   function md(value){
@@ -103,7 +105,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
   let currentProblem=null;
 
   try{
-    currentProblem=await mathnetProblemById(id);
+    currentProblem=await mathnetProblemById(id,sourceIndex);
     if(!currentProblem || !currentProblem.hasSolution || currentProblem.language.toLowerCase()!=='en'
       || !/^(proof only|proof and answer)$/i.test(currentProblem.problemType||'')){
       location.href='/problems.html';
