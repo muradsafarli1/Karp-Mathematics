@@ -7,12 +7,23 @@ const MATHNET_FIRESTORE={
   shards:'mathnetIndexShards',
   pools:'mathnetPools',
   meta:'mathnetMeta',
-  state:'state'
+  state:'state',
+  problemsV2:'mathnetProblemsV2',
+  shardsV2:'mathnetIndexShardsV2'
 };
 let __mathnetIndexPromise=null;
 let __mathnetCachePromise=null;
 
 function mathnetCategory(row){return ['A','C','G','N'].includes(row?.category)?row.category:'A';}
+
+async function mathnetRuntimeCollections(db,getDoc,doc){
+  const snap=await getDoc(doc(db,MATHNET_FIRESTORE.meta,MATHNET_FIRESTORE.state));
+  const state=snap.exists()?snap.data():{};
+  if(state.activeNamespace==='v2'){
+    return {problems:MATHNET_FIRESTORE.problemsV2,shards:MATHNET_FIRESTORE.shardsV2,state};
+  }
+  return {problems:MATHNET_FIRESTORE.problems,shards:MATHNET_FIRESTORE.shards,state};
+}
 
 function mathnetTitle(row){
   const competition=String(row?.competition||'MathNet').trim();
@@ -60,8 +71,8 @@ async function mathnetLoadAllIndex(onProgress,onInitial){
   __mathnetIndexPromise=(async()=>{
     const {db}=await fb();
     const {doc,getDoc,collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-    const stateSnap=await getDoc(doc(db,MATHNET_FIRESTORE.meta,MATHNET_FIRESTORE.state));
-    const state=stateSnap.exists()?stateSnap.data():{};
+    const runtime=await mathnetRuntimeCollections(db,getDoc,doc);
+    const state=runtime.state;
     const version=String(state.version||'');
     const cachedVersion=String(await mathnetCacheGet('version')||'');
     const cached=version&&cachedVersion===version?await mathnetCacheGet('index'):null;
@@ -72,7 +83,7 @@ async function mathnetLoadAllIndex(onProgress,onInitial){
       return normalized;
     }
     if(!state.ready)throw Object.assign(new Error('MathNet archive has not been synced to Firebase yet.'),{warmingUp:true});
-    const snaps=await getDocs(collection(db,MATHNET_FIRESTORE.shards));
+    const snaps=await getDocs(collection(db,runtime.shards));
     const rows=[];
     snaps.forEach(s=>{
       const d=s.data();
@@ -116,7 +127,8 @@ async function mathnetProblemById(id){
   if(!target)return null;
   const {db}=await fb();
   const {doc,getDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const snap=await getDoc(doc(db,MATHNET_FIRESTORE.problems,target));
+  const runtime=await mathnetRuntimeCollections(db,getDoc,doc);
+  const snap=await getDoc(doc(db,runtime.problems,target));
   if(!snap.exists())return null;
   const x=snap.data();
   return {...x,id:snap.id,sourceType:'mathnet',category:mathnetCategory(x),title:x.title||mathnetTitle(x),hasSolution:true};
@@ -134,7 +146,8 @@ async function mathnetFind(options={}){
   const wanted=sequence&&sequence.length===count?sequence:Array.from({length:count},(_,i)=>categories[i%categories.length]);
 
   const {db}=await fb();
-  const {collection,query,where,orderBy,startAt,limit,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const {doc,getDoc,collection,query,where,orderBy,startAt,limit,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const runtime=await mathnetRuntimeCollections(db,getDoc,doc);
   const used=new Set();
   const selected=[];
 
@@ -142,10 +155,10 @@ async function mathnetFind(options={}){
     const constraints=[where('category','==',cat)];
     if(difficulty==='easy'||difficulty==='hard')constraints.push(where('difficulty','==',difficulty));
     const r=Math.random();
-    let snap=await getDocs(query(collection(db,MATHNET_FIRESTORE.problems),...constraints,orderBy('randomKey'),startAt(r),limit(6)));
+    let snap=await getDocs(query(collection(db,runtime.problems),...constraints,orderBy('randomKey'),startAt(r),limit(6)));
     let docs=snap.docs.filter(x=>!used.has(x.id));
     if(!docs.length){
-      snap=await getDocs(query(collection(db,MATHNET_FIRESTORE.problems),...constraints,orderBy('randomKey'),limit(6)));
+      snap=await getDocs(query(collection(db,runtime.problems),...constraints,orderBy('randomKey'),limit(6)));
       docs=snap.docs.filter(x=>!used.has(x.id));
     }
     const chosen=docs[Math.floor(Math.random()*docs.length)];
@@ -163,7 +176,7 @@ async function mathnetFind(options={}){
       if(selected.length>=count)break;
       const constraints=[where('category','==',cat)];
       if(difficulty==='easy'||difficulty==='hard')constraints.push(where('difficulty','==',difficulty));
-      const snap=await getDocs(query(collection(db,MATHNET_FIRESTORE.problems),...constraints,limit(20)));
+      const snap=await getDocs(query(collection(db,runtime.problems),...constraints,limit(20)));
       for(const d of snap.docs){
         if(!used.has(d.id)){used.add(d.id);selected.push(d.id);if(selected.length>=count)break}
       }
@@ -173,7 +186,7 @@ async function mathnetFind(options={}){
   const docsById=new Map();
   for(let i=0;i<selected.length;i+=30){
     const ids=selected.slice(i,i+30);
-    const snap=await getDocs(query(collection(db,MATHNET_FIRESTORE.problems),where('__name__','in',ids)));
+    const snap=await getDocs(query(collection(db,runtime.problems),where('__name__','in',ids)));
     snap.forEach(s=>docsById.set(s.id,{...s.data(),id:s.id}));
   }
   const questions=selected.map(id=>docsById.get(id)).filter(Boolean)
