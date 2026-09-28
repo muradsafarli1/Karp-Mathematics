@@ -15,7 +15,13 @@ const notice=document.getElementById("notice"),emailBtn=document.getElementById(
 const googleMarkup=googleBtn.innerHTML;
 async function finishLogin(cred){
   const ref=doc(db,"users",cred.user.uid),snap=await getDoc(ref);
-  if(!snap.exists()) await setDoc(ref,{name:cred.user.displayName||cred.user.email?.split("@")[0]||"User",email:cred.user.email||"",role:"user",createdAt:new Date().toISOString(),photoURL:cred.user.photoURL||""});
+  const now=new Date().toISOString();
+  if(!snap.exists()){
+    await setDoc(ref,{name:cred.user.displayName||cred.user.email?.split("@")[0]||"User",email:cred.user.email||"",role:"user",createdAt:now,photoURL:cred.user.photoURL||"",lastLoginAt:now,loginCount:1});
+  }else{
+    const old=snap.data()||{};
+    await setDoc(ref,{lastLoginAt:now,loginCount:Number(old.loginCount||0)+1},{merge:true});
+  }
   const profile=(await getDoc(ref)).data()||{};
   notice.className="notice success";notice.textContent="Signed in. Opening KARP…";
   location.replace(profile.role==="admin"?"/admin.html":"/account.html");
