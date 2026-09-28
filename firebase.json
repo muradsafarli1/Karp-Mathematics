@@ -70,10 +70,6 @@
         "destination": "/exam.html"
       },
       {
-        "source": "/desmos",
-        "destination": "/desmos.html"
-      },
-      {
         "source": "/geogebra",
         "destination": "/geogebra.html"
       },
