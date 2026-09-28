@@ -213,7 +213,6 @@ async function mathnetFind(options){
     if(!candidate)for(const q of pool){if(!used.has(q.id)){candidate=q;break}}
     if(!candidate)break;used.add(candidate.id);picked.push(candidate);
   }
-  await Promise.resolve(running);
   return {questions:picked,total:(await dbGetAll()).length,source:'ShadenA/MathNet'};
 }
 function mathnetSaveMock(mock){localStorage.setItem('karp_last_mock',JSON.stringify({...mock,savedAt:new Date().toISOString()}))}
