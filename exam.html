@@ -21,7 +21,7 @@ html[data-theme="light"] .exam-question{border-color:#dedfe2!important}
     const user=await me();
     const d=await api('/api/exams/'+encodeURIComponent(id)),e=d.exam;
     if(!e){location.href='/exams.html';return}
-    const hd=user?(await api('/api/exams/history').catch(()=>({history:[]}))).history||[]:[],previous=hd.find(x=>x.examId===id);
+    const hd=user?(await api('/api/exams/history').catch(()=>({history:[]}))).history||[]:[];let previous=hd.find(x=>x.examId===id);
     const finished=!!previous;
     const math=s=>DOMPurify.sanitize(marked.parse(String(s||'').replace(/\\$\\$([\\s\\S]*?)\\$\\$/g,'\\\\[$1\\\\]').replace(/(^|[^\\\\])\\$([^$\\n]+)\\$/g,'$1\\\\($2\\\\)'),{breaks:true}));
     const dateNow=()=>new Date().toLocaleString();
