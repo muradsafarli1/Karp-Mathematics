@@ -68,7 +68,8 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
     try{return JSON.parse(localStorage.getItem('karp_saved_mathnet')||'{}')}catch{return {}}
   }
 
-  function toggleSave(){
+  async function toggleSave(){
+    if(!(await ensureSignedIn('Save a problem','Sign in or create an account to save problems and find them later in your account.')))return;
     const data=getSaved();
     if(data[id]) delete data[id]; else data[id]=saveRecord();
     localStorage.setItem('karp_saved_mathnet',JSON.stringify(data));
@@ -80,7 +81,8 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
     b.textContent=getSaved()[id]?'Saved ✓':'Save';
   }
 
-  function toggleSolved(){
+  async function toggleSolved(){
+    if(!(await ensureSignedIn('Mark a problem solved','Sign in or create an account to keep your solved-problem history and progress.')))return;
     const data=getSolved();
     if(data[id]) delete data[id];
     else data[id]={...saveRecord(),dates:[new Date().toISOString()]};
