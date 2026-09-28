@@ -10,8 +10,8 @@ const MATHNET={
   maxRows:30676
 };
 
-const MATHNET_DB_NAME='KARP_MATHNET_ARCHIVE';
-const MATHNET_DB_VERSION=1;
+const MATHNET_DB_NAME='KARP_MATHNET_ARCHIVE_V2';
+const MATHNET_DB_VERSION=2;
 const MATHNET_STORE='problems';
 const MATHNET_META='meta';
 const MATHNET_INFLIGHT=new Map();
@@ -272,7 +272,7 @@ async function mathnetLoadAllIndex(onProgress){
       throw new Error('MathNet could not be reached. Refresh once; the archive will resume from the last saved batch.');
     }
 
-    const total=Math.max(first.total,MATHNET.maxRows);
+    const total=first.total;
     const firstBatch=first.rows.filter(mathnetQualifies).map(r=>normalizeForCache(r));
     await dbPutBatch(firstBatch);
     let loadedRaw=first.rows.length;
@@ -282,7 +282,7 @@ async function mathnetLoadAllIndex(onProgress){
     const offsets=[];
     for(let offset=100;offset<first.total;offset+=100)offsets.push(offset);
 
-    let cursor=0;
+    let cursor=0,failed=[];
     const workers=Math.min(6,Math.max(2,navigator.hardwareConcurrency?Math.floor(navigator.hardwareConcurrency/2):4));
     async function worker(){
       while(cursor<offsets.length){
@@ -293,16 +293,26 @@ async function mathnetLoadAllIndex(onProgress){
           const good=batch.rows.filter(mathnetQualifies).map(r=>normalizeForCache(r));
           if(good.length){await dbPutBatch(good);saved+=good.length;}
           if(onProgress)onProgress(loadedRaw,total,false,saved);
-        }catch{
-          // Retry the same slice once through the request function; if still unavailable,
-          // leave the archive incomplete so the next visit can resume rather than failing.
-        }
+        }catch{failed.push(offset);}
       }
     }
     await Promise.all(Array.from({length:workers},()=>worker()));
 
+    for(let round=0;round<3&&failed.length;round++){
+      const retry=failed.splice(0);
+      for(const offset of retry){
+        try{
+          const batch=await mathnetRows(offset,100);
+          loadedRaw+=batch.rows.length;
+          const good=batch.rows.filter(mathnetQualifies).map(r=>normalizeForCache(r));
+          if(good.length){await dbPutBatch(good);saved+=good.length;}
+          if(onProgress)onProgress(loadedRaw,total,false,saved);
+        }catch{failed.push(offset);}
+      }
+    }
+
     const finalRows=await dbGetAll();
-    const finished=finalRows.length>0 && loadedRaw>=first.total;
+    const finished=finalRows.length>0 && loadedRaw>=first.total && failed.length===0;
     await dbSetMeta('total',first.total);
     await dbSetMeta('complete',finished);
     await dbSetMeta('savedCount',finalRows.length);
