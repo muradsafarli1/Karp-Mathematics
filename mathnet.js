@@ -75,7 +75,7 @@ function normalizeMathnetRow(raw,offset){
     problemType:String(row.problem_type||''),
     language:String(row.language||''),
     hasSolution:Array.isArray(row.solutions_markdown)&&row.solutions_markdown.some(function(x){return String(x||'').trim()}),
-    title:String(row.competition||'MathNet')+' — '+id,
+    title:String(row.title||row.competition||'MathNet Problem'),
     sourceIndex:Number((raw&&raw.row_idx)!=null?raw.row_idx:(offset||0)),
     finalAnswer:row.final_answer==null?'':String(row.final_answer)
   };
