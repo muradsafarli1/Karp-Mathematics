@@ -10,7 +10,7 @@ const MATHNET={
   maxRows:30676
 };
 
-const MATHNET_DB_NAME='KARP_MATHNET_ARCHIVE_V2';
+const MATHNET_DB_NAME='KARP_MATHNET_ARCHIVE_V3';
 const MATHNET_DB_VERSION=2;
 const MATHNET_STORE='problems';
 const MATHNET_META='meta';
@@ -207,7 +207,7 @@ async function dbSetMeta(key,value){
   });
 }
 
-async function mathnetFetchRows(config,offset,length,onError){
+async function mathnetFetchRows(config,offset,length,onError,includeImages=false){
   const safeConfig=String(config||MATHNET.config);
   const cleanOffset=Math.max(0,Math.floor(offset||0));
   const cleanLength=Math.min(100,Math.max(1,length||100));
@@ -249,11 +249,7 @@ async function mathnetFetchRows(config,offset,length,onError){
 }
 
 async function mathnetRows(offset,length){
-  const result=await mathnetFetchRows(MATHNET.config,offset,length);
-  result.rows=result.rows.map(function(row){
-    return {...row,statement:mathnetMarkdown({problem_markdown:row.statement||''},false)};
-  });
-  return result;
+  return mathnetFetchRows(MATHNET.config,offset,length,null,false);
 }
 
 async function mathnetLoadAllIndex(onProgress){
@@ -366,7 +362,7 @@ async function mathnetProblemById(id,sourceConfig,sourceIndex){
   if(!target)return null;
   if(sourceConfig&&sourceIndex!=null&&sourceIndex!==''){
     try{
-      const exact=await mathnetFetchRows(sourceConfig,Number(sourceIndex),1);
+      const exact=await mathnetFetchRows(sourceConfig,Number(sourceIndex),1,null,true);
       const row=exact.rows[0];
       if(row&&row.id===target&&mathnetQualifies(row))return row;
     }catch{}
