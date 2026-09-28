@@ -27,7 +27,7 @@
   const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
   const {doc,getDoc,setDoc,writeBatch,collection,getDocs,updateDoc}=fs;
 
-  const MATHNET_FIRESTORE={problems:'mathnetProblems',shards:'mathnetIndexShards',pools:'mathnetPools',meta:'mathnetMeta',state:'state'};
+  const MATHNET_FIRESTORE={problems:'mathnetProblemsV2',shards:'mathnetIndexShardsV2',pools:'mathnetPools',meta:'mathnetMeta',state:'state'};
   const DATASET='ShadenA/MathNet',CONFIG='all',SPLIT='train',PAGE=100,CONCURRENCY=4;
   const VERSION='firebase-'+new Date().toISOString().slice(0,10)+'-'+Date.now();
   const state={running:false,completePages:new Set(),total:0,fetched:0,accepted:0,written:0,items:[],pools:new Map()};
@@ -51,23 +51,23 @@
     const m=s.match(/(?:^|[^0-9])(19\d{2}|20\d{2})(?:[^0-9]|$)/);return m?m[1]:'';
   }
   function pnoFor(r){
-    const direct=['problem_number','problemNumber','problem_no','problemNo'];
-    for(const key of direct){
-      const raw=r?.[key];
-      if(raw!=null&&String(raw).trim()){
-        const v=String(raw).trim();
-        const m=v.match(/(?:^|\s)P\s*([1-9]\d?)\b/i)||v.match(/^([1-9]\d?)$/);
-        if(m)return'P'+m[1];
-      }
+    const raw=String(r?.problem_number??r?.problemNumber??'').trim();
+    if(raw){
+      let m=raw.match(/^(?:problem|question)\s*(?:no\.?|number)?\s*#?\s*([A-Za-z]?\d+(?:[.\-][A-Za-z]?\d+)*)$/i);
+      if(m)return'P'+m[1];
+      m=raw.match(/^P\s*#?\s*([A-Za-z]?\d+(?:[.\-][A-Za-z]?\d+)*)$/i);
+      if(m)return'P'+m[1];
+      m=raw.match(/^#?\s*([A-Za-z]?\d+(?:[.\-][A-Za-z]?\d+)*)$/i);
+      if(m)return'P'+m[1];
+      return raw;
     }
-    const source=String([r?.source_booklet,r?.booklet_source].filter(Boolean).join(' '));
-    const sm=source.match(/\bP\s*([1-9]\d?)\b/i);
-    if(sm)return'P'+sm[1];
-    const s=String(r?.problem_markdown||'').replace(/<[^>]+>/g,' ').replace(/\r/g,'');
-    const head=s.slice(0,1200);
+    return numberFromStatement(r?.problem_markdown||'');
+  }
+  function numberFromStatement(value){
+    const head=String(value||'').replace(/<[^>]+>/g,' ').slice(0,1800);
     const ps=[
-      /(?:^|\n)\s*(?:#+\s*)?(?:problem|question)\s*(?:no\.?|number)?\s*[#:.\-]?\s*P?\s*([1-9]\d?)\b/i,
-      /(?:^|\n)\s*[Pp]\s*([1-9]\d?)\s*[\).:\-]?\s*(?:\n|$)/i
+      /(?:^|[\n\r])\s*(?:#+\s*)?(?:problem|question)\s*#?\s*([1-9]\d?)\b/i,
+      /(?:^|[\n\r])\s*([1-9]\d?)\s*[.)]\s+/i
     ];
     for(const re of ps){const m=head.match(re);if(m)return'P'+m[1]}
     return'';
@@ -128,29 +128,23 @@
     throw lastErr||new Error('Hugging Face request failed');
   }
 
-  async function fetchPage(offset){
-    const filter=new URL('https://datasets-server.huggingface.co/filter');
-    filter.searchParams.set('dataset',DATASET);filter.searchParams.set('config',CONFIG);filter.searchParams.set('split',SPLIT);
-    filter.searchParams.set('where','"language"=\'English\' AND ("problem_type"=\'proof\' OR "problem_type"=\'proof only\' OR "problem_type"=\'proof and answer\')');
-    filter.searchParams.set('offset',String(offset));filter.searchParams.set('length',String(PAGE));
-    try{
-      return await fetchJson(filter,3);
-    }catch(filterErr){
-      log('HF filter unavailable at offset '+offset+' ('+filterErr.message+'). Falling back to /rows and local filtering…');
-      const rows=new URL('https://datasets-server.huggingface.co/rows');
-      rows.searchParams.set('dataset',DATASET);rows.searchParams.set('config',CONFIG);rows.searchParams.set('split',SPLIT);
-      rows.searchParams.set('offset',String(offset));rows.searchParams.set('length',String(PAGE));
-      const payload=await fetchJson(rows,4);
-      const keep=payload.rows||[];
-      const filtered=keep.filter(item=>{
-        const r=item.row||{};
-        const lang=String(r.language||'').trim().toLowerCase();
-        const type=String(r.problem_type||'').trim().toLowerCase();
-        return (lang==='english'||lang==='en'||lang.startsWith('en-')) &&
-          ['proof','proof only','proof and answer'].includes(type);
-      });
-      return {...payload,rows:filtered};
+  async function fetchPage(offset,attempts=7){
+    let lastErr=null;
+    for(let i=0;i<attempts;i++){
+      try{
+        const u=new URL('https://datasets-server.huggingface.co/rows');
+        u.searchParams.set('dataset','ShadenA/MathNet');
+        u.searchParams.set('config','all');
+        u.searchParams.set('split','train');
+        u.searchParams.set('offset',String(offset));
+        u.searchParams.set('length','100');
+        const r=await fetch(u.toString(),{headers:{Accept:'application/json'},cache:'no-store'});
+        if(r.ok)return await r.json();
+        lastErr=new Error('Hugging Face HTTP '+r.status);
+      }catch(e){lastErr=e}
+      await new Promise(r=>setTimeout(r,1000*Math.min(10,2**i)));
     }
+    throw lastErr||new Error('Hugging Face rows request failed');
   }
 
   async function writePage(rows){
@@ -286,34 +280,77 @@
   }
 
   async function run(){
-    if(state.running)return;state.running=true;
-    document.getElementById('start').disabled=true;document.getElementById('status').textContent='Syncing…';log('Starting Firebase MathNet import…');
+    if(state.running)return;
+    state.running=true;
+    document.getElementById('start').disabled=true;
+    document.getElementById('status').textContent='Building clean MathNet V2…';
+    log('CLEAN REBUILD: complete MathNet rows endpoint only. Existing database is untouched.');
     try{
-      const first=await fetchPage(0);state.total=Number(first.num_rows_total||0);num('pages',Math.ceil(state.total/PAGE));log('Filtered Hugging Face rows: '+state.total.toLocaleString());
+      const first=await fetchPage(0);
+      state.total=Number(first.num_rows_total||0);
+      num('pages',Math.ceil(state.total/100));
+      log('Complete MathNet dataset: '+state.total.toLocaleString()+' rows.');
+
       let cursor=0;
       async function worker(){
         while(true){
-          const offset=cursor*PAGE;cursor++;
+          const offset=cursor*100;cursor++;
           if(offset>=state.total)return;
-          try{
-            const payload=offset===0?first:await fetchPage(offset);
-            const raw=payload.rows||[];state.fetched+=raw.length;
-            const good=raw.map(normalizeRow).filter(Boolean);
-            state.accepted+=good.length;await writePage(good);
-            num('fetched',state.fetched);num('accepted',state.accepted);num('written',state.written);progress();
-            document.getElementById('status').textContent='Processed '+state.fetched.toLocaleString()+' / '+state.total.toLocaleString();
-          }catch(e){log('Page '+offset+' failed: '+e.message);cursor--;throw e}
+          const payload=offset===0?first:await fetchPage(offset);
+          const raw=payload.rows||[];
+          state.fetched+=raw.length;
+          const good=raw.map(normalizeRow).filter(Boolean);
+          state.accepted+=good.length;
+
+          for(let i=0;i<good.length;i+=100){
+            const batch=writeBatch(db);
+            good.slice(i,i+100).forEach(q=>batch.set(doc(db,MATHNET_FIRESTORE.problems,q.id),q,{merge:true}));
+            await batch.commit();
+          }
+          good.forEach(q=>state.items.push({
+            id:q.id,sourceId:q.sourceId,sourceIndex:q.sourceIndex,country:q.country,competition:q.competition,year:q.year,
+            section:q.section,problemNumber:q.problemNumber,sourceProblemNumber:q.sourceProblemNumber,
+            sourceBooklet:q.sourceBooklet,bookletSource:q.bookletSource,language:q.language,problemType:q.problemType,
+            category:q.category,difficulty:q.difficulty,title:q.title,sourceLabel:q.sourceLabel,hasImages:q.hasImages,version:'rebuild-v2'
+          }));
+          state.written+=good.length;
+          num('fetched',state.fetched);num('accepted',state.accepted);num('written',state.written);progress();
+          document.getElementById('status').textContent='Scanned '+state.fetched.toLocaleString()+' / '+state.total.toLocaleString();
         }
       }
-      await Promise.all(Array.from({length:CONCURRENCY},worker));
-      state.items.sort((a,b)=>{const yb=Number(b.year||0)-Number(a.year||0);return yb||String(a.country).localeCompare(String(b.country))||Number(a.sourceIndex)-Number(b.sourceIndex)});
-      await finalize();
-      document.getElementById('bar').style.width='100%';document.getElementById('status').textContent='COMPLETE — Firebase is now the MathNet runtime database.';
-      log('DONE. Firebase contains '+state.items.length.toLocaleString()+' accepted English proof problems.');
+      await Promise.all(Array.from({length:4},worker));
+
+      state.items.sort((a,b)=>{
+        const y=Number(b.year||0)-Number(a.year||0);
+        return y||String(a.country).localeCompare(String(b.country))||String(a.competition).localeCompare(String(b.competition))||Number(a.sourceIndex)-Number(b.sourceIndex);
+      });
+
+      for(let i=0,s=0;i<state.items.length;i+=300,s++){
+        await setDoc(doc(db,MATHNET_FIRESTORE.shards,'shard-'+String(s).padStart(4,'0')),{
+          version:'rebuild-v2',index:s,items:state.items.slice(i,i+300)
+        });
+      }
+      const shardCount=Math.ceil(state.items.length/300);
+      if(!state.items.length)throw new Error('No accepted problems. Existing database remains untouched.');
+
+      await setDoc(doc(db,MATHNET_FIRESTORE.meta,MATHNET_FIRESTORE.state),{
+        ready:true,version:'rebuild-v2-'+Date.now(),activeNamespace:'v2',
+        count:state.items.length,source:'ShadenA/MathNet',shardCount,updatedAt:new Date().toISOString()
+      },{merge:true});
+
+      document.getElementById('bar').style.width='100%';
+      document.getElementById('status').textContent='COMPLETE — fresh MathNet V2 is ready.';
+      log('DONE. Fresh database contains '+state.items.length.toLocaleString()+' accepted English proof problems.');
+      log('Existing MathNet database was NOT deleted.');
+      log('KARP is now marked to use V2; old data can be cleaned after verification.');
     }catch(e){
-      document.getElementById('status').textContent='Sync failed: '+e.message;
+      document.getElementById('status').textContent='Rebuild failed: '+e.message;
       log('STOPPED: '+e.stack);
-    }finally{state.running=false;document.getElementById('start').disabled=false}
+      log('Existing MathNet database was NOT deleted.');
+    }finally{
+      state.running=false;
+      document.getElementById('start').disabled=false;
+    }
   }
   document.getElementById('start').onclick=run;
   document.getElementById('repair').onclick=repairMetadata;
