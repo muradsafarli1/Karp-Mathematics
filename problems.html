@@ -95,17 +95,17 @@
       document.getElementById('status').textContent=complete?'Complete archive loaded and cached locally.':'Showing available problems now · loading the rest in background… '+loaded.toLocaleString()+' / '+total.toLocaleString();
       if(saved!=null&&!complete)document.getElementById('count').innerHTML='<strong>'+Number(saved).toLocaleString()+'</strong> MathNet problems cached';
     },function(initialRows){
-      allRows=[...customRows,...initialRows];applyFilters();
+      allRows=[...initialRows,...customRows];applyFilters();
       document.getElementById('status').textContent='Problems are open now · the rest of the archive is loading in background…';
       if(pendingRestore>20&&initialRows.length>20)setTimeout(()=>window.scrollTo({top:pendingRestore,behavior:'auto'}),50);
     });
 
     customRows=await manualPromise;
-    allRows=[...customRows,...allRows.filter(x=>x.sourceType!=='custom')];
+    allRows=[...allRows.filter(x=>x.sourceType!=='custom'),...customRows];
     applyFilters();
 
     allRows=await mathPromise;
-    allRows=[...customRows,...allRows.filter(x=>x.sourceType!=='custom')];
+    allRows=[...allRows.filter(x=>x.sourceType!=='custom'),...customRows];
     applyFilters();
     document.getElementById('progress').style.width='100%';
     document.getElementById('status').textContent='Complete archive loaded and cached locally.';
