@@ -258,6 +258,7 @@ async function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_mathnet_year ON mathnet_problems(year);
     CREATE INDEX IF NOT EXISTS idx_mathnet_search ON mathnet_problems USING gin(search_text gin_trgm_ops);
     CREATE INDEX IF NOT EXISTS idx_mathnet_sync_version ON mathnet_problems(sync_version);
+    CREATE INDEX IF NOT EXISTS idx_mathnet_category_difficulty ON mathnet_problems(category, difficulty);
   `);
   return true;
 }
@@ -301,48 +302,42 @@ async function syncMathNet() {
     let accepted = 0;
     let fetched = 0;
     const rowsForBatch = [];
+    const successfulOffsets = new Set();
+
+    async function loadOffset(offset) {
+      const payload = offset === 0 ? first : await fetchFiltered(offset, MAX_PAGE);
+      const sourceRows = payload.rows || [];
+      const good = sourceRows.map(normalizedRow).filter(rowIsGood);
+      fetched += sourceRows.length;
+      rowsForBatch.push(...good);
+      successfulOffsets.add(offset);
+    }
 
     async function worker() {
       while (true) {
         const i = cursor++;
         if (i >= offsets.length) return;
         const offset = offsets[i];
-        try {
-          const payload = offset === 0 ? first : await fetchFiltered(offset, MAX_PAGE);
-          const good = (payload.rows || [])
-            .map(normalizedRow)
-            .filter(rowIsGood);
-          fetched += (payload.rows || []).length;
-          rowsForBatch.push(...good);
-        } catch (error) {
-          console.error('[MathNet] page failed at', offset, error.message);
-        }
+        try { await loadOffset(offset); }
+        catch (error) { console.error('[MathNet] page failed at', offset, error.message); }
       }
     }
 
     await Promise.all(Array.from({ length: SYNC_CONCURRENCY }, worker));
 
-    // Retry missing pages once, sequentially enough to avoid a burst after rate limiting.
-    const seenIndexes = new Set(rowsForBatch.map(x => x.sourceIndex));
-    for (const offset of offsets) {
-      if (offset === 0 || rowsForBatch.length >= total) break;
-      if (rowsForBatch.some(x => x.sourceIndex >= offset && x.sourceIndex < offset + MAX_PAGE)) continue;
-      try {
-        const payload = await fetchFiltered(offset, MAX_PAGE);
-        const good = (payload.rows || []).map(normalizedRow).filter(rowIsGood);
-        for (const row of good) {
-          if (!seenIndexes.has(row.sourceIndex)) {
-            rowsForBatch.push(row);
-            seenIndexes.add(row.sourceIndex);
-          }
-        }
-        fetched += (payload.rows || []).length;
-      } catch (error) {
-        console.error('[MathNet] retry failed at', offset, error.message);
+    for (let round = 1; round <= 2; round++) {
+      const failed = offsets.filter(offset => !successfulOffsets.has(offset));
+      if (!failed.length) break;
+      for (const offset of failed) {
+        try { await loadOffset(offset); }
+        catch (error) { console.error('[MathNet] retry ' + round + ' failed at', offset, error.message); }
       }
     }
 
-    // The filtered API is deterministic by row index. Deduplicate and order for stable labels.
+    if (!offsets.every(offset => successfulOffsets.has(offset))) {
+      throw new Error('MathNet sync incomplete: ' + (offsets.length - successfulOffsets.size) + ' page(s) failed.');
+    }
+
     const unique = Array.from(new Map(rowsForBatch.map(row => [row.id, row])).values())
       .sort((a, b) => a.sourceIndex - b.sourceIndex);
 
@@ -442,8 +437,7 @@ async function getIndex() {
   const { rows } = await pool.query(`
     SELECT id,source_index,country,competition,year,section,problem_number,
            source_booklet,booklet_source,language,problem_type,category,difficulty,
-           has_images, title,
-           LEFT(search_text, 900) AS search_preview
+           has_images, title
     FROM (
       SELECT
         id,source_index,country,competition,year,section,problem_number,source_booklet,
@@ -473,7 +467,7 @@ async function getIndex() {
     hasSolution: true,
     hasImages: !!x.has_images,
     title: x.title || x.competition || 'MathNet Problem',
-    statement: x.search_preview || '',
+    statement: '',
     solutions: []
   }));
   indexCacheVersion = MATHNET_SYNC_VERSION;
@@ -513,6 +507,935 @@ async function getProblem(id) {
 function intParam(v, fallback, min, max) {
   const n = Number(v);
   return Number.isFinite(n) ? Math.max(min, Math.min(max, Math.floor(n))) : fallback;
+}
+
+async function searchProblems(url) {
+  if (!pool) throw new Error('PostgreSQL is not configured.');
+  const q = String(url.searchParams.get('q') || '').trim();
+  const category = String(url.searchParams.get('category') || '').trim().toUpperCase();
+  const difficulty = String(url.searchParams.get('difficulty') || '').trim().toLowerCase();
+  const limit = intParam(url.searchParams.get('limit'), 60, 1, 200);
+  const offset = intParam(url.searchParams.get('offset'), 0, 0, 1000000);
+  const params = [];
+  const where = [];
+  if (q) {
+    params.push('%' + q.replace(/[%_]/g, '\\async function randomProblems(url) {') + '%');
+    where.push('search_text ILIKE 
+  if (!pool) throw new Error('PostgreSQL is not configured.');
+  const count = intParam(url.searchParams.get('count'), 6, 1, 30);
+  const categories = (url.searchParams.get('categories') || 'A,C,G,N')
+    .split(',')
+    .map(s => s.trim().toUpperCase())
+    .filter(x => ['A','C','G','N'].includes(x));
+  const difficulty = url.searchParams.get('difficulty') || 'any';
+  const rawSequence = (url.searchParams.get('sequence') || '')
+    .split(',')
+    .map(x => x.trim().toUpperCase())
+    .filter(Boolean);
+  const wanted = rawSequence.length === count && rawSequence.every(x => ['A','C','G','N'].includes(x))
+    ? rawSequence
+    : Array.from({ length: count }, (_, i) => categories[i % categories.length]);
+
+  const uniqueCategories = [...new Set(wanted)];
+  const pools = new Map();
+
+  for (const cat of uniqueCategories) {
+    const params = [cat];
+    let where = 'category=$1';
+    if (difficulty !== 'any') {
+      params.push(difficulty);
+      where += ' AND difficulty=$2';
+    }
+    const { rows } = await pool.query(
+      `SELECT * FROM mathnet_problems WHERE ${where} ORDER BY random() LIMIT ${Math.max(4, count * 2)}`,
+      params
+    );
+    pools.set(cat, rows);
+  }
+
+  const used = new Set();
+  const picked = [];
+  for (const cat of wanted) {
+    const list = pools.get(cat) || [];
+    let row = list.find(x => !used.has(x.id));
+    if (!row && difficulty !== 'any') {
+      const { rows } = await pool.query(
+        'SELECT * FROM mathnet_problems WHERE category=$1 ORDER BY random() LIMIT 8',
+        [cat]
+      );
+      row = rows.find(x => !used.has(x.id));
+    }
+    if (!row) {
+      const { rows } = await pool.query(
+        'SELECT * FROM mathnet_problems WHERE category = ANY($1::text[]) ORDER BY random() LIMIT 8',
+        [categories.length ? categories : ['A','C','G','N']]
+      );
+      row = rows.find(x => !used.has(x.id));
+    }
+    if (row) {
+      used.add(row.id);
+      picked.push(row);
+    }
+  }
+
+  return picked.map(x => ({
+    id: x.id,
+    sourceIndex: Number(x.source_index),
+    country: x.country || '',
+    competition: x.competition || '',
+    year: x.year || '',
+    section: x.section || '',
+    problemNumber: x.problem_number || '',
+    sourceBooklet: x.source_booklet || '',
+    bookletSource: x.booklet_source || '',
+    language: x.language || 'English',
+    problemType: x.problem_type || '',
+    category: x.category || 'A',
+    difficulty: x.difficulty || 'easy',
+    hasSolution: true,
+    hasImages: !!x.has_images,
+    statement: x.statement || '',
+    solutions: Array.isArray(x.solutions) ? x.solutions : [],
+    title: x.competition + ((x.year || x.problem_number)
+      ? ' — ' + [x.year, x.problem_number].filter(Boolean).join(' · ')
+      : '')
+  }));
+}
+
+async function maybeStartSync() {
+  if (!pool) return;
+  try {
+    await initSchema();
+    const state = await currentState();
+    if (!state.ready || state.version !== MATHNET_SYNC_VERSION) {
+      syncMathNet().catch(() => {});
+    }
+  } catch (error) {
+    console.error('[MathNet] startup check failed:', error);
+  }
+}
+
+function sendJson(req, res, value, status = 200, cache = 'no-store') {
+  const payload = Buffer.from(JSON.stringify(value));
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', cache);
+  res.setHeader('Vary', 'Accept-Encoding');
+  if (/gzip/i.test(String(req.headers['accept-encoding'] || ''))) {
+    res.setHeader('Content-Encoding', 'gzip');
+    zlib.gzip(payload, { level: 6 }, (err, data) => {
+      if (err) {
+        res.end(payload);
+        return;
+      }
+      res.end(data);
+    });
+  } else {
+    res.end(payload);
+  }
+}
+
+function sendError(req, res, message, status = 500, extra = {}) {
+  sendJson(req, res, { error: message, ...extra }, status);
+}
+
+function serveStatic(req, res, pathname) {
+  let requestPath = pathname;
+  const routes = {
+    '/': '/index.html',
+    '/problems': '/problems.html',
+    '/problem': '/problem.html',
+    '/contests': '/contests.html',
+    '/contest': '/contest.html',
+    '/articles': '/articles.html',
+    '/article': '/article.html',
+    '/exams': '/exams.html',
+    '/exam': '/exam.html',
+    '/videos': '/videos.html',
+    '/about': '/about.html',
+    '/account': '/account.html',
+    '/admin': '/admin.html',
+    '/login': '/login.html',
+    '/signup': '/signup.html',
+    '/mock': '/mock.html',
+    '/calculator': '/calculator.html',
+    '/desmos': '/desmos.html',
+    '/geogebra': '/geogebra.html'
+  };
+  requestPath = routes[requestPath] || requestPath;
+  if (!path.extname(requestPath)) requestPath += '.html';
+  const absolute = path.resolve(ROOT, '.' + requestPath);
+  if (!absolute.startsWith(ROOT + path.sep) && absolute !== path.join(ROOT, requestPath)) {
+    res.statusCode = 403;
+    res.end('Forbidden');
+    return;
+  }
+  fs.readFile(absolute, (err, data) => {
+    if (err) {
+      res.statusCode = err.code === 'ENOENT' ? 404 : 500;
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.end(err.code === 'ENOENT' ? 'Not found' : 'Server error');
+      return;
+    }
+    const ext = path.extname(absolute).toLowerCase();
+    res.statusCode = 200;
+    res.setHeader('Content-Type', MIME[ext] || 'application/octet-stream');
+    if (ext === '.html' || ext === '.js' || ext === '.css') {
+      res.setHeader('Cache-Control', 'public, max-age=300');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+    }
+    res.end(data);
+  });
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (req.method === 'OPTIONS') {
+      res.statusCode = 204;
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.end();
+      return;
+    }
+
+    const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
+
+    if (url.pathname.startsWith('/api/mathnet/')) {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+
+      if (url.pathname === '/api/mathnet/status') {
+        const state = await currentState();
+        sendJson(req, res, {
+          ...state,
+          dataset: MATHNET_DATASET,
+          filteredRule: 'English + proof / proof only / proof and answer + English solution'
+        }, 200, 'no-store');
+        return;
+      }
+
+      if (url.pathname === '/api/mathnet/index') {
+        try {
+          const state = await currentState();
+          if (!state.ready) {
+            sendError(req, res, 'MathNet index is still being built.', 503, {
+              warmingUp: true,
+              syncing: state.syncing,
+              count: state.count
+            });
+            return;
+          }
+          sendJson(req, res, {
+            source: MATHNET_DATASET,
+            version: MATHNET_SYNC_VERSION,
+            total: state.count,
+            problems: await getIndex()
+          }, 200, 'public, max-age=300, stale-while-revalidate=86400');
+        } catch (error) {
+          sendError(req, res, error.message, 500);
+        }
+        return;
+      }
+
+      const problemMatch = url.pathname.match(/^\/api\/mathnet\/problem\/([^/]+)$/);
+      if (problemMatch) {
+        try {
+          const id = decodeURIComponent(problemMatch[1]);
+          const problem = await getProblem(id);
+          if (!problem) {
+            sendError(req, res, 'Problem not found.', 404);
+            return;
+          }
+          // Images in MathNet are delivered as short-lived signed assets. Keep the
+          // database durable, but optionally refresh the source row for image URLs.
+          if (problem.hasImages && problem.sourceIndex >= 0 && problem.statement.includes('attached_image_')) {
+            try {
+              const u = new URL(HF_ROWS_URL);
+              u.searchParams.set('dataset', MATHNET_DATASET);
+              u.searchParams.set('config', MATHNET_CONFIG);
+              u.searchParams.set('split', MATHNET_SPLIT);
+              u.searchParams.set('offset', String(problem.sourceIndex));
+              u.searchParams.set('length', '1');
+              const source = await hfJson(u);
+              const row = source.rows?.[0]?.row || {};
+              const imgs = Array.isArray(row.images) ? row.images
+                .map(x => typeof x === 'string' ? x : x?.src || '')
+                .filter(Boolean) : [];
+              if (imgs.length) {
+                problem.statement = problem.statement.replace(
+                  /!\[([^\]]*)\]\(attached_image_(\d+)\.png\)/g,
+                  (_, alt, n) => imgs[Number(n) - 1] ? '![' + (alt || 'Figure') + '](' + imgs[Number(n) - 1] + ')' : ''
+                );
+              }
+            } catch (_) {}
+          }
+          sendJson(req, res, problem, 200, 'public, max-age=300');
+        } catch (error) {
+          sendError(req, res, error.message, 500);
+        }
+        return;
+      }
+
+      if (url.pathname === '/api/mathnet/search') {
+        try {
+          const result = await searchProblems(url);
+          sendJson(req, res, result, 200, 'public, max-age=60, stale-while-revalidate=600');
+        } catch (error) {
+          sendError(req, res, error.message, 500);
+        }
+        return;
+      }
+
+      if (url.pathname === '/api/mathnet/random') {
+        try {
+          const problems = await randomProblems(url);
+          sendJson(req, res, {
+            source: MATHNET_DATASET,
+            total: problems.length,
+            problems
+          }, 200, 'no-store');
+        } catch (error) {
+          sendError(req, res, error.message, 500);
+        }
+        return;
+      }
+
+      sendError(req, res, 'Unknown MathNet endpoint.', 404);
+      return;
+    }
+
+    serveStatic(req, res, url.pathname);
+  } catch (error) {
+    console.error('[KARP] request error:', error);
+    sendError(req, res, error.message || 'Server error', 500);
+  }
+});
+
+server.on('clientError', (_err, socket) => {
+  try { socket.end('HTTP/1.1 400 Bad Request\\r\\n\\r\\n'); } catch (_) {}
+});
+
+(async () => {
+  await maybeStartSync();
+  server.listen(PORT, () => {
+    console.log('KARP server listening on port ' + PORT);
+  });
+})();
+ + params.length + ' ESCAPE \\'' );
+  }
+  if (['A','C','G','N'].includes(category)) {
+    params.push(category);
+    where.push('category=
+  if (!pool) throw new Error('PostgreSQL is not configured.');
+  const count = intParam(url.searchParams.get('count'), 6, 1, 30);
+  const categories = (url.searchParams.get('categories') || 'A,C,G,N')
+    .split(',')
+    .map(s => s.trim().toUpperCase())
+    .filter(x => ['A','C','G','N'].includes(x));
+  const difficulty = url.searchParams.get('difficulty') || 'any';
+  const rawSequence = (url.searchParams.get('sequence') || '')
+    .split(',')
+    .map(x => x.trim().toUpperCase())
+    .filter(Boolean);
+  const wanted = rawSequence.length === count && rawSequence.every(x => ['A','C','G','N'].includes(x))
+    ? rawSequence
+    : Array.from({ length: count }, (_, i) => categories[i % categories.length]);
+
+  const uniqueCategories = [...new Set(wanted)];
+  const pools = new Map();
+
+  for (const cat of uniqueCategories) {
+    const params = [cat];
+    let where = 'category=$1';
+    if (difficulty !== 'any') {
+      params.push(difficulty);
+      where += ' AND difficulty=$2';
+    }
+    const { rows } = await pool.query(
+      `SELECT * FROM mathnet_problems WHERE ${where} ORDER BY random() LIMIT ${Math.max(4, count * 2)}`,
+      params
+    );
+    pools.set(cat, rows);
+  }
+
+  const used = new Set();
+  const picked = [];
+  for (const cat of wanted) {
+    const list = pools.get(cat) || [];
+    let row = list.find(x => !used.has(x.id));
+    if (!row && difficulty !== 'any') {
+      const { rows } = await pool.query(
+        'SELECT * FROM mathnet_problems WHERE category=$1 ORDER BY random() LIMIT 8',
+        [cat]
+      );
+      row = rows.find(x => !used.has(x.id));
+    }
+    if (!row) {
+      const { rows } = await pool.query(
+        'SELECT * FROM mathnet_problems WHERE category = ANY($1::text[]) ORDER BY random() LIMIT 8',
+        [categories.length ? categories : ['A','C','G','N']]
+      );
+      row = rows.find(x => !used.has(x.id));
+    }
+    if (row) {
+      used.add(row.id);
+      picked.push(row);
+    }
+  }
+
+  return picked.map(x => ({
+    id: x.id,
+    sourceIndex: Number(x.source_index),
+    country: x.country || '',
+    competition: x.competition || '',
+    year: x.year || '',
+    section: x.section || '',
+    problemNumber: x.problem_number || '',
+    sourceBooklet: x.source_booklet || '',
+    bookletSource: x.booklet_source || '',
+    language: x.language || 'English',
+    problemType: x.problem_type || '',
+    category: x.category || 'A',
+    difficulty: x.difficulty || 'easy',
+    hasSolution: true,
+    hasImages: !!x.has_images,
+    statement: x.statement || '',
+    solutions: Array.isArray(x.solutions) ? x.solutions : [],
+    title: x.competition + ((x.year || x.problem_number)
+      ? ' — ' + [x.year, x.problem_number].filter(Boolean).join(' · ')
+      : '')
+  }));
+}
+
+async function maybeStartSync() {
+  if (!pool) return;
+  try {
+    await initSchema();
+    const state = await currentState();
+    if (!state.ready || state.version !== MATHNET_SYNC_VERSION) {
+      syncMathNet().catch(() => {});
+    }
+  } catch (error) {
+    console.error('[MathNet] startup check failed:', error);
+  }
+}
+
+function sendJson(req, res, value, status = 200, cache = 'no-store') {
+  const payload = Buffer.from(JSON.stringify(value));
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', cache);
+  res.setHeader('Vary', 'Accept-Encoding');
+  if (/gzip/i.test(String(req.headers['accept-encoding'] || ''))) {
+    res.setHeader('Content-Encoding', 'gzip');
+    zlib.gzip(payload, { level: 6 }, (err, data) => {
+      if (err) {
+        res.end(payload);
+        return;
+      }
+      res.end(data);
+    });
+  } else {
+    res.end(payload);
+  }
+}
+
+function sendError(req, res, message, status = 500, extra = {}) {
+  sendJson(req, res, { error: message, ...extra }, status);
+}
+
+function serveStatic(req, res, pathname) {
+  let requestPath = pathname;
+  const routes = {
+    '/': '/index.html',
+    '/problems': '/problems.html',
+    '/problem': '/problem.html',
+    '/contests': '/contests.html',
+    '/contest': '/contest.html',
+    '/articles': '/articles.html',
+    '/article': '/article.html',
+    '/exams': '/exams.html',
+    '/exam': '/exam.html',
+    '/videos': '/videos.html',
+    '/about': '/about.html',
+    '/account': '/account.html',
+    '/admin': '/admin.html',
+    '/login': '/login.html',
+    '/signup': '/signup.html',
+    '/mock': '/mock.html',
+    '/calculator': '/calculator.html',
+    '/desmos': '/desmos.html',
+    '/geogebra': '/geogebra.html'
+  };
+  requestPath = routes[requestPath] || requestPath;
+  if (!path.extname(requestPath)) requestPath += '.html';
+  const absolute = path.resolve(ROOT, '.' + requestPath);
+  if (!absolute.startsWith(ROOT + path.sep) && absolute !== path.join(ROOT, requestPath)) {
+    res.statusCode = 403;
+    res.end('Forbidden');
+    return;
+  }
+  fs.readFile(absolute, (err, data) => {
+    if (err) {
+      res.statusCode = err.code === 'ENOENT' ? 404 : 500;
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.end(err.code === 'ENOENT' ? 'Not found' : 'Server error');
+      return;
+    }
+    const ext = path.extname(absolute).toLowerCase();
+    res.statusCode = 200;
+    res.setHeader('Content-Type', MIME[ext] || 'application/octet-stream');
+    if (ext === '.html' || ext === '.js' || ext === '.css') {
+      res.setHeader('Cache-Control', 'public, max-age=300');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+    }
+    res.end(data);
+  });
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (req.method === 'OPTIONS') {
+      res.statusCode = 204;
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.end();
+      return;
+    }
+
+    const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
+
+    if (url.pathname.startsWith('/api/mathnet/')) {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+
+      if (url.pathname === '/api/mathnet/status') {
+        const state = await currentState();
+        sendJson(req, res, {
+          ...state,
+          dataset: MATHNET_DATASET,
+          filteredRule: 'English + proof / proof only / proof and answer + English solution'
+        }, 200, 'no-store');
+        return;
+      }
+
+      if (url.pathname === '/api/mathnet/index') {
+        try {
+          const state = await currentState();
+          if (!state.ready) {
+            sendError(req, res, 'MathNet index is still being built.', 503, {
+              warmingUp: true,
+              syncing: state.syncing,
+              count: state.count
+            });
+            return;
+          }
+          sendJson(req, res, {
+            source: MATHNET_DATASET,
+            version: MATHNET_SYNC_VERSION,
+            total: state.count,
+            problems: await getIndex()
+          }, 200, 'public, max-age=300, stale-while-revalidate=86400');
+        } catch (error) {
+          sendError(req, res, error.message, 500);
+        }
+        return;
+      }
+
+      const problemMatch = url.pathname.match(/^\/api\/mathnet\/problem\/([^/]+)$/);
+      if (problemMatch) {
+        try {
+          const id = decodeURIComponent(problemMatch[1]);
+          const problem = await getProblem(id);
+          if (!problem) {
+            sendError(req, res, 'Problem not found.', 404);
+            return;
+          }
+          // Images in MathNet are delivered as short-lived signed assets. Keep the
+          // database durable, but optionally refresh the source row for image URLs.
+          if (problem.hasImages && problem.sourceIndex >= 0 && problem.statement.includes('attached_image_')) {
+            try {
+              const u = new URL(HF_ROWS_URL);
+              u.searchParams.set('dataset', MATHNET_DATASET);
+              u.searchParams.set('config', MATHNET_CONFIG);
+              u.searchParams.set('split', MATHNET_SPLIT);
+              u.searchParams.set('offset', String(problem.sourceIndex));
+              u.searchParams.set('length', '1');
+              const source = await hfJson(u);
+              const row = source.rows?.[0]?.row || {};
+              const imgs = Array.isArray(row.images) ? row.images
+                .map(x => typeof x === 'string' ? x : x?.src || '')
+                .filter(Boolean) : [];
+              if (imgs.length) {
+                problem.statement = problem.statement.replace(
+                  /!\[([^\]]*)\]\(attached_image_(\d+)\.png\)/g,
+                  (_, alt, n) => imgs[Number(n) - 1] ? '![' + (alt || 'Figure') + '](' + imgs[Number(n) - 1] + ')' : ''
+                );
+              }
+            } catch (_) {}
+          }
+          sendJson(req, res, problem, 200, 'public, max-age=300');
+        } catch (error) {
+          sendError(req, res, error.message, 500);
+        }
+        return;
+      }
+
+      if (url.pathname === '/api/mathnet/random') {
+        try {
+          const problems = await randomProblems(url);
+          sendJson(req, res, {
+            source: MATHNET_DATASET,
+            total: problems.length,
+            problems
+          }, 200, 'no-store');
+        } catch (error) {
+          sendError(req, res, error.message, 500);
+        }
+        return;
+      }
+
+      sendError(req, res, 'Unknown MathNet endpoint.', 404);
+      return;
+    }
+
+    serveStatic(req, res, url.pathname);
+  } catch (error) {
+    console.error('[KARP] request error:', error);
+    sendError(req, res, error.message || 'Server error', 500);
+  }
+});
+
+server.on('clientError', (_err, socket) => {
+  try { socket.end('HTTP/1.1 400 Bad Request\\r\\n\\r\\n'); } catch (_) {}
+});
+
+(async () => {
+  await maybeStartSync();
+  server.listen(PORT, () => {
+    console.log('KARP server listening on port ' + PORT);
+  });
+})();
+ + params.length);
+  }
+  if (['easy','hard'].includes(difficulty)) {
+    params.push(difficulty);
+    where.push('difficulty=
+  if (!pool) throw new Error('PostgreSQL is not configured.');
+  const count = intParam(url.searchParams.get('count'), 6, 1, 30);
+  const categories = (url.searchParams.get('categories') || 'A,C,G,N')
+    .split(',')
+    .map(s => s.trim().toUpperCase())
+    .filter(x => ['A','C','G','N'].includes(x));
+  const difficulty = url.searchParams.get('difficulty') || 'any';
+  const rawSequence = (url.searchParams.get('sequence') || '')
+    .split(',')
+    .map(x => x.trim().toUpperCase())
+    .filter(Boolean);
+  const wanted = rawSequence.length === count && rawSequence.every(x => ['A','C','G','N'].includes(x))
+    ? rawSequence
+    : Array.from({ length: count }, (_, i) => categories[i % categories.length]);
+
+  const uniqueCategories = [...new Set(wanted)];
+  const pools = new Map();
+
+  for (const cat of uniqueCategories) {
+    const params = [cat];
+    let where = 'category=$1';
+    if (difficulty !== 'any') {
+      params.push(difficulty);
+      where += ' AND difficulty=$2';
+    }
+    const { rows } = await pool.query(
+      `SELECT * FROM mathnet_problems WHERE ${where} ORDER BY random() LIMIT ${Math.max(4, count * 2)}`,
+      params
+    );
+    pools.set(cat, rows);
+  }
+
+  const used = new Set();
+  const picked = [];
+  for (const cat of wanted) {
+    const list = pools.get(cat) || [];
+    let row = list.find(x => !used.has(x.id));
+    if (!row && difficulty !== 'any') {
+      const { rows } = await pool.query(
+        'SELECT * FROM mathnet_problems WHERE category=$1 ORDER BY random() LIMIT 8',
+        [cat]
+      );
+      row = rows.find(x => !used.has(x.id));
+    }
+    if (!row) {
+      const { rows } = await pool.query(
+        'SELECT * FROM mathnet_problems WHERE category = ANY($1::text[]) ORDER BY random() LIMIT 8',
+        [categories.length ? categories : ['A','C','G','N']]
+      );
+      row = rows.find(x => !used.has(x.id));
+    }
+    if (row) {
+      used.add(row.id);
+      picked.push(row);
+    }
+  }
+
+  return picked.map(x => ({
+    id: x.id,
+    sourceIndex: Number(x.source_index),
+    country: x.country || '',
+    competition: x.competition || '',
+    year: x.year || '',
+    section: x.section || '',
+    problemNumber: x.problem_number || '',
+    sourceBooklet: x.source_booklet || '',
+    bookletSource: x.booklet_source || '',
+    language: x.language || 'English',
+    problemType: x.problem_type || '',
+    category: x.category || 'A',
+    difficulty: x.difficulty || 'easy',
+    hasSolution: true,
+    hasImages: !!x.has_images,
+    statement: x.statement || '',
+    solutions: Array.isArray(x.solutions) ? x.solutions : [],
+    title: x.competition + ((x.year || x.problem_number)
+      ? ' — ' + [x.year, x.problem_number].filter(Boolean).join(' · ')
+      : '')
+  }));
+}
+
+async function maybeStartSync() {
+  if (!pool) return;
+  try {
+    await initSchema();
+    const state = await currentState();
+    if (!state.ready || state.version !== MATHNET_SYNC_VERSION) {
+      syncMathNet().catch(() => {});
+    }
+  } catch (error) {
+    console.error('[MathNet] startup check failed:', error);
+  }
+}
+
+function sendJson(req, res, value, status = 200, cache = 'no-store') {
+  const payload = Buffer.from(JSON.stringify(value));
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', cache);
+  res.setHeader('Vary', 'Accept-Encoding');
+  if (/gzip/i.test(String(req.headers['accept-encoding'] || ''))) {
+    res.setHeader('Content-Encoding', 'gzip');
+    zlib.gzip(payload, { level: 6 }, (err, data) => {
+      if (err) {
+        res.end(payload);
+        return;
+      }
+      res.end(data);
+    });
+  } else {
+    res.end(payload);
+  }
+}
+
+function sendError(req, res, message, status = 500, extra = {}) {
+  sendJson(req, res, { error: message, ...extra }, status);
+}
+
+function serveStatic(req, res, pathname) {
+  let requestPath = pathname;
+  const routes = {
+    '/': '/index.html',
+    '/problems': '/problems.html',
+    '/problem': '/problem.html',
+    '/contests': '/contests.html',
+    '/contest': '/contest.html',
+    '/articles': '/articles.html',
+    '/article': '/article.html',
+    '/exams': '/exams.html',
+    '/exam': '/exam.html',
+    '/videos': '/videos.html',
+    '/about': '/about.html',
+    '/account': '/account.html',
+    '/admin': '/admin.html',
+    '/login': '/login.html',
+    '/signup': '/signup.html',
+    '/mock': '/mock.html',
+    '/calculator': '/calculator.html',
+    '/desmos': '/desmos.html',
+    '/geogebra': '/geogebra.html'
+  };
+  requestPath = routes[requestPath] || requestPath;
+  if (!path.extname(requestPath)) requestPath += '.html';
+  const absolute = path.resolve(ROOT, '.' + requestPath);
+  if (!absolute.startsWith(ROOT + path.sep) && absolute !== path.join(ROOT, requestPath)) {
+    res.statusCode = 403;
+    res.end('Forbidden');
+    return;
+  }
+  fs.readFile(absolute, (err, data) => {
+    if (err) {
+      res.statusCode = err.code === 'ENOENT' ? 404 : 500;
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.end(err.code === 'ENOENT' ? 'Not found' : 'Server error');
+      return;
+    }
+    const ext = path.extname(absolute).toLowerCase();
+    res.statusCode = 200;
+    res.setHeader('Content-Type', MIME[ext] || 'application/octet-stream');
+    if (ext === '.html' || ext === '.js' || ext === '.css') {
+      res.setHeader('Cache-Control', 'public, max-age=300');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+    }
+    res.end(data);
+  });
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (req.method === 'OPTIONS') {
+      res.statusCode = 204;
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.end();
+      return;
+    }
+
+    const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
+
+    if (url.pathname.startsWith('/api/mathnet/')) {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+
+      if (url.pathname === '/api/mathnet/status') {
+        const state = await currentState();
+        sendJson(req, res, {
+          ...state,
+          dataset: MATHNET_DATASET,
+          filteredRule: 'English + proof / proof only / proof and answer + English solution'
+        }, 200, 'no-store');
+        return;
+      }
+
+      if (url.pathname === '/api/mathnet/index') {
+        try {
+          const state = await currentState();
+          if (!state.ready) {
+            sendError(req, res, 'MathNet index is still being built.', 503, {
+              warmingUp: true,
+              syncing: state.syncing,
+              count: state.count
+            });
+            return;
+          }
+          sendJson(req, res, {
+            source: MATHNET_DATASET,
+            version: MATHNET_SYNC_VERSION,
+            total: state.count,
+            problems: await getIndex()
+          }, 200, 'public, max-age=300, stale-while-revalidate=86400');
+        } catch (error) {
+          sendError(req, res, error.message, 500);
+        }
+        return;
+      }
+
+      const problemMatch = url.pathname.match(/^\/api\/mathnet\/problem\/([^/]+)$/);
+      if (problemMatch) {
+        try {
+          const id = decodeURIComponent(problemMatch[1]);
+          const problem = await getProblem(id);
+          if (!problem) {
+            sendError(req, res, 'Problem not found.', 404);
+            return;
+          }
+          // Images in MathNet are delivered as short-lived signed assets. Keep the
+          // database durable, but optionally refresh the source row for image URLs.
+          if (problem.hasImages && problem.sourceIndex >= 0 && problem.statement.includes('attached_image_')) {
+            try {
+              const u = new URL(HF_ROWS_URL);
+              u.searchParams.set('dataset', MATHNET_DATASET);
+              u.searchParams.set('config', MATHNET_CONFIG);
+              u.searchParams.set('split', MATHNET_SPLIT);
+              u.searchParams.set('offset', String(problem.sourceIndex));
+              u.searchParams.set('length', '1');
+              const source = await hfJson(u);
+              const row = source.rows?.[0]?.row || {};
+              const imgs = Array.isArray(row.images) ? row.images
+                .map(x => typeof x === 'string' ? x : x?.src || '')
+                .filter(Boolean) : [];
+              if (imgs.length) {
+                problem.statement = problem.statement.replace(
+                  /!\[([^\]]*)\]\(attached_image_(\d+)\.png\)/g,
+                  (_, alt, n) => imgs[Number(n) - 1] ? '![' + (alt || 'Figure') + '](' + imgs[Number(n) - 1] + ')' : ''
+                );
+              }
+            } catch (_) {}
+          }
+          sendJson(req, res, problem, 200, 'public, max-age=300');
+        } catch (error) {
+          sendError(req, res, error.message, 500);
+        }
+        return;
+      }
+
+      if (url.pathname === '/api/mathnet/random') {
+        try {
+          const problems = await randomProblems(url);
+          sendJson(req, res, {
+            source: MATHNET_DATASET,
+            total: problems.length,
+            problems
+          }, 200, 'no-store');
+        } catch (error) {
+          sendError(req, res, error.message, 500);
+        }
+        return;
+      }
+
+      sendError(req, res, 'Unknown MathNet endpoint.', 404);
+      return;
+    }
+
+    serveStatic(req, res, url.pathname);
+  } catch (error) {
+    console.error('[KARP] request error:', error);
+    sendError(req, res, error.message || 'Server error', 500);
+  }
+});
+
+server.on('clientError', (_err, socket) => {
+  try { socket.end('HTTP/1.1 400 Bad Request\\r\\n\\r\\n'); } catch (_) {}
+});
+
+(async () => {
+  await maybeStartSync();
+  server.listen(PORT, () => {
+    console.log('KARP server listening on port ' + PORT);
+  });
+})();
+ + params.length);
+  }
+  const clause = where.length ? 'WHERE ' + where.join(' AND ') : '';
+  const countResult = await pool.query('SELECT COUNT(*)::int AS count FROM mathnet_problems ' + clause, params);
+  const rowsSql = 'SELECT id,source_index,country,competition,year,section,problem_number,source_booklet,' +
+    'booklet_source,language,problem_type,category,difficulty,has_images,' +
+    '(competition || CASE WHEN COALESCE(year,\'\') <> \'\' OR COALESCE(problem_number,\'\') <> \'\' ' +
+    'THEN \' — \' || array_to_string(ARRAY_REMOVE(ARRAY[NULLIF(year,\'\'),NULLIF(problem_number,\'\')], NULL), \' · \') ' +
+    'ELSE \'\' END) AS title FROM mathnet_problems ' + clause +
+    ' ORDER BY COALESCE(year,\'\') DESC, country, competition, source_index LIMIT ' + limit + ' OFFSET ' + offset;
+  const rowsResult = await pool.query(rowsSql, params);
+  return {
+    total: Number(countResult.rows[0]?.count || 0),
+    problems: rowsResult.rows.map(x => ({
+      id:x.id, sourceIndex:Number(x.source_index), country:x.country||'', competition:x.competition||'',
+      year:x.year||'', section:x.section||'', problemNumber:x.problem_number||'',
+      sourceBooklet:x.source_booklet||'', bookletSource:x.booklet_source||'',
+      language:x.language||'English', problemType:x.problem_type||'',
+      category:x.category||'A', difficulty:x.difficulty||'easy', hasSolution:true,
+      hasImages:!!x.has_images, title:x.title||x.competition||'MathNet Problem'
+    }))
+  };
 }
 
 async function randomProblems(url) {
