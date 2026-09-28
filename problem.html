@@ -27,7 +27,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
 .solution-group:last-child{margin-bottom:0}
 .solution-heading{font-family:'Space Grotesk';font-weight:700;font-size:15px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
 </style>
-<script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"}};</script>
+<script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$","$"]],processEnvironments:true,processEscapes:true},svg:{fontCache:"global"}};</script>
 <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 </head>
 <body>
@@ -42,10 +42,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
   if(!id&&!customId){location.href='/problems.html';return}
 
   function md(value){
-    const source=String(value||'').trim();
-    if(!source)return '';
-    if(window.marked) return DOMPurify.sanitize(marked.parse(source,{breaks:true}));
-    return escapeHtml(source).replace(/\n/g,'<br>');
+    return richMarkdown(String(value||'').trim());
   }
 
   function labelsForProblem(p){
