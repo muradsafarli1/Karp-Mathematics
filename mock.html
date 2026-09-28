@@ -207,7 +207,17 @@
       </main>`;
     document.getElementById('finish-mock').onclick=()=>finishMock(false);
     timer=setInterval(tick,1000);
-    typesetMath(document.getElementById('mock-session-paper'));
+    const paper=document.getElementById('mock-session-paper');
+    const forceMath=()=>{
+      if(!paper||!window.MathJax?.typesetPromise)return;
+      try{
+        if(MathJax.typesetClear)MathJax.typesetClear([paper]);
+        MathJax.typesetPromise([paper]).catch(()=>{});
+      }catch{}
+    };
+    setTimeout(forceMath,50);
+    setTimeout(forceMath,350);
+    setTimeout(forceMath,1000);
     window.scrollTo({top:0,behavior:'auto'});
   }
 
