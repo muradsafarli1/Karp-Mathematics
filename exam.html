@@ -1,21 +1,71 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KARP — Exam</title><link rel="stylesheet" href="/style.css"><script src="/app.js"></script><style>
-html[data-theme="light"] .exam-paper,
-html[data-theme="light"] .exam-paper *,
-html[data-theme="light"] .exam-question,
-html[data-theme="light"] .exam-question * { color:#17191c !important; }
-html[data-theme="light"] .exam-paper .btn,
-html[data-theme="light"] .exam-paper .language-switch button.active { color:#fff !important; }
-html[data-theme="light"] .exam-question { border-color:#dedfe2 !important; }
-html[data-theme="light"] mjx-container { color:#17191c !important; }
-.exam-paper-title{text-align:center}
-.exam-paper-title h2,.exam-paper-title p,.exam-paper-title .eyebrow{text-align:center}
-</style><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script></head><body><script>
-(async()=>{const u=await requireUser();if(!u)return;const id=new URLSearchParams(location.search).get('id');if(!id){location.href='/exams.html';return}try{const d=await api('/api/exams/'+encodeURIComponent(id));const e=d.exam;if(!e){location.href='/exams.html';return}const hd=await api('/api/exams/history').catch(()=>({history:[]})),previous=(hd.history||[]).find(x=>x.examId===id),storageKey='able_exam_'+id;let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{};let startedAt=saved.startedAt||null,end=saved.end||null,finished=!!previous||!!saved.submitted,timer=null;
-const fmt=ms=>{const total=Math.max(0,Math.ceil(ms/1000)),h=Math.floor(total/3600),m=Math.floor(total%3600/60),s=total%60;return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`};
-const saveLocal=extra=>localStorage.setItem(storageKey,JSON.stringify({startedAt,end,submitted:finished,...extra}));
-function renderReview(){const title=localized(e,'title');document.body.innerHTML=`<main class="exam-screen"><div class="exam-paper" id="exam-paper"><div style="display:flex;justify-content:flex-end">${languageSwitch()}</div><div class="exam-paper-title"><div class="eyebrow">COMPLETED EXAM</div><h2>${escapeHtml(title)}</h2><p>${escapeHtml(localized(e,'description'))}</p></div>${(e.questions||[]).map((q,i)=>`<section class="exam-question"><div class="problem-number">Problem ${i+1}${q.code?' · '+escapeHtml(q.code):''}</div>${q.imageUrl?`<img class="detail-image" src="${escapeHtml(q.imageUrl)}" alt="Problem ${i+1}" loading="lazy">`:''}<div class="question-text">${escapeHtml(localized(q,'statement'))}</div></section>`).join('')}<div class="exam-actions" style="margin-top:30px"><a class="btn" href="/exams.html">← Back to Exams</a><button class="btn primary" onclick="window.print()">Print Exam</button></div></div></main>`;bindLanguageSwitch(renderReview);typesetMath(document.getElementById('exam-paper'))}
-async function finish(reason='manual'){if(finished)return;finished=true;clearInterval(timer);try{await api('/api/exams/'+encodeURIComponent(id)+'/submit',{method:'POST',body:JSON.stringify({answers:{},startedAt,reason})});saveLocal({submitted:true});if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});renderReview()}catch(err){finished=false;toast(err.message)}}
-function renderActive(){const title=localized(e,'title');document.body.innerHTML=`<main class="exam-screen"><div class="exam-clock-only"><div class="exam-clock" id="timer">${fmt(end-Date.now())}</div></div><div class="exam-paper" id="exam-paper"><div style="display:flex;justify-content:flex-end">${languageSwitch()}</div><div class="exam-paper-title"><h2>${escapeHtml(title)}</h2><p>${escapeHtml(localized(e,'description'))}</p></div>${(e.questions||[]).map((q,i)=>`<section class="exam-question"><div class="problem-number">Problem ${i+1}${q.code?' · '+escapeHtml(q.code):''}</div>${q.imageUrl?`<img class="detail-image" src="${escapeHtml(q.imageUrl)}" alt="Problem ${i+1}" loading="lazy">`:''}<div class="question-text">${escapeHtml(localized(q,'statement'))}</div><div class="print-answer-space"></div></section>`).join('')}</div></main>`;bindLanguageSwitch(renderActive);typesetMath(document.getElementById('exam-paper'))}
-if(finished){renderReview();return}startedAt=saved.startedAt||new Date().toISOString();end=saved.end||Date.now()+Number(e.durationMinutes||60)*60000;saveLocal({startedAt,end,submitted:false});renderActive();async function enterFullscreen(){try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen()}catch{}}await enterFullscreen();timer=setInterval(()=>{const left=end-Date.now(),el=document.getElementById('timer');if(el)el.textContent=fmt(left);if(left<=0)finish('time')},250);window.addEventListener('beforeunload',ev=>{if(!finished){saveLocal();ev.preventDefault();ev.returnValue=''}});document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&!finished){toast('Fullscreen is required for the exam.');setTimeout(enterFullscreen,300)}});document.addEventListener('visibilitychange',()=>{if(document.hidden&&!finished)toast('Please return to the exam. The timer continues running.')});document.addEventListener('contextmenu',ev=>{if(!finished)ev.preventDefault()});
-}catch(err){console.error('Exam loading error:',err);document.body.innerHTML=`<div class="error-page"><h1>Unable to load exam</h1><p>${escapeHtml(err.message)}</p><a href="/exams.html">← Back to Exams</a></div>`}})();
-</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KARP — Exam</title>
+<link rel="stylesheet" href="/style.css"><script src="/app.js"></script>
+<script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"},startup:{typeset:false}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+.exam-screen{min-height:100vh;padding:18px 3vw;background:var(--bg)}.exam-paper{width:min(1180px,94vw);margin:0 auto 70px}.exam-clock-only{display:flex;justify-content:center;padding:6px 0 18px}.exam-clock{font-family:'Space Grotesk';font-variant-numeric:tabular-nums;font-size:56px;font-weight:800}.exam-paper-title{text-align:center;margin-bottom:42px}.exam-paper-title h2{font-family:'Space Grotesk';font-size:clamp(36px,5vw,58px);letter-spacing:-2px;margin:8px 0}.exam-paper-title p{color:var(--muted);font-size:12px;line-height:1.6}.exam-question{padding:34px 0;border-top:1px solid var(--line)}.problem-number{font-family:'Space Grotesk';font-size:15px;font-weight:800;margin-bottom:14px}.question-text{font-size:19px;line-height:1.9}.exam-solution{margin-top:10px}.exam-solution-body{display:none;margin-top:12px;font-size:16px;line-height:1.85}.exam-solution-body.open{display:block}.exam-actions{display:flex;justify-content:center;gap:8px;margin-top:25px;flex-wrap:wrap}.guest-gate{margin:0 auto 20px;width:min(620px,100%);padding:16px;border-radius:14px;background:var(--panel2);text-align:center;color:var(--muted);font-size:11px;line-height:1.6}
+html[data-theme="light"] .exam-question{border-color:#dedfe2!important}
+@media(max-width:620px){.exam-screen{padding:14px}.exam-paper{width:100%}.exam-clock{font-size:38px}.question-text{font-size:17px}}
+</style>
+</head>
+<body>
+<script>
+(async()=>{
+  const id=new URLSearchParams(location.search).get('id'),reviewMode=new URLSearchParams(location.search).get('review')==='1';
+  if(!id){location.href='/exams.html';return}
+  try{
+    const user=await me();
+    const d=await api('/api/exams/'+encodeURIComponent(id)),e=d.exam;
+    if(!e){location.href='/exams.html';return}
+    const hd=user?(await api('/api/exams/history').catch(()=>({history:[]}))).history||[]:[],previous=hd.find(x=>x.examId===id);
+    const finished=!!previous;
+    const math=s=>DOMPurify.sanitize(marked.parse(String(s||'').replace(/\\$\\$([\\s\\S]*?)\\$\\$/g,'\\\\[$1\\\\]').replace(/(^|[^\\\\])\\$([^$\\n]+)\\$/g,'$1\\\\($2\\\\)'),{breaks:true}));
+    const dateNow=()=>new Date().toLocaleString();
+
+    function review(){
+      const questions=previous?.questions||e.questions||[];
+      document.body.innerHTML='<main class="exam-screen"><div class="exam-paper"><div class="exam-paper-title"><div class="eyebrow">COMPLETED EXAM</div><h2>'+escapeHtml(localized(e,'title'))+'</h2><p>'+escapeHtml(localized(e,'description'))+'</p><p>Submitted · '+escapeHtml(dateNow())+'</p></div><div id="review-list"></div><div class="exam-actions"><a class="btn" href="/exams.html">← Back to Exams</a><button class="btn primary" onclick="window.print()">Print Exam</button></div></div></main>';
+      const host=document.getElementById('review-list');
+      questions.forEach((q,i)=>{
+        const statement=localized(q,'statement')||q.statementEn||q.statement||q.text||q.statementAz||'';
+        const sol=q.solution||q.solutionEn||q.solutionAz||'';
+        const sec=document.createElement('section');sec.className='exam-question';
+        sec.innerHTML='<div class="problem-number">Problem '+(i+1)+(q.code?' · '+escapeHtml(q.code):'')+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+escapeHtml(q.imageUrl)+'" alt="Problem '+(i+1)+'">':'')+'<div class="question-text">'+math(statement)+'</div><div class="exam-solution"><button class="btn">Show solution</button><div class="exam-solution-body">'+(sol?math(sol):'<div style="color:var(--muted)">No supplied solution.</div>')+'</div></div>';
+        const b=sec.querySelector('button'),body=sec.querySelector('.exam-solution-body');b.onclick=()=>{const open=body.classList.toggle('open');b.textContent=open?'Hide solution':'Show solution';if(open)typesetMath(body)};host.appendChild(sec);
+      });
+      typesetMath(host);
+    }
+
+    function active(){
+      const storageKey='able_exam_'+id;let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{}
+      let startedAt=saved.startedAt||new Date().toISOString(),end=saved.end||Date.now()+Number(e.durationMinutes||60)*60000,timer=null,finished=false;
+      const render=()=>{
+        document.body.innerHTML='<main class="exam-screen"><div class="exam-clock-only"><div class="exam-clock" id="timer">'+formatDuration(e.durationMinutes)+'</div></div><div class="exam-paper"><div class="exam-paper-title"><div class="eyebrow">EXAM</div><h2>'+escapeHtml(localized(e,'title'))+'</h2><p>'+escapeHtml(localized(e,'description'))+'</p></div><div id="guest-gate" class="guest-gate">'+(user?'You are registered. The exam timer will begin for you now.':'Registration is required to start this exam. Sign in or create an account to begin.')+'</div><div id="questions"></div><div class="exam-actions"><button class="btn primary" id="start-exam">'+(user?'Start / Continue Exam':'Sign in to Start')+'</button><a class="btn" href="/exams.html">← Back to Exams</a></div></div></main>';
+        const host=document.getElementById('questions');
+        (e.questions||[]).forEach((q,i)=>{const sec=document.createElement('section');sec.className='exam-question';sec.innerHTML='<div class="problem-number">Problem '+(i+1)+(q.code?' · '+escapeHtml(q.code):'')+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+escapeHtml(q.imageUrl)+'" alt="Problem '+(i+1)+'">':'')+'<div class="question-text">'+math(localized(q,'statement')||q.statementEn||q.statement||q.statementAz||'')+'</div>';host.appendChild(sec)});
+        typesetMath(host);
+        document.getElementById('start-exam').onclick=async()=>{
+          if(!user){showAuthPrompt('Sign in to start the exam','Create an account or sign in to register and start this timed exam.');return}
+          if(!saved.end){startedAt=new Date().toISOString();end=Date.now()+Number(e.durationMinutes||60)*60000;localStorage.setItem(storageKey,JSON.stringify({startedAt,end,submitted:false}))}
+          startTimer();
+        };
+      };
+      const startTimer=()=>{
+        document.getElementById('guest-gate').textContent='Exam in progress. The timer continues while you navigate away.';
+        document.getElementById('start-exam').style.display='none';
+        let tick=()=>{const left=end-Date.now(),el=document.getElementById('timer');if(el)el.textContent=formatDuration(Math.max(1,Math.ceil(left/60000)));if(left<=0)finishExam('time')};tick();timer=setInterval(tick,500);
+        window.onbeforeunload=ev=>{ev.preventDefault();ev.returnValue='Are you sure you want to leave this exam?'}};
+      const finishExam=async reason=>{if(finished)return;finished=true;clearInterval(timer);try{await api('/api/exams/'+encodeURIComponent(id)+'/submit',{method:'POST',body:JSON.stringify({answers:{},startedAt,reason})});localStorage.setItem(storageKey,JSON.stringify({startedAt,end,submitted:true}));if(user){const fresh=(await api('/api/exams/history').catch(()=>({history:[]}))).history||[];previous=fresh.find(x=>x.examId===id);review()}else{review()}}catch(err){finished=false;toast(err.message)}};
+      window.finishExam=finishExam;render();
+    };
+
+    if(finished||reviewMode){if(!user){document.body.innerHTML='<div class="error-page"><h1>Sign in to review this exam</h1><p>Your completed exam review is tied to your account.</p><a class="btn primary" href="/login.html">Sign in</a> <a class="btn" href="/signup.html">Create account</a></div>';return}review();}
+    else active();
+  }catch(err){console.error(err);document.body.innerHTML='<div class="error-page"><h1>Unable to load exam</h1><p>'+escapeHtml(err.message)+'</p><a href="/exams.html">← Back to Exams</a></div>'}
+})();
+</script>
+</body></html>
