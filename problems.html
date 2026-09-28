@@ -18,7 +18,7 @@
 .virtual-cards{position:relative}.virtual-card{position:absolute;box-sizing:border-box;padding:0 7px 14px}
 .problem-card-link{display:flex!important;height:100%;min-height:178px;box-sizing:border-box;flex-direction:column;justify-content:flex-start;text-decoration:none!important;background:var(--panel2)!important;border:1px solid transparent!important;border-radius:16px;padding:21px!important;box-shadow:none!important;transition:transform .15s,background .15s}
 .problem-card-link:hover{transform:translateY(-2px);background:var(--panel2)!important}
-.problem-card-link{position:relative}.problem-card-link .tag{align-self:flex-start}.status-badges{position:absolute;top:13px;right:13px;display:flex;align-items:center;gap:5px;z-index:2}.status-badge{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.12)}.status-badge svg{width:18px;height:18px;display:block;fill:currentColor}.status-badge.solved{color:#e53935}.status-badge.saved{color:#22a447}.solved-only{position:absolute;top:13px;right:13px}.problem-card-link h3{font-family:'Space Grotesk';font-size:21px;line-height:1.14;letter-spacing:-.7px;margin:16px 0 9px;text-align:left!important;color:var(--text)!important}
+.problem-card-link{position:relative}.problem-card-link .tag{align-self:flex-start}.status-badges{position:absolute;top:13px;right:13px;display:flex;align-items:center;gap:5px;z-index:2}.status-badge{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.12);font-family:'Segoe UI Symbol','Noto Sans Symbols 2',sans-serif;font-size:20px;line-height:1}.status-badge.solved{color:#e53935}.status-badge.saved{color:#22a447}.status-badge.solved{color:#e53935}.status-badge.saved{color:#22a447}.solved-only{position:absolute;top:13px;right:13px}.problem-card-link h3{font-family:'Space Grotesk';font-size:21px;line-height:1.14;letter-spacing:-.7px;margin:16px 0 9px;text-align:left!important;color:var(--text)!important}
 .problem-meta-primary{font-size:12px;font-weight:800;color:var(--text);margin-top:auto}.problem-meta-secondary{font-size:11px;color:var(--muted);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .archive-loading{padding:45px 0;text-align:center;color:var(--muted)}.empty-archive{padding:70px 0;text-align:center;color:var(--muted)}
 @media(max-width:1050px){.problem-tools{grid-template-columns:1fr}.virtual-card{padding-left:6px;padding-right:6px}}
@@ -49,7 +49,7 @@
   function savedMap(){try{return JSON.parse(localStorage.getItem('karp_saved_mathnet')||'{}')}catch{return {}}}
   function isSolved(p){return !!solvedMap()[String(p.id||'')]}
   function isSaved(p){return !!savedMap()[String(p.id||'')]}
-  function birdIcon(){return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4.2 11.3c2.1.1 3.8-1 5.1-2.5 1.2-1.5 1.8-3.2 3.4-4.1 1.2-.7 2.6-.6 3.7.1-.6.2-1 .6-1.3 1.1 1.7-.2 3.4.5 4.2 2-1.1-.2-2.1 0-3 .5 1 .6 1.8 1.5 2.2 2.6-2 .1-3.7-.5-4.9-1.6-1 .8-1.9 1.8-2.5 3-.6 1.4-.8 2.8-.7 4.2H8.3c-.1-1.3-.4-2.4-.9-3.4-.7-1.2-1.7-1.9-3.2-2.1Zm11.8-6.7c.2-.7.7-1.3 1.3-1.7-.1.8-.4 1.5-.9 2.1l-.4-.4Z"/></svg>'}
+  function birdIcon(){return '🐦︎'}
   function statusHtml(p){
     const solved=isSolved(p),saved=isSaved(p);
     if(solved&&saved)return '<span class="status-badges"><span class="status-badge solved" title="Solved" aria-label="Solved">'+birdIcon()+'</span><span class="status-badge saved" title="Saved" aria-label="Saved">'+birdIcon()+'</span></span>';
@@ -57,7 +57,7 @@
     if(saved)return '<span class="status-badge saved solved-only" title="Saved" aria-label="Saved">'+birdIcon()+'</span>';
     return '';
   }
-  function cardHtml(p){
+    function cardHtml(p){
     const custom=p.sourceType==='custom';
     const href=custom
       ?'/problem.html?custom='+encodeURIComponent(p.customId)
