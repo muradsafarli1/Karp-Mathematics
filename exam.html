@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KARP — Exam</title>
 <link rel="stylesheet" href="/style.css"><script src="/app.js"></script><script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script><script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
-<script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"},startup:{typeset:false}};</script>
+<script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$","$"]],processEnvironments:true,processEscapes:true},svg:{fontCache:"global"},startup:{typeset:false}};</script>
 <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
 .exam-screen{min-height:100vh;padding:18px 3vw;background:var(--bg)}.exam-paper{width:min(1180px,94vw);margin:0 auto 70px}.exam-clock-only{display:flex;justify-content:center;padding:6px 0 18px}.exam-clock{font-family:'Space Grotesk';font-variant-numeric:tabular-nums;font-size:56px;font-weight:800}.exam-paper-title{text-align:center;margin-bottom:42px}.exam-paper-title h2{font-family:'Space Grotesk';font-size:clamp(36px,5vw,58px);letter-spacing:-2px;margin:8px 0}.exam-paper-title p{color:var(--muted);font-size:12px;line-height:1.6}.exam-question{padding:34px 0;border-top:1px solid var(--line)}.problem-number{font-family:'Space Grotesk';font-size:15px;font-weight:800;margin-bottom:14px}.question-text{font-size:19px;line-height:1.9}.exam-solution{margin-top:10px}.exam-solution-body{display:none;margin-top:12px;font-size:16px;line-height:1.85}.exam-solution-body.open{display:block}.exam-actions{display:flex;justify-content:center;gap:8px;margin-top:25px;flex-wrap:wrap}.guest-gate{margin:0 auto 20px;width:min(620px,100%);padding:16px;border-radius:14px;background:var(--panel2);text-align:center;color:var(--muted);font-size:11px;line-height:1.6}
@@ -23,7 +23,7 @@ html[data-theme="light"] .exam-question{border-color:#dedfe2!important}
     if(!e){location.href='/exams.html';return}
     const hd=user?(await api('/api/exams/history').catch(()=>({history:[]}))).history||[]:[];let previous=hd.find(x=>x.examId===id);
     const finished=!!previous;
-    const math=s=>DOMPurify.sanitize(marked.parse(String(s||'').replace(/\\$\\$([\\s\\S]*?)\\$\\$/g,'\\\\[$1\\\\]').replace(/(^|[^\\\\])\\$([^$\\n]+)\\$/g,'$1\\\\($2\\\\)'),{breaks:true}));
+    const math=s=>richMarkdown(String(s||''));
     const dateNow=()=>new Date().toLocaleString();
 
     function review(){
