@@ -46,31 +46,43 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
   }
 
   function labelsForProblem(p){
-    var names={A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'};
-    return (names[p.category]||'Problem')+' · '+(p.problemNumber||'Proof');
+    var pieces=[p.country,p.competition,p.year,p.problemNumber].filter(function(x){return x!=null&&String(x).trim()});
+    return pieces.length?pieces.join(' · '):'MathNet Problem';
   }
 
   function getSolved(){
+
     try{return JSON.parse(localStorage.getItem('able_solved_problems')||'{}')}catch{return {}}
   }
 
+  function saveRecord(){
+    return {id:id,title:currentProblem?.title||'MathNet Problem',topic:currentProblem?.category||'Other',
+      country:currentProblem?.country||'',competition:currentProblem?.competition||'',year:currentProblem?.year||'',
+      problemNumber:currentProblem?.problemNumber||'',sourceIndex:currentProblem?.sourceIndex||0};
+  }
+
+  function getSaved(){
+    try{return JSON.parse(localStorage.getItem('karp_saved_mathnet')||'{}')}catch{return {}}
+  }
+
   function toggleSave(){
-    const key='able_saved_problem_'+id;
-    if(localStorage.getItem(key)==='1')localStorage.removeItem(key);
-    else localStorage.setItem(key,'1');
+    const data=getSaved();
+    if(data[id]) delete data[id]; else data[id]=saveRecord();
+    localStorage.setItem('karp_saved_mathnet',JSON.stringify(data));
     syncSaveButton();
   }
 
   function syncSaveButton(){
-    const b=document.getElementById('save-btn');
-    if(b)b.textContent=localStorage.getItem('able_saved_problem_'+id)==='1'?'Saved ✓':'Save ✓';
+    const b=document.getElementById('save-btn'); if(!b)return;
+    b.textContent=getSaved()[id]?'Saved ✓':'Save';
   }
 
   function toggleSolved(){
     const data=getSolved();
     if(data[id]) delete data[id];
-    else data[id]={topic:currentProblem.category||'Other',dates:[new Date().toISOString()]};
+    else data[id]={...saveRecord(),dates:[new Date().toISOString()]};
     localStorage.setItem('able_solved_problems',JSON.stringify(data));
+    localStorage.setItem('karp_solved_mathnet',JSON.stringify(data));
     syncSolvedButton();
   }
 
@@ -78,7 +90,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
     const b=document.getElementById('solved-btn');
     if(!b)return;
     const solved=!!getSolved()[id];
-    b.textContent=solved?'Solved ✓':'Solved ✓';
+    b.textContent=solved?'Solved ✓':'Solved';
     b.classList.toggle('solved-active',solved);
   }
 
