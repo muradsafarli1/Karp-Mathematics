@@ -49,6 +49,14 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+    match /mathnetProblemsV2/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /mathnetIndexShardsV2/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
     match /mathnetPools/{id} {
       allow read: if true;
       allow write: if isAdmin();
