@@ -99,14 +99,43 @@
     };
   }
 
+  async function fetchJson(u,attempts=3){
+    let lastErr;
+    for(let i=0;i<attempts;i++){
+      try{
+        const r=await fetch(u.toString(),{headers:{Accept:'application/json'}});
+        if(r.ok)return await r.json();
+        lastErr=new Error('Hugging Face HTTP '+r.status);
+        if(r.status>=400&&r.status<500&&r.status!==429)break;
+      }catch(e){lastErr=e}
+      await new Promise(r=>setTimeout(r,800*Math.pow(2,i)));
+    }
+    throw lastErr||new Error('Hugging Face request failed');
+  }
+
   async function fetchPage(offset){
-    const u=new URL('https://datasets-server.huggingface.co/filter');
-    u.searchParams.set('dataset',DATASET);u.searchParams.set('config',CONFIG);u.searchParams.set('split',SPLIT);
-    u.searchParams.set('where','"language"=\'English\' AND ("problem_type"=\'proof\' OR "problem_type"=\'proof only\' OR "problem_type"=\'proof and answer\')');
-    u.searchParams.set('offset',String(offset));u.searchParams.set('length',String(PAGE));
-    const r=await fetch(u.toString(),{headers:{Accept:'application/json'}});
-    if(!r.ok)throw new Error('Hugging Face HTTP '+r.status);
-    return r.json();
+    const filter=new URL('https://datasets-server.huggingface.co/filter');
+    filter.searchParams.set('dataset',DATASET);filter.searchParams.set('config',CONFIG);filter.searchParams.set('split',SPLIT);
+    filter.searchParams.set('where','"language"=\'English\' AND ("problem_type"=\'proof\' OR "problem_type"=\'proof only\' OR "problem_type"=\'proof and answer\')');
+    filter.searchParams.set('offset',String(offset));filter.searchParams.set('length',String(PAGE));
+    try{
+      return await fetchJson(filter,3);
+    }catch(filterErr){
+      log('HF filter unavailable at offset '+offset+' ('+filterErr.message+'). Falling back to /rows and local filtering…');
+      const rows=new URL('https://datasets-server.huggingface.co/rows');
+      rows.searchParams.set('dataset',DATASET);rows.searchParams.set('config',CONFIG);rows.searchParams.set('split',SPLIT);
+      rows.searchParams.set('offset',String(offset));rows.searchParams.set('length',String(PAGE));
+      const payload=await fetchJson(rows,4);
+      const keep=payload.rows||[];
+      const filtered=keep.filter(item=>{
+        const r=item.row||{};
+        const lang=String(r.language||'').trim().toLowerCase();
+        const type=String(r.problem_type||'').trim().toLowerCase();
+        return (lang==='english'||lang==='en'||lang.startsWith('en-')) &&
+          ['proof','proof only','proof and answer'].includes(type);
+      });
+      return {...payload,rows:filtered};
+    }
   }
 
   async function writePage(rows){
