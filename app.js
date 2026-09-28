@@ -16,6 +16,12 @@
 (function injectSharedStyles(){
   const style = document.createElement('style');
   style.textContent = `
+
+    .nav-profile{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;overflow:hidden;background:var(--panel2);color:var(--text);text-decoration:none;flex:0 0 34px}
+    .nav-profile-img{width:100%;height:100%;object-fit:cover;display:block}.nav-profile-initial{font-size:12px;font-weight:800}
+    .nav-logout{border:0;background:transparent;color:var(--muted);font-size:11px;padding:6px 4px;cursor:pointer;white-space:nowrap}
+    .nav-logout:hover{color:var(--text)}
+    .nav-admin{font-size:11px!important;padding:7px 10px!important}
     .theme-toggle{width:38px;height:38px;border:1px solid #30343d;background:#15181d;color:#f3f5f8;border-radius:10px;font-size:17px;display:grid;place-items:center;padding:0;line-height:1}
     .theme-toggle:hover{background:#22262d;transform:translateY(-1px)}
     .language-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--line,#292d34);background:var(--panel,#101216);border-radius:10px;margin-bottom:28px}
@@ -211,7 +217,7 @@ async function api(path, opts = {}) {
       const sub=await getDoc(doc(db,'exams',x.id,'submissions',uid));
       if(sub.exists()){
         const s=sub.data();
-        history.push({examId:x.id,title:x.data().titleEn||x.data().title||'',titleEn:x.data().titleEn||x.data().title||'',titleAz:x.data().titleAz||'',submittedAt:s.submittedAt,answers:s.answers||{}});
+        const safe=publicExam({id:x.id,...x.data()});history.push({examId:x.id,title:safe.titleEn||safe.title||'',titleEn:safe.titleEn||safe.title||'',titleAz:safe.titleAz||'',submittedAt:s.submittedAt,answers:s.answers||{},questions:safe.questions||[]});
       }
     }
     history.sort((a,b)=>new Date(b.submittedAt)-new Date(a.submittedAt)); return {history};
@@ -273,7 +279,7 @@ async function requireUser(){const u=await me();if(!u){location.href='/login.htm
 async function requireAdmin(){const u=await me();if(!u||u.role!=='admin'){location.href='/login.html';return null}return u}
 function escapeHtml(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function nav(active){const links=[['Problems','/problems.html'],['Contests','/contests.html'],['Articles','/articles.html'],['Exams','/exams.html'],['Mocks','/mock.html'],['Videos','/videos.html']];const light=document.documentElement.dataset.theme==='light';const toolsMenu='<div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a><a href="/calculator.html"><span>Calculator</span><small>Scientific Calculator</small></a><a href="/desmos.html"><span>Desmos</span><small>Graphing Calculator</small></a></div></div>';return `<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks">${links.map(x=>`<a class="${active===x[0]?'active':''}" href="${x[1]}">${x[0]}</a>`).join('')}${toolsMenu}<a class="${active==='About'?'active':''}" href="/about.html">About</a></nav><div class="actions" id="nav-actions"><button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()">${light?'☾':'☀'}</button><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header>`}
-async function updateNavUser(){const box=document.getElementById('nav-actions');if(!box)return;const u=await me();if(!u)return;const light=document.documentElement.dataset.theme==='light';box.innerHTML=`<button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()">${light?'☾':'☀'}</button><a class="btn ghost" href="/account.html">${escapeHtml(u.name)}</a>${u.role==='admin'?'<a class="btn" href="/admin.html">Admin</a>':''}<button class="btn primary" onclick="logout()">Log out</button>`}
+async function updateNavUser(){const box=document.getElementById('nav-actions');if(!box)return;const u=await me();if(!u)return;const light=document.documentElement.dataset.theme==='light';const avatar=u.photoURL?`<img src="${escapeHtml(u.photoURL)}" alt="" class="nav-profile-img">`:`<span class="nav-profile-initial">${escapeHtml((u.name||'K').charAt(0).toUpperCase())}</span>`;box.innerHTML=`<button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()">${light?'☾':'☀'}</button><a class="nav-profile" href="/account.html" aria-label="Account" title="Account">${avatar}</a>${u.role==='admin'?'<a class="btn nav-admin" href="/admin.html">Admin</a>':''}<button class="nav-logout" onclick="logout()">Log out</button>`}
 function shell(active,title,body){document.title=`KARP — ${title}`;document.body.innerHTML=nav(active)+body+footer();updateNavUser()}
 function footer(){return `<footer class="footer"><div class="wrap footgrid"><div><div class="brand">KARP</div><div class="small">Olympiad mathematics for serious problem solvers.</div></div><div class="footlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/articles.html">Articles</a><a href="/exams.html">Exams</a><a href="/videos.html">Videos</a><a href="/about.html">About Us</a></div></div></footer>`}
 function currentLanguage(){return localStorage.getItem('able_lang')==='az'?'az':'en'}
