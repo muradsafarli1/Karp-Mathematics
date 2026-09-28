@@ -6,11 +6,13 @@
 <title>KARP — Desmos</title>
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js"></script>
-<script src="https://www.desmos.com/api/v1.13/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6&lang=en"></script>
+<script src="https://www.desmos.com/api/v1.0/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6&lang=en"></script>
 <style>
-.tool-page{height:calc(100vh - 76px);min-height:0;padding:0;background:#fff;overflow:hidden}
+html,body{height:100%;overflow:hidden}
+.tool-page{height:calc(100vh - 76px);min-height:0;padding:0!important;background:#fff!important;overflow:hidden}
 .tool-inner,.tool-frame,#desmos-calculator{width:100%;height:100%;margin:0}
 .tool-frame{overflow:hidden;background:#fff}
+#desmos-calculator{min-height:400px}
 .desmos-loading,.desmos-fallback{height:100%;display:grid;place-items:center;align-content:center;gap:10px;text-align:center;font-family:'DM Sans',system-ui,sans-serif;color:#20242a;background:#fff}
 .desmos-loading span,.desmos-fallback span{color:#777c84;font-size:12px}
 .desmos-spinner{width:30px;height:30px;border:3px solid #d9dce0;border-top-color:#16191d;border-radius:50%;animation:desmos-spin .75s linear infinite}
@@ -22,38 +24,37 @@
 <script>
 shell('Tools','Desmos',`<main class="tool-page"><div class="tool-inner"><div class="tool-frame"><div id="desmos-calculator"><div class="desmos-loading"><div class="desmos-spinner"></div><strong>Loading Desmos…</strong><span>Preparing your graphing workspace</span></div></div></div></div></main>`);
 
-(function initDesmos(){
-  let attempts=0,started=false;
-  function mount(){
-    const el=document.getElementById('desmos-calculator');
-    if(!el||started)return;
-    if(!window.Desmos){
-      attempts++;
-      if(attempts<50){setTimeout(mount,200);return}
-      return fail('The Desmos API did not load.');
-    }
-    try{
-      const calculator=window.Desmos.GraphingCalculator(el,{
-        keypad:true,
-        graphpaper:true,
-        expressions:true,
-        settingsMenu:true,
-        zoomButtons:true
-      });
-      started=true;
-      window.__karpDesmos=calculator;window.__desmosReady=true;
-      setTimeout(()=>calculator.resize(),100);
-      window.addEventListener('resize',()=>calculator.resize());
-    }catch(err){
-      fail(err&&err.message?err.message:'Unable to initialize calculator.');
-    }
-  }
+(function(){
+  let attempts=0;
   function fail(message){
     const el=document.getElementById('desmos-calculator');
     if(!el)return;
-    el.innerHTML='<div class="desmos-fallback"><strong>Desmos could not be opened.</strong><span>'+String(message).replace(/[&<>]/g,'')+'</span><a class="btn primary" href="https://www.desmos.com/calculator" target="_blank" rel="noopener">Open Desmos</a></div>';
+    el.innerHTML='<div class="desmos-fallback"><strong>Desmos could not be opened.</strong><span>'+String(message||'Unknown error').replace(/[&<>]/g,'')+'</span><a class="btn primary" href="https://www.desmos.com/calculator" target="_blank" rel="noopener">Open Desmos</a></div>';
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+  function mount(){
+    const el=document.getElementById('desmos-calculator');
+    if(!el)return;
+    if(window.Desmos?.GraphingCalculator){
+      try{
+        const calculator=window.Desmos.GraphingCalculator(el,{
+          keypad:true,
+          graphpaper:true,
+          expressions:true,
+          settingsMenu:true,
+          zoomButtons:true
+        });
+        window.__karpDesmos=calculator;
+        setTimeout(function(){calculator.resize()},150);
+        window.addEventListener('resize',function(){calculator.resize()});
+        return;
+      }catch(err){fail(err&&err.message?err.message:'Calculator initialization failed.');return}
+    }
+    attempts++;
+    if(attempts<100){setTimeout(mount,150);return}
+    fail('The Desmos calculator library did not load.');
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);
+  else mount();
   window.addEventListener('load',mount);
 })();
 </script>
