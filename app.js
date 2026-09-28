@@ -287,5 +287,17 @@ function setLanguage(lang){localStorage.setItem('able_lang',lang);return lang}
 function localized(item,field,lang=currentLanguage()){const az=item?.[`${field}Az`],en=item?.[`${field}En`],old=item?.[field];return lang==='az'?(az||en||old||''):(en||az||old||'')}
 function languageSwitch(){const lang=currentLanguage();return `<div class="language-switch" role="group" aria-label="Language"><button type="button" class="${lang==='az'?'active':''}" data-lang="az">AZE</button><button type="button" class="${lang==='en'?'active':''}" data-lang="en">ENG</button></div>`}
 function bindLanguageSwitch(renderFn){document.querySelectorAll('.language-switch button').forEach(b=>b.onclick=()=>{setLanguage(b.dataset.lang);renderFn()})}
-async function typesetMath(root){if(!root)return;if(window.MathJax){try{if(MathJax.startup?.promise)await MathJax.startup.promise;if(MathJax.typesetPromise)await MathJax.typesetPromise([root]);return}catch(e){console.error(e)}}setTimeout(()=>typesetMath(root),300)}
+async function typesetMath(root,retries=30){
+  if(!root)return;
+  if(window.MathJax?.typesetPromise){
+    try{
+      if(MathJax.startup?.promise)await MathJax.startup.promise;
+      if(MathJax.typesetClear)MathJax.typesetClear([root]);
+      await MathJax.typesetPromise([root]);
+      return true;
+    }catch(e){console.error(e)}
+  }
+  if(retries>0)setTimeout(()=>typesetMath(root,retries-1),250);
+  return false;
+}
 function formatDuration(m){m=Number(m||60);const h=Math.floor(m/60),mm=m%60;return `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`}
