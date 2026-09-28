@@ -187,7 +187,7 @@
   function normKey(x){
     return String(x||'').toLowerCase()
       .replace(/\\/g,'').replace(/<[^>]+>/g,' ')
-      .replace(/[^a-z0-9]+/g,' ').trim().replace(/\\s+/g,' ');
+      .replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
   }
   function officialProblemNumber(p){
     for(const key of ['problem_number','problemNumber','problem number','number','no','problem_no','problemNo']){
@@ -211,7 +211,7 @@
     return String(p?.problem_markdown||p?.statement_latex||p?.statement||p?.problem||p?.text||'').trim();
   }
   function countrySlug(name){
-    return String(name||'').toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'')
+    return String(name||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
       .replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
   }
   async function loadOfficialCountry(country){
