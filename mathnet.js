@@ -1,7 +1,7 @@
 /* KARP MathNet question-pool connector.
    Source: ShadenA/MathNet on Hugging Face.
    The Dataset Viewer API exposes /rows in slices of at most 100 rows. */
-const MATHNET_FILTER_WHERE = '"language"=\'en\' AND ("problem_type"=\'proof only\' OR "problem_type"=\'proof and answer\')';
+const MATHNET_FILTER_WHERE = '"language"=\'English\' AND ("problem_type"=\'proof only\' OR "problem_type"=\'proof and answer\')';
 
 const MATHNET = {
   dataset: 'ShadenA/MathNet',
@@ -88,7 +88,6 @@ async function mathnetFilteredRows(offset,length,whereExtra){
   url.searchParams.set('where',MATHNET_FILTER_WHERE+(whereExtra?' AND ('+whereExtra+')':''));
   url.searchParams.set('offset',String(Math.max(0,Math.floor(offset||0))));
   url.searchParams.set('length',String(Math.min(100,Math.max(1,length||100))));
-  url.searchParams.set('orderby','"id"');
   const res=await fetch(url,{headers:{Accept:'application/json'}});
   if(!res.ok) throw new Error('MathNet filter request failed ('+res.status+')');
   const data=await res.json();
