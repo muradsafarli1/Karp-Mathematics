@@ -31,7 +31,7 @@
 
   function esc(x){return escapeHtml(x==null?'':String(x))}
   function mathSource(s){return String(s||'').replace(/\\$\\$([\\s\\S]*?)\\$\\$/g,'\\\\[$1\\\\]').replace(/(^|[^\\\\])\\$([^$\\n]+)\\$/g,'$1\\\\($2\\\\)')}
-  function md(x){return DOMPurify.sanitize(marked.parse(mathSource(x),{breaks:true}))}
+  function md(x){return richMarkdown(String(x||''))}
   function renderMath(root){if(!root)return;const run=()=>{if(!window.MathJax?.typesetPromise)return;try{MathJax.typesetClear?.([root]);MathJax.typesetPromise([root]).catch(()=>{})}catch{}};[0,150,500,1200].forEach(ms=>setTimeout(run,ms))}
   function cats(){return [...document.querySelectorAll('.mock-cat:checked')].map(x=>x.value)}
   function count(){return Math.max(1,Math.min(30,Number(document.getElementById('mock-count').value||6)))}
