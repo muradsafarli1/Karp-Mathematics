@@ -301,7 +301,7 @@ async function mathnetFind(options){
   const refsBy={A:[],C:[],G:[],N:[]};
 
   function enoughRefs(){
-    return categories.every(cat=>(refsBy[cat]||[]).length>=targetBy[cat]);
+    return categories.filter(cat=>(neededBy[cat]||0)>0).every(cat=>(refsBy[cat]||[]).length>=targetBy[cat]);
   }
 
   // Metadata only: country/competition/topic/language/type. No long statements or solutions.
