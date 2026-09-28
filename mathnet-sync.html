@@ -191,19 +191,22 @@
   }
   function storedProblemNumber(p){
     const fields=[
-      p?.sourceBooklet,p?.bookletSource,p?.competition,p?.title,p?.section,
-      p?.source_booklet,p?.booklet_source,p?.['source'],p?.['problem']
+      p?.statement,p?.problem_markdown,p?.section,
+      p?.sourceBooklet,p?.bookletSource,p?.competition,p?.title
     ];
     for(const value of fields){
       const s=String(value||'');
+      const head=s.slice(0,2500);
       const patterns=[
-        /(?:^|[\\s—–-])Problem\\s*#?\\s*0*([1-9]\\d?)\\s*$/i,
-        /(?:^|[\\s—–-])P\\s*0*([1-9]\\d?)\\s*$/i,
-        /(?:^|[\\s—–-])Problem\\s*#?\\s*0*([1-9]\\d?)\\b/i,
-        /(?:^|[\\s—–-])P\\s*0*([1-9]\\d?)\\b/i,
-        /(?:^|[\\s(])No\\.?\\s*0*([1-9]\\d?)\\b/i
+        /(?:^|[\\n\\r])\\s*(?:#+\\s*)?(?:Problem|Question)\\s*#?\\s*0*([1-9]\\d?)\\b/i,
+        /(?:^|[\\n\\r])\\s*[*_]{0,2}0*([1-9]\\d?)\\s*[.)-]\\s+/i,
+        /\\b(?:Problem|Question)\\s*#?\\s*0*([1-9]\\d?)\\b/i,
+        /\\bP\\s*0*([1-9]\\d?)\\b/i
       ];
-      for(const re of patterns){const m=s.match(re);if(m)return'P'+m[1];}
+      for(const re of patterns){
+        const m=head.match(re);
+        if(m)return'P'+m[1];
+      }
     }
     return '';
   }
