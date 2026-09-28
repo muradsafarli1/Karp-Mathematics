@@ -36,6 +36,23 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    match /mathnetProblems/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /mathnetIndexShards/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /mathnetMeta/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /mathnetPools/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
     match /exams/{id} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
