@@ -27,7 +27,7 @@
 <body>
 <script>
 (async()=>{
-  const PAGE_SIZE=100;
+  const PAGE_SIZE=200;
   let page=0, search='', topic='All topics', requestToken=0;
 
   const topicNames={A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'};
@@ -44,11 +44,11 @@
 
   function card(p){
     const title=p.title||'MathNet Problem';
-    const competition=[p.competition,p.country].filter(Boolean).join(' · ');
+    const meta=[p.country,p.year||'Year not provided',p.problemNumber||'Problem number not provided'].filter(Boolean).join(' · ');
     return '<a class="card problem-card-link" href="/problem.html?id='+encodeURIComponent(p.id)+'&offset='+encodeURIComponent(p.sourceIndex)+'">'
       +'<div class="tag">'+escapeHtml(topicNames[p.category]||'Problem')+'</div>'
       +'<h3>'+escapeHtml(title)+'</h3>'
-      +(competition?'<div class="problem-meta">'+escapeHtml(competition)+'</div>':'')
+      +'<div class="problem-meta">'+escapeHtml(meta)+'</div>'
       +'</a>';
   }
 
