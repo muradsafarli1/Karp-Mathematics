@@ -186,6 +186,73 @@ async function mathnetSearch(query,offset,length){
   };
 }
 
+async function mathnetFind(options){
+  options=options||{};
+  const categories=Array.isArray(options.categories)&&options.categories.length?options.categories:['A','C','G','N'];
+  const difficulty=options.difficulty||'any';
+  const count=Math.max(1,Math.min(30,Number(options.count||6)));
+  const requestedTypes=['proof','proof-answer'];
+
+  // Sample across the whole MathNet source instead of relying on the broken
+  // Dataset Viewer /filter endpoint or only the first few hundred rows.
+  const batches=[];
+  const batchCount=28;
+  const maxOffset=Math.max(0,MATHNET.maxPreferredRows-100);
+  const seed=Number(options.seed||Date.now());
+  for(let i=0;i<batchCount;i++){
+    const pseudo=Math.abs(Math.sin(seed*0.000001+i*12.9898)*43758.5453);
+    const offset=Math.floor((pseudo-Math.floor(pseudo))*maxOffset);
+    batches.push(offset);
+  }
+
+  const pool=[];
+  const seen=new Set();
+  for(const offset of batches){
+    let batch;
+    try{batch=await mathnetRows(offset,100)}catch{continue}
+    for(const q of batch.rows){
+      if(seen.has(q.id))continue;
+      seen.add(q.id);
+      if(!mathnetQualifies(q))continue;
+      if(categories.indexOf(q.category)<0)continue;
+      if(difficulty!=='any'&&q.difficulty!==difficulty)continue;
+      if(requestedTypes.indexOf(q.type)<0)continue;
+      pool.push(q);
+    }
+    if(pool.length>=Math.max(80,count*6))break;
+  }
+
+  // Prefer a balanced spread across the selected topics.
+  const sequence=Array.isArray(options.sequence)&&options.sequence.length===count?options.sequence:null;
+  const byCat={A:[],C:[],G:[],N:[]};
+  pool.forEach(function(q){(byCat[q.category]||(byCat[q.category]=[])).push(q)});
+
+  const picked=[],used=new Set();
+  for(let i=0;i<count;i++){
+    const cat=sequence?sequence[i]:categories[i%categories.length];
+    const list=byCat[cat]||[];
+    let candidate=null;
+
+    if(list.length){
+      const start=(seed+i*17)%list.length;
+      for(let j=0;j<list.length;j++){
+        const q=list[(start+j)%list.length];
+        if(!used.has(q.id)){candidate=q;break}
+      }
+    }
+    if(!candidate){
+      for(const q of pool){
+        if(!used.has(q.id)){candidate=q;break}
+      }
+    }
+    if(!candidate)break;
+    used.add(candidate.id);
+    picked.push(candidate);
+  }
+
+  return {questions:picked,total:MATHNET.maxPreferredRows,source:'ShadenA/MathNet'};
+}
+
 function mathnetSaveMock(mock){
   localStorage.setItem('karp_last_mock',JSON.stringify({...mock,savedAt:new Date().toISOString()}));
 }
