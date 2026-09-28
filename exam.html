@@ -9,6 +9,13 @@
 <style>
 .exam-screen{min-height:100vh;padding:18px 3vw;background:var(--bg)}.exam-paper{width:min(1180px,94vw);margin:0 auto 70px}.exam-clock-only{display:flex;justify-content:center;padding:6px 0 18px}.exam-clock{font-family:'Space Grotesk';font-variant-numeric:tabular-nums;font-size:56px;font-weight:800}.exam-paper-title{text-align:center;margin-bottom:42px}.exam-paper-title h2{font-family:'Space Grotesk';font-size:clamp(36px,5vw,58px);letter-spacing:-2px;margin:8px 0}.exam-paper-title p{color:var(--muted);font-size:12px;line-height:1.6}.exam-question{padding:34px 0;border-top:0!important;border-bottom:0!important}.problem-number{font-family:'Space Grotesk';font-size:15px;font-weight:800;margin-bottom:14px}.question-text{font-size:19px;line-height:1.9}.exam-solution{margin-top:18px;border:0!important;background:transparent!important}.exam-solution-body{display:none;margin-top:14px;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;font-size:16px;line-height:1.85}.exam-solution-body.open{display:block}.exam-solution-body p{margin:0 0 14px}.exam-solution-body p:last-child{margin-bottom:0}.exam-solution-body mjx-container[display="true"]{margin:16px 0!important}.exam-actions{display:flex;justify-content:center;gap:8px;margin-top:25px;flex-wrap:wrap}.guest-gate{margin:0 auto 20px;width:min(620px,100%);padding:16px;border-radius:12px;background:var(--panel2);text-align:center;color:var(--muted);font-size:11px;line-height:1.6}
 html[data-theme="light"] .exam-question{border-color:transparent!important}
+.exam-paper{width:min(1400px,96vw)!important;max-width:none!important;margin-left:auto!important;margin-right:auto!important}
+.exam-question{width:100%!important;max-width:none!important;box-sizing:border-box!important}
+.question-text{display:block!important;width:100%!important;max-width:none!important;min-width:0!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important}
+.question-text p{width:100%!important;max-width:none!important;margin:0 0 18px!important}
+.question-text mjx-container{max-width:100%!important}
+.question-text mjx-container[display="true"]{display:block!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;padding-bottom:2px}
+.question-text img{max-width:100%!important;height:auto!important}
 @media(max-width:620px){.exam-screen{padding:14px}.exam-paper{width:100%}.exam-clock{font-size:38px}.question-text{font-size:17px}}
 </style>
 </head>
