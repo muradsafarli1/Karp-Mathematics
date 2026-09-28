@@ -22,7 +22,7 @@
 (async()=>{
   const admin=await requireAdmin();
   if(!admin){return;}
-  shell('Admin','MathNet Sync','<main class="page"><section class="section"><div class="sync-wrap"><section class="sync-card"><div class="sync-head"><div class="eyebrow">KARP · FIREBASE</div><h1>MathNet Sync</h1><p>Import the English proof archive from Hugging Face into Firestore. This is a one-time/refresh operation. After the sync, KARP runtime uses Firebase only.</p></div><div class="sync-stats"><div class="sync-stat"><b id="fetched">0</b><span>Rows scanned</span></div><div class="sync-stat"><b id="accepted">0</b><span>Accepted</span></div><div class="sync-stat"><b id="written">0</b><span>Problems written</span></div><div class="sync-stat"><b id="pages">0</b><span>Pages</span></div></div><div class="sync-bar"><i id="bar"></i></div><div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap"><button id="start" class="btn primary">Start / Resume Sync</button><button id="repair" class="btn">Repair titles &amp; P-numbers</button><a class="btn" href="/admin.html">Back to Admin</a></div><div id="status" style="margin-top:14px;color:var(--muted);font-size:12px">Ready.</div><div id="log" class="sync-log"></div></section></div></section></main>');
+  shell('Admin','MathNet Sync','<main class="page"><section class="section"><div class="sync-wrap"><section class="sync-card"><div class="sync-head"><div class="eyebrow">KARP · FIREBASE</div><h1>MathNet Sync</h1><p>Import the English proof archive from Hugging Face into Firestore. This is a one-time/refresh operation. After the sync, KARP runtime uses Firebase only.</p></div><div class="sync-stats"><div class="sync-stat"><b id="fetched">0</b><span>Rows scanned</span></div><div class="sync-stat"><b id="accepted">0</b><span>Accepted</span></div><div class="sync-stat"><b id="written">0</b><span>Problems written</span></div><div class="sync-stat"><b id="pages">0</b><span>Pages</span></div></div><div class="sync-bar"><i id="bar"></i></div><div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap"><button id="start" class="btn primary">Build Clean Database</button><a class="btn" href="/admin.html">Back to Admin</a></div><div id="status" style="margin-top:14px;color:var(--muted);font-size:12px">Ready.</div><div id="log" class="sync-log"></div></section></div></section></main>');
   const {db}=await fb();
   const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
   const {doc,getDoc,setDoc,writeBatch,collection,getDocs,updateDoc}=fs;
@@ -353,7 +353,7 @@
     }
   }
   document.getElementById('start').onclick=run;
-  document.getElementById('repair').onclick=repairMetadata;
+
 })();
 </script>
 </body>
