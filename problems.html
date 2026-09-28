@@ -50,8 +50,10 @@
     const href=custom
       ?'/problem.html?custom='+encodeURIComponent(p.customId)
       :'/problem.html?id='+encodeURIComponent(p.id)+'&config='+encodeURIComponent(p.sourceConfig||'all')+'&offset='+encodeURIComponent(p.sourceIndex)+(p.sourceShard!=null?'&shard='+encodeURIComponent(p.sourceShard):'');
-    const secondary=[p.competition&&p.sourceType!=='custom'?p.competition:'',p.sourceBooklet||'',p.section].filter(Boolean).join(' · ');
-    return '<a class="problem-card-link" href="'+href+'" onclick="rememberProblemState()"><div class="tag">'+esc(topicNames[p.category]||'Problem')+'</div><h3>'+esc(custom?(p.title||'KARP Problem'):(p.title||p.competition||'MathNet Problem'))+'</h3><div class="problem-meta-primary">'+esc(custom?metaPrimary(p):(p.country||'MathNet'))+'</div>'+(secondary?'<div class="problem-meta-secondary">'+esc(secondary)+'</div>':'')+'</a>';
+    const secondary=[p.sourceBooklet||'',p.section].filter(Boolean).join(' · ');
+    const primary=custom?metaPrimary(p):[p.country,p.year,p.problemNumber].filter(Boolean).join(' · ')||'MathNet';
+    const heading=custom?(p.title||'KARP Problem'):(p.competition||p.title||'MathNet Problem');
+    return '<a class="problem-card-link" href="'+href+'" onclick="rememberProblemState()"><div class="tag">'+esc(topicNames[p.category]||'Problem')+'</div><h3>'+esc(heading)+'</h3><div class="problem-meta-primary">'+esc(primary)+'</div>'+(secondary?'<div class="problem-meta-secondary">'+esc(secondary)+'</div>':'')+'</a>';
   }
   function columns(){const w=document.getElementById('cards').clientWidth||1200;if(w>=1180)return 4;if(w>=820)return 3;if(w>=560)return 2;return 1;}
   function renderVirtual(){
