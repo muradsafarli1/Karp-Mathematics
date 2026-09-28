@@ -97,7 +97,8 @@
         <div class="cards" id="cards"></div>
         <div class="archive-pages"><button class="btn" id="prev">← Previous</button><button class="btn primary" id="next">Next →</button></div>
         <div class="archive-note" id="archive-note"></div>
-      </div></section>.value=topic;
+      </div></section>`);
+    document.getElementById('topic').value=topic;
     document.getElementById('search').oninput=function(){search=this.value;page=0;fetchPage().catch(showError)};
     document.getElementById('topic').onchange=function(){topic=this.value;page=0;fetchPage().catch(showError)};
     document.getElementById('prev').onclick=function(){if(page>0){page--;fetchPage().catch(showError)}};
