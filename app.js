@@ -228,7 +228,17 @@ async function api(path, opts = {}) {
     history.sort((a,b)=>new Date(b.submittedAt)-new Date(a.submittedAt)); return {history};
   }
   const em=path.match(/^\/api\/exams\/([^/]+)$/);
-  if(em&&method==='GET'){const s=await getDoc(doc(db,'exams',em[1]));if(!s.exists())throw new Error('Exam not found');return {exam:publicExam({id:s.id,...s.data()})};}
+  if(em&&method==='GET'){
+    const s=await getDoc(doc(db,'exams',em[1]));
+    if(!s.exists())throw new Error('Exam not found');
+    const exam=publicExam({id:s.id,...s.data()});
+    let registered=false;
+    if(uid){
+      const reg=await getDoc(doc(db,'exams',em[1],'registrations',uid));
+      registered=reg.exists();
+    }
+    return {exam,registered};
+  }
   const er=path.match(/^\/api\/exams\/([^/]+)\/(register|submit)$/);
   if(er&&method==='POST'){
     if(!user) throw new Error('Authentication required');
