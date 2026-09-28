@@ -132,10 +132,8 @@
     for(let i=0,s=0;i<state.items.length;i+=shardSize,s++){
       await setDoc(doc(db,MATHNET_FIRESTORE.shards,'shard-'+String(s).padStart(4,'0')),{version:VERSION,index:s,items:state.items.slice(i,i+shardSize)});
     }
-    for(const [key,ids] of state.pools){
-      for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]]}
-      await setDoc(doc(db,MATHNET_FIRESTORE.pools,key),{version:VERSION,ids});
-    }
+    // Mock generation uses the per-problem randomKey field directly.
+    // Avoids large pool documents and keeps each Firestore document small.
     await setDoc(doc(db,MATHNET_FIRESTORE.meta,MATHNET_FIRESTORE.state),{
       ready:true,version:VERSION,count:state.items.length,source:DATASET,
       shardCount:Math.ceil(state.items.length/shardSize),updatedAt:new Date().toISOString()
