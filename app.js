@@ -304,11 +304,16 @@ async function requireAdmin(){const u=await me();if(!u||u.role!=='admin'){locati
 function escapeHtml(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function normalizeMathMarkdown(value=''){
   let s=String(value??'').replace(/\\r\\n?/g,'\\n');
-  // Normalize escaped MathNet delimiters without fragile regular expressions.
+  // MathNet rows occasionally contain escaped delimiters (for example \\\\( ... \\\\)).
+  // Normalize those first so MathJax receives one valid delimiter layer.
   s=s.replaceAll('\\\\\\\\[','\\\\[').replaceAll('\\\\\\\\]','\\\\]');
   s=s.replaceAll('\\\\\\\\(','\\\\(').replaceAll('\\\\\\\\)','\\\\)');
+  // Normalize display and inline dollar math to explicit MathJax delimiters.
   s=s.replace(/\\$\\$([\\s\\S]*?)\\$\\$/g,'\\\\[$1\\\\]');
-  s=s.replace(/(^|[^\\\\])\\$([^$\\n]+?)\\$(?!\\$)/g,'$1\\\\($2\\\\)');  return s;
+  s=s.replace(/(^|[^\\\\])\\$([^$\\n]+?)\\$(?!\\$)/g,'$1\\\\($2\\\\)');
+  // Convert a few common bare-TeX cases that otherwise leak commands into normal text.
+  s=s.replace(/(^|[.!?]\\s+|\\n)(\\s*)(\\\\(?:begin\\|end)\\{[^}]+\\}[\\s\\S]*?)(?=\\n|$)/g,'$1$2\\\\[$3\\\\]');
+  return s;
 }
 function richMarkdown(value=''){
   const source=normalizeMathMarkdown(value);
