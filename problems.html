@@ -28,7 +28,7 @@
 <script>
 (async()=>{
   const topicNames={A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'};
-  let allRows=[],visibleRows=[],query='',topic='All topics',raf=0,pendingRestore=0;
+  let allRows=[],mathnetAllRows=[],visibleRows=[],query='',topic='All topics',raf=0,pendingRestore=0;
 
   function esc(x){return escapeHtml(x==null?'':String(x));}
   function stateKey(){return 'karp-problems-state-v2';}
@@ -80,7 +80,12 @@
   async function runSearch(){
     const seq=++searchSeq,q=query.trim();
     clearTimeout(searchTimer);
-    if(!q){allRows=[...allRows.filter(x=>x.sourceType!=='mathnet'),...allRows.filter(x=>x.sourceType==='mathnet')];return;}
+    if(!q){
+      allRows=[...mathnetAllRows,...allRows.filter(x=>x.sourceType==='custom')];
+      applyFilters();
+      document.getElementById('status').textContent='Complete MathNet archive loaded · search is server-powered.';
+      return;
+    }
     searchTimer=setTimeout(async()=>{
       try{
         const results=await mathnetSearch(q,{limit:200});
@@ -111,6 +116,7 @@
       },function(rows){
         allRows=[...rows,...customRows];applyFilters();
       });
+      mathnetAllRows=initialRows.slice();
       allRows=[...initialRows,...customRows];applyFilters();
       document.getElementById('progress').style.width='100%';
       document.getElementById('status').textContent='Complete MathNet archive loaded · search is server-powered.';
