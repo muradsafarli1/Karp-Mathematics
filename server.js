@@ -139,9 +139,17 @@ function displayTitle(row) {
   const competition = competitionFor(row);
   const year = yearFor(row);
   const problemNumber = problemNumberFor(row);
-  return competition + (year || problemNumber
-    ? ' — ' + [year, problemNumber].filter(Boolean).join(' · ')
-    : '');
+  return displayTitleParts(competition, year, problemNumber);
+}
+
+function displayTitleParts(competition, year, problemNumber) {
+  const base = String(competition || 'MathNet').trim();
+  const y = String(year || '').trim();
+  const p = String(problemNumber || '').trim();
+  const suffix = [y, p].filter(Boolean).join(' · ');
+  return suffix && !new RegExp('\\\\b' + y.replace(/[-\\/\\^$*+?.()|[\\]{}]/g,'\\\\function difficultyFor(row) {') + '\\\\b').test(base)
+    ? base + ' — ' + suffix
+    : base + (p && !base.toLowerCase().includes(p.toLowerCase()) ? ' — ' + p : '');
 }
 
 function difficultyFor(row) {
@@ -164,7 +172,7 @@ function cleanStatement(text) {
 
 function normalizeSolutions(raw) {
   const solutions = Array.isArray(raw) ? raw.map(v => String(v || '').trim()).filter(Boolean) : [];
-  return solutions.filter(looksEnglish).map(cleanStatement);
+  return solutions.map(cleanStatement);
 }
 
 function rowIsGood(row) {
@@ -172,8 +180,10 @@ function rowIsGood(row) {
   if (!(language === 'english' || language === 'en' || language.startsWith('en-'))) return false;
   const statement = cleanStatement(row.problem_markdown || '').trim();
   if (!statement || !looksEnglish(statement)) return false;
-  const solutions = normalizeSolutions(row.solutions_markdown);
-  if (!solutions.length) return false;
+  const rawSolutions = Array.isArray(row.solutions_markdown)
+    ? row.solutions_markdown.map(v => String(v || '').trim()).filter(Boolean)
+    : [];
+  if (!rawSolutions.length || !rawSolutions.every(looksEnglish)) return false;
   const type = String(row.problem_type || '').trim().toLowerCase();
   if (!['proof','proof only','proof and answer'].includes(type)) return false;
   return true;
@@ -442,9 +452,7 @@ async function getIndex() {
       SELECT
         id,source_index,country,competition,year,section,problem_number,source_booklet,
         booklet_source,language,problem_type,category,difficulty,has_images,
-        (competition || CASE WHEN COALESCE(year,'') <> '' OR COALESCE(problem_number,'') <> ''
-          THEN ' — ' || array_to_string(ARRAY_REMOVE(ARRAY[NULLIF(year,''),NULLIF(problem_number,'')], NULL), ' · ')
-          ELSE '' END) AS title,
+        competition,year,problem_number,
         search_text
       FROM mathnet_problems
     ) q
@@ -466,7 +474,7 @@ async function getIndex() {
     difficulty: x.difficulty || 'easy',
     hasSolution: true,
     hasImages: !!x.has_images,
-    title: x.title || x.competition || 'MathNet Problem',
+    title: displayTitleParts(x.competition, x.year, x.problem_number) || 'MathNet Problem',
     statement: '',
     solutions: []
   }));
@@ -1433,7 +1441,7 @@ server.on('clientError', (_err, socket) => {
       sourceBooklet:x.source_booklet||'', bookletSource:x.booklet_source||'',
       language:x.language||'English', problemType:x.problem_type||'',
       category:x.category||'A', difficulty:x.difficulty||'easy', hasSolution:true,
-      hasImages:!!x.has_images, title:x.title||x.competition||'MathNet Problem'
+      hasImages:!!x.has_images, title:displayTitleParts(x.competition,x.year,x.problem_number)||'MathNet Problem'
     }))
   };
 }
