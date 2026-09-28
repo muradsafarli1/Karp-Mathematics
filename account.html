@@ -8,188 +8,152 @@
 <script src="/app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+<script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"},startup:{typeset:false}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
-.account-simple{min-height:calc(100vh - 76px)}
-.account-identity{text-align:center;padding:72px 20px 50px}
-.account-identity h1{font-family:'Space Grotesk';font-size:clamp(52px,7vw,88px);line-height:.95;letter-spacing:-4px;margin:0 0 24px}
-.account-avatar{width:112px;height:112px;border-radius:50%;object-fit:cover;margin:0 auto 14px;border:1px solid var(--line);background:var(--panel2)}
-.account-avatar-initial{display:grid;place-items:center;font-size:36px;font-weight:800;color:var(--text)}
-.account-name{font-size:16px;font-weight:800}.account-email{font-size:12px;color:var(--muted);margin-top:4px}
-.account-content{width:min(calc(100% - 42px),1180px);margin:0 auto;padding-bottom:70px}
-.account-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
-.account-stat-button{border:1px solid transparent;border-radius:16px;background:var(--panel2);color:var(--text);padding:22px 14px;text-align:center;cursor:pointer;transition:transform .15s,background .15s}
-.account-stat-button:hover{transform:translateY(-2px);background:var(--panel2)}
-.account-stat-button.active{outline:2px solid var(--text);outline-offset:-2px}
-.account-stat-number{font-family:'Space Grotesk';font-size:34px;font-weight:800;line-height:1}
-.account-stat-label{font-size:11px;color:var(--muted);margin-top:7px}
-.account-panel{display:none;margin-top:16px;padding:26px;border-radius:18px;background:var(--panel2)}
-.account-panel.open{display:block}
-.account-panel-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:15px}
-.account-panel-head h2{font-family:'Space Grotesk';font-size:27px;letter-spacing:-1px;margin:0}
-.account-panel-head span{font-size:11px;color:var(--muted)}
-.account-row{display:flex;align-items:center;gap:15px;padding:16px 0;border-top:1px solid var(--line);text-decoration:none;color:var(--text)}
-.account-row:first-child{border-top:0}.account-row-main{min-width:0;flex:1}.account-row-title{font-size:14px;font-weight:800}.account-row-meta{font-size:11px;color:var(--muted);margin-top:5px}.account-row-arrow{font-size:14px;color:var(--muted)}
-.mock-review{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
-.mock-review-question{padding:18px 0;border-top:1px solid var(--line)}
-.mock-review-question:first-child{border-top:0}
-.mock-review-statement{font-size:17px;line-height:1.85}
-.mock-review-solution{margin-top:8px}.mock-review-solution button{font-size:11px}
-.mock-review-body{display:none;margin-top:10px;font-size:16px;line-height:1.85}.mock-review-body.open{display:block}
-
-.history-stack{margin-top:28px;display:grid;gap:14px}.history-box{background:var(--panel2);border-radius:18px;padding:26px}.history-box h2{font-family:'Space Grotesk';font-size:27px;letter-spacing:-1px;margin:0 0 15px}.history-box .account-row:first-of-type{border-top:0}
-.mock-history-review{margin-top:15px;padding-top:15px;border-top:1px solid var(--line)}.mock-history-question{padding:17px 0;border-top:1px solid var(--line)}.mock-history-question:first-child{border-top:0}.mock-history-statement{font-size:16px;line-height:1.8}.mock-history-solution{margin-top:8px}.mock-history-body{display:none;margin-top:10px;font-size:15px;line-height:1.8}.mock-history-body.open{display:block}
-.account-bottom{display:flex;justify-content:center;margin-top:22px;gap:8px;flex-wrap:wrap}
-@media(max-width:900px){.account-stats{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:600px){.account-identity{padding-top:52px}.account-content{width:calc(100% - 28px)}.account-stats{grid-template-columns:repeat(2,1fr)}.account-panel{padding:20px}}
+.account-page{min-height:calc(100vh - 76px)}
+.account-profile{padding:72px 20px 54px;text-align:center}
+.account-profile h1{font-family:'Space Grotesk';font-size:clamp(58px,8vw,104px);font-weight:800;line-height:.88;letter-spacing:-5px;margin:0 0 34px;text-transform:uppercase}
+.profile-avatar{width:156px;height:156px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 18px;background:var(--panel2);border:0}
+.profile-initial{display:grid;place-items:center;font-size:52px;font-weight:800;color:var(--text)}
+.profile-name{font-size:19px;font-weight:800}.profile-email{margin-top:5px;font-size:12px;color:var(--muted)}
+.account-wrap{width:min(calc(100% - 42px),1200px);margin:0 auto;padding-bottom:90px}
+.account-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:34px}
+.account-kpi{background:var(--panel2);border-radius:14px;padding:15px 12px;text-align:center}
+.account-kpi strong{font-family:'Space Grotesk';font-size:28px;line-height:1}.account-kpi span{display:block;margin-top:5px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.dashboard-box{background:var(--panel);border-radius:22px;padding:28px;margin-bottom:18px}
+.dashboard-head{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:20px}
+.dashboard-head h2{font-family:'Space Grotesk';font-size:29px;letter-spacing:-1px;margin:0}.dashboard-head p{font-size:11px;color:var(--muted);margin:5px 0 0}
+.chart-switch{display:flex;gap:3px;background:var(--panel2);padding:3px;border-radius:9px}
+.chart-switch button{border:0;background:transparent;color:var(--muted);padding:7px 10px;border-radius:7px;font-size:10px;font-weight:800;cursor:pointer}
+.chart-switch button.active{background:var(--text);color:var(--bg)}
+.chart{display:flex;align-items:flex-end;gap:8px;height:260px;padding:10px 4px 0}
+.bar-col{height:100%;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:7px}
+.bar-value{font-size:10px;color:var(--muted);height:14px}.bar-track{height:205px;width:100%;display:flex;align-items:flex-end;justify-content:center}
+.bar{width:min(34px,78%);min-height:2px;border-radius:6px 6px 2px 2px;background:var(--text);transition:height .25s}
+.bar-label{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px}
+.chart-empty{height:100%;display:grid;place-items:center;color:var(--muted);font-size:12px;width:100%}
+.topic-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.topic-card{background:var(--panel2);border-radius:14px;padding:18px}.topic-name{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.topic-total{font-family:'Space Grotesk';font-size:34px;font-weight:800;margin-top:7px}
+.topic-bars{margin-top:22px;display:grid;gap:12px}.topic-bar-line{display:grid;grid-template-columns:150px 1fr 35px;gap:10px;align-items:center}
+.topic-bar-name{font-size:11px;color:var(--muted)}.topic-bar-track{height:9px;border-radius:99px;background:var(--panel2);overflow:hidden}.topic-bar-fill{height:100%;border-radius:99px;background:var(--text)}
+.topic-bar-number{text-align:right;font-size:10px;color:var(--muted)}
+.history-box{background:var(--panel);border-radius:22px;padding:28px;margin-top:18px}
+.history-box h2{font-family:'Space Grotesk';font-size:30px;letter-spacing:-1.1px;margin:0 0 4px}.history-note{font-size:11px;color:var(--muted);margin-bottom:17px}
+.history-row{display:flex;align-items:center;gap:15px;padding:16px 0;border-top:1px solid var(--line)}.history-row:first-of-type{border-top:0}
+.history-row-main{min-width:0;flex:1}.history-title{font-size:14px;font-weight:800}.history-meta{font-size:11px;color:var(--muted);margin-top:4px}
+.history-open{flex:0 0 auto}.history-open .btn{font-size:10px!important;padding:8px 11px!important}
+.review-panel{display:none;margin-top:2px;padding:18px 0 4px;border-top:1px solid var(--line)}.review-panel.open{display:block}
+.review-question{padding:17px 0;border-top:1px solid var(--line)}.review-question:first-child{border-top:0}
+.review-qtitle{font-family:'Space Grotesk';font-size:14px;font-weight:800;margin-bottom:9px}.review-qbody{font-size:16px;line-height:1.85}.review-qbody p{margin:0 0 14px}
+.review-answer{margin-top:8px;color:var(--muted);font-size:11px}.review-solution{margin-top:9px}.review-solution-body{display:none;margin-top:10px;font-size:15px;line-height:1.8}.review-solution-body.open{display:block}
+.no-history{padding:15px 0;color:var(--muted);font-size:12px}.account-bottom{display:flex;justify-content:center;gap:8px;margin-top:28px}
+@media(max-width:900px){.account-kpis{grid-template-columns:repeat(3,1fr)}.topic-grid{grid-template-columns:1fr 1fr}.topic-bar-line{grid-template-columns:115px 1fr 30px}}
+@media(max-width:650px){.account-profile{padding-top:54px}.account-profile h1{letter-spacing:-3px}.profile-avatar{width:132px;height:132px}.account-wrap{width:calc(100% - 28px)}.account-kpis{grid-template-columns:1fr 1fr}.dashboard-box,.history-box{padding:21px}.dashboard-head{align-items:flex-start;flex-direction:column}.chart-switch{align-self:stretch}.chart-switch button{flex:1}.chart{gap:4px;height:225px}.bar-track{height:175px}.bar-label{font-size:8px}.topic-grid{grid-template-columns:1fr}.topic-bar-line{grid-template-columns:100px 1fr 25px}.history-row{align-items:flex-start}.history-open{margin-top:1px}}
 </style>
 </head>
 <body>
 <script>
 (async()=>{
-  const u=await requireUser();
-  if(!u)return;
+  const u=await requireUser(); if(!u)return;
 
-  const solvedMap=()=>{
-    try{
-      const a=JSON.parse(localStorage.getItem('able_solved_problems')||'{}');
-      const b=JSON.parse(localStorage.getItem('karp_solved_mathnet')||'{}');
-      return {...a,...b};
-    }catch{return {}}
-  };
-  const savedMap=()=>{
-    try{return JSON.parse(localStorage.getItem('karp_saved_mathnet')||'{}')}catch{return {}}
-  };
-  const mockHistory=()=>{
-    try{return JSON.parse(localStorage.getItem('karp_mock_history')||'[]')}catch{return []}
-  };
+  const solvedMap=()=>{try{const a=JSON.parse(localStorage.getItem('able_solved_problems')||'{}');const b=JSON.parse(localStorage.getItem('karp_solved_mathnet')||'{}');return {...a,...b};}catch{return {}}};
+  const savedMap=()=>{try{return JSON.parse(localStorage.getItem('karp_saved_mathnet')||'{}')}catch{return {}}};
+  const mockHistory=()=>{try{return JSON.parse(localStorage.getItem('karp_mock_history')||'[]')}catch{return []}};
   const solved=Object.entries(solvedMap()).map(([id,v])=>({id,...v}));
   const saved=Object.values(savedMap());
-  const exams=(await api('/api/exams/history').catch(()=>({history:[]}))).history||[];
   const mocks=mockHistory();
-  const dates=solved.flatMap(x=>Array.isArray(x.dates)?x.dates:[]).map(x=>new Date(x)).filter(x=>!isNaN(x));
-  const dayKeys=new Set(dates.map(d=>new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime()));
-  let streak=0;for(let d=new Date();dayKeys.has(new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime());d.setDate(d.getDate()-1))streak++;
+  const exams=(await api('/api/exams/history').catch(()=>({history:[]}))).history||[];
 
-  function labelTopic(p){
-    const m={A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'};
-    return p.topic||p.category&&m[p.category]||'Problem';
+  function topicName(v){
+    const map={A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory',algebra:'Algebra',combinatorics:'Combinatorics',geometry:'Geometry','number theory':'Number Theory'};
+    return map[String(v||'').trim()]||'Other';
   }
   function problemHref(p){
+    if(p.sourceType==='custom'||p.customId)return '/problem.html?custom='+encodeURIComponent(p.customId||p.id);
     return '/problem.html?id='+encodeURIComponent(p.id)+(p.sourceConfig?'&config='+encodeURIComponent(p.sourceConfig):'')+(p.sourceIndex!=null?'&offset='+encodeURIComponent(p.sourceIndex):'');
   }
-  function meta(p){
-    return [p.country,p.competition,p.year,p.problemNumber].filter(Boolean).join(' · ');
+  function meta(p){return [p.country,p.competition,p.year,p.problemNumber].filter(Boolean).join(' · ')||topicName(p.category||p.topic);}
+  function dateText(v){const d=v?new Date(v):null;return d&&!isNaN(d)?d.toLocaleString():'—';}
+  function md(x){return DOMPurify.sanitize(marked.parse(String(x||''),{breaks:true}));}
+
+  const solvedDates=solved.flatMap(p=>Array.isArray(p.dates)?p.dates:[]);
+  const streakSet=new Set(solvedDates.map(x=>{const d=new Date(x);return isNaN(d)?'':d.toISOString().slice(0,10)}).filter(Boolean));
+  let streak=0;for(let d=new Date();streakSet.has(d.toISOString().slice(0,10));d.setDate(d.getDate()-1))streak++;
+
+  function countsFor(mode){
+    const now=new Date(),items=[];
+    if(mode==='daily'){
+      for(let i=13;i>=0;i--){const d=new Date(now);d.setHours(0,0,0,0);d.setDate(now.getDate()-i);const key=d.toISOString().slice(0,10);items.push({label:i===0?'Today':String(d.getDate()).padStart(2,'0'),value:solvedDates.filter(v=>String(v).slice(0,10)===key).length});}
+    }else if(mode==='monthly'){
+      for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1),y=d.getFullYear(),m=d.getMonth();items.push({label:d.toLocaleString(undefined,{month:'short'}),value:solvedDates.filter(v=>{const x=new Date(v);return !isNaN(x)&&x.getFullYear()===y&&x.getMonth()===m}).length});}
+    }else{
+      for(let i=4;i>=0;i--){const y=now.getFullYear()-i;items.push({label:String(y),value:solvedDates.filter(v=>{const x=new Date(v);return !isNaN(x)&&x.getFullYear()===y}).length});}
+    }
+    return items;
   }
-  function row(p,arrow=true){
-    return '<a class="account-row" href="'+problemHref(p)+'"><div class="account-row-main"><div class="account-row-title">'+escapeHtml(p.title||p.competition||'MathNet Problem')+'</div><div class="account-row-meta">'+escapeHtml(meta(p)||labelTopic(p))+'</div></div>'+(arrow?'<span class="account-row-arrow">→</span>':'')+'</a>';
+  function chartHtml(mode){
+    const data=countsFor(mode),max=Math.max(1,...data.map(x=>x.value));
+    if(!data.some(x=>x.value))return '<div class="chart"><div class="chart-empty">No solved activity recorded yet.</div></div>';
+    return '<div class="chart">'+data.map(x=>'<div class="bar-col"><div class="bar-value">'+x.value+'</div><div class="bar-track"><div class="bar" style="height:'+Math.max(2,x.value/max*100)+'%"></div></div><div class="bar-label">'+escapeHtml(x.label)+'</div></div>').join('')+'</div>';
   }
 
-  function panel(id,title,count,body){
-    return '<section id="panel-'+id+'" class="account-panel"><div class="account-panel-head"><h2>'+title+'</h2><span>'+count+'</span></div>'+body+'</section>';
-  }
+  const topicTotals={A:0,C:0,G:0,N:0};
+  solved.forEach(x=>{const key=String(x.category||'').toUpperCase();if(topicTotals[key]!=null)topicTotals[key]++;else{const n=topicName(x.topic||x.category).toLowerCase();if(n==='algebra')topicTotals.A++;else if(n==='combinatorics')topicTotals.C++;else if(n==='geometry')topicTotals.G++;else if(n==='number theory')topicTotals.N++;}});
+  const topicMax=Math.max(1,...Object.values(topicTotals));
 
-  shell('','Account',`
-    <main class="account-simple">
-      <section class="account-identity">
-        <h1>Account</h1>
-        <img id="avatar-img" class="account-avatar" src="${escapeHtml(u.photoURL||'')}" style="${u.photoURL?'':'display:none'}" alt="">
-        <div id="avatar-initial" class="account-avatar account-avatar-initial" style="${u.photoURL?'display:none':''}">${escapeHtml((u.name||'K').charAt(0).toUpperCase())}</div>
-        <div class="account-name">${escapeHtml(u.name||'KARP Member')}</div>
-        <div class="account-email">${escapeHtml(u.email||'')}</div>
-      </section>
+  const body='<main class="account-page">'+
+    '<section class="account-profile"><h1>Account</h1>'+
+      '<img class="profile-avatar" src="'+escapeHtml(u.photoURL||'')+'" style="'+(u.photoURL?'':'display:none')+'" alt="">'+
+      '<div class="profile-avatar profile-initial" style="'+(u.photoURL?'display:none':'')+'">'+escapeHtml((u.name||'K').charAt(0).toUpperCase())+'</div>'+
+      '<div class="profile-name">'+escapeHtml(u.name||'KARP Member')+'</div><div class="profile-email">'+escapeHtml(u.email||'')+'</div>'+
+    '</section>'+
+    '<section class="account-wrap">'+
+      '<div class="account-kpis"><div class="account-kpi"><strong>'+solved.length+'</strong><span>Solved</span></div><div class="account-kpi"><strong>'+saved.length+'</strong><span>Saved</span></div><div class="account-kpi"><strong>'+exams.length+'</strong><span>Exams</span></div><div class="account-kpi"><strong>'+mocks.length+'</strong><span>Mocks</span></div><div class="account-kpi"><strong>'+streak+'</strong><span>Day streak</span></div></div>'+
+      '<section class="dashboard-box"><div class="dashboard-head"><div><h2>Solved activity</h2><p>Your solved-problem activity across daily, monthly and yearly views.</p></div><div class="chart-switch" id="chart-switch"><button class="active" data-mode="daily">Daily</button><button data-mode="monthly">Monthly</button><button data-mode="yearly">Yearly</button></div></div><div id="activity-chart">'+chartHtml('daily')+'</div></section>'+
+      '<section class="dashboard-box"><div class="dashboard-head"><div><h2>Solved by topic</h2><p>Total solved problems grouped by olympiad topic.</p></div></div>'+
+        '<div class="topic-grid"><div class="topic-card"><div class="topic-name">Algebra</div><div class="topic-total">'+topicTotals.A+'</div></div><div class="topic-card"><div class="topic-name">Geometry</div><div class="topic-total">'+topicTotals.G+'</div></div><div class="topic-card"><div class="topic-name">Combinatorics</div><div class="topic-total">'+topicTotals.C+'</div></div><div class="topic-card"><div class="topic-name">Number Theory</div><div class="topic-total">'+topicTotals.N+'</div></div></div>'+
+        '<div class="topic-bars">'+[['A','Algebra'],['G','Geometry'],['C','Combinatorics'],['N','Number Theory']].map(x=>'<div class="topic-bar-line"><div class="topic-bar-name">'+x[1]+'</div><div class="topic-bar-track"><div class="topic-bar-fill" style="width:'+(topicTotals[x[0]]/topicMax*100)+'%"></div></div><div class="topic-bar-number">'+topicTotals[x[0]]+'</div></div>').join('')+'</div>'+
+      '</section>'+
+      '<section id="solved-history" class="history-box"><h2>Solved</h2><div class="history-note">Every problem you marked as solved. Click any item to reopen the exact problem.</div>'+
+        (solved.slice().reverse().map(p=>'<div class="history-row"><div class="history-row-main"><div class="history-title">'+escapeHtml(p.title||p.competition||'MathNet Problem')+'</div><div class="history-meta">'+escapeHtml(meta(p))+'</div></div><div class="history-open"><a class="btn" href="'+problemHref(p)+'">Open</a></div></div>').join('')||'<div class="no-history">No solved problems yet.</div>')+
+      '</section>'+
+      '<section id="saved-history" class="history-box"><h2>Saved</h2><div class="history-note">Your saved problems. Open any item to go directly to that problem.</div>'+
+        (saved.slice().reverse().map(p=>'<div class="history-row"><div class="history-row-main"><div class="history-title">'+escapeHtml(p.title||p.competition||'MathNet Problem')+'</div><div class="history-meta">'+escapeHtml(meta(p))+'</div></div><div class="history-open"><a class="btn" href="'+problemHref(p)+'">Open</a></div></div>').join('')||'<div class="no-history">No saved problems yet.</div>')+
+      '</section>'+
+      '<section id="exam-history" class="history-box"><h2>Exam History</h2><div class="history-note">Review each completed exam and see the questions together with your submitted answers.</div><div id="exam-history-list"></div></section>'+
+      '<section id="mock-history" class="history-box"><h2>Mock History</h2><div class="history-note">Review any completed mock. Solutions appear under each question.</div><div id="mock-history-list"></div></section>'+
+      '<div class="account-bottom">'+(u.role==='admin'?'<a class="btn" href="/admin.html">Admin</a>':'')+'<button class="btn" onclick="logout()">Log out</button></div>'+
+    '</section></main>';
 
-      <section class="account-content">
-        <div class="account-stats">
-          <button class="account-stat-button" data-panel="solved"><div class="account-stat-number">${solved.length}</div><div class="account-stat-label">Solved</div></button>
-          <button class="account-stat-button" data-panel="saved"><div class="account-stat-number">${saved.length}</div><div class="account-stat-label">Saved</div></button>
-          <button class="account-stat-button" data-panel="exams"><div class="account-stat-number">${exams.length}</div><div class="account-stat-label">Exams</div></button>
-          <button class="account-stat-button" data-panel="mocks"><div class="account-stat-number">${mocks.length}</div><div class="account-stat-label">Mocks</div></button>
-          <button class="account-stat-button" data-panel="streak"><div class="account-stat-number">${streak}</div><div class="account-stat-label">Day streak</div></button>
-        </div>
+  shell('','Account',body);
 
-        <div id="panels"></div>
-        <div class="account-bottom">
-          ${u.role==='admin'?'<a class="btn" href="/admin.html">Admin</a>':''}
-          <button class="btn" onclick="logout()">Log out</button>
-        </div>
-      </section>
-    </main>`);
+  document.querySelectorAll('#chart-switch button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#chart-switch button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('activity-chart').innerHTML=chartHtml(b.dataset.mode);});
 
-  const panels=document.getElementById('panels');
-  const solvedRows=solved.slice().reverse().map(row).join('')||'<div class="empty">No solved problems yet.</div>';
-  const savedRows=saved.slice().reverse().map(row).join('')||'<div class="empty">No saved problems yet.</div>';
-  const examRows=exams.map(e=>'<a class="account-row" href="/exam.html?id='+encodeURIComponent(e.examId||e.id||'')+'"><div class="account-row-main"><div class="account-row-title">'+escapeHtml(e.titleEn||e.title||'Exam')+'</div><div class="account-row-meta">Submitted · '+escapeHtml(e.submittedAt?new Date(e.submittedAt).toLocaleString():'—')+'</div></div><span class="account-row-arrow">→</span></a>').join('')||'<div class="empty">No completed exams yet.</div>';
-  const mockRows=mocks.map(m=>'<div class="account-row"><div class="account-row-main"><div class="account-row-title">'+escapeHtml(m.questions?.length||0)+'-question mock · '+escapeHtml(String(m.minutes||0))+' min</div><div class="account-row-meta">'+escapeHtml(m.completedAt?new Date(m.completedAt).toLocaleString():'—')+'</div></div></div>').join('')||'<div class="empty">No completed mocks yet.</div>';
-
-  panels.innerHTML=
-    panel('solved','Solved',solved.length,solvedRows)+
-    panel('saved','Saved',saved.length,savedRows)+
-    panel('exams','Exams',exams.length,examRows)+
-    panel('mocks','Mocks',mocks.length,mockRows)+
-    panel('streak','Study streak',streak,(streak?'<div class="account-row"><div class="account-row-main"><div class="account-row-title">'+streak+' consecutive day'+(streak===1?'':'s')+'</div><div class="account-row-meta">Based on your solved-problem activity.</div></div></div>':'<div class="empty">Solve a problem today to start your streak.</div>'));
-
-
-  const historyStack=document.createElement("div");
-  historyStack.className="history-stack";
-  historyStack.innerHTML='<section id="exam-history" class="history-box"><h2>Exam History</h2>'+(
-    exams.map(e=>'<a class="account-row" href="/exam.html?id='+encodeURIComponent(e.examId||e.id||"")+'"><div class="account-row-main"><div class="account-row-title">'+escapeHtml(e.titleEn||e.title||"Exam")+'</div><div class="account-row-meta">Submitted · '+escapeHtml(e.submittedAt?new Date(e.submittedAt).toLocaleString():"—")+'</div></div><span class="account-row-arrow">→</span></a>').join("")||
-    '<div class="account-row"><div class="account-row-main"><div class="account-row-title">No completed exams yet.</div></div></div>'
-  )+'</section><section id="mock-history" class="history-box"><h2>Mock History</h2><div id="mock-history-list"></div></section>';
-  panels.after(historyStack);
-  const mockList=document.getElementById("mock-history-list");
-  if(!mocks.length){
-    mockList.innerHTML='<div class="account-row"><div class="account-row-main"><div class="account-row-title">No completed mocks yet.</div><div class="account-row-meta">Your finished mocks will appear here.</div></div></div>';
-  }else{
-    mockList.innerHTML=mocks.map((x,i)=>'<button type="button" class="account-row" data-mock-history="'+i+'" style="width:100%;background:none;border:0;border-top:1px solid var(--line);text-align:left;cursor:pointer"><div class="account-row-main"><div class="account-row-title">Mock '+(mocks.length-i)+'</div><div class="account-row-meta">'+escapeHtml(x.completedAt?new Date(x.completedAt).toLocaleString():"—")+' · '+escapeHtml((x.questions?.length||0)+" questions · "+(x.minutes||0)+" min")+'</div></div><span class="account-row-arrow">⌄</span></button>').join("");
-    mockList.querySelectorAll("[data-mock-history]").forEach(btn=>btn.onclick=()=>{
-      const old=document.querySelector(".mock-history-review");if(old)old.remove();
-      const x=mocks[Number(btn.dataset.mockHistory)];
-      const review=document.createElement("div");review.className="mock-history-review";
-      (x.questions||[]).forEach((q,i)=>{
-        const sec=document.createElement("div");sec.className="mock-history-question";
-        sec.innerHTML='<div class="mock-history-statement"><strong>Question '+(i+1)+'</strong><div>'+DOMPurify.sanitize(marked.parse(String(q.statement||""),{breaks:true}))+'</div></div>';
-        const action=document.createElement("div");action.className="mock-history-solution";
-        const b=document.createElement("button");b.className="btn";b.textContent="Show solution";
-        const body=document.createElement("div");body.className="mock-history-body";
-        body.innerHTML=(q.solutions||[]).map((s,j)=>'<div style="margin-top:8px"><div style="font-size:10px;letter-spacing:1px;color:var(--muted)">SOLUTION '+(j+1)+'</div>'+DOMPurify.sanitize(marked.parse(String(s||""),{breaks:true}))+'</div>').join("");
-        b.onclick=()=>{const open=body.classList.toggle("open");b.textContent=open?"Hide solution":"Show solution";if(open)typesetMath(body)};
-        action.appendChild(b);action.appendChild(body);sec.appendChild(action);review.appendChild(sec);
-      });
-      btn.after(review);typesetMath(review);
+  const examHost=document.getElementById('exam-history-list');
+  if(!exams.length)examHost.innerHTML='<div class="no-history">No completed exams yet.</div>';
+  else{
+    examHost.innerHTML=exams.map((e,i)=>'<div class="history-row"><div class="history-row-main"><div class="history-title">'+escapeHtml(e.titleEn||e.title||'Exam')+'</div><div class="history-meta">Submitted · '+escapeHtml(dateText(e.submittedAt))+'</div></div><div class="history-open"><button class="btn" data-exam-review="'+i+'">Review</button></div><div id="exam-review-'+i+'" class="review-panel"></div></div>').join('');
+    examHost.querySelectorAll('[data-exam-review]').forEach(b=>b.onclick=()=>{
+      const i=Number(b.dataset.examReview),panel=document.getElementById('exam-review-'+i),e=exams[i];
+      const open=panel.classList.toggle('open');b.textContent=open?'Hide':'Review';if(!open)return;
+      panel.innerHTML=(e.questions||[]).map((q,j)=>{const statement=q.statementEn||q.statement||q.text||q.statementAz||'';const answer=e.answers?.[q.id]??e.answers?.[q.code]??e.answers?.[String(j)]??'No answer';return '<div class="review-question"><div class="review-qtitle">Question '+(j+1)+(q.code?' · '+escapeHtml(q.code):'')+'</div><div class="review-qbody">'+md(statement)+'</div><div class="review-answer">Your answer: '+escapeHtml(Array.isArray(answer)?answer.join(', '):String(answer))+'</div></div>';}).join('')||'<div class="no-history">No question data was stored for this exam.</div>';
+      typesetMath(panel);setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}),60);
     });
   }
 
-  document.querySelectorAll('.account-stat-button').forEach(btn=>btn.onclick=()=>{
-    const id=btn.dataset.panel;
-    const p=document.getElementById('panel-'+id);
-    const was=p.classList.contains('open');
-    document.querySelectorAll('.account-panel').forEach(x=>x.classList.remove('open'));
-    document.querySelectorAll('.account-stat-button').forEach(x=>x.classList.remove('active'));
-    if(!was){p.classList.add('open');btn.classList.add('active');p.scrollIntoView({behavior:'smooth',block:'nearest'});}
-  });
-
-  const mockPanel=document.getElementById('panel-mocks');
-  mocks.slice(0,1).forEach(m=>{
-    if(!mockPanel)return;
-    const review=document.createElement('div');review.className='mock-review';
-    review.innerHTML='<div class="account-panel-head"><h2>Latest mock</h2><span>Solutions</span></div>';
-    (m.questions||[]).forEach((q,i)=>{
-      const sec=document.createElement('div');sec.className='mock-review-question';
-      sec.innerHTML='<div class="mock-review-statement"><strong>Question '+(i+1)+'</strong><div>'+String(q.statement||'')+'</div></div>';
-      const wrap=document.createElement('div');wrap.className='mock-review-solution';
-      const b=document.createElement('button');b.className='btn';b.textContent='Show solution';
-      const body=document.createElement('div');body.className='mock-review-body';
-      body.innerHTML=(q.solutions||[]).map((s,j)=>'<div style="margin-top:8px"><div style="font-size:10px;letter-spacing:1px;color:var(--muted)">SOLUTION '+(j+1)+'</div>'+DOMPurify.sanitize(marked.parse(String(s||''),{breaks:true}))+'</div>').join('');
-      b.onclick=()=>{const open=body.classList.toggle('open');b.textContent=open?'Hide solution':'Show solution';if(open)typesetMath(body)};
-      wrap.appendChild(b);wrap.appendChild(body);sec.appendChild(wrap);review.appendChild(sec);
+  const mockHost=document.getElementById('mock-history-list');
+  if(!mocks.length)mockHost.innerHTML='<div class="no-history">No completed mocks yet.</div>';
+  else{
+    mockHost.innerHTML=mocks.map((m,i)=>'<div class="history-row"><div class="history-row-main"><div class="history-title">Mock '+(mocks.length-i)+'</div><div class="history-meta">'+escapeHtml(dateText(m.completedAt))+' · '+escapeHtml((m.questions?.length||0)+' questions · '+(m.minutes||0)+' min')+'</div></div><div class="history-open"><button class="btn" data-mock-review="'+i+'">Review</button></div><div id="mock-review-'+i+'" class="review-panel"></div></div>').join('');
+    mockHost.querySelectorAll('[data-mock-review]').forEach(b=>b.onclick=()=>{
+      const i=Number(b.dataset.mockReview),panel=document.getElementById('mock-review-'+i),m=mocks[i];
+      const open=panel.classList.toggle('open');b.textContent=open?'Hide':'Review';if(!open)return;
+      panel.innerHTML=(m.questions||[]).map((q,j)=>{const body=(q.solutions||[]).map((s,k)=>'<div style="margin-top:7px"><div style="font-size:9px;letter-spacing:1px;color:var(--muted)">SOLUTION '+(k+1)+'</div>'+md(s)+'</div>').join('')||'<div class="review-answer">No supplied solution.</div>';return '<div class="review-question"><div class="review-qtitle">Question '+(j+1)+'</div><div class="review-qbody">'+md(q.statement)+'</div><div class="review-solution"><button class="btn" data-inner-solution="'+i+'-'+j+'">Show solution</button><div class="review-solution-body" id="inner-solution-'+i+'-'+j+'">'+body+'</div></div></div>';}).join('')||'<div class="no-history">No question data was stored for this mock.</div>';
+      panel.querySelectorAll('[data-inner-solution]').forEach(btn=>btn.onclick=()=>{const body=document.getElementById('inner-solution-'+btn.dataset.innerSolution),open=body.classList.toggle('open');btn.textContent=open?'Hide solution':'Show solution';if(open)typesetMath(body);});
+      typesetMath(panel);setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}),60);
     });
-    mockPanel.appendChild(review);
-    typesetMath(review);
-  });
-
-  if(new URLSearchParams(location.search).get('mock')==='completed'){
-    const btn=document.querySelector('.account-stat-button[data-panel="mocks"]');
-    if(btn)btn.click();
   }
 })();
 </script>
