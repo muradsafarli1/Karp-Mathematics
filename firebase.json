@@ -78,6 +78,10 @@
         "destination": "/calculator.html"
       },
       {
+        "source": "/desmos",
+        "destination": "/desmos.html"
+      },
+      {
         "source": "/mock",
         "destination": "/mock.html"
       }
