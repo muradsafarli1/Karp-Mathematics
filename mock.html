@@ -9,120 +9,183 @@
 <script src="/mathnet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
-<script>
-window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"}};
-</script>
+<script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"}};</script>
 <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
-.mock-page{min-height:80vh}
-.mock-wrap{max-width:1180px}
-.mock-builder,.mock-paper{border:1px solid var(--line);background:var(--panel);border-radius:22px;padding:28px}
-.builder-head,.mock-paper-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
-.builder-head{margin-bottom:26px}.builder-head h2,.mock-paper-head h2{font-family:'Space Grotesk';font-size:31px;letter-spacing:-1.2px;margin:7px 0 0}
-.mock-note,.card-subtitle{color:var(--muted);font-size:12px;margin:6px 0 0}.pool-badge,.mock-chip,.mock-q-tag{font-size:10px;color:var(--muted);padding:6px 8px;border:1px solid var(--line);border-radius:8px}
-.builder-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}.builder-field label{display:block;font-size:12px;font-weight:800;margin-bottom:9px}.span-2{grid-column:1/-1}
-.choice-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.choice-grid.type-grid{grid-template-columns:repeat(3,1fr)}.choice{display:block}.choice input{position:absolute;opacity:0}.choice span{display:flex;align-items:center;gap:9px;min-height:48px;padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:var(--panel2);color:var(--muted);font-size:12px}.choice input:checked+span{background:var(--text);color:var(--panel);border-color:var(--text)}.choice input:checked+span b{color:var(--panel)}
-.segmented{display:flex;border:1px solid var(--line);border-radius:11px;padding:4px;background:var(--panel2)}.segmented label{flex:1;margin:0}.segmented input{position:absolute;opacity:0}.segmented span{display:block;text-align:center;padding:9px;border-radius:8px;color:var(--muted);font-size:12px}.segmented input:checked+span{background:var(--text);color:var(--panel)}
-.micro-note{margin-top:8px;color:var(--muted);font-size:10px}.builder-actions{display:flex;align-items:center;gap:10px;margin-top:26px;flex-wrap:wrap}.builder-actions .notice{margin:0;min-height:0}
-.mock-paper{margin-top:18px}.mock-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.mock-paper-head{padding-bottom:22px;border-bottom:1px solid var(--line)}.mock-timer{font-family:'Space Grotesk';font-weight:800;font-size:30px;min-width:110px;text-align:right}.mock-timer.expired{opacity:.55}
-.mock-question{padding:38px 0;border-bottom:1px solid var(--line)}.mock-q-top{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:18px}.mock-q-number{font-family:'Space Grotesk';font-weight:800}.mock-q-tags{display:flex;gap:6px;flex-wrap:wrap}.mock-statement{font-size:19px;line-height:1.9}.mock-statement p{margin:0 0 15px}.mock-answer{width:100%;min-height:190px;margin-top:24px;resize:vertical;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:15px;outline:none}.mock-solution{display:none;margin-top:22px;padding-top:22px;border-top:1px solid var(--line)}.mock-solution.open{display:block}.mock-solution-block{font-size:17px;line-height:1.85;margin-bottom:22px}.mock-solution-label{font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);font-weight:800;margin-bottom:10px}.mock-bottom{display:flex;justify-content:space-between;gap:10px;align-items:center;padding-top:26px}.mock-bottom-note{color:var(--muted);font-size:12px}.mock-finish{margin-top:18px;padding:20px;border:1px solid var(--line);border-radius:14px;background:var(--panel2)}
-@media(max-width:800px){.builder-grid,.choice-grid,.choice-grid.type-grid{grid-template-columns:1fr 1fr}.mock-paper-head{flex-direction:column}.mock-timer{text-align:left}}
-@media(max-width:520px){.builder-grid,.choice-grid,.choice-grid.type-grid{grid-template-columns:1fr}.span-2{grid-column:auto}.mock-builder,.mock-paper{padding:20px}.builder-head{flex-direction:column}.mock-bottom{flex-direction:column;align-items:stretch}}
+.mock-page{min-height:calc(100vh - 76px)}
+.mock-wrap{width:min(calc(100% - 42px),1100px)}
+.mock-builder{border:1px solid var(--line);background:var(--panel);border-radius:24px;padding:34px}
+.builder-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:30px}
+.builder-kicker{font-size:10px;text-transform:uppercase;letter-spacing:2px;font-weight:800;color:var(--muted)}
+.builder-head h2{font-family:'Space Grotesk';font-size:36px;letter-spacing:-1.5px;margin:8px 0}
+.builder-note{font-size:13px;color:var(--muted);max-width:680px;line-height:1.7;margin:0}
+.builder-badge{padding:8px 11px;border:1px solid var(--line);border-radius:10px;font-size:10px;font-weight:800;letter-spacing:1px;color:var(--muted)}
+.builder-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+.builder-card{border:1px solid var(--line);background:var(--panel2);border-radius:16px;padding:20px}
+.builder-card.wide{grid-column:1/-1}
+.builder-card label.field-label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;font-weight:800;color:var(--muted);margin-bottom:11px}
+.choice-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.choice{display:block}
+.choice input{position:absolute;opacity:0;pointer-events:none}
+.choice span{display:flex;align-items:center;justify-content:center;min-height:48px;padding:11px 10px;border:1px solid var(--line);border-radius:12px;background:var(--panel);font-size:12px;color:var(--muted);transition:.18s}
+.choice input:checked+span{background:var(--text);color:var(--panel);border-color:var(--text)}
+.split-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.time-row{display:flex;align-items:center;gap:10px}
+.time-input{flex:1;min-width:0;font-size:20px!important;font-weight:700}
+.unit{font-size:12px;color:var(--muted);font-weight:700}
+.segmented{display:flex;gap:4px;border:1px solid var(--line);border-radius:12px;padding:4px;background:var(--panel)}
+.segmented label{flex:1}
+.segmented input{position:absolute;opacity:0;pointer-events:none}
+.segmented span{display:block;text-align:center;padding:10px 6px;border-radius:9px;font-size:12px;color:var(--muted)}
+.segmented input:checked+span{background:var(--text);color:var(--panel)}
+.sequence-note,.field-note{margin-top:8px;font-size:11px;color:var(--muted);line-height:1.6}
+.builder-actions{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:24px}
+.builder-status{margin-right:auto;font-size:12px;color:var(--muted)}
+.mock-preview{margin-top:20px;border:1px solid var(--line);background:var(--panel);border-radius:24px;padding:28px}
+.preview-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding-bottom:22px;border-bottom:1px solid var(--line)}
+.preview-head h2{font-family:'Space Grotesk';font-size:30px;margin:7px 0}
+.preview-meta{color:var(--muted);font-size:12px}
+.preview-actions{display:flex;gap:8px}
+.preview-question{padding:28px 0;border-bottom:1px solid var(--line)}
+.preview-number{font-family:'Space Grotesk';font-weight:800;margin-bottom:13px}
+.preview-statement{font-size:18px;line-height:1.9}
+.preview-statement p{margin:0 0 15px}
+.mock-session{min-height:100vh;background:var(--bg);padding:18px 3vw 70px}
+.mock-session-top{position:sticky;top:0;z-index:20;width:min(1180px,94vw);margin:0 auto 26px;padding:16px 0 20px;background:var(--bg);display:flex;flex-direction:column;align-items:center}
+.mock-session-title{font-family:'Space Grotesk';font-size:14px;color:var(--muted);margin-bottom:9px}
+.mock-session-timer{font-family:'Space Grotesk';font-variant-numeric:tabular-nums;font-size:58px;font-weight:800;line-height:1;letter-spacing:1px}
+.mock-session-timer.expired{opacity:.5}
+.mock-session-meta{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;justify-content:center}
+.mock-session-meta span{font-size:11px;padding:6px 9px;border:1px solid var(--line);border-radius:9px;color:var(--muted)}
+.mock-paper{width:min(980px,94vw);margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:34px 38px}
+.session-question{padding:38px 0;border-bottom:1px solid var(--line)}
+.session-number{font-family:'Space Grotesk';font-size:16px;font-weight:800;margin-bottom:18px}
+.session-statement{font-size:19px;line-height:1.92}
+.session-statement p{margin:0 0 18px}
+.session-answer{width:100%;min-height:260px;margin-top:24px;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--bg);color:var(--text);resize:vertical;outline:none}
+.session-bottom{padding-top:28px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.session-note{font-size:12px;color:var(--muted)}
+.result-box{margin-top:20px;padding:22px;border:1px solid var(--line);border-radius:14px;background:var(--panel2)}
+.solution-reveal{margin-top:22px;padding-top:22px;border-top:1px solid var(--line)}
+.solution-reveal-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:800;margin-bottom:10px}
+.solution-block{font-size:17px;line-height:1.9;margin-bottom:26px}
+@media(max-width:800px){.builder-grid{grid-template-columns:1fr}.builder-card.wide{grid-column:auto}.choice-grid{grid-template-columns:1fr 1fr}.builder-head{flex-direction:column}.preview-head{flex-direction:column}.mock-paper{padding:24px}.mock-session-timer{font-size:42px}}
+@media(max-width:520px){.choice-grid{grid-template-columns:1fr}.split-two{grid-template-columns:1fr}.builder-actions{flex-wrap:wrap}.builder-status{width:100%;margin:0}.mock-wrap{width:calc(100% - 28px)}}
 </style>
 </head>
 <body>
 <script>
 (function(){
 var labels={A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'};
-var typeLabels={proof:'Proof',answer:'Answer','proof-answer':'Proof + Answer'};
-var mock=null,timer=null,secondsLeft=0,sessionAnswers=[];
+var mock=null,timer=null,secondsLeft=0;
 
 function esc(x){return escapeHtml(x==null?'':String(x));}
-function md(text){
-  try{return DOMPurify.sanitize(marked.parse(String(text||''),{breaks:true}));}
-  catch(e){return esc(text).replace(/\\n/g,'<br>');}
+function md(value){
+  try{return DOMPurify.sanitize(marked.parse(String(value||''),{breaks:true}));}
+  catch(e){return esc(value).replace(/\n/g,'<br>');}
 }
-function cats(){return Array.from(document.querySelectorAll('.pool-cat:checked')).map(function(x){return x.value;});}
-function types(){return Array.from(document.querySelectorAll('.q-type:checked')).map(function(x){return x.value;});}
-function count(){return Math.max(1,Math.min(20,Number(document.getElementById('q-count').value||6)));}
+function selectedCats(){return Array.from(document.querySelectorAll('.pool-cat:checked')).map(function(x){return x.value});}
+function count(){return Math.max(1,Math.min(30,Number(document.getElementById('q-count').value||6)));}
 function difficulty(){return document.querySelector('input[name="difficulty"]:checked')?.value||'any';}
 function sequence(){
   var raw=document.getElementById('sequence').value.trim();
   if(!raw)return null;
   var a=raw.toUpperCase().replace(/[^ACGN,\s]/g,'').split(/[,\s]+/).filter(Boolean);
-  return a.length===count()&&a.every(function(x){return ['A','C','G','N'].includes(x);})?a:null;
+  return a.length===count()&&a.every(function(x){return ['A','C','G','N'].includes(x)})?a:null;
+}
+function minutes(){
+  return Math.max(1,Math.min(600,Number(document.getElementById('time-limit').value||60)));
 }
 function renderBuilder(){
   shell('Mocks','Custom Mock',
-  '<main class="mock-page"><section class="pagehero"><div class="wrap"><div class="eyebrow">KARP · MATHNET POOL</div><h1>Build your own mock.</h1><p class="lead">Choose topics, difficulty, question types, sequence and time. KARP pulls a fresh set from MathNet.</p></div></section>'+
-  '<section class="section"><div class="wrap mock-wrap"><div class="mock-builder"><div class="builder-head"><div><div class="tag">QUESTION POOL</div><h2>Configure your test</h2><p class="mock-note">Source: ShadenA/MathNet. Supplied solutions stay hidden during the test.</p></div><div class="pool-badge">LIVE POOL</div></div>'+
-  '<div class="builder-grid"><div class="builder-field span-2"><label>Topics</label><div class="choice-grid">'+
-  '<label class="choice"><input class="pool-cat" type="checkbox" value="A" checked><span><b>A</b> Algebra</span></label>'+
-  '<label class="choice"><input class="pool-cat" type="checkbox" value="C" checked><span><b>C</b> Combinatorics</span></label>'+
-  '<label class="choice"><input class="pool-cat" type="checkbox" value="G" checked><span><b>G</b> Geometry</span></label>'+
-  '<label class="choice"><input class="pool-cat" type="checkbox" value="N" checked><span><b>N</b> Number Theory</span></label>'+
+  '<main class="mock-page"><section class="pagehero"><div class="wrap"><div class="eyebrow">KARP · MATHNET</div><h1>Build a mock.</h1><p class="lead">A clean custom olympiad set built only from English MathNet problems with supplied proof solutions.</p></div></section>'+
+  '<section class="section"><div class="mock-wrap"><div class="mock-builder">'+
+  '<div class="builder-head"><div><div class="builder-kicker">CUSTOM TEST</div><h2>Set your paper.</h2><p class="builder-note">Every selected problem must be English, marked as proof / proof-and-answer by MathNet, and have a supplied solution. The solutions stay hidden until you submit.</p></div><div class="builder-badge">PROOF POOL</div></div>'+
+  '<div class="builder-grid">'+
+  '<div class="builder-card wide"><label class="field-label">Topics</label><div class="choice-grid">'+
+  '<label class="choice"><input class="pool-cat" type="checkbox" value="A" checked><span>Algebra</span></label>'+
+  '<label class="choice"><input class="pool-cat" type="checkbox" value="C" checked><span>Combinatorics</span></label>'+
+  '<label class="choice"><input class="pool-cat" type="checkbox" value="G" checked><span>Geometry</span></label>'+
+  '<label class="choice"><input class="pool-cat" type="checkbox" value="N" checked><span>Number Theory</span></label>'+
   '</div></div>'+
-  '<div class="builder-field"><label for="q-count">Question count</label><input id="q-count" class="input" type="number" min="1" max="20" value="6"></div>'+
-  '<div class="builder-field"><label for="time-limit">Time limit</label><select id="time-limit" class="select"><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60" selected>60 minutes</option><option value="90">90 minutes</option><option value="120">120 minutes</option><option value="180">180 minutes</option></select></div>'+
-  '<div class="builder-field span-2"><label>Difficulty <span class="muted-inline">(estimated)</span></label><div class="segmented"><label><input type="radio" name="difficulty" value="any" checked><span>Any</span></label><label><input type="radio" name="difficulty" value="easy"><span>Easy</span></label><label><input type="radio" name="difficulty" value="hard"><span>Hard</span></label></div><div class="micro-note">MathNet v0 does not provide a native easy/hard field; KARP uses a heuristic estimate for this filter.</div></div>'+
-  '<div class="builder-field span-2"><label>Question types</label><div class="choice-grid type-grid"><label class="choice"><input class="q-type" type="checkbox" value="proof" checked><span>Proof</span></label><label class="choice"><input class="q-type" type="checkbox" value="answer" checked><span>Answer</span></label><label class="choice"><input class="q-type" type="checkbox" value="proof-answer" checked><span>Proof + Answer</span></label></div></div>'+
-  '<div class="builder-field span-2"><label for="sequence">Sequence <span class="muted-inline">(optional)</span></label><input id="sequence" class="input" placeholder="e.g. A,A,A,C,N,G"><div class="micro-note">Leave empty for automatic rotation through the selected topics.</div></div></div>'+
-  '<div class="builder-actions"><button id="generate" class="btn primary">Generate Mock</button><button id="randomize" class="btn">Randomize</button><span id="builder-status" class="notice"></span></div></div><div id="mock-output"></div></div></section></main>');
+  '<div class="builder-card"><label class="field-label" for="q-count">Questions</label><input id="q-count" class="input time-input" type="number" min="1" max="30" value="6"><div class="field-note">Choose up to 30 questions.</div></div>'+
+  '<div class="builder-card"><label class="field-label" for="time-limit">Time limit</label><div class="time-row"><input id="time-limit" class="input time-input" type="number" min="1" max="600" value="60"><span class="unit">minutes</span></div><div class="field-note">Type any whole number of minutes.</div></div>'+
+  '<div class="builder-card"><label class="field-label">Difficulty</label><div class="segmented"><label><input type="radio" name="difficulty" value="any" checked><span>Any</span></label><label><input type="radio" name="difficulty" value="easy"><span>Easy</span></label><label><input type="radio" name="difficulty" value="hard"><span>Hard</span></label></div><div class="field-note">Estimated by KARP from MathNet metadata.</div></div>'+
+  '<div class="builder-card"><label class="field-label" for="sequence">Sequence <span style="font-size:10px;letter-spacing:0;text-transform:none;font-weight:500">(optional)</span></label><input id="sequence" class="input" placeholder="A,A,G,N,C,C"><div class="sequence-note">Use A, C, G, N. The sequence length must equal the question count.</div></div>'+
+  '</div>'+
+  '<div class="builder-actions"><span id="builder-status" class="builder-status"></span><button id="randomize" class="btn">Randomize</button><button id="generate" class="btn primary">Generate Mock</button></div>'+
+  '</div><div id="mock-output"></div></div></section></main>');
   document.getElementById('generate').onclick=generate;
-  document.getElementById('randomize').onclick=function(){document.getElementById('sequence').value='';generate();};
+  document.getElementById('randomize').onclick=function(){document.getElementById('sequence').value='';generate(true)};
 }
-async function generate(){
-  var status=document.getElementById('builder-status'),out=document.getElementById('mock-output'),n=count(),seq=sequence();
-  var rawSeq=document.getElementById('sequence').value.trim();
-  if(!cats().length){status.className='notice error';status.textContent='Select at least one topic.';return;}
-  if(!types().length){status.className='notice error';status.textContent='Select at least one question type.';return;}
-  if(rawSeq&&!seq){status.className='notice error';status.textContent='Sequence needs exactly '+n+' letters from A, C, G, N.';return;}
-  status.className='notice';status.textContent='Fetching MathNet…';
-  out.innerHTML='<div class="mock-paper"><div class="mock-loading">Building your mock…</div></div>';
+async function generate(randomize){
+  var status=document.getElementById('builder-status'),out=document.getElementById('mock-output'),n=count(),seq=sequence(),raw=document.getElementById('sequence').value.trim();
+  if(!selectedCats().length){status.textContent='Select at least one topic.';return}
+  if(raw&&!seq){status.textContent='Sequence must contain exactly '+n+' letters: A, C, G or N.';return}
+  status.textContent='Building the set…';
+  out.innerHTML='<div class="mock-preview"><div class="archive-loading">Scanning MathNet for qualifying proof problems…</div></div>';
   try{
-    var result=await mathnetFind({categories:cats(),difficulty:difficulty(),types:types(),sequence:seq,count:n,seed:Date.now()});
-    if(result.questions.length<n)throw new Error('Not enough matching questions found. Try Any difficulty or more topics.');
-    mock={id:'mock-'+Date.now(),minutes:Number(document.getElementById('time-limit').value),questions:result.questions};
+    var result=await mathnetFind({categories:selectedCats(),difficulty:difficulty(),sequence:seq,count:n,seed:randomize?Date.now()+Math.random()*100000:Date.now()});
+    if(result.questions.length<n)throw new Error('Not enough matching proof problems were found. Try more topics or Any difficulty.');
+    mock={id:'mock-'+Date.now(),minutes:minutes(),questions:result.questions};
     mathnetSaveMock(mock);
-    status.className='notice success';status.textContent='Mock ready — '+n+' questions.';
+    status.textContent=n+' questions ready.';
     renderPreview();
-  }catch(err){status.className='notice error';status.textContent=err.message||'MathNet could not be loaded.';out.innerHTML='<div class="mock-paper"><div class="empty">'+esc(err.message||'MathNet could not be loaded.')+'</div></div>';}
+  }catch(err){status.textContent=err.message||'MathNet could not be loaded.';out.innerHTML='<div class="mock-preview"><div class="empty">'+esc(err.message||'MathNet could not be loaded.')+'</div></div>'}
 }
 function renderPreview(){
-  var html='<div class="mock-paper"><div class="mock-paper-head"><div><div class="tag">MOCK READY</div><h2>'+mock.questions.length+' questions</h2><div class="mock-meta"><span class="mock-chip">'+mock.minutes+' min</span><span class="mock-chip">MathNet</span></div></div><button id="start-mock" class="btn primary">Start mock</button></div>';
-  mock.questions.forEach(function(q,i){html+='<section class="mock-question"><div class="mock-q-top"><div class="mock-q-number">Question '+(i+1)+'</div><div class="mock-q-tags"><span class="mock-q-tag">'+q.category+'</span><span class="mock-q-tag">'+labels[q.category]+'</span><span class="mock-q-tag">'+typeLabels[q.type]+'</span></div></div><div class="mock-statement">'+md(q.statement)+'</div></section>';});
-  html+='<div class="mock-bottom"><span class="mock-bottom-note">Preview only. Solutions are hidden until submission.</span><button id="start-mock-2" class="btn primary">Start mock</button></div></div>';
+  var html='<div class="mock-preview"><div class="preview-head"><div><div class="builder-kicker">READY</div><h2>'+mock.questions.length+' questions</h2><div class="preview-meta">'+mock.minutes+' minutes · English proof pool · MathNet</div></div><div class="preview-actions"><button id="start-mock" class="btn primary">Start Mock</button></div></div>';
+  mock.questions.forEach(function(q,i){html+='<section class="preview-question"><div class="preview-number">Question '+(i+1)+' · '+labels[q.category]+'</div><div class="preview-statement">'+md(q.statement)+'</div></section>'});
+  html+='<div class="builder-actions"><span class="builder-status">Preview only — solutions stay hidden.</span><button id="start-mock-bottom" class="btn primary">Start Mock</button></div></div>';
   document.getElementById('mock-output').innerHTML=html;
-  [document.getElementById('start-mock'),document.getElementById('start-mock-2')].forEach(function(b){if(b)b.onclick=startMock;});
+  [document.getElementById('start-mock'),document.getElementById('start-mock-bottom')].forEach(function(b){if(b)b.onclick=startMock});
   typesetMath(document.getElementById('mock-output'));
 }
 function startMock(){
-  secondsLeft=mock.minutes*60;sessionAnswers=[];
-  var out=document.getElementById('mock-output'),html='<div class="mock-paper"><div class="mock-paper-head"><div><div class="tag">IN PROGRESS</div><h2>Custom Mock</h2><div class="mock-meta"><span class="mock-chip">'+mock.questions.length+' questions</span><span class="mock-chip">'+mock.minutes+' min</span></div></div><div id="mock-timer" class="mock-timer">'+clock(secondsLeft)+'</div></div>';
-  mock.questions.forEach(function(q,i){html+='<section class="mock-question" data-index="'+i+'"><div class="mock-q-top"><div class="mock-q-number">Question '+(i+1)+'</div><div class="mock-q-tags"><span class="mock-q-tag">'+q.category+'</span><span class="mock-q-tag">'+labels[q.category]+'</span></div></div><div class="mock-statement">'+md(q.statement)+'</div><textarea class="mock-answer" placeholder="Write your solution here…"></textarea></section>';});
-  html+='<div class="mock-bottom"><span class="mock-bottom-note">The timer will submit automatically at 00:00.</span><button id="finish-mock" class="btn primary">Finish mock</button></div></div>';
-  out.innerHTML=html;document.getElementById('finish-mock').onclick=function(){finishMock(false);};
-  clearInterval(timer);timer=setInterval(tick,1000);typesetMath(out);window.scrollTo({top:out.offsetTop-20,behavior:'smooth'});
+  if(!mock)return;
+  clearInterval(timer);
+  secondsLeft=mock.minutes*60;
+  shell('Mocks','Mock',`<main class="mock-session">
+    <header class="mock-session-top">
+      <div class="mock-session-title">KARP · CUSTOM MOCK</div>
+      <div id="mock-timer" class="mock-session-timer">${clock(secondsLeft)}</div>
+      <div class="mock-session-meta"><span>${mock.questions.length} questions</span><span>${mock.minutes} minutes</span><span>English proof problems</span></div>
+    </header>
+    <div class="mock-paper" id="mock-paper">
+      ${mock.questions.map(function(q,i){return '<section class="session-question"><div class="session-number">Question '+(i+1)+' · '+esc(labels[q.category])+'</div><div class="session-statement">'+md(q.statement)+'</div><textarea class="session-answer" placeholder="Write your proof here…"></textarea></section>'}).join('')}
+      <div class="session-bottom"><span class="session-note">Submit before the timer reaches 00:00.</span><button id="finish-mock" class="btn primary">Finish Mock</button></div>
+    </div>
+  </main>`);
+  document.getElementById('finish-mock').onclick=function(){finishMock(false)};
+  timer=setInterval(tick,1000);
+  typesetMath(document.getElementById('mock-paper'));
+  window.scrollTo({top:0,behavior:'smooth'});
 }
-function clock(s){return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor(s%3600/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
-function tick(){var el=document.getElementById('mock-timer');if(!el)return;el.textContent=clock(Math.max(0,secondsLeft));if(secondsLeft<=0){el.classList.add('expired');finishMock(true);return;}secondsLeft--;}
-function solutionHtml(q){
-  var sols=Array.isArray(q.solutions)?q.solutions:[];
-  if(!sols.length&&q.finalAnswer)return '<div class="mock-solution-block"><strong>Final answer</strong><div>'+md(q.finalAnswer)+'</div></div>';
-  if(!sols.length)return '<div class="small">No supplied solution for this row.</div>';
-  return sols.map(function(s,i){return '<div class="mock-solution-block">'+(sols.length>1?'<div class="mock-solution-label">Solution '+(i+1)+'</div>':'')+md(s)+'</div>';}).join('');
+function clock(s){return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor(s%3600/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+function tick(){
+  var el=document.getElementById('mock-timer');
+  if(!el){clearInterval(timer);return}
+  el.textContent=clock(Math.max(0,secondsLeft));
+  if(secondsLeft<=0){el.classList.add('expired');finishMock(true);return}
+  secondsLeft--;
 }
 function finishMock(auto){
   clearInterval(timer);
-  var answers=Array.from(document.querySelectorAll('.mock-answer')).map(function(x){x.disabled=true;return x.value;});
+  var answers=Array.from(document.querySelectorAll('.session-answer')).map(function(x){x.disabled=true;return x.value});
   localStorage.setItem('karp_last_mock_answers',JSON.stringify({mockId:mock.id,answers:answers,submittedAt:new Date().toISOString()}));
-  var finish=document.createElement('div');finish.className='mock-finish';finish.innerHTML='<strong>'+(auto?'Time is up.':'Mock submitted.')+'</strong><div class="mock-bottom-note">Reveal each supplied solution below.</div>';document.getElementById('mock-output').appendChild(finish);
-  document.querySelectorAll('.mock-question').forEach(function(section,i){
-    var holder=document.createElement('div');holder.className='mock-solution';holder.innerHTML=solutionHtml(mock.questions[i]);
-    var b=document.createElement('button');b.className='btn';b.textContent='Show solution';b.onclick=function(){holder.classList.toggle('open');b.textContent=holder.classList.contains('open')?'Hide solution':'Show solution';if(holder.classList.contains('open'))typesetMath(holder);};
-    section.appendChild(b);section.appendChild(holder);
+  var paper=document.getElementById('mock-paper');
+  var finish=document.createElement('div');finish.className='result-box';finish.innerHTML='<strong>'+(auto?'Time is up.':'Mock submitted.')+'</strong><div class="session-note">Your answers are saved locally. Reveal the supplied solution for each problem below.</div>';paper.appendChild(finish);
+  document.querySelectorAll('.session-question').forEach(function(section,i){
+    var solutions=mock.questions[i].solutions||[];
+    var holder=document.createElement('div');holder.className='solution-reveal';
+    var button=document.createElement('button');button.className='btn';button.textContent='Show solution';
+    var box=document.createElement('div');box.style.display='none';box.style.marginTop='18px';
+    box.innerHTML=solutions.map(function(s,j){return '<div class="solution-block"><div class="solution-reveal-label">Solution '+(j+1)+'</div>'+md(s)+'</div>'}).join('');
+    button.onclick=function(){var open=box.style.display!=='none';box.style.display=open?'none':'block';button.textContent=open?'Show solution':'Hide solution';if(!open)typesetMath(box)};
+    holder.appendChild(button);holder.appendChild(box);section.appendChild(holder);
   });
-  typesetMath(document.getElementById('mock-output'));
+  typesetMath(paper);
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 document.addEventListener('DOMContentLoaded',renderBuilder);
 })();
