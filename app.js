@@ -22,6 +22,11 @@
     .nav-logout{border:0;background:transparent;color:var(--muted);font-size:11px;padding:6px 4px;cursor:pointer;white-space:nowrap}
     .nav-logout:hover{color:var(--text)}
     .nav-admin{font-size:11px!important;padding:7px 10px!important}
+    #auth-action-modal{display:none;position:fixed;inset:0;z-index:10000}
+    #auth-action-modal.open{display:block}.auth-action-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(8px)}
+    .auth-action-card{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,calc(100% - 30px));padding:30px;border-radius:20px;background:var(--panel2);color:var(--text);box-shadow:0 30px 100px rgba(0,0,0,.45)}
+    .auth-action-card h2{font-family:'Space Grotesk';font-size:30px;letter-spacing:-1px;margin:8px 0}.auth-action-card p{color:var(--muted);font-size:13px;line-height:1.7;margin:0 0 22px}
+    .auth-action-close{position:absolute;right:14px;top:12px;border:0;background:transparent;color:var(--muted);font-size:25px;cursor:pointer}.auth-action-buttons{display:flex;gap:8px;flex-wrap:wrap}
     .theme-toggle{width:38px;height:38px;border:1px solid #30343d;background:#15181d;color:#f3f5f8;border-radius:10px;font-size:17px;display:grid;place-items:center;padding:0;line-height:1}
     .theme-toggle:hover{background:#22262d;transform:translateY(-1px)}
     .language-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--line,#292d34);background:var(--panel,#101216);border-radius:10px;margin-bottom:28px}
@@ -217,7 +222,7 @@ async function api(path, opts = {}) {
       const sub=await getDoc(doc(db,'exams',x.id,'submissions',uid));
       if(sub.exists()){
         const s=sub.data();
-        const safe=publicExam({id:x.id,...x.data()});history.push({examId:x.id,title:safe.titleEn||safe.title||'',titleEn:safe.titleEn||safe.title||'',titleAz:safe.titleAz||'',submittedAt:s.submittedAt,answers:s.answers||{},questions:safe.questions||[]});
+        const rawExam={id:x.id,...x.data()},safe=publicExam(rawExam),reviewQuestions=(rawExam.questions||[]).map(q=>({...q}));history.push({examId:x.id,title:safe.titleEn||safe.title||'',titleEn:safe.titleEn||safe.title||'',titleAz:safe.titleAz||'',submittedAt:s.submittedAt,answers:s.answers||{},questions:reviewQuestions});
       }
     }
     history.sort((a,b)=>new Date(b.submittedAt)-new Date(a.submittedAt)); return {history};
@@ -272,6 +277,25 @@ async function api(path, opts = {}) {
   throw new Error('Not found');
 }
 function toggleTheme(){const next=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=next;localStorage.setItem('able_theme',next);const b=document.getElementById('theme-toggle');if(b){b.textContent=next==='light'?'☾':'☀';b.title=next==='light'?'Switch to dark mode':'Switch to light mode'}}
+function showAuthPrompt(title='Sign in to continue',message='Create an account or sign in to use this feature.'){
+  let box=document.getElementById('auth-action-modal');
+  if(!box){
+    box=document.createElement('div');box.id='auth-action-modal';
+    box.innerHTML='<div class="auth-action-backdrop"></div><div class="auth-action-card"><button class="auth-action-close" aria-label="Close">×</button><div class="eyebrow">KARP ACCOUNT</div><h2></h2><p></p><div class="auth-action-buttons"><a class="btn primary" href="/login.html">Sign in</a><a class="btn" href="/signup.html">Create account</a></div></div>';
+    document.body.appendChild(box);
+    const close=()=>box.classList.remove('open');
+    box.querySelector('.auth-action-backdrop').onclick=close;
+    box.querySelector('.auth-action-close').onclick=close;
+  }
+  box.querySelector('h2').textContent=title;
+  box.querySelector('p').textContent=message;
+  box.classList.add('open');
+}
+async function ensureSignedIn(title,message){
+  const u=await me();
+  if(!u){showAuthPrompt(title,message);return null;}
+  return u;
+}
 function toast(msg){let t=document.getElementById('toast');if(!t){t=document.createElement('div');t.id='toast';t.className='toast';document.body.appendChild(t)}t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
 async function me(){try{return(await api('/api/me')).user}catch{return null}}
 async function logout(){try{await api('/api/logout',{method:'POST'})}finally{location.href='/'}}
