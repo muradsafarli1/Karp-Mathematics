@@ -21,7 +21,7 @@
 .archive-pages .btn[disabled]{opacity:.38;cursor:not-allowed}
 .archive-note{margin-top:12px;color:var(--muted);font-size:12px;text-align:center}
 .archive-loading{padding:60px 0;text-align:center;color:var(--muted)}
-.problem-modal-card{padding:22px}.problem-modal-body{font-size:17px;line-height:1.8}}
+
 </style>
 </head>
 <body>
@@ -97,9 +97,7 @@
         <div class="cards" id="cards"></div>
         <div class="archive-pages"><button class="btn" id="prev">← Previous</button><button class="btn primary" id="next">Next →</button></div>
         <div class="archive-note" id="archive-note"></div>
-      </div></section>
-;
-    document.getElementById('topic').value=topic;
+      </div></section>.value=topic;
     document.getElementById('search').oninput=function(){search=this.value;page=0;fetchPage().catch(showError)};
     document.getElementById('topic').onchange=function(){topic=this.value;page=0;fetchPage().catch(showError)};
     document.getElementById('prev').onclick=function(){if(page>0){page--;fetchPage().catch(showError)}};
