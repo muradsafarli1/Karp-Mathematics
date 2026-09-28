@@ -51,7 +51,7 @@
       ?'/problem.html?custom='+encodeURIComponent(p.customId)
       :'/problem.html?id='+encodeURIComponent(p.id)+'&config='+encodeURIComponent(p.sourceConfig||'all')+'&offset='+encodeURIComponent(p.sourceIndex)+(p.sourceShard!=null?'&shard='+encodeURIComponent(p.sourceShard):'');
     const secondary=[p.competition&&p.sourceType!=='custom'?p.competition:'',p.sourceBooklet||'',p.section].filter(Boolean).join(' · ');
-    return '<a class="problem-card-link" href="'+href+'" onclick="rememberProblemState()"><div class="tag">'+esc(topicNames[p.category]||'Problem')+'</div><h3>'+esc(custom?(p.title||'KARP Problem'):(p.competition||'MathNet Problem'))+'</h3><div class="problem-meta-primary">'+esc(metaPrimary(p))+'</div>'+(secondary?'<div class="problem-meta-secondary">'+esc(secondary)+'</div>':'')+'</a>';
+    return '<a class="problem-card-link" href="'+href+'" onclick="rememberProblemState()"><div class="tag">'+esc(topicNames[p.category]||'Problem')+'</div><h3>'+esc(custom?(p.title||'KARP Problem'):(p.title||p.competition||'MathNet Problem'))+'</h3><div class="problem-meta-primary">'+esc(custom?metaPrimary(p):(p.country||'MathNet'))+'</div>'+(secondary?'<div class="problem-meta-secondary">'+esc(secondary)+'</div>':'')+'</a>';
   }
   function columns(){const w=document.getElementById('cards').clientWidth||1200;if(w>=1180)return 4;if(w>=820)return 3;if(w>=560)return 2;return 1;}
   function renderVirtual(){
@@ -70,11 +70,26 @@
     visibleRows=allRows.filter(p=>{
       if(topic!=='All topics'&&topicNames[p.category]!==topic)return false;
       if(!q)return true;
-      return [p.title,p.country,p.competition,p.year,p.problemNumber,p.section,p.sourceBooklet,p.statement].join(' ').toLowerCase().includes(q);
+      return [p.title,p.country,p.competition,p.year,p.problemNumber,p.section,p.sourceBooklet,p.bookletSource].join(' ').toLowerCase().includes(q);
     });
-    document.getElementById('count').innerHTML='<strong>'+visibleRows.length.toLocaleString()+'</strong> qualifying problems';
+    document.getElementById('count').innerHTML='<strong>'+visibleRows.length.toLocaleString()+'</strong> indexed problems';
     document.getElementById('no-results').style.display=visibleRows.length?'none':'block';
     renderVirtual();
+  }
+  let searchTimer=0,searchSeq=0;
+  async function runSearch(){
+    const seq=++searchSeq,q=query.trim();
+    clearTimeout(searchTimer);
+    if(!q){allRows=[...allRows.filter(x=>x.sourceType!=='mathnet'),...allRows.filter(x=>x.sourceType==='mathnet')];return;}
+    searchTimer=setTimeout(async()=>{
+      try{
+        const results=await mathnetSearch(q,{limit:200});
+        if(seq!==searchSeq)return;
+        const custom=allRows.filter(x=>x.sourceType==='custom');
+        allRows=[...results,...custom];applyFilters();
+        document.getElementById('status').textContent='Search results from the KARP MathNet index.';
+      }catch(e){document.getElementById('status').textContent=e.message||'Search failed.';}
+    },180);
   }
   window.rememberProblemState=saveState;
 
@@ -82,33 +97,29 @@
     pendingRestore=restoreState();
     shell('Problems','Problems','<main class="problem-page"><section class="pagehero"><div class="wrap"><div class="eyebrow">01 — Problems</div><h1>MathNet Problems</h1><p class="lead">MathNet and KARP-added olympiad problems in one searchable archive.</p></div></section><section class="section"><div class="wrap" style="max-width:1320px"><div class="problem-tools"><input id="search" class="input" placeholder="Search country, contest, year, P-number or problem text…"><select id="topic" class="select"><option>All topics</option><option>Algebra</option><option>Geometry</option><option>Number Theory</option><option>Combinatorics</option></select></div><div class="problem-archive-status"><span id="status">Opening the problem archive…</span><span id="count">0 qualifying problems</span></div><div class="problem-progress"><i id="progress"></i></div><div id="cards" class="virtual-cards"></div><div id="no-results" class="empty-archive" style="display:none">No qualifying problems match this search.</div></div></section></main>');
     document.getElementById('search').value=query;document.getElementById('topic').value=topic;
-    document.getElementById('search').oninput=function(){query=this.value;saveState();applyFilters()};
+    document.getElementById('search').oninput=function(){query=this.value;saveState();applyFilters();runSearch()};
     document.getElementById('topic').onchange=function(){topic=this.value;saveState();applyFilters()};
     window.addEventListener('scroll',function(){if(!raf)raf=requestAnimationFrame(function(){raf=0;renderVirtual()})});
     window.addEventListener('resize',renderVirtual);
 
     let customRows=[];
     const manualPromise=api('/api/content').then(d=>(d.problems||[]).map(normalizeCustom)).catch(()=>[]);
-    const mathPromise=mathnetLoadAllIndex(function(loaded,total,complete,saved){
-      const pct=total?Math.min(100,Math.round(loaded/total*100)):0;
-      document.getElementById('progress').style.width=pct+'%';
-      document.getElementById('status').textContent=complete?'Complete archive loaded and cached locally.':'Showing available problems now · loading the rest in background… '+loaded.toLocaleString()+' / '+total.toLocaleString();
-      if(saved!=null&&!complete)document.getElementById('count').innerHTML='<strong>'+Number(saved).toLocaleString()+'</strong> MathNet problems cached';
-    },function(initialRows){
+    try{
+      const initialRows=await mathnetLoadAllIndex(function(loaded,total){
+        document.getElementById('progress').style.width='100%';
+        document.getElementById('status').textContent='MathNet archive ready · '+Number(total||loaded).toLocaleString()+' problems indexed on KARP.';
+      },function(rows){
+        allRows=[...rows,...customRows];applyFilters();
+      });
       allRows=[...initialRows,...customRows];applyFilters();
-      document.getElementById('status').textContent='Problems are open now · the rest of the archive is loading in background…';
-      if(pendingRestore>20&&initialRows.length>20)setTimeout(()=>window.scrollTo({top:pendingRestore,behavior:'auto'}),50);
-    });
-
+      document.getElementById('progress').style.width='100%';
+      document.getElementById('status').textContent='Complete MathNet archive loaded · search is server-powered.';
+    }catch(e){
+      document.getElementById('status').textContent=e.warmingUp?'MathNet database is still being built on the server… please refresh shortly.':(e.message||'MathNet archive unavailable.');
+    }
     customRows=await manualPromise;
     allRows=[...allRows.filter(x=>x.sourceType!=='custom'),...customRows];
     applyFilters();
-
-    allRows=await mathPromise;
-    allRows=[...allRows.filter(x=>x.sourceType!=='custom'),...customRows];
-    applyFilters();
-    document.getElementById('progress').style.width='100%';
-    document.getElementById('status').textContent='Complete archive loaded and cached locally.';
     if(pendingRestore>20)setTimeout(()=>window.scrollTo({top:pendingRestore,behavior:'auto'}),80);
   }
 
