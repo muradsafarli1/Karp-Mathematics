@@ -184,52 +184,119 @@
     },{merge:true});
   }
 
+  function normKey(x){
+    return String(x||'').toLowerCase()
+      .replace(/\\/g,'').replace(/<[^>]+>/g,' ')
+      .replace(/[^a-z0-9]+/g,' ').trim().replace(/\\s+/g,' ');
+  }
+  function officialProblemNumber(p){
+    for(const key of ['problem_number','problemNumber','problem number','number','no','problem_no','problemNo']){
+      const v=p?.[key];
+      if(v!=null&&String(v).trim()){
+        const s=String(v).trim();
+        const m=s.match(/(?:^|\\s)P\\s*0*([1-9]\\d?)\\b/i)||s.match(/^0*([1-9]\\d?)$/);
+        if(m)return'P'+m[1];
+        if(/^P/i.test(s))return s.replace(/\\s+/g,'');
+      }
+    }
+    return '';
+  }
+  function officialCompetition(p){
+    return String(p?.competition||p?.['competition name']||p?.competition_name||p?.contest||'').trim();
+  }
+  function officialYear(p,fallback){
+    return String(p?.year||fallback||'').trim();
+  }
+  function officialStatement(p){
+    return String(p?.problem_markdown||p?.statement_latex||p?.statement||p?.problem||p?.text||'').trim();
+  }
+  function countrySlug(name){
+    return String(name||'').toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'')
+      .replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  }
+  async function loadOfficialCountry(country){
+    const u='https://mathnet.mit.edu/data/'+countrySlug(country)+'.json';
+    const r=await fetch(u,{cache:'no-store'});
+    if(!r.ok)throw new Error('MathNet official data HTTP '+r.status+' for '+country);
+    return await r.json();
+  }
+  function officialIndex(data,country){
+    const bySource=new Map(), byComposite=new Map(), byText=new Map();
+    const years=data&&typeof data==='object'?Object.keys(data):[];
+    for(const y of years){
+      const arr=Array.isArray(data[y])?data[y]:[];
+      for(const p of arr){
+        const src=String(p?.unique_id||p?.uniqueId||p?.source_id||p?.sourceId||p?.id||'').trim();
+        const year=officialYear(p,y),comp=officialCompetition(p);
+        const num=officialProblemNumber(p),stmt=officialStatement(p);
+        const rec={p,year,comp,num,src};
+        if(src)bySource.set(src,rec);
+        const composite=normKey(country)+'|'+year+'|'+normKey(comp);
+        if(num)byComposite.set(composite+'|'+num,rec);
+        if(stmt)byText.set(normKey(stmt).slice(0,500),rec);
+      }
+    }
+    return {bySource,byComposite,byText};
+  }
   async function repairMetadata(){
     if(state.running)return;
     const start=document.getElementById('start'),repair=document.getElementById('repair');
     start.disabled=true;repair.disabled=true;
-    document.getElementById('status').textContent='Repairing MathNet metadata safely…';
-    log('Starting non-destructive metadata repair. Problem statements, solutions, images and IDs will not be replaced.');
+    document.getElementById('status').textContent='Repairing MathNet metadata from official source…';
+    log('SAFE REPAIR: reading existing Firebase problems; statements, solutions, images and IDs stay untouched.');
     try{
       const existingSnap=await getDocs(collection(db,MATHNET_FIRESTORE.problems));
-      const existingBySource=new Map();
-      const existingById=new Map();
+      const existing=[];
+      const sourceMap=new Map();
+      const countrySet=new Set();
       existingSnap.forEach(s=>{
         const d={...s.data(),id:s.id};
-        existingById.set(s.id,d);
-        if(d.sourceId)existingBySource.set(String(d.sourceId),d);
+        existing.push(d);
+        if(d.sourceId)sourceMap.set(String(d.sourceId),d);
+        if(d.country)countrySet.add(String(d.country));
       });
-      log('Existing Firebase problems found: '+existingById.size.toLocaleString());
+      log('Existing Firebase problems found: '+existing.length.toLocaleString()+' across '+countrySet.size+' countries.');
 
-      const first=await fetchPage(0);
-      const total=Number(first.num_rows_total||0);
-      let cursor=0,scanned=0,matched=0,numbered=0;
-      const changes=new Map();
-
-      async function worker(){
-        while(true){
-          const offset=cursor*PAGE;cursor++;
-          if(offset>=total)return;
-          const payload=offset===0?first:await fetchPage(offset);
-          const raw=payload.rows||[];
-          scanned+=raw.length;
-          for(const item of raw){
-            const r=item?.row||item||{};
-            const sourceId=String(r.unique_id||r.id||('row-'+item.row_idx));
-            const ex=existingBySource.get(sourceId);
-            if(!ex)continue;
-            matched++;
-            const pno=pnoFor(r)||pnoFor({problem_markdown:ex.statement,source_booklet:ex.sourceBooklet,booklet_source:ex.bookletSource});
-            const title=String(r.competition||ex.competition||'MathNet').trim()||'MathNet';
-            const next={title};
-            if(pno)next.problemNumber=pno;
-            if((ex.title||'')!==next.title || (pno&&String(ex.problemNumber||'')!==pno))changes.set(ex.id,next);
+      const countries=[...countrySet];
+      const officialByCountry=new Map();
+      let loaded=0;
+      for(let i=0;i<countries.length;i+=6){
+        const group=countries.slice(i,i+6);
+        const results=await Promise.all(group.map(async country=>{
+          try{
+            const data=await loadOfficialCountry(country);
+            return [country,officialIndex(data,country)];
+          }catch(e){
+            log('Official MathNet source unavailable for '+country+': '+e.message);
+            return [country,null];
           }
-          num('fetched',scanned);num('accepted',matched);num('written',changes.size);
-          document.getElementById('status').textContent='Metadata scan '+scanned.toLocaleString()+' / '+total.toLocaleString();
-        }
+        }));
+        results.forEach(([country,index])=>{if(index)officialByCountry.set(country,index);loaded++});
+        document.getElementById('status').textContent='Loaded official MathNet data '+loaded+' / '+countries.length+' countries…';
       }
-      await Promise.all(Array.from({length:CONCURRENCY},worker));
+
+      const changes=new Map();
+      let matched=0,numbered=0;
+      for(const ex of existing){
+        const index=officialByCountry.get(ex.country);
+        if(!index)continue;
+        let rec=ex.sourceId?index.bySource.get(String(ex.sourceId)):null;
+        const comp=normKey(ex.competition),year=String(ex.year||'');
+        if(!rec){
+          rec=index.byComposite.get(normKey(ex.country)+'|'+year+'|'+comp+'|'+normKey(ex.problemNumber));
+        }
+        if(!rec&&ex.statement){
+          rec=index.byText.get(normKey(ex.statement).slice(0,500));
+        }
+        if(!rec)continue;
+        matched++;
+        const pno=rec.num;
+        const title=rec.comp||ex.competition||ex.title||'MathNet';
+        const fields={};
+        if(title&&String(ex.title||'')!==title)fields.title=title;
+        if(pno&&String(ex.problemNumber||'')!==pno){fields.problemNumber=pno;numbered++;}
+        if(Object.keys(fields).length)changes.set(ex.id,fields);
+      }
 
       const updates=[...changes.entries()];
       for(let i=0;i<updates.length;i+=400){
@@ -237,33 +304,35 @@
         updates.slice(i,i+400).forEach(([id,fields])=>batch.update(doc(db,MATHNET_FIRESTORE.problems,id),fields));
         await batch.commit();
       }
-      log('Updated '+updates.length.toLocaleString()+' existing problem metadata documents.');
 
       const shardSnap=await getDocs(collection(db,MATHNET_FIRESTORE.shards));
       const stateSnap=await getDoc(doc(db,MATHNET_FIRESTORE.meta,MATHNET_FIRESTORE.state));
       const oldState=stateSnap.exists()?stateSnap.data():{};
       const newVersion=String(oldState.version||VERSION)+'-meta-'+Date.now();
-      const shardBatch=writeBatch(db);
       let shardCount=0;
-      shardSnap.forEach(s=>{
-        const d=s.data();
-        const items=Array.isArray(d.items)?d.items.map(item=>{
-          const ch=changes.get(item.id);
-          return ch?{...item,...ch,version:newVersion}:{...item,version:newVersion};
-        }):[];
-        shardBatch.set(doc(db,MATHNET_FIRESTORE.shards,s.id),{...d,version:newVersion,items},{merge:true});
-        shardCount++;
-      });
-      if(shardCount)await shardBatch.commit();
+      for(let i=0;i<[...shardSnap.docs].length;i+=400){
+        const batch=writeBatch(db);
+        shardSnap.docs.slice(i,i+400).forEach(s=>{
+          const d=s.data();
+          const items=Array.isArray(d.items)?d.items.map(item=>{
+            const ch=changes.get(item.id);
+            return ch?{...item,...ch,version:newVersion}:{...item,version:newVersion};
+          }):[];
+          batch.set(doc(db,MATHNET_FIRESTORE.shards,s.id),{...d,version:newVersion,items},{merge:true});
+          shardCount++;
+        });
+        await batch.commit();
+      }
       await setDoc(doc(db,MATHNET_FIRESTORE.meta,MATHNET_FIRESTORE.state),{
-        ready:true,version:newVersion,count:Number(oldState.count||existingById.size),source:DATASET,
+        ready:true,version:newVersion,count:Number(oldState.count||existing.length),source:DATASET,
         shardCount,updatedAt:new Date().toISOString()
       },{merge:true});
 
-      const withNumbers=[...changes.values()].filter(x=>x.problemNumber).length;
       document.getElementById('bar').style.width='100%';
       document.getElementById('status').textContent='METADATA REPAIR COMPLETE';
-      log('DONE. Titles cleaned: '+updates.length.toLocaleString()+'. P-numbers added/fixed: '+withNumbers.toLocaleString()+'.');
+      log('Matched existing problems to official MathNet data: '+matched.toLocaleString());
+      log('Updated metadata documents: '+updates.length.toLocaleString());
+      log('P-numbers added/fixed: '+numbered.toLocaleString()+'.');
       log('No statements, solutions, images, or problem IDs were replaced.');
     }catch(e){
       document.getElementById('status').textContent='Metadata repair failed: '+e.message;
