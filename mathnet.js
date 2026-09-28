@@ -59,7 +59,12 @@ function mathnetMarkdown(row){
   return md;
 }
 function mathnetProblemNumber(row){
-  const text=String(row.problem_markdown||'').replace(/<[^>]+>/g,' ').trim();
+  const raw=row.problem_number;
+  if(raw!=null && String(raw).trim()){
+    const value=String(raw).trim();
+    return /^P/i.test(value)?value:'P'+value;
+  }
+  const text=(String(row.problem_markdown||'')+' '+String(row.original_problem_markdown||'')).replace(/<[^>]+>/g,' ').trim();
   const patterns=[
     /(?:^|\n)\s*(?:#+\s*)?(?:problem|question|p)\s*#?\s*(\d{1,2})\b/i,
     /(?:^|\n)\s*\*{0,2}\s*(\d{1,2})\s*[\.)]\s*/,
@@ -72,13 +77,49 @@ function mathnetProblemNumber(row){
   return '';
 }
 
+function mathnetYear(row){
+  if(row.year!=null && String(row.year).trim() && /^19|^20/.test(String(row.year).trim())){
+    return String(row.year).trim();
+  }
+  const source=String(row.source_booklet||'');
+  const competition=String(row.competition||'');
+  const text=source+' '+competition;
+  const m=text.match(/(?:^|[^0-9])(19\d{2}|20\d{2})(?:[^0-9]|$)/);
+  return m?m[1]:'';
+}
+
+function mathnetCompetition(row){
+  const country=String(row.country||'').trim();
+  const competition=String(row.competition||'').trim();
+  if(competition && competition.toLowerCase()!==country.toLowerCase()) return competition;
+  const names={
+    'ireland':'Irish Mathematical Olympiad',
+    'greece':'Hellenic Mathematical Olympiad',
+    'italy':'Italian Mathematical Olympiad',
+    'japan':'Japanese Mathematical Olympiad',
+    'india':'Indian National Mathematical Olympiad',
+    'belarus':'Belarusian Mathematical Olympiad',
+    'austria':'Austrian Mathematical Olympiad',
+    'croatia':'Croatian Mathematical Olympiad',
+    'canada':'Canadian Mathematical Olympiad'
+  };
+  return names[country.toLowerCase()]||competition||'MathNet';
+}
+
+function mathnetDisplayTitle(row,competition,year,problemNumber){
+  const base=competition||'MathNet Problem';
+  const pieces=[];
+  if(year && !new RegExp('\\b'+year+'\\b').test(base)) pieces.push(year);
+  if(problemNumber) pieces.push(problemNumber);
+  return base+(pieces.length?' — '+pieces.join(' · '):'');
+}
 
 function normalizeMathnetRow(raw,offset){
   const row=raw&&raw.row?raw.row:(raw||{});
   const id=String(row.id||('mathnet-'+((raw&&raw.row_idx!=null)?raw.row_idx:(offset||0))));
   return {
     id:id,
-    competition:String(row.competition||'MathNet'),
+    competition:mathnetCompetition(row),
     country:String(row.country||''),
     statement:mathnetMarkdown(row),
     solutions:Array.isArray(row.solutions_markdown)?row.solutions_markdown.filter(Boolean):[],
@@ -89,8 +130,11 @@ function normalizeMathnetRow(raw,offset){
     problemType:String(row.problem_type||''),
     language:String(row.language||''),
     hasSolution:Array.isArray(row.solutions_markdown)&&row.solutions_markdown.some(function(x){return String(x||'').trim()}),
+    year:mathnetYear(row),
+    section:String(row.section||''),
+    sourceBooklet:String(row.source_booklet||''),
     problemNumber:mathnetProblemNumber(row),
-    title:String(row.title||row.competition||'MathNet Problem')+(mathnetProblemNumber(row)?' — '+mathnetProblemNumber(row):''),
+    title:mathnetDisplayTitle(row,mathnetCompetition(row),mathnetYear(row),mathnetProblemNumber(row)),
     sourceIndex:Number((raw&&raw.row_idx)!=null?raw.row_idx:(offset||0)),
     finalAnswer:row.final_answer==null?'':String(row.final_answer)
   };
@@ -98,7 +142,7 @@ function normalizeMathnetRow(raw,offset){
 
 async function mathnetRows(offset,length){
   const cleanOffset=Math.max(0,Math.floor(offset||0));
-  const cleanLength=Math.min(100,Math.max(1,length||100));
+  const cleanLength=Math.min(200,Math.max(1,length||100));
   const url=new URL(MATHNET.endpoint);
   url.searchParams.set('dataset',MATHNET.dataset);
   url.searchParams.set('config',MATHNET.config);
@@ -170,7 +214,7 @@ async function mathnetFilteredRows(offset,length){
   // MathNet's /filter endpoint currently returns HTTP 500 for this dataset.
   // Use the stable /rows endpoint and filter the returned records locally.
   const wantedOffset=Math.max(0,Math.floor(offset||0));
-  const wantedLength=Math.min(100,Math.max(1,length||100));
+  const wantedLength=Math.min(200,Math.max(1,length||100));
 
   while(MATHNET_ARCHIVE_CACHE.rows.length < wantedOffset+wantedLength && !MATHNET_ARCHIVE_CACHE.exhausted){
     const batch=await mathnetRows(MATHNET_ARCHIVE_CACHE.sourceOffset,100);
@@ -249,7 +293,7 @@ async function mathnetFind(options){
   // Sample across the whole MathNet source instead of relying on the broken
   // Dataset Viewer /filter endpoint or only the first few hundred rows.
   const batches=[];
-  const batchCount=8;
+  const batchCount=10;
   const maxOffset=Math.max(0,MATHNET.maxPreferredRows-100);
   const seed=Number(options.seed||Date.now());
   for(let i=0;i<batchCount;i++){
@@ -264,7 +308,7 @@ async function mathnetFind(options){
     let batch;
     try{batch=await mathnetRows(offset,100)}catch{continue}
     for(const q of batch.rows){
-      if(seen.has(q.id))continue;
+      if(!q || !q.id || seen.has(q.id))continue;
       seen.add(q.id);
       if(!mathnetQualifies(q))continue;
       if(categories.indexOf(q.category)<0)continue;
