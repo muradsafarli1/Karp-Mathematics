@@ -80,102 +80,80 @@ function normalizeMathnetRow(raw,offset){
   };
 }
 
-async function mathnetFilteredRows(offset,length,whereExtra){
-  const url=new URL('https://datasets-server.huggingface.co/filter');
-  url.searchParams.set('dataset',MATHNET.dataset);
-  url.searchParams.set('config',MATHNET.config);
-  url.searchParams.set('split',MATHNET.split);
-  url.searchParams.set('where',MATHNET_FILTER_WHERE+(whereExtra?' AND ('+whereExtra+')':''));
-  url.searchParams.set('offset',String(Math.max(0,Math.floor(offset||0))));
-  url.searchParams.set('length',String(Math.min(100,Math.max(1,length||100))));
-  const res=await fetch(url,{headers:{Accept:'application/json'}});
-  if(!res.ok) throw new Error('MathNet filter request failed ('+res.status+')');
-  const data=await res.json();
+const MATHNET_ARCHIVE_CACHE = {
+  rows: [],
+  sourceOffset: 0,
+  total: 0,
+  exhausted: false,
+  searchCache: new Map()
+};
+
+function mathnetQualifies(row){
+  const language=String(row.language||'').trim().toLowerCase();
+  const type=String(row.problemType||'').trim().toLowerCase();
+  return (language==='english' || language==='en')
+    && row.hasSolution
+    && (type==='proof only' || type==='proof and answer');
+}
+
+async function mathnetFilteredRows(offset,length){
+  // MathNet's /filter endpoint currently returns HTTP 500 for this dataset.
+  // Use the stable /rows endpoint and filter the returned records locally.
+  const wantedOffset=Math.max(0,Math.floor(offset||0));
+  const wantedLength=Math.min(100,Math.max(1,length||100));
+
+  while(MATHNET_ARCHIVE_CACHE.rows.length < wantedOffset+wantedLength && !MATHNET_ARCHIVE_CACHE.exhausted){
+    const batch=await mathnetRows(MATHNET_ARCHIVE_CACHE.sourceOffset,100);
+    MATHNET_ARCHIVE_CACHE.total=batch.total;
+    MATHNET_ARCHIVE_CACHE.sourceOffset += batch.rows.length;
+
+    for(const row of batch.rows){
+      if(mathnetQualifies(row)) MATHNET_ARCHIVE_CACHE.rows.push(row);
+    }
+    if(!batch.rows.length || batch.rows.length<100 || MATHNET_ARCHIVE_CACHE.sourceOffset>=MATHNET_ARCHIVE_CACHE.total){
+      MATHNET_ARCHIVE_CACHE.exhausted=true;
+    }
+  }
+
   return {
-    total:Number(data.num_rows_total||0),
-    rows:(data.rows||[]).map(function(x,i){return normalizeMathnetRow(x,(offset||0)+i);}),
-    partial:Boolean(data.partial)
+    total:MATHNET_ARCHIVE_CACHE.total,
+    qualifyingTotal:MATHNET_ARCHIVE_CACHE.exhausted ? MATHNET_ARCHIVE_CACHE.rows.length : null,
+    rows:MATHNET_ARCHIVE_CACHE.rows.slice(wantedOffset,wantedOffset+wantedLength),
+    partial:!MATHNET_ARCHIVE_CACHE.exhausted
   };
 }
 
+async function mathnetProblemById(id){
+  const target=String(id||'').trim();
+  if(!target)return null;
+  const cached=MATHNET_ARCHIVE_CACHE.rows.find(function(q){return q.id===target;});
+  if(cached)return cached;
+
+  try{
+    const result=await mathnetSearch(target,0,100);
+    return result.rows.find(function(q){return q.id===target;})||null;
+  }catch{
+    return null;
+  }
+}
+
 async function mathnetSearch(query,offset,length){
+  const key=String(query||'').trim().toLowerCase();
+  if(!key) return mathnetFilteredRows(offset,length);
+
   const url=new URL('https://datasets-server.huggingface.co/search');
   url.searchParams.set('dataset',MATHNET.dataset);
   url.searchParams.set('config',MATHNET.config);
   url.searchParams.set('split',MATHNET.split);
-  url.searchParams.set('query',String(query||''));
+  url.searchParams.set('query',key);
   url.searchParams.set('offset',String(Math.max(0,Math.floor(offset||0))));
   url.searchParams.set('length',String(Math.min(100,Math.max(1,length||100))));
   const res=await fetch(url,{headers:{Accept:'application/json'}});
   if(!res.ok) throw new Error('MathNet search request failed ('+res.status+')');
   const data=await res.json();
-  const rows=(data.rows||[]).map(function(x,i){return normalizeMathnetRow(x,(offset||0)+i);})
-    .filter(function(q){return q.language.toLowerCase()==='en' && q.hasSolution && (q.problemType.toLowerCase()==='proof only' || q.problemType.toLowerCase()==='proof and answer');});
-  return {total:Number(data.num_rows_total||0),rows:rows,partial:Boolean(data.partial)};
-}
-
-async function mathnetProblemById(id){
-  const safe=String(id||'').replace(/'/g,"''");
-  const data=await mathnetFilteredRows(0,1,'"id"=\''+safe+'\'');
-  return data.rows[0]||null;
-}
-
-async function mathnetRows(offset,length){
-  const url=new URL(MATHNET.endpoint);
-  url.searchParams.set('dataset',MATHNET.dataset);
-  url.searchParams.set('config',MATHNET.config);
-  url.searchParams.set('split',MATHNET.split);
-  url.searchParams.set('offset',String(Math.max(0,Math.floor(offset||0))));
-  url.searchParams.set('length',String(Math.min(100,Math.max(1,length||100))));
-  const res=await fetch(url,{headers:{Accept:'application/json'}});
-  if(!res.ok) throw new Error('MathNet request failed ('+res.status+')');
-  const data=await res.json();
-  return {
-    total:Number(data.num_rows_total||0),
-    rows:(data.rows||[]).map(function(x,i){return normalizeMathnetRow(x,(offset||0)+i);})
-  };
-}
-
-async function mathnetFind(options){
-  options=options||{};
-  const categories=Array.isArray(options.categories)&&options.categories.length?options.categories:['A','C','G','N'];
-  const difficulty=options.difficulty||'any';
-  const types=Array.isArray(options.types)&&options.types.length?options.types:['proof','answer','proof-answer'];
-  const sequence=Array.isArray(options.sequence)&&options.sequence.length===Number(options.count||6)?options.sequence:null;
-  const count=Math.max(1,Math.min(20,Number(options.count||6)));
-  const seed=Number(options.seed||Date.now());
-  const preferredLimit=Math.min(MATHNET.maxPreferredRows,900);
-  let first=await mathnetRows(Math.floor(seed)%Math.max(1,preferredLimit-99),100);
-  let pool=first.rows.slice();
-  for(let pass=1;pass<8 && pool.length<Math.max(250,count*12);pass++){
-    const offset=(Math.floor(seed/97)+pass*1379)%Math.max(1,preferredLimit-99);
-    const batch=await mathnetRows(offset,100);
-    pool=pool.concat(batch.rows);
-  }
-  const byCat={A:[],C:[],G:[],N:[]};
-  const seen=new Set();
-  pool.forEach(function(q){
-    if(seen.has(q.id))return;
-    seen.add(q.id);
-    if(categories.indexOf(q.category)<0)return;
-    if(difficulty!=='any'&&q.difficulty!==difficulty)return;
-    if(types.indexOf(q.type)<0)return;
-    byCat[q.category].push(q);
-  });
-  const picked=[],used=new Set();
-  for(let i=0;i<count;i++){
-    const cat=sequence?sequence[i]:categories[i%categories.length];
-    const list=byCat[cat]||[];
-    let candidate=list.find(function(q){return !used.has(q.id);});
-    if(!candidate){
-      const fallback=Object.values(byCat).flat().find(function(q){return !used.has(q.id);});
-      candidate=fallback;
-    }
-    if(!candidate)break;
-    used.add(candidate.id);
-    picked.push(candidate);
-  }
-  return {questions:picked,total:first.total,source:'ShadenA/MathNet'};
+  const rows=(data.rows||[]).map(function(x,i){return normalizeMathnetRow(x,i);})
+    .filter(mathnetQualifies);
+  return {total:rows.length,rows:rows,partial:false};
 }
 
 function mathnetSaveMock(mock){
