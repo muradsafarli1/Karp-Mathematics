@@ -45,7 +45,7 @@
   function card(p){
     const title=p.title||'MathNet Problem';
     const meta=[p.country||'',p.competition||'',p.year||'Year not provided',p.section||'',p.problemNumber||'Problem number not provided'].filter(Boolean).join(' · ');
-    return '<a class="card problem-card-link" href="/problem.html?id='+encodeURIComponent(p.id)+'&offset='+encodeURIComponent(p.sourceIndex)+'">'
+    return '<a class="card problem-card-link" href="/problem.html?id='+encodeURIComponent(p.id)+'&config='+encodeURIComponent(p.sourceConfig||'all')+'&offset='+encodeURIComponent(p.sourceIndex)+'">'
       +'<div class="tag">'+escapeHtml(topicNames[p.category]||'Problem')+'</div>'
       +'<h3>'+escapeHtml(title)+'</h3>'
       +'<div class="problem-meta">'+escapeHtml(meta)+'</div>'
