@@ -18,7 +18,7 @@ const MATHNET_META='meta';
 const MATHNET_COLUMNS=[
   'unique_id','id','country','competition','year','section','problem_number',
   'problem_markdown','solutions_markdown','topics_flat','language','problem_type',
-  'final_answer','source_booklet','original_problem_markdown'
+  'final_answer'
 ];
 
 let __mathnetLibPromise=null;
