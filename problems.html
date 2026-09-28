@@ -18,7 +18,7 @@
 .virtual-cards{position:relative}.virtual-card{position:absolute;box-sizing:border-box;padding:0 7px 14px}
 .problem-card-link{display:flex!important;height:100%;min-height:178px;box-sizing:border-box;flex-direction:column;justify-content:flex-start;text-decoration:none!important;background:var(--panel2)!important;border:1px solid transparent!important;border-radius:16px;padding:21px!important;box-shadow:none!important;transition:transform .15s,background .15s}
 .problem-card-link:hover{transform:translateY(-2px);background:var(--panel2)!important}
-.problem-card-link{position:relative}.problem-card-link .tag{align-self:flex-start}.solved-bird{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;background:var(--panel);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.12)}.problem-card-link h3{font-family:'Space Grotesk';font-size:21px;line-height:1.14;letter-spacing:-.7px;margin:16px 0 9px;text-align:left!important;color:var(--text)!important}
+.problem-card-link{position:relative}.problem-card-link .tag{align-self:flex-start}.status-badges{position:absolute;right:13px;bottom:13px;display:flex;align-items:center;gap:7px;z-index:2}.status-badge{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;background:var(--panel);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.12)}.status-badge.solved{color:#e53935}.status-badge.saved{font-size:15px}.solved-only{position:absolute;top:13px;right:13px}.problem-card-link h3{font-family:'Space Grotesk';font-size:21px;line-height:1.14;letter-spacing:-.7px;margin:16px 0 9px;text-align:left!important;color:var(--text)!important}
 .problem-meta-primary{font-size:12px;font-weight:800;color:var(--text);margin-top:auto}.problem-meta-secondary{font-size:11px;color:var(--muted);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .archive-loading{padding:45px 0;text-align:center;color:var(--muted)}.empty-archive{padding:70px 0;text-align:center;color:var(--muted)}
 @media(max-width:1050px){.problem-tools{grid-template-columns:1fr}.virtual-card{padding-left:6px;padding-right:6px}}
@@ -46,7 +46,16 @@
   }
   function metaPrimary(p){return [p.country,p.year,p.problemNumber].filter(Boolean).join(' · ')||'KARP';}
   function solvedMap(){try{return JSON.parse(localStorage.getItem('able_solved_problems')||'{}')}catch{return {}}}
+  function savedMap(){try{return JSON.parse(localStorage.getItem('karp_saved_mathnet')||'{}')}catch{return {}}}
   function isSolved(p){return !!solvedMap()[String(p.id||'')]}
+  function isSaved(p){return !!savedMap()[String(p.id||'')]}
+  function statusHtml(p){
+    const solved=isSolved(p),saved=isSaved(p);
+    if(solved&&saved)return '<span class="status-badges"><span class="status-badge saved" title="Saved" aria-label="Saved">🔖</span><span class="status-badge solved" title="Solved" aria-label="Solved">🐦</span></span>';
+    if(solved)return '<span class="status-badge solved solved-only" title="Solved" aria-label="Solved">🐦</span>';
+    if(saved)return '<span class="status-badge saved solved-only" title="Saved" aria-label="Saved">🔖</span>';
+    return '';
+  }
   function cardHtml(p){
     const custom=p.sourceType==='custom';
     const href=custom
@@ -55,7 +64,7 @@
     const secondary=[p.sourceBooklet||'',p.section].filter(Boolean).join(' · ');
     const primary=custom?metaPrimary(p):[p.country,p.year,p.problemNumber].filter(Boolean).join(' · ')||'MathNet';
     const heading=custom?(p.title||'KARP Problem'):(p.competition||p.title||'MathNet Problem');
-    return '<a class="problem-card-link" href="'+href+'" onclick="rememberProblemState()"><div class="tag">'+esc(topicNames[p.category]||'Problem')+'</div>'+(isSolved(p)?'<span class="solved-bird" title="Solved" aria-label="Solved">🐦</span>':'')+'<h3>'+esc(heading)+'</h3><div class="problem-meta-primary">'+esc(primary)+'</div>'+(secondary?'<div class="problem-meta-secondary">'+esc(secondary)+'</div>':'')+'</a>';
+    return '<a class="problem-card-link" href="'+href+'" onclick="rememberProblemState()"><div class="tag">'+esc(topicNames[p.category]||'Problem')+'</div>'+statusHtml(p)+'<h3>'+esc(heading)+'</h3><div class="problem-meta-primary">'+esc(primary)+'</div>'+(secondary?'<div class="problem-meta-secondary">'+esc(secondary)+'</div>':'')+'</a>';
   }
   function columns(){const w=document.getElementById('cards').clientWidth||1200;if(w>=1180)return 4;if(w>=820)return 3;if(w>=560)return 2;return 1;}
   function renderVirtual(){
