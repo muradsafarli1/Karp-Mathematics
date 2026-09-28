@@ -22,10 +22,10 @@
 (async()=>{
   const admin=await requireAdmin();
   if(!admin){return;}
-  shell('Admin','MathNet Sync','<main class="page"><section class="section"><div class="sync-wrap"><section class="sync-card"><div class="sync-head"><div class="eyebrow">KARP · FIREBASE</div><h1>MathNet Sync</h1><p>Import the English proof archive from Hugging Face into Firestore. This is a one-time/refresh operation. After the sync, KARP runtime uses Firebase only.</p></div><div class="sync-stats"><div class="sync-stat"><b id="fetched">0</b><span>Rows scanned</span></div><div class="sync-stat"><b id="accepted">0</b><span>Accepted</span></div><div class="sync-stat"><b id="written">0</b><span>Problems written</span></div><div class="sync-stat"><b id="pages">0</b><span>Pages</span></div></div><div class="sync-bar"><i id="bar"></i></div><div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap"><button id="start" class="btn primary">Start / Resume Sync</button><a class="btn" href="/admin.html">Back to Admin</a></div><div id="status" style="margin-top:14px;color:var(--muted);font-size:12px">Ready.</div><div id="log" class="sync-log"></div></section></div></section></main>');
+  shell('Admin','MathNet Sync','<main class="page"><section class="section"><div class="sync-wrap"><section class="sync-card"><div class="sync-head"><div class="eyebrow">KARP · FIREBASE</div><h1>MathNet Sync</h1><p>Import the English proof archive from Hugging Face into Firestore. This is a one-time/refresh operation. After the sync, KARP runtime uses Firebase only.</p></div><div class="sync-stats"><div class="sync-stat"><b id="fetched">0</b><span>Rows scanned</span></div><div class="sync-stat"><b id="accepted">0</b><span>Accepted</span></div><div class="sync-stat"><b id="written">0</b><span>Problems written</span></div><div class="sync-stat"><b id="pages">0</b><span>Pages</span></div></div><div class="sync-bar"><i id="bar"></i></div><div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap"><button id="start" class="btn primary">Start / Resume Sync</button><button id="repair" class="btn">Repair titles &amp; P-numbers</button><a class="btn" href="/admin.html">Back to Admin</a></div><div id="status" style="margin-top:14px;color:var(--muted);font-size:12px">Ready.</div><div id="log" class="sync-log"></div></section></div></section></main>');
   const {db}=await fb();
   const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const {doc,getDoc,setDoc,writeBatch}=fs;
+  const {doc,getDoc,setDoc,writeBatch,collection,getDocs,updateDoc}=fs;
 
   const MATHNET_FIRESTORE={problems:'mathnetProblems',shards:'mathnetIndexShards',pools:'mathnetPools',meta:'mathnetMeta',state:'state'};
   const DATASET='ShadenA/MathNet',CONFIG='all',SPLIT='train',PAGE=100,CONCURRENCY=4;
@@ -51,10 +51,26 @@
     const m=s.match(/(?:^|[^0-9])(19\d{2}|20\d{2})(?:[^0-9]|$)/);return m?m[1]:'';
   }
   function pnoFor(r){
-    if(r.problem_number!=null&&String(r.problem_number).trim()){const v=String(r.problem_number).trim();return /^P/i.test(v)?v:'P'+v}
-    const s=String(r.problem_markdown||'').replace(/<[^>]+>/g,' ');
-    const ps=[/(?:^|[\n\r])\s*(?:#+\s*)?(?:problem|question|problem\s*no\.?|no\.)\s*#?\s*(\d{1,2})\b/i,/(?:^|[\n\r])\s*\*{0,2}\s*(\d{1,2})\s*[\.)]\s*/,/\bP\s*([1-9]\d?)\b/i];
-    for(const re of ps){const m=s.match(re);if(m)return'P'+m[1]}return'';
+    const direct=['problem_number','problemNumber','problem_no','problemNo','number'];
+    for(const key of direct){
+      const raw=r?.[key];
+      if(raw!=null&&String(raw).trim()){
+        const v=String(raw).trim();
+        const m=v.match(/(?:^|\s)P\s*([1-9]\d?)\b/i);
+        return m?'P'+m[1]:'P'+v.replace(/^0+/,'');
+      }
+    }
+    const source=String([r?.source_booklet,r?.booklet_source].filter(Boolean).join(' '));
+    const sm=source.match(/\bP\s*([1-9]\d?)\b/i);
+    if(sm)return'P'+sm[1];
+    const s=String(r?.problem_markdown||'').replace(/<[^>]+>/g,' ').replace(/\r/g,'');
+    const head=s.slice(0,1200);
+    const ps=[
+      /(?:^|\n)\s*(?:#+\s*)?(?:problem|question)\s*(?:no\.?|number)?\s*[#:.\-]?\s*P?\s*([1-9]\d?)\b/i,
+      /(?:^|\n)\s*[Pp]\s*([1-9]\d?)\s*[\).:\-]?\s*(?:\n|$)/i
+    ];
+    for(const re of ps){const m=head.match(re);if(m)return'P'+m[1]}
+    return'';
   }
   function categoryFor(r){
     const t=((Array.isArray(r.topics_flat)?r.topics_flat:[]).join(' ')+' '+String(r.problem_markdown||'')).toLowerCase();
@@ -170,6 +186,95 @@
     },{merge:true});
   }
 
+  async function repairMetadata(){
+    if(state.running)return;
+    const start=document.getElementById('start'),repair=document.getElementById('repair');
+    start.disabled=true;repair.disabled=true;
+    document.getElementById('status').textContent='Repairing MathNet metadata safely…';
+    log('Starting non-destructive metadata repair. Problem statements, solutions, images and IDs will not be replaced.');
+    try{
+      const existingSnap=await getDocs(collection(db,MATHNET_FIRESTORE.problems));
+      const existingBySource=new Map();
+      const existingById=new Map();
+      existingSnap.forEach(s=>{
+        const d={...s.data(),id:s.id};
+        existingById.set(s.id,d);
+        if(d.sourceId)existingBySource.set(String(d.sourceId),d);
+      });
+      log('Existing Firebase problems found: '+existingById.size.toLocaleString());
+
+      const first=await fetchPage(0);
+      const total=Number(first.num_rows_total||0);
+      let cursor=0,scanned=0,matched=0,numbered=0;
+      const changes=new Map();
+
+      async function worker(){
+        while(true){
+          const offset=cursor*PAGE;cursor++;
+          if(offset>=total)return;
+          const payload=offset===0?first:await fetchPage(offset);
+          const raw=payload.rows||[];
+          scanned+=raw.length;
+          for(const item of raw){
+            const r=item?.row||item||{};
+            const sourceId=String(r.unique_id||r.id||('row-'+item.row_idx));
+            const ex=existingBySource.get(sourceId);
+            if(!ex)continue;
+            matched++;
+            const pno=pnoFor(r)||pnoFor({problem_markdown:ex.statement,source_booklet:ex.sourceBooklet,booklet_source:ex.bookletSource});
+            const title=String(r.competition||ex.competition||'MathNet').trim()||'MathNet';
+            const next={title};
+            if(pno)next.problemNumber=pno;
+            if((ex.title||'')!==next.title || (pno&&String(ex.problemNumber||'')!==pno))changes.set(ex.id,next);
+          }
+          num('fetched',scanned);num('accepted',matched);num('written',changes.size);
+          document.getElementById('status').textContent='Metadata scan '+scanned.toLocaleString()+' / '+total.toLocaleString();
+        }
+      }
+      await Promise.all(Array.from({length:CONCURRENCY},worker));
+
+      const updates=[...changes.entries()];
+      for(let i=0;i<updates.length;i+=400){
+        const batch=writeBatch(db);
+        updates.slice(i,i+400).forEach(([id,fields])=>batch.update(doc(db,MATHNET_FIRESTORE.problems,id),fields));
+        await batch.commit();
+      }
+      log('Updated '+updates.length.toLocaleString()+' existing problem metadata documents.');
+
+      const shardSnap=await getDocs(collection(db,MATHNET_FIRESTORE.shards));
+      const stateSnap=await getDoc(doc(db,MATHNET_FIRESTORE.meta,MATHNET_FIRESTORE.state));
+      const oldState=stateSnap.exists()?stateSnap.data():{};
+      const newVersion=String(oldState.version||VERSION)+'-meta-'+Date.now();
+      const shardBatch=writeBatch(db);
+      let shardCount=0;
+      shardSnap.forEach(s=>{
+        const d=s.data();
+        const items=Array.isArray(d.items)?d.items.map(item=>{
+          const ch=changes.get(item.id);
+          return ch?{...item,...ch,version:newVersion}:{...item,version:newVersion};
+        }):[];
+        shardBatch.set(doc(db,MATHNET_FIRESTORE.shards,s.id),{...d,version:newVersion,items},{merge:true});
+        shardCount++;
+      });
+      if(shardCount)await shardBatch.commit();
+      await setDoc(doc(db,MATHNET_FIRESTORE.meta,MATHNET_FIRESTORE.state),{
+        ready:true,version:newVersion,count:Number(oldState.count||existingById.size),source:DATASET,
+        shardCount,updatedAt:new Date().toISOString()
+      },{merge:true});
+
+      const withNumbers=[...changes.values()].filter(x=>x.problemNumber).length;
+      document.getElementById('bar').style.width='100%';
+      document.getElementById('status').textContent='METADATA REPAIR COMPLETE';
+      log('DONE. Titles cleaned: '+updates.length.toLocaleString()+'. P-numbers added/fixed: '+withNumbers.toLocaleString()+'.');
+      log('No statements, solutions, images, or problem IDs were replaced.');
+    }catch(e){
+      document.getElementById('status').textContent='Metadata repair failed: '+e.message;
+      log('REPAIR STOPPED: '+e.stack);
+    }finally{
+      state.running=false;start.disabled=false;repair.disabled=false;
+    }
+  }
+
   async function run(){
     if(state.running)return;state.running=true;
     document.getElementById('start').disabled=true;document.getElementById('status').textContent='Syncing…';log('Starting Firebase MathNet import…');
@@ -201,6 +306,7 @@
     }finally{state.running=false;document.getElementById('start').disabled=false}
   }
   document.getElementById('start').onclick=run;
+  document.getElementById('repair').onclick=repairMetadata;
 })();
 </script>
 </body>
