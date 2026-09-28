@@ -11,7 +11,7 @@ const MATHNET={
   parquetShards:50
 };
 
-const MATHNET_DB_NAME='KARP_MATHNET_ARCHIVE_V4';
+const MATHNET_DB_NAME='KARP_MATHNET_ARCHIVE_V5';
 const MATHNET_DB_VERSION=1;
 const MATHNET_STORE='problems';
 const MATHNET_META='meta';
@@ -137,6 +137,25 @@ async function readShard(shard,rowStart=0,rowEnd=100){
   const rows=await lib.parquetReadObjects({file,columns:MATHNET_COLUMNS,rowStart,rowEnd});
   return rows.map((row,i)=>normalizeMathnetRow(row,rowStart+i,shard)).filter(mathnetQualifies);
 }
+async function readShardMeta(shard,rowStart=0,rowEnd=100000){
+  const lib=await mathnetLib(),file=await lib.asyncBufferFromUrl({url:shardUrl(shard)});
+  const rows=await lib.parquetReadObjects({
+    file,
+    columns:['unique_id','id','country','competition','year','section','problem_number','topics_flat','language','problem_type'],
+    rowStart,rowEnd
+  });
+  return rows.map((row,i)=>({
+    id:String(row.unique_id||row.id||('mathnet-meta-'+shard+'-'+(rowStart+i))),
+    shard:Number(shard),index:Number(rowStart+i),
+    category:mathnetCategory(row),
+    language:String(row.language||'').trim().toLowerCase(),
+    problemType:String(row.problem_type||'').trim().toLowerCase()
+  })).filter(x=>{
+    const english=['english','en'].includes(x.language)||x.language.startsWith('en-');
+    const proof=/^proof(?: only| and answer)?$/.test(x.problemType)||!x.problemType;
+    return english&&proof;
+  });
+}
 function mathnetSort(a,b){
   const ay=Number(a.year||0),by=Number(b.year||0);if(ay!==by)return by-ay;
   const ac=(a.country||'').localeCompare(b.country||'');if(ac)return ac;
@@ -232,11 +251,7 @@ async function mathnetFind(options){
   let all=await mathnetLoadQuickIndex();
 
   function matchingPool(rows){
-    return rows.filter(q=>{
-      if(!categories.includes(q.category))return false;
-      if(difficulty!=='any'&&q.difficulty!==difficulty)return false;
-      return true;
-    });
+    return rows.filter(q=>categories.includes(q.category)&&(difficulty==='any'||q.difficulty===difficulty));
   }
   function choose(rows){
     const pool=matchingPool(rows);
@@ -244,7 +259,7 @@ async function mathnetFind(options){
     pool.forEach(q=>(by[q.category]||(by[q.category]=[])).push(q));
     const used=new Set(),picked=[];
     const wantedAt=i=>sequence?sequence[i]:categories[i%categories.length];
-    let seed=Number(options.seed||Date.now());
+    const seed=Number(options.seed||Date.now());
     for(let i=0;i<count;i++){
       const wanted=wantedAt(i),list=by[wanted]||[];
       const start=list.length?Math.abs(Math.floor(seed+i*37))%list.length:0;
@@ -264,28 +279,106 @@ async function mathnetFind(options){
 
   let picked=choose(all);
   onProgress(picked.length,count,'cache');
+  if(picked.length>=count){
+    mathnetBackgroundLoad().catch(()=>{});
+    return {questions:picked,total:all.length,source:'ShadenA/MathNet'};
+  }
 
-  // The old version depended on only the first 1,440 rows of the archive.
-  // Sample many distributed shards until the requested sequence is actually available.
+  // Fast path: inspect only lightweight Parquet metadata across distributed shards.
+  // We do NOT download problem/solution text until candidate rows are known.
+  const missing=Math.max(1,count-picked.length);
+  const perSlot=difficulty==='any'?Math.min(6,Math.max(2,Math.ceil(missing*2))):Math.min(18,Math.max(6,Math.ceil(missing*6)));
+  const neededBy={A:0,C:0,G:0,N:0};
+  if(sequence)sequence.forEach(x=>neededBy[x]=(neededBy[x]||0)+1);
+  else categories.forEach((x,i)=>neededBy[x]=(neededBy[x]||0)+Math.ceil(missing/categories.length));
+  const targetRefs=Math.min(180,Math.max(24,missing*perSlot));
+
+  const shardOrder=[0,3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,1,4,7,10,13,16,19,22,25,28,31,34,37,40,43,46,49,2,5,8,11,14,17,20,23,26,29,32,35,38,41,44,47];
+  const knownShards=new Set(all.map(q=>Number(q.sourceShard)));
+  const refs=[];
+  let cursor=0;
+  async function scanWorker(){
+    while(cursor<shardOrder.length&&refs.length<targetRefs){
+      const shard=shardOrder[cursor++];
+      if(knownShards.has(shard))continue;
+      try{
+        const rows=await readShardMeta(shard,0,100000);
+        refs.push(...rows);
+        onProgress(picked.length,count,'metadata');
+      }catch{}
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(8,shardOrder.length)},scanWorker));
+
+  const uniqRefs=[...new Map(refs.map(x=>[x.shard+':'+x.index,x])).values()];
+  const refByCategory={A:[],C:[],G:[],N:[]};
+  uniqRefs.forEach(r=>(refByCategory[r.category]||(refByCategory[r.category]=[])).push(r));
+
+  const selectedRefs=[];const selectedKeys=new Set();
+  const wantedList=sequence||Array.from({length:missing},(_,i)=>categories[i%categories.length]);
+  for(const wanted of wantedList){
+    const list=refByCategory[wanted]||[];
+    while(list.length){
+      const r=list.shift(),key=r.shard+':'+r.index;
+      if(selectedKeys.has(key))continue;
+      selectedKeys.add(key);selectedRefs.push(r);
+      break;
+    }
+  }
+  if(selectedRefs.length<missing&&!sequence){
+    for(const r of uniqRefs){
+      const key=r.shard+':'+r.index;
+      if(selectedKeys.has(key)||!categories.includes(r.category))continue;
+      selectedKeys.add(key);selectedRefs.push(r);
+      if(selectedRefs.length>=missing*3)break;
+    }
+  }
+
+  // Read only the shortlisted full rows, then apply the exact difficulty rule.
+  const fullCandidates=[];
+  let fullCursor=0;
+  async function fullWorker(){
+    while(fullCursor<selectedRefs.length){
+      const ref=selectedRefs[fullCursor++];
+      try{
+        const rows=await readShard(ref.shard,ref.index,ref.index+1);
+        const q=rows[0];
+        if(q&&(!difficulty||difficulty==='any'||q.difficulty===difficulty)){
+          fullCandidates.push(q);await dbPutBatch([q]);
+        }
+        onProgress(Math.min(count,picked.length+fullCandidates.length),count,'candidates');
+      }catch{}
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(8,selectedRefs.length||1)},fullWorker));
+
+  all=[...all,...fullCandidates];
+  all=[...new Map(all.map(x=>[x.id,x])).values()].sort(mathnetSort);
+  picked=choose(all);
   if(picked.length<count){
-    const moreShards=[1,2,4,5,7,8,10,11,13,14,16,17,19,20,22,23,25,26,28,29,31,32,34,35,37,38,40,41,43,44,46,47,49];
-    const known=new Set(all.map(q=>q.sourceShard));
-    const targets=moreShards.filter(s=>!known.has(s));
-    for(let i=0;i<targets.length&&picked.length<count;i+=8){
-      const batch=targets.slice(i,i+8);
-      const sampled=await mathnetSampleShards(batch,320);
-      if(sampled.length)all=[...new Map([...all,...sampled].map(x=>[x.id,x])).values()].sort(mathnetSort);
-      picked=choose(all);
+    // A second lightweight pass uses the remaining shards when a strict topic/difficulty
+    // combination is rare. This is still metadata-first and much faster than a full archive scan.
+    const remaining=shardOrder.filter(s=>!knownShards.has(s)&&!selectedRefs.some(r=>r.shard===s));
+    for(let i=0;i<remaining.length&&picked.length<count;i+=8){
+      const batch=remaining.slice(i,i+8),more=[];
+      await Promise.all(batch.map(async shard=>{
+        try{more.push(...await readShardMeta(shard,0,100000))}catch{}
+      }));
+      const extra=more.slice(0,Math.max(60,count*8));
+      const exact=[];await Promise.all(extra.map(async ref=>{
+        if(exact.length>=count*8)return;
+        try{const rows=await readShard(ref.shard,ref.index,ref.index+1);if(rows[0]&&['any',difficulty].includes(difficulty)||difficulty==='any')exact.push(rows[0]);else if(rows[0]&&rows[0].difficulty===difficulty)exact.push(rows[0])}catch{}
+      }));
+      if(exact.length){await dbPutBatch(exact);all=[...new Map([...all,...exact].map(x=>[x.id,x])).values()].sort(mathnetSort);picked=choose(all)}
       onProgress(picked.length,count,'archive');
       if(picked.length>=count)break;
     }
   }
 
-  // When a strict sequence was requested, never silently substitute another category.
   if(picked.length<count){
     const reason=sequence
-      ? 'The archive has not provided enough English proof problems for this exact sequence yet.'
-      : 'The archive has not provided enough English proof problems for the selected filters yet.';
+      ? 'The archive has not provided enough English proof problems for this exact sequence and difficulty.'
+      : 'The archive has not provided enough English proof problems for the selected filters.';
     return {questions:picked,total:all.length,source:'ShadenA/MathNet',reason};
   }
   mathnetBackgroundLoad().catch(()=>{});
