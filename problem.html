@@ -58,7 +58,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
 
   function syncSaveButton(){
     const b=document.getElementById('save-btn');
-    if(b)b.textContent=localStorage.getItem('able_saved_problem_'+id)==='1'?'Saved ✓':'Save';
+    if(b)b.textContent=localStorage.getItem('able_saved_problem_'+id)==='1'?'Saved ✓':'Save ✓';
   }
 
   function toggleSolved(){
@@ -73,7 +73,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
     const b=document.getElementById('solved-btn');
     if(!b)return;
     const solved=!!getSolved()[id];
-    b.textContent=solved?'Solved ✓':'Solved';
+    b.textContent=solved?'Solved ✓':'Solved ✓';
     b.classList.toggle('solved-active',solved);
   }
 
@@ -106,7 +106,8 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
 
   try{
     currentProblem=await mathnetProblemById(id,sourceIndex);
-    if(!currentProblem || !currentProblem.hasSolution || currentProblem.language.toLowerCase()!=='en'
+    if(!currentProblem || !currentProblem.hasSolution
+      || !['english','en'].includes(currentProblem.language.toLowerCase())
       || !/^(proof only|proof and answer)$/i.test(currentProblem.problemType||'')){
       location.href='/problems.html';
       return;
@@ -131,8 +132,8 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
             <div class="detail-actions">
               <a class="btn" href="/problems.html">← Back to Problems</a>
               <div class="detail-actions-right">
-                <button id="save-btn" class="btn save-btn" onclick="toggleSave()">Save</button>
-                <button id="solved-btn" class="btn solved-btn" onclick="toggleSolved()">Solved</button>
+                <button id="save-btn" class="btn save-btn" onclick="toggleSave()">Save ✓</button>
+                <button id="solved-btn" class="btn solved-btn" onclick="toggleSolved()">Solved ✓</button>
               </div>
             </div>
           </div>
