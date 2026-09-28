@@ -11,14 +11,14 @@ const MATHNET={
   parquetShards:50
 };
 
-const MATHNET_DB_NAME='KARP_MATHNET_ARCHIVE_V5';
+const MATHNET_DB_NAME='KARP_MATHNET_ARCHIVE_V6';
 const MATHNET_DB_VERSION=1;
 const MATHNET_STORE='problems';
 const MATHNET_META='meta';
 const MATHNET_COLUMNS=[
   'unique_id','id','country','competition','year','section','problem_number',
   'problem_markdown','solutions_markdown','topics_flat','language','problem_type',
-  'final_answer','source_booklet','booklet_source','original_problem_markdown'
+  'final_answer','source_booklet','original_problem_markdown'
 ];
 
 let __mathnetLibPromise=null;
