@@ -132,56 +132,54 @@ async function mathnetFind(options={}){
     ?options.sequence.map(x=>String(x).toUpperCase()).filter(x=>['A','C','G','N'].includes(x))
     :null;
   const wanted=sequence&&sequence.length===count?sequence:Array.from({length:count},(_,i)=>categories[i%categories.length]);
+
   const {db}=await fb();
-  const {doc,getDoc,where,query,collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const idPoolKey=(cat)=>cat+'-'+(difficulty==='easy'||difficulty==='hard'?difficulty:'any');
-  const selected=[];
+  const {collection,query,where,orderBy,startAt,limit,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
   const used=new Set();
+  const selected=[];
+
+  async function pick(cat){
+    const constraints=[where('category','==',cat)];
+    if(difficulty==='easy'||difficulty==='hard')constraints.push(where('difficulty','==',difficulty));
+    const r=Math.random();
+    let snap=await getDocs(query(collection(db,MATHNET_FIRESTORE.problems),...constraints,orderBy('randomKey'),startAt(r),limit(6)));
+    let docs=snap.docs.filter(x=>!used.has(x.id));
+    if(!docs.length){
+      snap=await getDocs(query(collection(db,MATHNET_FIRESTORE.problems),...constraints,orderBy('randomKey'),limit(6)));
+      docs=snap.docs.filter(x=>!used.has(x.id));
+    }
+    const chosen=docs[Math.floor(Math.random()*docs.length)];
+    return chosen||null;
+  }
+
   for(const cat of wanted){
-    let poolSnap=await getDoc(doc(db,MATHNET_FIRESTORE.pools,idPoolKey(cat)));
-    let pool=poolSnap.exists()&&poolSnap.data().version && poolSnap.data().version===String(await mathnetCacheGet('version')||'') && Array.isArray(poolSnap.data().ids)
-      ?poolSnap.data().ids.slice():[];
-    if(!pool.length){
-      const fallback=await getDoc(doc(db,MATHNET_FIRESTORE.pools,cat+'-any'));
-      pool=fallback.exists()&&Array.isArray(fallback.data().ids)?fallback.data().ids.slice():[];
-    }
-    if(!pool.length)continue;
-    const start=Math.floor(Math.random()*pool.length);
-    let picked=null;
-    for(let j=0;j<pool.length;j++){
-      const id=pool[(start+j)%pool.length];
-      if(!used.has(id)){picked=id;break;}
-    }
-    if(picked){used.add(picked);selected.push(picked);}
+    const chosen=await pick(cat);
+    if(chosen){used.add(chosen.id);selected.push(chosen.id)}
   }
+
   if(selected.length<count){
-    const allSnap=await getDocs(query(collection(db,MATHNET_FIRESTORE.problems),where('category','in',[...new Set(categories)])));
-    const extra=[];
-    allSnap.forEach(s=>{
-      const d=s.data();
-      if(used.has(s.id))return;
-      if(difficulty!=='any'&&d.difficulty!==difficulty)return;
-      extra.push(s.id);
-    });
-    while(selected.length<count&&extra.length)selected.push(extra.splice(Math.floor(Math.random()*extra.length),1)[0]);
+    const remaining=categories.filter(Boolean);
+    for(const cat of remaining){
+      if(selected.length>=count)break;
+      const constraints=[where('category','==',cat)];
+      if(difficulty==='easy'||difficulty==='hard')constraints.push(where('difficulty','==',difficulty));
+      const snap=await getDocs(query(collection(db,MATHNET_FIRESTORE.problems),...constraints,limit(20)));
+      for(const d of snap.docs){
+        if(!used.has(d.id)){used.add(d.id);selected.push(d.id);if(selected.length>=count)break}
+      }
+    }
   }
-  if(!selected.length)return {questions:[],total:0,source:'ShadenA/MathNet'};
-  const chunks=[];
-  for(let i=0;i<selected.length;i+=30)chunks.push(selected.slice(i,i+30));
-  const docs=[];
-  for(const ids of chunks){
+
+  const docsById=new Map();
+  for(let i=0;i<selected.length;i+=30){
+    const ids=selected.slice(i,i+30);
     const snap=await getDocs(query(collection(db,MATHNET_FIRESTORE.problems),where('__name__','in',ids)));
-    snap.forEach(s=>docs.push({...s.data(),id:s.id}));
+    snap.forEach(s=>docsById.set(s.id,{...s.data(),id:s.id}));
   }
-  const byId=new Map(docs.map(x=>[x.id,x]));
-  const questions=[];
-  selected.forEach(id=>{
-    const q=byId.get(id);
-    if(q)questions.push({...q,sourceType:'mathnet',category:mathnetCategory(q),title:q.title||mathnetTitle(q),hasSolution:true});
-  });
+  const questions=selected.map(id=>docsById.get(id)).filter(Boolean)
+    .map(q=>({...q,sourceType:'mathnet',category:mathnetCategory(q),title:q.title||mathnetTitle(q),hasSolution:true}));
   return {questions,total:questions.length,source:'ShadenA/MathNet'};
 }
-
 function mathnetSaveMock(mock){localStorage.setItem('karp_last_mock',JSON.stringify({...mock,savedAt:new Date().toISOString()}))}
 function mathnetLoadMock(){try{return JSON.parse(localStorage.getItem('karp_last_mock')||'null')}catch{return null}}
 
