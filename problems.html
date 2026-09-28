@@ -7,6 +7,10 @@
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js"></script>
 <script src="/mathnet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+<script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
 .cards .card{text-align:center!important}
 .cards .card h3{font-size:22px!important;line-height:1.25!important;letter-spacing:-.6px!important;margin-top:28px!important;text-align:center!important}
@@ -17,6 +21,19 @@
 .archive-pages .btn[disabled]{opacity:.38;cursor:not-allowed}
 .archive-note{margin-top:12px;color:var(--muted);font-size:12px;text-align:center}
 .archive-loading{padding:60px 0;text-align:center;color:var(--muted)}
+.problem-modal{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.72);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:24px}
+.problem-modal.open{display:flex}
+.problem-modal-card{width:min(1080px,96vw);max-height:92vh;overflow:auto;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:20px;padding:34px}
+.problem-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:28px}
+.problem-modal-title{font-family:'Space Grotesk';font-size:clamp(28px,4vw,46px);line-height:1.05;letter-spacing:-1.8px;margin:0}
+.problem-modal-source{color:var(--muted);font-size:12px;margin-top:8px}
+.problem-modal-body{font-size:19px;line-height:1.9}
+.problem-modal-body p{margin:0 0 22px}
+.problem-modal-body img{display:block;max-width:100%;height:auto;margin:28px auto;border-radius:10px}
+.problem-modal-solution{display:none;margin-top:34px;padding-top:30px;border-top:1px solid var(--line)}
+.problem-modal-solution.open{display:block}
+.problem-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:30px}
+@media(max-width:620px){.problem-modal{padding:12px}.problem-modal-card{padding:22px}.problem-modal-body{font-size:17px;line-height:1.8}}
 </style>
 </head>
 <body>
@@ -25,33 +42,90 @@
   const PAGE_SIZE=60;
   let page=0, search='', topic='All topics', requestToken=0;
 
+  const topicNames={A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'};
+
   function matchesTopic(p){
-    return topic==='All topics' || p.category===topic;
+    return topic==='All topics' || topicNames[p.category]===topic;
+  }
+
+  function markdown(value){
+    const source=String(value||'').trim();
+    if(!source)return '';
+    return window.marked ? DOMPurify.sanitize(marked.parse(source,{breaks:true})) : escapeHtml(source).replace(/\n/g,'<br>');
   }
 
   function card(p){
     const title=p.title||('MathNet — '+p.id);
     const meta=[p.country,p.competition].filter(Boolean).join(' · ');
-    return '<article class="card" style="cursor:pointer" onclick="location.href=\'/problem.html?id='+encodeURIComponent(p.id)+'&offset='+encodeURIComponent(p.sourceIndex)+'\'">'
-      +'<div class="tag">'+escapeHtml(p.category||'Problem')+' · Proof</div>'
+    return '<article class="card" style="cursor:pointer" tabindex="0" role="button" onclick="openProblem(&quot;'+escapeHtml(p.id)+'&quot;,'+Number(p.sourceIndex||0)+')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openProblem(&quot;'+escapeHtml(p.id)+'&quot;,'+Number(p.sourceIndex||0)+')}">'
+      +'<div class="tag">'+escapeHtml(topicNames[p.category]||'Problem')+'</div>'
       +'<h3>'+escapeHtml(title)+'</h3>'
       +(meta?'<div class="problem-meta">'+escapeHtml(meta)+'</div>':'')
       +'</article>';
   }
 
-  async function fetchPage(token){
+  async function openProblem(id,sourceIndex){
+    const modal=document.getElementById('problem-modal');
+    const title=document.getElementById('problem-modal-title');
+    const source=document.getElementById('problem-modal-source');
+    const statement=document.getElementById('problem-modal-statement');
+    const solution=document.getElementById('problem-modal-solution');
+    const solutionBtn=document.getElementById('problem-modal-solution-btn');
+
+    modal.classList.add('open');
+    document.body.style.overflow='hidden';
+    title.textContent='Loading problem…';
+    source.textContent='';
+    statement.innerHTML='<div class="archive-loading">Loading MathNet problem…</div>';
+    solution.classList.remove('open');
+    solution.innerHTML='';
+    solutionBtn.style.display='none';
+
+    try{
+      const p=await mathnetProblemById(id,sourceIndex);
+      if(!p)throw new Error('Problem could not be loaded from MathNet.');
+      title.textContent=p.title||('MathNet — '+p.id);
+      source.textContent=[topicNames[p.category],p.country,p.competition].filter(Boolean).join(' · ');
+      statement.innerHTML=markdown(p.statement);
+      if((p.solutions||[]).length){
+        solutionBtn.style.display='';
+        solutionBtn.onclick=function(){
+          solution.innerHTML=(p.solutions||[]).map(function(s,i){
+            return '<div style="margin-bottom:34px"><div class="eyebrow">Solution '+(i+1)+'</div><div class="problem-modal-body">'+markdown(s)+'</div></div>';
+          }).join('');
+          solution.classList.add('open');
+          solutionBtn.style.display='none';
+          typesetMath(solution);
+        };
+      }
+      typesetMath(statement);
+    }catch(e){
+      title.textContent='Unable to load problem';
+      source.textContent='';
+      statement.innerHTML='<p>'+escapeHtml(e.message||String(e))+'</p>';
+    }
+  }
+
+  function closeProblem(){
+    const modal=document.getElementById('problem-modal');
+    modal.classList.remove('open');
+    document.body.style.overflow='';
+  }
+
+  window.openProblem=openProblem;
+  window.closeProblem=closeProblem;
+  window.addEventListener('keydown',function(e){if(e.key==='Escape')closeProblem()});
+
+  async function fetchPage(){
     const myToken=++requestToken;
     document.getElementById('cards').innerHTML='<div class="archive-loading">Loading MathNet problems…</div>';
     document.getElementById('archive-status').textContent='';
 
-    let result;
-    if(search.trim()){
-      result=await mathnetSearch(search.trim(),page*PAGE_SIZE,PAGE_SIZE);
-    }else{
-      result=await mathnetFilteredRows(page*PAGE_SIZE,PAGE_SIZE);
-    }
-    if(myToken!==requestToken)return;
+    let result=search.trim()
+      ?await mathnetSearch(search.trim(),page*PAGE_SIZE,PAGE_SIZE)
+      :await mathnetFilteredRows(page*PAGE_SIZE,PAGE_SIZE);
 
+    if(myToken!==requestToken)return;
     const filtered=result.rows.filter(matchesTopic);
     const total=result.qualifyingTotal;
     const start=page*PAGE_SIZE+1;
@@ -62,64 +136,48 @@
       ||'<div class="empty">No matching MathNet problems on this page.</div>';
 
     const topicText=topic==='All topics'?'':(' · '+topic);
-    const totalText=total==null
-      ? 'qualifying MathNet problems loaded so far'
-      : 'qualifying MathNet problems';
     document.getElementById('archive-status').innerHTML=
-      '<span>Showing <strong>'+start+'–'+end+'</strong> '+totalText+topicText+
+      '<span>Showing <strong>'+start+'–'+end+'</strong> qualifying MathNet problems'+topicText+
       (total==null?'':' of <strong>'+total+'</strong>')+'</span>';
 
     document.getElementById('prev').disabled=page<=0;
     document.getElementById('next').disabled=!hasMore;
-
     document.getElementById('archive-note').textContent=result.partial
-      ? 'Scanning the MathNet archive for all English proof problems…'
-      : 'Source: ShadenA/MathNet · English statements with provided proof solutions only.';
+      ?'Scanning the MathNet archive for all English proof problems…'
+      :'Source: ShadenA/MathNet · English statements with provided proof solutions only.';
   }
 
   function renderShell(){
     shell('Problems','Problems',`
-      <section class="pagehero">
-        <div class="wrap">
-          <div class="eyebrow">01 — Problems</div>
-          <h1>MathNet Problems</h1>
-          <p class="lead">The Problems archive is powered directly by ShadenA/MathNet. Only English problems with a provided proof solution are included.</p>
+      <section class="pagehero"><div class="wrap"><div class="eyebrow">01 — Problems</div><h1>MathNet Problems</h1><p class="lead">The Problems archive is powered directly by ShadenA/MathNet. Only English problems with a provided proof solution are included.</p></div></section>
+      <section class="section"><div class="wrap">
+        <div class="toolbar">
+          <input class="input" id="search" placeholder="Search the MathNet archive…" value="${escapeHtml(search)}">
+          <select class="select" id="topic">
+            <option>All topics</option><option>Algebra</option><option>Geometry</option><option>Number Theory</option><option>Combinatorics</option>
+          </select>
         </div>
-      </section>
-      <section class="section">
-        <div class="wrap">
-          <div class="toolbar">
-            <input class="input" id="search" placeholder="Search the MathNet archive…" value="${escapeHtml(search)}">
-            <select class="select" id="topic">
-              <option>All topics</option>
-              <option>Algebra</option>
-              <option>Geometry</option>
-              <option>Number Theory</option>
-              <option>Combinatorics</option>
-            </select>
+        <div class="archive-status" id="archive-status">Loading…</div>
+        <div class="cards" id="cards"></div>
+        <div class="archive-pages"><button class="btn" id="prev">← Previous</button><button class="btn primary" id="next">Next →</button></div>
+        <div class="archive-note" id="archive-note"></div>
+      </div></section>
+      <div class="problem-modal" id="problem-modal" onclick="if(event.target===this)closeProblem()">
+        <div class="problem-modal-card" role="dialog" aria-modal="true">
+          <div class="problem-modal-head">
+            <div><h2 class="problem-modal-title" id="problem-modal-title">Problem</h2><div class="problem-modal-source" id="problem-modal-source"></div></div>
+            <button class="btn" type="button" onclick="closeProblem()">Close</button>
           </div>
-          <div class="archive-status" id="archive-status">Loading…</div>
-          <div class="cards" id="cards"></div>
-          <div class="archive-pages">
-            <button class="btn" id="prev">← Previous</button>
-            <button class="btn primary" id="next">Next →</button>
-          </div>
-          <div class="archive-note" id="archive-note"></div>
+          <div id="problem-modal-statement" class="problem-modal-body"></div>
+          <div class="problem-modal-actions"><button id="problem-modal-solution-btn" class="btn primary" style="display:none">Show solution</button></div>
+          <section id="problem-modal-solution" class="problem-modal-solution"></section>
         </div>
-      </section>`);
+      </div>`);
     document.getElementById('topic').value=topic;
-    document.getElementById('search').oninput=function(){
-      search=this.value;
-      page=0;
-      fetchPage(page).catch(showError);
-    };
-    document.getElementById('topic').onchange=function(){
-      topic=this.value;
-      page=0;
-      fetchPage(page).catch(showError);
-    };
-    document.getElementById('prev').onclick=function(){if(page>0){page--;fetchPage(page).catch(showError)}};
-    document.getElementById('next').onclick=function(){page++;fetchPage(page).catch(showError)};
+    document.getElementById('search').oninput=function(){search=this.value;page=0;fetchPage().catch(showError)};
+    document.getElementById('topic').onchange=function(){topic=this.value;page=0;fetchPage().catch(showError)};
+    document.getElementById('prev').onclick=function(){if(page>0){page--;fetchPage().catch(showError)}};
+    document.getElementById('next').onclick=function(){page++;fetchPage().catch(showError)};
   }
 
   function showError(e){
@@ -128,10 +186,7 @@
     document.getElementById('archive-note').textContent='Please refresh and try again.';
   }
 
-  try{
-    renderShell();
-    await fetchPage(page);
-  }catch(e){showError(e)}
+  try{renderShell();await fetchPage();}catch(e){showError(e)}
 })();
 </script>
 </body>
