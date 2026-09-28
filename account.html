@@ -37,14 +37,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   function solvedEntries(){
     return Object.entries(solvedMap()).map(([id,v])=>({
       id,topic:v?.topic||v?.category||'Other',title:v?.title||'',country:v?.country||'',
-      competition:v?.competition||'',year:v?.year||'',problemNumber:v?.problemNumber||'',
+      competition:v?.competition||'',year:v?.year||'',problemNumber:v?.problemNumber||'',sourceConfig:v?.sourceConfig||'all',
       sourceIndex:v?.sourceIndex||0,dates:Array.isArray(v?.dates)?v.dates:[]
     }));
   }
   function events(){
     return solvedEntries().flatMap(x=>x.dates.map(d=>({
       id:x.id,topic:x.topic,title:x.title,country:x.country,competition:x.competition,
-      year:x.year,problemNumber:x.problemNumber,sourceIndex:x.sourceIndex,date:new Date(d)
+      year:x.year,problemNumber:x.problemNumber,sourceConfig:x.sourceConfig,sourceIndex:x.sourceIndex,date:new Date(d)
     }))).filter(x=>!Number.isNaN(x.date.getTime()));
   }
   function savedProblems(){
@@ -262,7 +262,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                   <div><div class="tag">SAVED</div><h2>Your saved problems</h2></div>
                   <a class="text-link" href="/problems.html">Browse archive →</a>
                 </div>
-                ${saved.length?saved.slice(0,5).map(p=>'<a class="saved-row" href="/problem.html?id='+encodeURIComponent(p.id)+(p.sourceIndex!=null?'&offset='+encodeURIComponent(p.sourceIndex):'')+'"><div><strong>'+escapeHtml(localized(p,'title'))+'</strong><span>'+escapeHtml(topicForProblem(p))+(p.difficulty?' · '+escapeHtml(p.difficulty):'')+'</span></div><span class="saved-check">Saved ✓</span></a>').join(''):'<div class="empty account-empty">No saved problems yet. Open a problem and press Save.</div>'}
+                ${saved.length?saved.slice(0,5).map(p=>'<a class="saved-row" href="/problem.html?id='+encodeURIComponent(p.id)+(p.sourceConfig?'&config='+encodeURIComponent(p.sourceConfig):'')+(p.sourceIndex!=null?'&offset='+encodeURIComponent(p.sourceIndex):'')+'"><div><strong>'+escapeHtml(localized(p,'title'))+'</strong><span>'+escapeHtml(topicForProblem(p))+(p.difficulty?' · '+escapeHtml(p.difficulty):'')+'</span></div><span class="saved-check">Saved ✓</span></a>').join(''):'<div class="empty account-empty">No saved problems yet. Open a problem and press Save.</div>'}
               </section>
 
               <section class="account-card account-section-card">
@@ -272,7 +272,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
                 ${solvedEvents.length?[...solvedEvents].sort((a,b)=>b.date-a.date).slice(0,5).map(e=>{
                   const p=(content.problems||[]).find(x=>x.id===e.id);
-                  return '<a class="recent-row" href="/problem.html?id='+encodeURIComponent(e.id)+(e.sourceIndex!=null?'&offset='+encodeURIComponent(e.sourceIndex):'')+'"><span class="recent-dot"></span><div><strong>'+escapeHtml(p?localized(p,'title'):(e.title||'Problem'))+'</strong><span>'+escapeHtml(e.country||'')+(e.competition?' · '+escapeHtml(e.competition):'')+(e.year?' · '+escapeHtml(e.year):'')+(e.problemNumber?' · '+escapeHtml(e.problemNumber):'')+' · '+relativeDate(e.date)+'</span></div><span class="recent-arrow">→</span></a>';
+                  return '<a class="recent-row" href="/problem.html?id='+encodeURIComponent(e.id)+(e.sourceConfig?'&config='+encodeURIComponent(e.sourceConfig):'')+(e.sourceIndex!=null?'&offset='+encodeURIComponent(e.sourceIndex):'')+'"><span class="recent-dot"></span><div><strong>'+escapeHtml(p?localized(p,'title'):(e.title||'Problem'))+'</strong><span>'+escapeHtml(e.country||'')+(e.competition?' · '+escapeHtml(e.competition):'')+(e.year?' · '+escapeHtml(e.year):'')+(e.problemNumber?' · '+escapeHtml(e.problemNumber):'')+' · '+relativeDate(e.date)+'</span></div><span class="recent-arrow">→</span></a>';
                 }).join(''):'<div class="empty account-empty">No solved problems yet.</div>'}
               </section>
             </div>
