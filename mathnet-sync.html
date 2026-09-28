@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KARP — MathNet Sync</title>
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js"></script>
+<style>
+.sync-wrap{width:min(calc(100% - 42px),980px);margin:0 auto}
+.sync-card{background:var(--panel);border-radius:22px;padding:30px}
+.sync-head h1{font-family:'Space Grotesk';font-size:40px;letter-spacing:-1.6px;margin:8px 0}
+.sync-head p{color:var(--muted);line-height:1.7}
+.sync-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:24px 0}
+.sync-stat{background:var(--panel2);border-radius:14px;padding:16px}.sync-stat b{display:block;font-size:24px}.sync-stat span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.sync-bar{height:8px;background:var(--panel2);border-radius:99px;overflow:hidden}.sync-bar i{display:block;height:100%;width:0;background:var(--text);transition:width .2s}
+.sync-log{margin-top:18px;padding:15px;background:var(--panel2);border-radius:14px;font:12px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;max-height:300px;overflow:auto}
+@media(max-width:800px){.sync-stats{grid-template-columns:1fr 1fr}.sync-card{padding:21px}}
+</style>
+</head>
+<body>
+<script>
+(async()=>{
+  const admin=await requireAdmin();
+  if(!admin){return;}
+  shell('Admin','MathNet Sync','<main class="page"><section class="section"><div class="sync-wrap"><section class="sync-card"><div class="sync-head"><div class="eyebrow">KARP · FIREBASE</div><h1>MathNet Sync</h1><p>Import the English proof archive from Hugging Face into Firestore. This is a one-time/refresh operation. After the sync, KARP runtime uses Firebase only.</p></div><div class="sync-stats"><div class="sync-stat"><b id="fetched">0</b><span>Rows scanned</span></div><div class="sync-stat"><b id="accepted">0</b><span>Accepted</span></div><div class="sync-stat"><b id="written">0</b><span>Problems written</span></div><div class="sync-stat"><b id="pages">0</b><span>Pages</span></div></div><div class="sync-bar"><i id="bar"></i></div><div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap"><button id="start" class="btn primary">Start / Resume Sync</button><a class="btn" href="/admin.html">Back to Admin</a></div><div id="status" style="margin-top:14px;color:var(--muted);font-size:12px">Ready.</div><div id="log" class="sync-log"></div></section></div></section></main>');
+  const {db}=await fb();
+  const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const {doc,getDoc,setDoc,writeBatch}=fs;
+
+  const DATASET='ShadenA/MathNet',CONFIG='all',SPLIT='train',PAGE=100,CONCURRENCY=4;
+  const VERSION='firebase-'+new Date().toISOString().slice(0,10)+'-'+Date.now();
+  const state={running:false,completePages:new Set(),total:0,fetched:0,accepted:0,written:0,items:[],pools:new Map()};
+  const log=(x)=>{const el=document.getElementById('log');el.textContent+=x+'\n';el.scrollTop=el.scrollHeight};
+  const num=(id,v)=>document.getElementById(id).textContent=Number(v||0).toLocaleString();
+  const progress=()=>{document.getElementById('bar').style.width=(state.total?Math.min(100,state.fetched/state.total*100):0)+'%'};
+
+  function englishSet(text){
+    const t=String(text||'').toLowerCase();
+    if(/[\u0400-\u04ff\u0370-\u03ff\u0600-\u06ff\u4e00-\u9fff]/.test(t))return false;
+    const foreign=/\b(der|die|das|und|ist|sind|eine|einer|nicht|für|mit|von|zu|que|para|por|una|uno|los|las|del|como|pero|esta|este|son|des|le|la|les|dans|avec|pour|une|et|est|sont|sur|ce|ces|cette|mais|alors|es|se|não|nao|uma|um|dos|das|em|quando|seu|sua)\b/gi;
+    const eng=/\b(the|and|are|assume|because|consider|find|given|if|is|let|of|prove|show|that|the|then|therefore|this|to|we|which|with|where|when|for|from)\b/gi;
+    const f=(t.match(foreign)||[]).length,e=(t.match(eng)||[]).length;
+    return !(f>=2&&f>e);
+  }
+
+  function clean(x){return normalizeMathMarkdown(String(x||'')).trim();}
+  function yearFor(r){
+    if(r.year!=null&&String(r.year).trim())return String(r.year).trim();
+    const s=[r.source_booklet,r.booklet_source,r.competition].map(x=>String(x||'')).join(' ');
+    const m=s.match(/(?:^|[^0-9])(19\d{2}|20\d{2})(?:[^0-9]|$)/);return m?m[1]:'';
+  }
+  function pnoFor(r){
+    if(r.problem_number!=null&&String(r.problem_number).trim()){const v=String(r.problem_number).trim();return /^P/i.test(v)?v:'P'+v}
+    const s=String(r.problem_markdown||'').replace(/<[^>]+>/g,' ');
+    const ps=[/(?:^|[\n\r])\s*(?:#+\s*)?(?:problem|question|problem\s*no\.?|no\.)\s*#?\s*(\d{1,2})\b/i,/(?:^|[\n\r])\s*\*{0,2}\s*(\d{1,2})\s*[\.)]\s*/,/\bP\s*([1-9]\d?)\b/i];
+    for(const re of ps){const m=s.match(re);if(m)return'P'+m[1]}return'';
+  }
+  function categoryFor(r){
+    const t=((Array.isArray(r.topics_flat)?r.topics_flat:[]).join(' ')+' '+String(r.problem_markdown||'')).toLowerCase();
+    if(/geometry|triangle|circle|angle|polygon|quadrilateral|concyclic|incircle|circumcircle/.test(t))return'G';
+    if(/number theory|divisib|prime|integer|diophant|congruence|modular|gcd|lcm|factor|remainder/.test(t))return'N';
+    if(/combinatorics|counting|graph theory|permutation|combination|pigeonhole|invariant|coloring|probability/.test(t))return'C';
+    return'A';
+  }
+  function difficultyFor(r){
+    const score=Math.min(4,Math.floor(String(r.problem_markdown||'').length/900))
+      +Math.min(2,Math.max(0,(Array.isArray(r.topics_flat)?r.topics_flat.length:0)-1))
+      +(/imo|shortlist|tst|olympiad/i.test(String(r.competition||''))?1:0);
+    return score>=3?'hard':'easy';
+  }
+  function safeId(sourceId){return 'mn_'+btoa(unescape(encodeURIComponent(sourceId))).replace(/[+/=]/g,'_');}
+  function title(r){
+    const c=String(r.competition||'MathNet').trim(),y=yearFor(r),p=pnoFor(r),parts=[];
+    if(y&&!c.includes(y))parts.push(y);if(p&&!c.toLowerCase().includes(p.toLowerCase()))parts.push(p);
+    return parts.length?c+' — '+parts.join(' · '):c;
+  }
+  function images(r){
+    return Array.isArray(r.images)?r.images.map(x=>typeof x==='string'?x:x?.src||'').filter(Boolean):[];
+  }
+  function replaceImages(md,imgs){
+    return md.replace(/!\[([^\]]*)\]\(attached_image_(\d+)\.png\)/g,(_,alt,n)=>imgs[Number(n)-1]?'!['+(alt||'Figure')+']('+imgs[Number(n)-1]+')':'');
+  }
+  function normalizeRow(raw){
+    const r=raw?.row||raw||{},statement=replaceImages(clean(r.problem_markdown||''),images(r));
+    const sols=Array.isArray(r.solutions_markdown)?r.solutions_markdown.map(clean).filter(Boolean):[];
+    const lang=String(r.language||'').trim().toLowerCase(),type=String(r.problem_type||'').trim().toLowerCase();
+    if(!(lang==='english'||lang==='en'||lang.startsWith('en-')))return null;
+    if(!['proof','proof only','proof and answer'].includes(type))return null;
+    if(!statement||!englishSet(statement)||!sols.length||!sols.every(englishSet))return null;
+    const sourceId=String(r.unique_id||r.id||('row-'+raw.row_idx));
+    const id=safeId(sourceId),year=yearFor(r),problemNumber=pnoFor(r),competition=String(r.competition||'').trim()||'MathNet',category=categoryFor(r),difficulty=difficultyFor(r);
+    return {
+      id,sourceId,sourceIndex:Number(raw.row_idx??-1),country:String(r.country||'').trim(),competition,year,
+      section:String(r.section||'').trim(),problemNumber,sourceBooklet:String(r.source_booklet||'').trim(),
+      bookletSource:String(r.booklet_source||'').trim(),language:'English',problemType:String(r.problem_type||'').trim(),
+      category,difficulty,title: (()=>{const parts=[];if(year&&!competition.includes(year))parts.push(year);if(problemNumber&&!competition.toLowerCase().includes(problemNumber.toLowerCase()))parts.push(problemNumber);return parts.length?competition+' — '+parts.join(' · '):competition})(),
+      statement,solutions:sols,finalAnswer:r.final_answer==null?'':String(r.final_answer||''),hasImages:images(r).length>0,
+      version:VERSION,randomKey:Math.random(),randomBucket:Math.floor(Math.random()*100),poolKey:category+'-'+difficulty
+    };
+  }
+
+  async function fetchPage(offset){
+    const u=new URL('https://datasets-server.huggingface.co/filter');
+    u.searchParams.set('dataset',DATASET);u.searchParams.set('config',CONFIG);u.searchParams.set('split',SPLIT);
+    u.searchParams.set('where','"language"=\'English\' AND ("problem_type"=\'proof\' OR "problem_type"=\'proof only\' OR "problem_type"=\'proof and answer\')');
+    u.searchParams.set('offset',String(offset));u.searchParams.set('length',String(PAGE));
+    const r=await fetch(u.toString(),{headers:{Accept:'application/json'}});
+    if(!r.ok)throw new Error('Hugging Face HTTP '+r.status);
+    return r.json();
+  }
+
+  async function writePage(rows){
+    if(!rows.length)return;
+    const batch=writeBatch(db);
+    rows.forEach(q=>{
+      const out={...q};
+      batch.set(doc(db,MATHNET_FIRESTORE.problems,q.id),out,{merge:true});
+    });
+    await batch.commit();
+    rows.forEach(q=>{
+      const meta={id:q.id,sourceId:q.sourceId,sourceIndex:q.sourceIndex,country:q.country,competition:q.competition,year:q.year,
+        section:q.section,problemNumber:q.problemNumber,sourceBooklet:q.sourceBooklet,bookletSource:q.bookletSource,
+        language:q.language,problemType:q.problemType,category:q.category,difficulty:q.difficulty,title:q.title,hasImages:q.hasImages,version:VERSION};
+      state.items.push(meta);state.written++;
+      const any=state.pools.get(q.category+'-any')||[];any.push(q.id);state.pools.set(q.category+'-any',any);
+      const key=q.category+'-'+q.difficulty;const arr=state.pools.get(key)||[];arr.push(q.id);state.pools.set(key,arr);
+    });
+  }
+
+  async function finalize(){
+    const shardSize=300;
+    for(let i=0,s=0;i<state.items.length;i+=shardSize,s++){
+      await setDoc(doc(db,MATHNET_FIRESTORE.shards,'shard-'+String(s).padStart(4,'0')),{version:VERSION,index:s,items:state.items.slice(i,i+shardSize)});
+    }
+    for(const [key,ids] of state.pools){
+      for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]]}
+      await setDoc(doc(db,MATHNET_FIRESTORE.pools,key),{version:VERSION,ids});
+    }
+    await setDoc(doc(db,MATHNET_FIRESTORE.meta,MATHNET_FIRESTORE.state),{
+      ready:true,version:VERSION,count:state.items.length,source:DATASET,
+      shardCount:Math.ceil(state.items.length/shardSize),updatedAt:new Date().toISOString()
+    },{merge:true});
+  }
+
+  async function run(){
+    if(state.running)return;state.running=true;
+    document.getElementById('start').disabled=true;document.getElementById('status').textContent='Syncing…';log('Starting Firebase MathNet import…');
+    try{
+      const first=await fetchPage(0);state.total=Number(first.num_rows_total||0);num('pages',Math.ceil(state.total/PAGE));log('Filtered Hugging Face rows: '+state.total.toLocaleString());
+      let cursor=0;
+      async function worker(){
+        while(true){
+          const offset=cursor*PAGE;cursor++;
+          if(offset>=state.total)return;
+          try{
+            const payload=offset===0?first:await fetchPage(offset);
+            const raw=payload.rows||[];state.fetched+=raw.length;
+            const good=raw.map(normalizeRow).filter(Boolean);
+            state.accepted+=good.length;await writePage(good);
+            num('fetched',state.fetched);num('accepted',state.accepted);num('written',state.written);progress();
+            document.getElementById('status').textContent='Processed '+state.fetched.toLocaleString()+' / '+state.total.toLocaleString();
+          }catch(e){log('Page '+offset+' failed: '+e.message);cursor--;throw e}
+        }
+      }
+      await Promise.all(Array.from({length:CONCURRENCY},worker));
+      state.items.sort((a,b)=>{const yb=Number(b.year||0)-Number(a.year||0);return yb||String(a.country).localeCompare(String(b.country))||Number(a.sourceIndex)-Number(b.sourceIndex)});
+      await finalize();
+      document.getElementById('bar').style.width='100%';document.getElementById('status').textContent='COMPLETE — Firebase is now the MathNet runtime database.';
+      log('DONE. Firebase contains '+state.items.length.toLocaleString()+' accepted English proof problems.');
+    }catch(e){
+      document.getElementById('status').textContent='Sync failed: '+e.message;
+      log('STOPPED: '+e.stack);
+    }finally{state.running=false;document.getElementById('start').disabled=false}
+  }
+  document.getElementById('start').onclick=run;
+})();
+</script>
+</body>
+</html>
