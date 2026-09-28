@@ -6,28 +6,128 @@
 <title>KARP — Problems</title>
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js"></script>
+<script src="/mathnet.js"></script>
 <style>
 .cards .card{text-align:center!important}
-.card h3{font-size:28px!important;line-height:1.18!important;letter-spacing:-1px!important;margin-top:32px!important;text-align:center!important}
+.cards .card h3{font-size:22px!important;line-height:1.25!important;letter-spacing:-.6px!important;margin-top:28px!important;text-align:center!important}
+.cards .card .problem-meta{margin-top:12px;color:var(--muted);font-size:12px;line-height:1.6}
+.archive-status{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin:22px 0;color:var(--muted);font-size:13px}
+.archive-status strong{color:var(--text)}
+.archive-pages{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:36px}
+.archive-pages .btn[disabled]{opacity:.38;cursor:not-allowed}
+.archive-note{margin-top:12px;color:var(--muted);font-size:12px;text-align:center}
+.archive-loading{padding:60px 0;text-align:center;color:var(--muted)}
 </style>
 </head>
 <body>
 <script>
-(async () => {
-  try {
-    const d = await api('/api/content');
-    const all = (d.problems || []).map(p => p.topic === 'Functional Equations' ? { ...p, topic: 'Algebra' } : p);
-    function card(p) {
-      return `<article class="card" style="cursor:pointer" onclick="location.href='/problem.html?id=${encodeURIComponent(p.id)}'"><div class="tag">${escapeHtml(p.topic || 'Problem')} · ${escapeHtml(p.difficulty || '')}</div><h3>${escapeHtml(localized(p, 'title'))}</h3></article>`;
+(async()=>{
+  const PAGE_SIZE=60;
+  let page=0, search='', topic='All topics', requestToken=0;
+
+  function matchesTopic(p){
+    return topic==='All topics' || p.category===topic;
+  }
+
+  function card(p){
+    const title=p.title||('MathNet — '+p.id);
+    const meta=[p.country,p.competition].filter(Boolean).join(' · ');
+    return '<article class="card" style="cursor:pointer" onclick="location.href=\'/problem.html?id='+encodeURIComponent(p.id)+'\'">'
+      +'<div class="tag">'+escapeHtml(p.category||'Problem')+' · Proof</div>'
+      +'<h3>'+escapeHtml(title)+'</h3>'
+      +(meta?'<div class="problem-meta">'+escapeHtml(meta)+'</div>':'')
+      +'</article>';
+  }
+
+  async function fetchPage(token){
+    const myToken=++requestToken;
+    document.getElementById('cards').innerHTML='<div class="archive-loading">Loading MathNet problems…</div>';
+    document.getElementById('archive-status').textContent='';
+
+    let result;
+    if(search.trim()){
+      result=await mathnetSearch(search.trim(),page*PAGE_SIZE,PAGE_SIZE);
+    }else{
+      result=await mathnetFilteredRows(page*PAGE_SIZE,PAGE_SIZE);
     }
-    function render() {
-      shell('Problems','Problems',`<section class="pagehero"><div class="wrap"><div class="eyebrow">01 — Problems</div><h1>90+ Problems</h1><p class="lead">A clean, growing archive of olympiad problems. No productivity noise — just the problem, the idea and the solution.</p></div></section><section class="section"><div class="wrap"><div class="toolbar"><input class="input" id="search" placeholder="Search problems..."><select class="select" id="topic"><option>All topics</option><option>Algebra</option><option>Geometry</option><option>Number Theory</option><option>Combinatorics</option></select></div><div class="cards" id="cards">${all.map(card).join('')}</div></div></section>`);
-      document.getElementById('search').oninput = filter;
-      document.getElementById('topic').onchange = filter;
-      function filter() { const q=document.getElementById('search').value.toLowerCase(); const t=document.getElementById('topic').value; const filtered=all.filter(p=>(!q||localized(p,'title').toLowerCase().includes(q))&&(t==='All topics'||p.topic===t)); document.getElementById('cards').innerHTML=filtered.map(card).join('')||'<div class="empty">No problems found.</div>'; }
-    }
-    render();
-  } catch (e) { console.error(e); document.body.innerHTML=`<div class="error-page"><h1>Unable to load problems</h1><p>${escapeHtml(e.message)}</p><a href="/">← Back to KARP</a></div>`; }
+    if(myToken!==requestToken)return;
+
+    const filtered=result.rows.filter(matchesTopic);
+    const total=result.total;
+    const pageCount=Math.max(1,Math.ceil(total/PAGE_SIZE));
+
+    document.getElementById('cards').innerHTML=filtered.map(card).join('')
+      ||'<div class="empty">No matching MathNet problems on this page.</div>';
+
+    const start=total?Math.min(total,page*PAGE_SIZE+1):0;
+    const end=total?Math.min(total,page*PAGE_SIZE+PAGE_SIZE):0;
+    const topicText=topic==='All topics'?'':(' · '+topic);
+    document.getElementById('archive-status').innerHTML=
+      '<span>Showing <strong>'+start+'–'+end+'</strong> of <strong>'+total+'</strong> qualifying MathNet problems'+topicText+'</span>';
+
+    document.getElementById('prev').disabled=page<=0;
+    document.getElementById('next').disabled=page>=pageCount-1;
+
+    document.getElementById('archive-note').textContent=result.partial
+      ? 'MathNet reported a partial filter/search index; some rows may not be available through the Dataset Viewer API.'
+      : 'Source: ShadenA/MathNet · English statements with provided proof solutions only.';
+  }
+
+  function renderShell(){
+    shell('Problems','Problems',`
+      <section class="pagehero">
+        <div class="wrap">
+          <div class="eyebrow">01 — Problems</div>
+          <h1>MathNet Problems</h1>
+          <p class="lead">The Problems archive is powered directly by ShadenA/MathNet. Only English problems with a provided proof solution are included.</p>
+        </div>
+      </section>
+      <section class="section">
+        <div class="wrap">
+          <div class="toolbar">
+            <input class="input" id="search" placeholder="Search the MathNet archive…" value="${escapeHtml(search)}">
+            <select class="select" id="topic">
+              <option>All topics</option>
+              <option>Algebra</option>
+              <option>Geometry</option>
+              <option>Number Theory</option>
+              <option>Combinatorics</option>
+            </select>
+          </div>
+          <div class="archive-status" id="archive-status">Loading…</div>
+          <div class="cards" id="cards"></div>
+          <div class="archive-pages">
+            <button class="btn" id="prev">← Previous</button>
+            <button class="btn primary" id="next">Next →</button>
+          </div>
+          <div class="archive-note" id="archive-note"></div>
+        </div>
+      </section>`);
+    document.getElementById('topic').value=topic;
+    document.getElementById('search').oninput=function(){
+      search=this.value;
+      page=0;
+      fetchPage(page).catch(showError);
+    };
+    document.getElementById('topic').onchange=function(){
+      topic=this.value;
+      page=0;
+      fetchPage(page).catch(showError);
+    };
+    document.getElementById('prev').onclick=function(){if(page>0){page--;fetchPage(page).catch(showError)}};
+    document.getElementById('next').onclick=function(){page++;fetchPage(page).catch(showError)};
+  }
+
+  function showError(e){
+    console.error(e);
+    document.getElementById('cards').innerHTML='<div class="error-page" style="min-height:260px"><div><h2>Unable to load MathNet</h2><p>'+escapeHtml(e.message||String(e))+'</p></div></div>';
+    document.getElementById('archive-note').textContent='Please refresh and try again.';
+  }
+
+  try{
+    renderShell();
+    await fetchPage(page);
+  }catch(e){showError(e)}
 })();
 </script>
 </body>
