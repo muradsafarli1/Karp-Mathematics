@@ -255,7 +255,7 @@ async function mathnetFetchFiltered(config,offset,length){
   url.searchParams.set('dataset',MATHNET.dataset);
   url.searchParams.set('config',safeConfig);
   url.searchParams.set('split',MATHNET.split);
-  url.searchParams.set('where',"language"='English' AND ("problem_type"='proof only' OR "problem_type"='proof and answer')");
+  url.searchParams.set('where', `"language"='English' AND ("problem_type"='proof only' OR "problem_type"='proof and answer')`);
   url.searchParams.set('offset',String(cleanOffset));
   url.searchParams.set('length',String(cleanLength));
   const key=url.toString();
