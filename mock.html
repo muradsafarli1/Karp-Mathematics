@@ -7,7 +7,7 @@
 <script src="/app.js"></script><script src="/mathnet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
-<script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"},startup:{typeset:false}};</script>
+<script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$","$"]],processEnvironments:true,processEscapes:true},svg:{fontCache:"global"},startup:{typeset:false}};</script>
 <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
 .mock-wrap{width:min(calc(100% - 42px),1120px);margin:0 auto}.mock-page{min-height:calc(100vh - 76px)}
@@ -73,9 +73,23 @@
     if(!cats().length){status.textContent='Select at least one topic.';return}
     if(raw&&!seq){status.textContent='Sequence must contain exactly '+n+' valid letters.';return}
     const title=(document.getElementById('mock-name').value||'').trim()||'Untitled Mock';
-    status.textContent='Preparing…';out.innerHTML='<div class="mock-preview"><div class="muted">Selecting problems…</div></div>';
-    try{const result=await mathnetFind({categories:cats(),difficulty:difficulty(),sequence:seq,count:n,seed:randomize?Date.now()+Math.floor(Math.random()*99999):Date.now()});if(!result.questions||result.questions.length<n)throw new Error('Not enough matching proof problems yet.');mock={id:'mock-'+Date.now(),title,minutes:minutes(),questions:result.questions,createdAt:new Date().toISOString()};mathnetSaveMock(mock);renderPreview()}
-    catch(e){status.textContent=e.message||'Could not build the mock.';out.innerHTML='<div class="mock-preview"><div class="muted">'+esc(e.message||'Could not build the mock.')+'</div></div>'}
+    status.textContent='Finding proof problems…';out.innerHTML='<div class="mock-preview"><div class="muted">Searching the archive…</div></div>';
+    try{
+      const result=await mathnetFind({
+        categories:cats(),difficulty:difficulty(),sequence:seq,count:n,
+        seed:randomize?Date.now()+Math.floor(Math.random()*99999):Date.now(),
+        onProgress:(found,total,stage)=>{
+          status.textContent=stage==='cache'?'Using cached candidates…':'Scanning MathNet candidates…';
+          out.innerHTML='<div class="mock-preview"><div class="muted">Selecting '+found+' / '+total+' proof problems…</div></div>';
+        }
+      });
+      if(!result.questions||result.questions.length<n)throw new Error(result.reason||'Not enough matching proof problems.');
+      mock={id:'mock-'+Date.now(),title,minutes:minutes(),questions:result.questions,createdAt:new Date().toISOString()};
+      mathnetSaveMock(mock);renderPreview();
+    }catch(e){
+      status.textContent=e.message||'Could not build the mock.';
+      out.innerHTML='<div class="mock-preview"><div class="muted">'+esc(e.message||'Could not build the mock.')+'</div></div>';
+    }
   }
 
   function renderPreview(){
