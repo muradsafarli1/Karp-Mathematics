@@ -173,6 +173,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
     const sourceParts=[competition,currentProblem.section,currentProblem.problemNumber].filter(Boolean);
     const title=sourceParts.join(' — ');
     const sourceMeta=[currentProblem.country,currentProblem.year].filter(Boolean).join(' · ');
+    setKarpActivity({page:'Problem',label:'Viewing problem',detail:title,question:null});
 
     shell('Problems',title,`
       <main class="problem-page">
