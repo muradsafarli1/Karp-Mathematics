@@ -25,6 +25,18 @@
 .pdf-export{position:fixed;left:0;top:0;width:210mm;opacity:.001;pointer-events:none;z-index:-1;background:#fff;color:#111}.pdf-page{width:210mm;min-height:297mm;padding:16mm 15mm;box-sizing:border-box;background:#fff;break-before:page;page-break-before:always;position:relative}.pdf-page:first-child{break-before:auto;page-break-before:auto}.pdf-brand{text-align:center;border-bottom:1px solid #dfe3e6;padding-bottom:7mm;margin-bottom:8mm}.pdf-brand strong{font:800 22px 'Space Grotesk';letter-spacing:3px}.pdf-brand span{display:block;font:700 7px 'Space Grotesk';letter-spacing:2px;color:#78828b;margin-top:2mm}.pdf-title{font:800 17px 'Space Grotesk';margin-bottom:3mm}.pdf-meta{font-size:8px;color:#68727b;margin-bottom:9mm}.pdf-qno{font:800 11px 'Space Grotesk';margin-bottom:5mm}.pdf-statement{font-size:12.5px;line-height:1.75}.pdf-footer{position:absolute;left:15mm;right:15mm;bottom:8mm;border-top:1px solid #e2e6e9;padding-top:3mm;font-size:7px;color:#87919a;display:flex;justify-content:space-between}
 .mock-session{min-height:100vh;background:var(--bg);padding-bottom:55px}.mock-top{position:sticky;top:0;z-index:20;text-align:center;background:var(--bg);padding:18px 15px 15px}.mock-timer{font-family:'Space Grotesk';font-size:66px;font-weight:800;line-height:1;margin:7px 0}.mock-session-meta{font-size:10px;color:var(--muted)}.mock-paper{width:min(calc(100% - 42px),980px);margin:16px auto 0;padding:28px 36px;background:var(--panel);border-radius:22px}.session-question{padding:34px 0;border-top:1px solid var(--line)}.session-question:first-child{border-top:0}.session-qtitle{font-family:'Space Grotesk';font-size:15px;font-weight:800;margin-bottom:10px}.session-meta{font-size:10px;color:var(--muted);margin-bottom:12px}.session-statement{font-size:19px;line-height:1.95}.session-bottom{display:flex;justify-content:flex-end;gap:8px;padding-top:18px}.session-note{margin-right:auto;align-self:center;font-size:11px;color:var(--muted)}
 @media(max-width:900px){.past-grid{grid-template-columns:1fr 1fr}.mock-grid{grid-template-columns:1fr}.mock-field.wide{grid-column:auto}.choice-grid{grid-template-columns:1fr 1fr}.mock-head,.preview-head,.review-head{flex-direction:column}.mock-timer{font-size:52px}.mock-paper{padding:22px 20px}}@media(max-width:520px){.mock-wrap{width:calc(100% - 28px)}.mock-builder,.past-box,.mock-review,.mock-preview{padding:21px}.past-grid,.choice-grid{grid-template-columns:1fr}}
+
+/* Full-page exam-paper skin + anti-cheat fullscreen */
+.mock-page,.mock-page .section,.mock-session{background:#eadbc7!important;color:#17191c!important}
+.mock-builder,.past-box,.mock-review,.mock-preview,.mock-paper{background:#fff!important;color:#17191c!important}
+.mock-field,.past-card{background:#f7f0e6!important;color:#17191c!important}
+.mock-field .muted,.past-meta,.past-open,.mock-head p,.mock-status,.session-meta,.mock-session-meta{color:#6f665d!important}
+.mock-timer{color:#17191c}.mock-top{background:#eadbc7!important}.mock-fullscreen{width:40px;height:40px;padding:0;border-radius:11px;display:inline-grid;place-items:center;font-size:20px;background:#fff!important;color:#17191c!important;border:1px solid #d7c5ad!important}
+.mock-fullscreen-lock{position:fixed;inset:0;z-index:100000;display:none;place-items:center;padding:25px;background:rgba(234,219,199,.97);text-align:center}
+.mock-fullscreen-lock.open{display:grid}.mock-fullscreen-lock-card{width:min(520px,100%);padding:40px 28px;border-radius:22px;background:#fff;box-shadow:0 25px 70px rgba(69,52,34,.16)}
+.mock-fullscreen-lock-card h2{font:800 30px/1.05 'Space Grotesk';margin:0 0 12px}.mock-fullscreen-lock-card p{font-size:11px;line-height:1.7;color:#6f665d;margin:0 0 22px}.mock-fullscreen-lock-card .mock-fullscreen{width:52px;height:52px;margin:auto;font-size:24px}
+.pdf-export{position:absolute!important;left:-12000px!important;top:0!important;width:210mm!important;opacity:1!important;visibility:visible!important;z-index:0!important;pointer-events:none!important;background:#fff!important;color:#111!important}
+@media(max-width:700px){.mock-paper{width:calc(100% - 28px)}.mock-fullscreen{width:38px;height:38px}}
 </style>
 </head><body>
 <script>
@@ -51,9 +63,22 @@
   async function saveMockDraft(item=mock){if(!item?.id)return item;const payload={...item,status:item.status==='completed'?'completed':'saved',savedAt:item.savedAt||new Date().toISOString()};await karpUserRecord('mockHistory',String(item.id),payload);cloudMockHistory=[payload,...history().filter(x=>String(x.id)!==String(item.id))];return payload}
   async function deleteMock(id){if(!confirm('Delete this mock permanently?'))return;try{await karpDeleteUserRecord('mockHistory',String(id));cloudMockHistory=history().filter(x=>String(x.id)!==String(id));toast('Mock deleted.');renderBuilder()}catch(e){toast(e.message||'Could not delete mock.')}}
   async function ensureMath(root){if(!root)return;for(let i=0;i<10&&!window.MathJax?.typesetPromise;i++)await new Promise(r=>setTimeout(r,200));if(window.MathJax?.typesetPromise)try{MathJax.typesetClear?.([root]);await MathJax.typesetPromise([root])}catch{}}
-  async function downloadMockPdf(item){if(!item?.questions?.length)return;const root=document.createElement('div');root.className='pdf-export';root.innerHTML=(item.questions||[]).map((q,i)=>'<article class="pdf-page"><div class="pdf-brand"><strong>KARP</strong><span>OLYMPIAD MATHEMATICS · PROBLEM SET</span></div><div class="pdf-title">'+esc(item.title||'Mock')+'</div><div class="pdf-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div><div class="pdf-qno">Question '+(i+1)+'</div><div class="pdf-statement">'+md(q.statement)+'</div><div class="pdf-footer"><span>KARP</span><span>'+String(i+1)+' / '+item.questions.length+'</span></div></article>').join('');document.body.appendChild(root);await ensureMath(root);await new Promise(r=>setTimeout(r,400));try{if(window.html2pdf)await html2pdf().set({margin:0,filename:safeFileName(item.title)+'.pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true,backgroundColor:'#fff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy']}}).from(root).save();else{const w=window.open('','_blank');w.document.write('<!doctype html><html><body>'+root.innerHTML+'</body></html>');w.document.close();w.print()}}catch(e){console.error(e);toast('Could not build the PDF.')}root.remove()}
+  async function downloadMockPdf(item){
+    if(!item?.questions?.length)return;
+    const root=document.createElement('div');root.className='pdf-export';
+    root.innerHTML=(item.questions||[]).map((q,i)=>'<article class="pdf-page"><div class="pdf-brand"><strong>KARP</strong><span>OLYMPIAD MATHEMATICS · PROBLEM SET</span></div><div class="pdf-title">'+esc(item.title||'Mock')+'</div><div class="pdf-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div><div class="pdf-qno">Question '+(i+1)+'</div><div class="pdf-statement">'+md(q.statement)+'</div><div class="pdf-footer"><span>KARP</span><span>'+String(i+1)+' / '+item.questions.length+'</span></div></article>').join('');
+    document.body.appendChild(root);
+    try{
+      await ensureMath(root);if(document.fonts?.ready)await document.fonts.ready;await new Promise(r=>setTimeout(r,600));
+      if(!window.html2pdf)throw new Error('PDF engine unavailable');
+      await html2pdf().set({margin:0,filename:safeFileName(item.title)+'.pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true,backgroundColor:'#fff',logging:false},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy']}}).from(root).save();
+    }catch(e){console.error('Mock PDF error:',e);toast('Could not build the PDF. Please try again.')}
+    finally{root.remove()}
+  }
 
   function renderReview(item){
+    window.__karpMockFsCleanup?.();window.__karpMockFsCleanup=null;window.__karpMockActivityCleanup?.();window.__karpMockActivityCleanup=null;
+    setKarpActivity({page:'Mock Review',label:'Mock review',detail:item?.title||'Mock',question:null});
     finished=true;clearInterval(timer);leaveGuard=false;window.onbeforeunload=null;
     document.body.innerHTML='<main class="mock-page"><section class="pagehero"><div class="wrap"><div class="eyebrow">KARP · MOCK REVIEW</div><h1>'+esc(item.title||'Mock')+'</h1><p class="lead">'+esc((item.questions?.length||0)+' questions · '+(item.minutes||0)+' minutes · '+dateText(item.completedAt))+'</p></div></section><section class="section"><div class="mock-wrap"><section class="mock-review"><div class="review-head"><div><div class="mock-kicker">COMPLETED MOCK</div></div><button class="btn" id="review-back">← Back to Mocks</button></div><div id="review-questions"></div></section></div></section></main>';
     const host=document.getElementById('review-questions');
@@ -70,8 +95,11 @@
     if(active&&active.endAt>Date.now()){document.getElementById('active-holder').innerHTML='<div style="margin-top:13px"><button class="active-card" id="continue-active"><div class="past-title">Continue · '+esc(active.title||'Active Mock')+'</div><div class="past-meta">'+esc(Math.ceil((active.endAt-Date.now())/60000)+' minutes remaining')+'</div><div class="past-open">Resume mock →</div></button></div>';document.getElementById('continue-active').onclick=()=>startMock(active)}
     else if(active)activeClear();
     const pg=document.getElementById('past-grid');
-    pg.innerHTML=past.length?past.map((x,i)=>'<article class="past-card"><div class="past-title">'+esc(x.title||('Mock '+(past.length-i)))+'</div><div class="past-meta">'+esc(dateText(x.completedAt||x.savedAt||x.createdAt))+'</div><div class="past-open">'+esc((x.questions?.length||0)+' questions · '+(x.minutes||0)+' min')+(x.status==='saved'&&!x.completedAt?' · Saved':' · Review')+'</div><div class="past-actions"><button class="btn" data-open="'+esc(x.id)+'">'+(x.status==='saved'&&!x.completedAt?'Open':'Review')+'</button><button class="btn danger" data-delete="'+esc(x.id)+'">Delete</button></div></article>').join(''):'<div class="muted" style="grid-column:1/-1;padding:9px 0">No saved mocks yet.</div>';
-    pg.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{const x=past.find(y=>String(y.id)===String(b.dataset.open));if(!x)return;if(x.status==='saved'&&!x.completedAt){mock=JSON.parse(JSON.stringify(x));renderPreview()}else renderReview(x);});
+    setKarpActivity({page:'Mocks',label:'Mock history',detail:'Browsing past mocks',question:null});
+    pg.innerHTML=past.length?past.map((x,i)=>'<article class="past-card"><div class="past-title">'+esc(x.title||('Mock '+(past.length-i)))+'</div><div class="past-meta">'+esc(dateText(x.completedAt||x.savedAt||x.createdAt))+'</div><div class="past-open">'+esc((x.questions?.length||0)+' questions · '+(x.minutes||0)+' min')+(x.status==='saved'&&!x.completedAt?' · Saved':' · Completed')+'</div><div class="past-actions">'+(x.status==='saved'&&!x.completedAt?'<button class="btn" data-open="'+esc(x.id)+'">Open</button>':'<button class="btn" data-review="'+esc(x.id)+'">Review</button><button class="btn primary" data-restart="'+esc(x.id)+'">Restart</button>')+'<button class="btn danger" data-delete="'+esc(x.id)+'">Delete</button></div></article>').join(''):'<div class="muted" style="grid-column:1/-1;padding:9px 0">No saved mocks yet.</div>';
+    pg.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{const x=past.find(y=>String(y.id)===String(b.dataset.open));if(!x)return;mock=JSON.parse(JSON.stringify(x));renderPreview()});
+    pg.querySelectorAll('[data-review]').forEach(b=>b.onclick=()=>{const x=past.find(y=>String(y.id)===String(b.dataset.review));if(x)renderReview(x)});
+    pg.querySelectorAll('[data-restart]').forEach(b=>b.onclick=()=>{const x=past.find(y=>String(y.id)===String(b.dataset.restart));if(x)restartMock(x)});
     pg.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteMock(b.dataset.delete));
     document.getElementById('generate').onclick=()=>generate(false);document.getElementById('randomize').onclick=()=>{document.getElementById('mock-sequence').value='';generate(true)};
     if(reviewId){const item=past.find(x=>String(x.id)===String(reviewId));if(item)renderReview(item)}
@@ -108,7 +136,7 @@
     let html='<div class="mock-preview"><div class="preview-head"><div><div class="mock-kicker">'+(saved?'SAVED':'READY')+'</div><h2>'+esc(mock.title)+'</h2><div class="muted">'+mock.questions.length+' questions · '+mock.minutes+' minutes</div>'+(saved?'<div class="saved-note">Saved in your KARP account.</div>':'')+'</div><div class="preview-actions"><button class="btn" id="download-mock">Download</button><button class="btn" id="save-mock">'+(saved?'Save changes':'Save Mock')+'</button><button class="btn primary" id="start-mock">Start Mock</button></div></div>';
     mock.questions.forEach((q,i)=>html+='<section class="preview-question"><div class="preview-qhead"><div><div class="mock-kicker">QUESTION '+(i+1)+' · '+esc(labels[q.category])+'</div><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div></div><button class="btn" data-change="'+i+'">Change</button></div><div class="preview-statement">'+md(q.statement)+'</div></section>');
     html+='</div>';document.getElementById('mock-output').innerHTML=html;
-    document.getElementById('start-mock').onclick=()=>startMock(mock);
+    setKarpActivity({page:'Mock Preview',label:'Mock preview',detail:mock.title,question:null});document.getElementById('start-mock').onclick=()=>startMock(mock);
     document.getElementById('save-mock').onclick=async()=>{const b=document.getElementById('save-mock');b.disabled=true;try{mock=await saveMockDraft(mock);toast('Mock saved.');renderPreview()}catch(e){toast(e.message||'Could not save mock.')}finally{b.disabled=false}};
     document.getElementById('download-mock').onclick=()=>downloadMockPdf(mock);
     document.querySelectorAll('[data-change]').forEach(b=>b.onclick=()=>replaceQuestion(Number(b.dataset.change)));
@@ -121,10 +149,54 @@
   async function saveFinished(){await karpUserRecord('mockHistory',String(mock.id),{...mock,id:String(mock.id)});cloudMockHistory=[mock,...history().filter(x=>x.id!==mock.id)].slice(0,30);activeClear()}
   function installGuard(on){leaveGuard=on;window.onbeforeunload=on?e=>{e.preventDefault();e.returnValue='Are you sure you want to leave this mock? Your mock is saved and can be resumed later.'}:null}
   async function startMock(item){if(item&&item.id)mock=JSON.parse(JSON.stringify(item));if(!mock)return;try{await saveMockDraft(mock)}catch(e){toast(e.message||'Could not save mock.');return}finished=false;mock.endAt=mock.endAt||Date.now()+Number(mock.minutes||60)*60000;seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));await activeSave();installGuard(true);renderSession();clearInterval(timer);timer=setInterval(tick,1000)}
-  function renderSession(){document.body.innerHTML='<main class="mock-session"><header class="mock-top"><div class="mock-kicker">KARP · MOCK IN PROGRESS</div><div class="mock-timer" id="mock-timer">'+clock(seconds)+'</div><div class="mock-session-meta">'+esc(mock.title)+' · '+mock.questions.length+' questions · '+mock.minutes+' min</div><div style="display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin-top:10px"><button class="btn" id="session-save">Save</button><button class="btn" id="session-download">Download</button></div></header><div class="mock-paper" id="mock-paper">'+mock.questions.map((q,i)=>'<section class="session-question"><div class="session-qtitle">Question '+(i+1)+'</div><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div><div class="session-statement">'+md(q.statement)+'</div></section>').join('')+'<div class="session-bottom"><span class="session-note">Leaving the mock asks for confirmation. Your mock is saved and can be resumed later.</span><button class="btn primary" id="finish-mock">Finish Mock</button></div></div></main>';document.getElementById('finish-mock').onclick=()=>finishMock(false);document.getElementById('session-save').onclick=async()=>{try{mock=await saveMockDraft(mock);toast('Mock saved.')}catch(e){toast(e.message||'Could not save mock.')}};document.getElementById('session-download').onclick=()=>downloadMockPdf(mock);renderMath(document.getElementById('mock-paper'));window.scrollTo(0,0)}
+
+  async function requestMockFullscreen(){
+    const screen=document.querySelector('.mock-session');
+    if(!screen?.requestFullscreen){toast('Fullscreen is not supported by this browser.');return false}
+    try{await screen.requestFullscreen();return true}catch(e){console.error('Mock fullscreen error:',e);toast('Please allow fullscreen to start the mock.');return false}
+  }
+  function installMockFullscreen(){
+    window.__karpMockFsCleanup?.();
+    const screen=document.querySelector('.mock-session'),lock=document.getElementById('mock-fullscreen-lock'),btn=document.getElementById('mock-fullscreen-button'),lockBtn=document.getElementById('mock-fullscreen-lock-btn');
+    const sync=()=>{const full=document.fullscreenElement===screen;lock?.classList.toggle('open',!full);if(btn)btn.textContent=full?'⛶':'⛶';if(!full)setKarpActivity({page:'Mock',label:'Fullscreen required',detail:mock?.title||'Mock',question:null})};
+    const handler=()=>sync();
+    document.addEventListener('fullscreenchange',handler);
+    if(btn)btn.onclick=()=>requestMockFullscreen();
+    if(lockBtn)lockBtn.onclick=()=>requestMockFullscreen();
+    sync();
+    window.__karpMockFsCleanup=()=>document.removeEventListener('fullscreenchange',handler);
+  }
+  function installMockActivity(){
+    window.__karpMockActivityCleanup?.();
+    const host=document.getElementById('mock-paper');if(!host)return;
+    const update=()=>{
+      const qs=[...host.querySelectorAll('.session-question')];if(!qs.length)return;
+      let best=0,bestDist=Infinity;
+      qs.forEach((q,i)=>{const r=q.getBoundingClientRect(),d=Math.abs(r.top-130);if(r.bottom>90&&d<bestDist){best=i;bestDist=d}});
+      setKarpActivity({page:'Mock',label:'Taking mock',detail:mock?.title||'Mock',question:best+1});
+    };
+    const handler=()=>{clearTimeout(window.__karpMockActivityTimer);window.__karpMockActivityTimer=setTimeout(update,80)};
+    window.addEventListener('scroll',handler,{passive:true});update();
+    window.__karpMockActivityCleanup=()=>window.removeEventListener('scroll',handler);
+  }
+  async function restartMock(item){
+    const fresh=JSON.parse(JSON.stringify(item||{}));
+    fresh.id='mock-'+Date.now()+'-'+Math.floor(Math.random()*10000);delete fresh.completedAt;delete fresh.savedAt;delete fresh.timedOut;delete fresh.endAt;fresh.status='draft';
+    await startMock(fresh);
+  }
+
+  function renderSession(){
+    document.body.innerHTML='<main class="mock-session"><header class="mock-top"><div class="mock-kicker">KARP · MOCK IN PROGRESS</div><div class="mock-timer" id="mock-timer">'+clock(seconds)+'</div><div class="mock-session-meta">'+esc(mock.title)+' · '+mock.questions.length+' questions · '+mock.minutes+' min</div><div style="display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn" id="session-save">Save</button><button class="btn" id="session-download">Download</button><button class="mock-fullscreen" id="mock-fullscreen-button" type="button" title="Fullscreen" aria-label="Enter fullscreen">⛶</button></div></header><div class="mock-paper" id="mock-paper">'+mock.questions.map((q,i)=>'<section class="session-question"><div class="session-qtitle">Question '+(i+1)+'</div><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div><div class="session-statement">'+md(q.statement)+'</div></section>').join('')+'<div class="session-bottom"><span class="session-note">Fullscreen is required while the mock is in progress. Your mock is saved automatically.</span><button class="btn primary" id="finish-mock">Finish Mock</button></div></div><div class="mock-fullscreen-lock open" id="mock-fullscreen-lock"><div class="mock-fullscreen-lock-card"><div class="mock-kicker">KARP · FULLSCREEN</div><h2>Enter fullscreen to continue</h2><p>The mock stays locked while it is in progress. Use the fullscreen button below to enter and continue.</p><button class="mock-fullscreen" id="mock-fullscreen-lock-btn" type="button" title="Enter fullscreen" aria-label="Enter fullscreen">⛶</button></div></div></main>';
+    document.getElementById('finish-mock').onclick=()=>finishMock(false);
+    document.getElementById('session-save').onclick=async()=>{try{mock=await saveMockDraft(mock);toast('Mock saved.')}catch(e){toast(e.message||'Could not save mock.')}};
+    document.getElementById('session-download').onclick=()=>downloadMockPdf(mock);
+    renderMath(document.getElementById('mock-paper'));window.scrollTo(0,0);
+    setKarpActivity({page:'Mock',label:'Fullscreen required',detail:mock.title,question:null});
+    installMockFullscreen();installMockActivity();
+  }
   function clock(s){const x=Math.max(0,Number(s||0));return String(Math.floor(x/3600)).padStart(2,'0')+':'+String(Math.floor(x%3600/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0')}
   function tick(){seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));const el=document.getElementById('mock-timer');if(el)el.textContent=clock(seconds);const bucket=Math.floor(seconds/2);if(bucket!==lastSavedBucket){lastSavedBucket=bucket;activeSave()}if(seconds<=0)finishMock(true)}
-  async function finishMock(auto){if(finished)return;finished=true;clearInterval(timer);installGuard(false);mock={...mock,completedAt:new Date().toISOString(),timedOut:!!auto};try{await saveFinished();renderReview(mock)}catch(e){finished=false;toast(e.message||'Could not save mock history.')}}
+  async function finishMock(auto){if(finished)return;finished=true;clearInterval(timer);installGuard(false);mock={...mock,completedAt:new Date().toISOString(),timedOut:!!auto};try{await saveFinished();window.__karpMockFsCleanup?.();window.__karpMockFsCleanup=null;if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});renderReview(mock)}catch(e){finished=false;toast(e.message||'Could not save mock history.')}}
   (async()=>{try{await karpMigrateLocalState();const cloud=await karpUserState();cloudMockHistory=Array.isArray(cloud.mocks)?cloud.mocks:[];cloudActiveMock=cloud.activeMock||null;renderBuilder()}catch(e){console.error(e);renderBuilder()}})();
 })();
 </script>
