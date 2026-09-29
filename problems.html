@@ -39,12 +39,16 @@
     if(v.includes('algebra'))return'A';if(v.includes('geometry'))return'G';if(v.includes('combinator'))return'C';if(v.includes('number')||v.includes('theory'))return'N';return'A';
   }
   function normalizeCustom(p){
-    const id=String(p.id||'');const title=p.titleEn||p.title||'KARP Problem';const statement=p.statementEn||p.statement||'';
-    const solution=p.solutionEn||p.solution||'';const created=p.createdAt?new Date(p.createdAt).getFullYear():'';
+    const id=String(p.id||'');
+    const title=p.titleEn||p.title||'KARP Problem';
+    const statement=p.statementEn||p.statement||'';
+    const solution=p.solutionEn||p.solution||'';
+    const created=p.createdAt?new Date(p.createdAt).getFullYear():'';
     const category=customCategory(p);
-    return {id:'custom-'+id,customId:id,sourceType:'custom',country:'KARP',competition:title,year:p.year||created||'',problemNumber:p.code||'',section:'KARP Problems',language:'English',problemType:'proof only',statement,solutions:solution?[solution]:[],category,difficulty:String(p.difficulty||'').toLowerCase(),hasSolution:!!solution,title};
+    const source=String(p.source||p.sourceName||'').trim();
+    return {id:'custom-'+id,customId:id,sourceType:'custom',country:'',competition:source,year:p.year||created||'',problemNumber:p.code||'',section:'',language:'English',problemType:'proof only',statement,solutions:solution?[solution]:[],category,difficulty:String(p.difficulty||'').toLowerCase(),hasSolution:!!solution,title,source};
   }
-  function metaPrimary(p){return [p.country,p.year,p.problemNumber].filter(Boolean).join(' · ')||'KARP';}
+  function metaPrimary(p){return [p.source||p.competition,p.year,p.problemNumber].filter(Boolean).join(' · ');}
   function isSolved(p){return !!cloudSolved[String(p.id||'')]}
   function isSaved(p){return !!cloudSaved[String(p.id||'')]}
   async function refreshUserState(){try{await karpMigrateLocalState();const s=await karpUserState();cloudSolved=s.solved||{};cloudSaved=s.saved||{};}catch(e){console.warn('Could not load cloud problem state',e)}}
@@ -61,7 +65,7 @@
     const href=custom
       ?'/problem.html?custom='+encodeURIComponent(p.customId)
       :'/problem.html?id='+encodeURIComponent(p.id)+'&config='+encodeURIComponent(p.sourceConfig||'all')+'&offset='+encodeURIComponent(p.sourceIndex)+(p.sourceShard!=null?'&shard='+encodeURIComponent(p.sourceShard):'');
-    const secondary=[p.sourceBooklet||'',p.section].filter(Boolean).join(' · ');
+    const secondary=p.sourceType==='custom'?'':[p.sourceBooklet||'',p.section].filter(Boolean).join(' · ');
     const primary=custom?metaPrimary(p):[p.country,p.year,p.problemNumber].filter(Boolean).join(' · ')||'MathNet';
     const heading=custom?(p.title||'KARP Problem'):(p.competition||p.title||'MathNet Problem');
     return '<a class="problem-card-link" href="'+href+'" onclick="rememberProblemState()"><div class="tag">'+esc(topicNames[p.category]||'Problem')+'</div>'+statusHtml(p)+'<h3>'+esc(heading)+'</h3><div class="problem-meta-primary">'+esc(primary)+'</div>'+(secondary?'<div class="problem-meta-secondary">'+esc(secondary)+'</div>':'')+'</a>';
