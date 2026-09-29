@@ -737,18 +737,34 @@ function normalizeMathMarkdown(value=''){
   const processed=[];
   let insideDisplay=false;
   s.split('\n').forEach(rawLine=>{
-    const line=rawLine;
-    const t=line.trim();
+    let line=rawLine;
+    let t=line.trim();
     if(!t){processed.push(line);return;}
 
-    // Keep an entire display block intact. This is critical for multiline
-    // aligned equations containing '&' and line-break '\\' commands.
-    if(t==='\\['){insideDisplay=true;processed.push(line);return;}
-    if(t==='\\]'){insideDisplay=false;processed.push(line);return;}
-    if(insideDisplay){processed.push(line);return;}
+    // Keep every canonical display block intact, including multiline blocks
+    // and malformed source where the closing delimiter appears later.
+    const hasOpen=line.includes('\\['),hasClose=line.includes('\\]');
+    if(hasOpen){
+      processed.push(line);
+      insideDisplay=!hasClose;
+      return;
+    }
+    if(insideDisplay){
+      processed.push(line);
+      if(hasClose)insideDisplay=false;
+      return;
+    }
 
-    // Already-canonical inline/display math on one line.
-    if(/\\\([^\n]*\\\)|\\\[[\s\S]*\\\]/.test(t)){processed.push(line);return;}
+    // A stray closing delimiter is treated as the end of the formula, not
+    // as literal Markdown punctuation.
+    if(hasClose){
+      line=line.replace(/\\\]/g,'');
+      t=line.trim();
+      if(!t){processed.push('');return;}
+    }
+
+    // Already-canonical inline math on one line.
+    if(/\\\([^\n]*\\\)/.test(t)){processed.push(line);return;}
 
     const hasAnyCommand=texCommand.test(t);
     const punct=formulaPunctuation.test(t);
