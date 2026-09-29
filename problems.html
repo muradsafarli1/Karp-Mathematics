@@ -89,6 +89,11 @@
       if(!q)return true;
       return [p.title,p.country,p.competition,p.year,p.problemNumber,p.section,p.sourceBooklet,p.bookletSource].join(' ').toLowerCase().includes(q);
     });
+    // KARP-added/admin problems always appear before the MathNet archive.
+    visibleRows.sort((a,b)=>{
+      const ac=a.sourceType==='custom'?0:1,bc=b.sourceType==='custom'?0:1;
+      return ac-bc;
+    });
     document.getElementById('count').innerHTML='<strong>'+visibleRows.length.toLocaleString()+'</strong> indexed problems';
     document.getElementById('no-results').style.display=visibleRows.length?'none':'block';
     renderVirtual();
@@ -116,7 +121,10 @@
   window.rememberProblemState=saveState;
 
   async function init(){
-    pendingRestore=restoreState();
+    const storedScroll=restoreState();
+    let fromProblem=false;
+    try{fromProblem=new URL(document.referrer,location.href).pathname.endsWith('/problem.html')}catch{}
+    pendingRestore=fromProblem?storedScroll:0;
     await refreshUserState();
     shell('Problems','Problems','<main class="problem-page"><section class="pagehero"><div class="wrap"><div class="eyebrow">01 — Problems</div><h1>MathNet Problems</h1><p class="lead">MathNet and KARP-added olympiad problems in one searchable archive.</p></div></section><section class="section"><div class="wrap" style="max-width:1320px"><div class="problem-tools"><input id="search" class="input" placeholder="Search country, contest, year, P-number or problem text…"><select id="topic" class="select"><option>All topics</option><option>Algebra</option><option>Geometry</option><option>Number Theory</option><option>Combinatorics</option></select></div><div class="problem-archive-status"><span id="status">Opening the problem archive…</span><span id="count">0 qualifying problems</span></div><div class="problem-progress"><i id="progress"></i></div><div id="cards" class="virtual-cards"></div><div id="no-results" class="empty-archive" style="display:none">No qualifying problems match this search.</div></div></section></main>');
     document.getElementById('search').value=query;document.getElementById('topic').value=topic;
