@@ -637,7 +637,7 @@ function richMarkdown(value=''){
     // Protect TeX while Markdown is parsed so underscores/braces do not
     // become Markdown formatting before MathJax gets the text.
     const math=[];
-    const tokenFor=i=>'KARP_MATH_SLOT_'+i+'_KARP';
+    const tokenFor=i=>'KARPMATHSLOT'+i+'KARP';
     const protectedSource=source.replace(/\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)/g,m=>{
       const i=math.push(m)-1;
       return tokenFor(i);
