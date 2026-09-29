@@ -195,7 +195,7 @@
     installMockFullscreen();installMockActivity();
   }
   function clock(s){const x=Math.max(0,Number(s||0));return String(Math.floor(x/3600)).padStart(2,'0')+':'+String(Math.floor(x%3600/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0')}
-  function tick(){seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));const el=document.getElementById('mock-timer');if(el)el.textContent=clock(seconds);const bucket=Math.floor(seconds/2);if(bucket!==lastSavedBucket){lastSavedBucket=bucket;activeSave()}if(seconds<=0)finishMock(true)}
+  function tick(){seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));const el=document.getElementById('mock-timer');if(el)el.textContent=clock(seconds);const bucket=Math.floor(seconds/15);if(bucket!==lastSavedBucket){lastSavedBucket=bucket;activeSave()}if(seconds<=0)finishMock(true)}
   async function finishMock(auto){if(finished)return;finished=true;clearInterval(timer);installGuard(false);mock={...mock,completedAt:new Date().toISOString(),timedOut:!!auto};try{await saveFinished();window.__karpMockFsCleanup?.();window.__karpMockFsCleanup=null;if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});renderReview(mock)}catch(e){finished=false;toast(e.message||'Could not save mock history.')}}
   (async()=>{try{await karpMigrateLocalState();const cloud=await karpUserState();cloudMockHistory=Array.isArray(cloud.mocks)?cloud.mocks:[];cloudActiveMock=cloud.activeMock||null;renderBuilder()}catch(e){console.error(e);renderBuilder()}})();
 })();
