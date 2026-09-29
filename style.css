@@ -425,3 +425,42 @@ body,.top,.footer,.hero,.pagehero,.section,.contest-page,.article-page,.account-
   border:1px solid #d5d5d1!important;
   box-shadow:0 4px 16px rgba(20,24,30,.04)!important;
 }
+
+/* Unified archive/card surfaces */
+.contest-page .contest-card,
+.articles-page .article-card{
+  background:#eeeeeb!important;
+  border:1px solid #d5d5d1!important;
+  color:#17191c!important;
+  box-shadow:none!important;
+  min-height:178px!important;
+}
+.contest-page .contest-card p,
+.articles-page .article-card p{color:#666b73!important}
+.articles-page .article-card{min-height:205px!important}
+.exams-wrap .exam-card{
+  background:#eeeeeb!important;
+  border:1px solid #d5d5d1!important;
+  color:#17191c!important;
+  box-shadow:none!important;
+  min-height:220px!important;
+}
+.exams-wrap .exam-card p,
+.exams-wrap .exam-meta{color:#666b73!important}
+.mock-page .past-box{background:#f7f7f5!important;color:#17191c!important}
+.mock-page .past-card,
+.mock-page .active-card{
+  background:#eeeeeb!important;
+  border:1px solid #d5d5d1!important;
+  color:#17191c!important;
+  box-shadow:none!important;
+  min-height:178px!important;
+}
+.mock-page .past-card .past-meta,
+.mock-page .past-card .past-open{color:#666b73!important}
+.admin-upload-status{display:inline-block;min-height:18px;margin-right:10px;color:#666b73;font-size:11px}
+.admin-upload-current{margin-top:8px;font-size:11px;color:#666b73}
+@media(max-width:900px){
+  .contest-page .contest-card,.articles-page .article-card,.exams-wrap .exam-card,.mock-page .past-card,.mock-page .active-card{min-height:0!important}
+}
+
