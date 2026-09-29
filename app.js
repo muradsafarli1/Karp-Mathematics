@@ -574,13 +574,13 @@ function normalizeMathMarkdown(value=''){
 
   // Repair multiline display blocks copied from align/array source. MathNet
   // often gives '&=' plus a single trailing '\' per line instead of '\\'.
-  s=s.replace(/\\\[([\s\S]*?)\\\]/g,(all,body)=>{
+  s=s.replace(/(^|\n)\\\[([\s\S]*?)\\\](?=\n|$)/g,(all,prefix,body)=>{
     let b=String(body).replace(/\\[ \t]*\n/g,'\\\\\n').trim();
     const isAligned=/&(?=\s*[^&\n]*=)|&=/.test(b) && /\n/.test(b);
     if(isAligned && !/\\begin\{(?:aligned|alignedat|array|gathered|cases|split)\}/.test(b)){
       b='\\begin{aligned}\n'+b+'\n\\end{aligned}';
     }
-    return '\\[\n'+b+'\n\\]';
+    return prefix+'\\[\n'+b+'\n\\]';
   });
 
   const commandSet=new Set([
@@ -735,18 +735,21 @@ function normalizeMathMarkdown(value=''){
   }
 
   const processed=[];
-  let insideRawDisplay=false;
+  let insideDisplay=false;
   s.split('\n').forEach(rawLine=>{
     const line=rawLine;
     const t=line.trim();
     if(!t){processed.push(line);return;}
 
-    // Already canonical/protected math.
-    if(/\\\(|\\\[/.test(t)){processed.push(line);return;}
+    // Keep an entire display block intact. This is critical for multiline
+    // aligned equations containing '&' and line-break '\\' commands.
+    if(t==='\\['){insideDisplay=true;processed.push(line);return;}
+    if(t==='\\]'){insideDisplay=false;processed.push(line);return;}
+    if(insideDisplay){processed.push(line);return;}
 
-    // A line inside a raw [ ... ] block is display math and must not be split
-    // into Markdown. The block was converted above, so this only catches
-    // unusual malformed input that still carries an unmatched delimiter.
+    // Already-canonical inline/display math on one line.
+    if(/\\\([^\n]*\\\)|\\\[[\s\S]*\\\]/.test(t)){processed.push(line);return;}
+
     const hasAnyCommand=texCommand.test(t);
     const punct=formulaPunctuation.test(t);
     const words=(t.match(/\b[A-Za-z]{3,}\b/g)||[]).length;
