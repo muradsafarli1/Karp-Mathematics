@@ -2,6 +2,27 @@
 .admin-mock-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.admin-mock-card{background:#fff;border:1px solid #e3e7ea;border-radius:18px;padding:17px;box-shadow:0 7px 24px rgba(20,27,34,.04)}.admin-mock-top{display:flex;justify-content:space-between;align-items:center;gap:10px}.admin-mock-card h3{font:800 17px/1.25 'Space Grotesk';margin:13px 0 5px}.admin-mock-owner,.admin-mock-meta{font-size:9px;color:#78828b;margin:0 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admin-mock-card details{margin-top:12px;border-top:1px solid #edf0f2;padding-top:10px}.admin-mock-card summary{cursor:pointer;font-size:9px;font-weight:800;color:#59636c}.admin-mock-questions{display:grid;gap:8px;margin-top:9px}.admin-mock-questions section{background:#f7f8f9;border-radius:11px;padding:9px}.admin-mock-questions strong{font-size:9px}.admin-mock-questions div{margin-top:4px;font-size:9px;line-height:1.6;white-space:pre-wrap}.admin-mock-questions small{display:block;margin-top:5px;color:#8b949c;font-size:7px}.more-row{display:flex;justify-content:center;margin:14px 0}.more-btn{border:0;background:#eef1f3;border-radius:10px;padding:9px 13px;font-size:9px;font-weight:800;color:#58616a;cursor:pointer}@media(max-width:850px){.admin-mock-grid{grid-template-columns:1fr}}
 
 .live-presence{width:min(calc(100% - 42px),1400px);margin:18px auto 0;padding:14px 16px;border:1px solid #e1e3e7;border-radius:18px;background:#fff;box-shadow:0 8px 28px rgba(20,24,30,.05)}.live-presence-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.live-presence-head strong{font:800 15px/1 'Space Grotesk'}.live-presence-count{font-size:9px;color:#6f7880;font-weight:800}.live-presence-grid{display:flex;gap:8px;overflow:auto}.live-person{min-width:190px;padding:10px 12px;border:1px solid #e5e8eb;border-radius:13px;background:#fafbfc}.live-person-top{display:flex;align-items:center;gap:8px}.live-dot{width:8px;height:8px;border-radius:50%;background:#20a35b;box-shadow:0 0 0 3px rgba(32,163,91,.1);flex:0 0 8px}.live-name{font-size:10px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.live-activity{font-size:8px;line-height:1.5;color:#69727b;margin-top:6px}.live-empty{font-size:9px;color:#89929a}
+</style><style>
+/* Advanced admin visual skin */
+.admin,.live-presence,.admin-main,.admin-side{background:#eadbc7!important;box-shadow:none!important}
+.live-presence{border-color:#d8c6ad!important}
+.admin-mock-card,.live-person,.admin-exam-card,.admin-user-summary,.admin-kpi-bar,.admin-participants{background:#f8f0e4!important;border-color:#ddccb6!important;box-shadow:none!important}
+.admin-mock-questions section{background:#fffaf2!important}
+.admin-online-dot,.admin-offline-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;background:#2a9d57;vertical-align:middle}
+.admin-offline-dot{background:#a7a39c}
+.admin-exam-card{padding:20px;border:1px solid #ddccb6;border-radius:16px;margin-bottom:12px}
+.admin-exam-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+.admin-exam-head h3{font:800 20px/1.2 'Space Grotesk';margin:8px 0}
+.admin-exam-head p{margin:0;color:#6f665d;font-size:11px}
+.admin-exam-counts{display:flex;flex-direction:column;align-items:flex-end}
+.admin-exam-counts strong{font:800 26px/1 'Space Grotesk'}
+.admin-exam-counts span{color:#6f665d;font-size:9px;margin-top:4px}
+.admin-participants{margin-top:15px;overflow:auto;border:1px solid #ddccb6;border-radius:12px;padding:4px}
+.admin-user-summary,.admin-kpi-bar{margin-bottom:12px;padding:14px 16px;border-radius:14px}
+.admin-kpi-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.admin-kpi-bar div{padding:12px;border-radius:11px;background:#fffaf2;border:1px solid #e3d3be}
+.admin-kpi-bar strong{display:block;font:800 22px/1 'Space Grotesk'}.admin-kpi-bar span{display:block;color:#6f665d;font-size:9px;margin-top:5px}
+@media(max-width:800px){.admin-exam-head{flex-direction:column}.admin-exam-counts{align-items:flex-start}.admin-kpi-bar{grid-template-columns:1fr}}
 </style></head><body><div id="root"></div><script>
 let state={type:'problems',editing:null},liveDocs=[],liveUnsub=null,liveTimer=null;
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -71,19 +92,27 @@ async function render(){
       const sessions=sessionSnap.docs.map(x=>({id:x.id,...x.data()}));
       const fmtTime=v=>v?new Date(v).toLocaleString():'—';
       const fmtDuration=sec=>{const n=Math.max(0,Number(sec||0));if(!n)return'—';const h=Math.floor(n/3600),m=Math.floor((n%3600)/60),ss=n%60;return h?(h+'h '+m+'m'):(m+'m '+ss+'s')};
-      const exams=examSnap.docs.map(x=>({id:x.id,...x.data()}));
-      exams.sort((a,b)=>new Date(String(b.date||b.createdAt||0))-new Date(String(a.date||a.createdAt||0)));
+      const examBase=await Promise.all(examSnap.docs.map(async x=>{
+        const [regSnap,subSnap]=await Promise.all([
+          getDocs(collection(db,'exams',x.id,'registrations')),
+          getDocs(collection(db,'exams',x.id,'submissions'))
+        ]);
+        return {id:x.id,...x.data(),regs:regSnap.docs.map(d=>({id:d.id,...d.data()})),subs:subSnap.docs.map(d=>({id:d.id,...d.data()}))};
+      }));
+      const fmtTime=v=>v?new Date(v).toLocaleString():'—';
+      const fmtDuration=sec=>{const n=Math.max(0,Number(sec||0));if(!n)return'—';const h=Math.floor(n/3600),m=Math.floor((n%3600)/60),ss=n%60;return h?(h+'h '+m+'m'):(m+'m '+ss+'s')};
+      const exams=examBase.sort((a,b)=>new Date(String(b.date||b.createdAt||0))-new Date(String(a.date||a.createdAt||0)));
       m.innerHTML='<div class="admin-head"><div><h2>Exams</h2><span class="admin-count">'+exams.length+' exams · participant/session analytics</span></div><button class="btn primary" onclick="newItem()">+ New</button></div>'+
         '<div class="admin-exam-list">'+(exams.length?exams.map(ex=>{
-          const regs=ex.registrations||[];
+          const regs=ex.regs||[], submissions=ex.subs||[];
           const regIds=regs.map(r=>String(r.userId||r.uid||r.id||'')).filter(Boolean);
-          const subs=[];
-          // submissions are stored as subdocuments, so build their values from session data
+          const subIds=submissions.map(r=>String(r.userId||r.uid||r.id||'')).filter(Boolean);
           const esessions=sessions.filter(z=>String(z.examId)===String(ex.id));
-          const ids=[...new Set(regIds.concat(esessions.map(z=>String(z.uid||'')).filter(Boolean)))];
+          const ids=[...new Set(regIds.concat(subIds,esessions.map(z=>String(z.uid||'')).filter(Boolean)))];
           const people=ids.map(uid=>{
             const u=usersById.get(uid)||{},p=presenceByUid.get(uid)||{},ses=esessions.find(z=>String(z.uid)===uid)||{},reg=regs.find(z=>String(z.userId||z.uid||z.id)===uid)||{};
-            return {uid,name:u.name||p.name||'KARP Member',email:u.email||'—',online:!!p.online,lastSeen:p.lastSeen?.toDate?p.lastSeen.toDate().toLocaleString():(p.lastSeen?String(p.lastSeen):'—'),activity:p.activity||{},registeredAt:reg.registeredAt||null,startedAt:ses.startedAt||ses.entryAt||null,endedAt:ses.endedAt||ses.exitAt||null,durationSeconds:ses.durationSeconds||0,status:ses.status||'registered',reason:ses.exitReason||''};
+            const sub=submissions.find(z=>String(z.userId||z.uid||z.id)===uid)||{};
+            return {uid,name:u.name||p.name||'KARP Member',email:u.email||'—',online:!!p.online,lastSeen:p.lastSeen?.toDate?p.lastSeen.toDate().toLocaleString():(p.lastSeen?String(p.lastSeen):'—'),activity:p.activity||{},registeredAt:reg.registeredAt||null,startedAt:ses.startedAt||ses.entryAt||sub.startedAt||null,endedAt:ses.endedAt||ses.exitAt||sub.submittedAt||null,durationSeconds:ses.durationSeconds||0,status:ses.status||((sub.submittedAt)?'completed':'registered'),reason:ses.exitReason||sub.reason||''};
           });
           return '<article class="admin-exam-card"><div class="admin-exam-head"><div><span class="tag">'+escapeHtml(ex.status||'Upcoming')+'</span><h3>'+escapeHtml(ex.titleEn||ex.title||'Untitled exam')+'</h3><p>'+escapeHtml((ex.date||'Date TBA')+' · '+(ex.questions||[]).length+' questions · '+(ex.durationMinutes||60)+' min')+'</p></div><div class="admin-exam-counts"><strong>'+people.length+'</strong><span>tracked participants</span></div></div><details><summary>Participants & session timeline</summary><div class="admin-participants"><table class="table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Registered</th><th>Entered</th><th>Exited</th><th>Time stayed</th><th>Last seen</th><th>Activity</th></tr></thead><tbody>'+
           (people.length?people.map(p=>'<tr><td><span class="'+(p.online?'admin-online-dot':'admin-offline-dot')+'"></span>'+escapeHtml(p.online?'Online':p.status)+'</td><td>'+escapeHtml(p.name)+'</td><td>'+escapeHtml(p.email)+'</td><td>'+fmtTime(p.registeredAt)+'</td><td>'+fmtTime(p.startedAt)+'</td><td>'+fmtTime(p.endedAt)+'</td><td>'+fmtDuration(p.durationSeconds)+'</td><td>'+escapeHtml(p.online?'Now':p.lastSeen)+'</td><td>'+escapeHtml(p.activity?.label||p.activity?.page||'—')+(p.activity?.question?' · Q'+p.activity.question:'')+'</td></tr>').join(''):'<tr><td colspan="9">No participant session data yet.</td></tr>')+
