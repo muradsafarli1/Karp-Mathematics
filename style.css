@@ -200,3 +200,14 @@ body,.section,.pagehero,.contest-page,.article-page,.account-page,.auth,.exam-sc
 .cards .card,.exam-card{background:#fff!important;box-shadow:0 8px 28px rgba(20,24,30,.06)!important}
 .theme-toggle{display:none!important}
 .toast{background:#fff!important;color:#17191c!important;border:1px solid #d9dce1!important;box-shadow:0 12px 35px rgba(20,24,30,.12)!important}
+
+
+/* KARP final surface cleanup — one continuous page background */
+html[data-theme="dark"]{--bg:#08090b;--panel:#08090b;--panel2:#111317;--line:#292d34;--text:#f3f4f6;--muted:#969ba5}
+html[data-theme="light"]{--bg:#f7f7f5;--panel:#f7f7f5;--panel2:#f7f7f5;--line:#dedfe2;--text:#17191c;--muted:#626770}
+body,main,section,.section,.pagehero,.problem-page,.contest-page,.article-page,.mock-page,.exam-page,.exam-active-shell,.exam-enter{background:var(--bg)!important;color:var(--text)!important}
+.problem-page .section,.problem-page .pagehero,.contest-page .section,.contest-page .pagehero,.article-page .section,.article-page .pagehero,.problem-detail,.problem-solution,.contest-paper,.contest-problem,.article-paper,.detail-actions,.exam-review,.exam-paper,.exam-active-body,.exam-active-paper,.exam-enter-card,.mock-builder,.past-box,.mock-review,.mock-preview,.mock-paper{background:var(--bg)!important;color:var(--text)!important;box-shadow:none!important}
+.problem-detail,.problem-solution,.contest-paper,.article-paper,.exam-review,.exam-paper,.exam-active-paper,.mock-builder,.past-box,.mock-review,.mock-preview{border-color:transparent!important}
+.exam-question,.contest-problem+.contest-problem,.review-question,.preview-question,.session-question{background:transparent!important}
+.exam-review-wrap,.exam-active-wrap,.mock-wrap,.exams-wrap{background:transparent!important}
+.cards .card,.exam-card,.card,.bigcard,.editor-card,.admin-side,.admin-main{box-shadow:none!important}
