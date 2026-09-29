@@ -48,7 +48,7 @@
  const uid=user.id;
  const state={tab:'chats',selected:null,conversations:[],friends:[],incoming:[],searchResults:[],searchTimer:0,chatUnsub:null,convUnsub:null,friendUnsub:null,requestUnsub:null};
  const esc=x=>escapeHtml(x==null?'':String(x));
- const avatar=(p,group=false)=>p?.photoURL?'<img class="msg-avatar '+(group?'group':'')+'" src="'+esc(p.photoURL)+'" alt="">':'<div class="msg-avatar '+(group?'group')+'">'+esc(group?'👥':String(p?.name||'K').trim().charAt(0).toUpperCase())+'</div>';
+ const avatar=(p,group=false)=>p?.photoURL?'<img class="msg-avatar '+(group?'group':'')+'" src="'+esc(p.photoURL)+'" alt="">':'<div class="msg-avatar '+(group?'group':'')+'">'+esc(group?'👥':String(p?.name||'K').trim().charAt(0).toUpperCase())+'</div>';
  const fid=(a,b)=>a<b?a+'_'+b:b+'_'+a; const rid=(a,b)=>a+'_'+b;
  const timeValue=v=>v?.toMillis?v.toMillis():Number(new Date(v))||0;
  const timeText=v=>{if(!v)return '';const d=v?.toDate?v.toDate():new Date(v);return isNaN(d)?'':d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});};
