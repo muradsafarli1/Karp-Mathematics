@@ -110,11 +110,12 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       }catch(e){console.warn('Exam session tracking failed:',e)}
     }
     function startExamSessionTracking(){
-      const save=()=>writeExamSession({lastActivityAt:new Date().toISOString(),lastKnownRemainingMs:Math.max(0,end-Date.now())});
-      document.addEventListener('visibilitychange',save);
-      window.addEventListener('pagehide',save);
-      window.addEventListener('beforeunload',save);
-      return ()=>{document.removeEventListener('visibilitychange',save);window.removeEventListener('pagehide',save);window.removeEventListener('beforeunload',save)};
+      const touch=()=>writeExamSession({lastActivityAt:new Date().toISOString(),lastKnownRemainingMs:Math.max(0,end-Date.now())});
+      const leave=()=>writeExamSession({lastActivityAt:new Date().toISOString(),exitObservedAt:new Date().toISOString(),lastKnownRemainingMs:Math.max(0,end-Date.now())});
+      document.addEventListener('visibilitychange',touch);
+      window.addEventListener('pagehide',touch);
+      window.addEventListener('beforeunload',leave);
+      return ()=>{document.removeEventListener('visibilitychange',touch);window.removeEventListener('pagehide',touch);window.removeEventListener('beforeunload',leave)};
     }
 
     function md(x){return richMarkdown(String(x||''))}
