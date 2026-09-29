@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KARP — Admin Messages</title>
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js"></script>
+<style>
+.admin-messages{padding:55px 0 80px}.am-wrap{width:min(calc(100% - 42px),1300px);margin:0 auto}
+.am-grid{display:grid;grid-template-columns:380px 1fr;gap:14px}.am-panel{background:var(--panel);border-radius:20px;padding:20px;min-height:700px}
+.am-title{font-family:'Space Grotesk';font-size:34px;letter-spacing:-1.2px;margin:0}.am-sub{color:var(--muted);font-size:12px;line-height:1.7;margin:5px 0 20px}
+.am-convs{display:grid;gap:7px}.am-conv{width:100%;border:0;text-align:left;background:var(--panel2);color:var(--text);border-radius:12px;padding:12px;cursor:pointer}.am-conv.active{outline:2px solid var(--line)}
+.am-conv-title{font-weight:800;font-size:12px}.am-conv-meta{font-size:10px;color:var(--muted);margin-top:4px}.am-msgs{display:flex;flex-direction:column;gap:10px;max-height:640px;overflow:auto}.am-msg{background:var(--panel2);border-radius:13px;padding:11px}.am-msg-head{display:flex;justify-content:space-between;gap:12px;font-size:10px;margin-bottom:5px}.am-msg-sender{font-weight:800}.am-msg-time{color:var(--muted)}.am-msg-text{font-size:12px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}.am-empty{height:100%;min-height:620px;display:grid;place-items:center;text-align:center;color:var(--muted);font-size:12px}
+@media(max-width:900px){.am-grid{grid-template-columns:1fr}.am-panel{min-height:auto}.am-empty{min-height:350px}}
+</style>
+</head>
+<body>
+<script>
+(async()=>{
+  const u=await requireAdmin(); if(!u)return;
+  const {db}=await fb();
+  const {collection,query,where,getDocs,getDoc,doc,orderBy}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const esc=x=>escapeHtml(x==null?'':String(x));
+  const profiles=new Map();
+  async function profile(uid){
+    if(!uid)return {uid,name:'Unknown',photoURL:''};
+    if(profiles.has(uid))return profiles.get(uid);
+    const s=await getDoc(doc(db,'publicProfiles',uid));
+    const p=s.exists()?{uid,...s.data()}:{uid,name:'Unknown',photoURL:''};
+    profiles.set(uid,p);return p;
+  }
+  function time(v){const d=v?.toDate?v.toDate():new Date(v);return isNaN(d)?'':d.toLocaleString()}
+  async function load(){
+    const snap=await getDocs(query(collection(db,'conversations'),where('status','==','accepted')));
+    const items=[];
+    for(const s of snap.docs){
+      const d=s.data(),members=Array.isArray(d.members)?d.members:[];
+      const ps=await Promise.all(members.map(profile));
+      items.push({id:s.id,data:d,profiles:ps});
+    }
+    items.sort((a,b)=>(b.data.lastMessageAt?.toMillis?a.data.lastMessageAt.toMillis():0)-(a.data.lastMessageAt?.toMillis?b.data.lastMessageAt.toMillis():0));
+    const el=document.getElementById('am-conversations');
+    el.innerHTML=items.length?items.map(x=>'<button class="am-conv" data-conv="'+esc(x.id)+'"><div class="am-conv-title">'+esc(x.profiles.map(p=>p.name).join(' ↔ '))+'</div><div class="am-conv-meta">'+esc(x.data.lastMessage||'No messages yet')+'</div></button>').join(''):'<div class="am-sub">No accepted conversations.</div>';
+    el.querySelectorAll('[data-conv]').forEach(b=>b.onclick=()=>open(items.find(x=>x.id===b.dataset.conv),b));
+    window._items=items;
+  }
+  async function open(item,button){
+    if(!item)return;
+    document.querySelectorAll('.am-conv').forEach(x=>x.classList.remove('active'));button?.classList.add('active');
+    const host=document.getElementById('am-messages');
+    host.innerHTML='<div class="am-sub">Loading messages…</div>';
+    const snap=await getDocs(query(collection(db,'conversations',item.id,'messages'),orderBy('createdAt','asc')));
+    host.innerHTML=snap.docs.length?snap.docs.map(s=>{
+      const m=s.data(),p=item.profiles.find(x=>x.uid===m.senderId)||{name:m.senderId};
+      return '<article class="am-msg"><div class="am-msg-head"><span class="am-msg-sender">'+esc(p.name)+'</span><span class="am-msg-time">'+esc(time(m.createdAt))+'</span></div><div class="am-msg-text">'+esc(m.text)+'</div></article>';
+    }).join(''):'<div class="am-empty">No messages in this conversation.</div>';
+    host.scrollTop=host.scrollHeight;
+  }
+  shell('','Admin Messages','<main class="admin-messages"><div class="am-wrap"><div class="eyebrow">KARP · MODERATION</div><h1 class="am-title">Messages</h1><p class="am-sub">Administrators can review every accepted conversation and its messages.</p><div class="am-grid"><section class="am-panel"><div class="section-label" style="font-size:10px;text-transform:uppercase;letter-spacing:1.6px;font-weight:800;color:var(--muted);margin-bottom:9px">Conversations</div><div id="am-conversations" class="am-convs"></div></section><section class="am-panel"><div id="am-messages" class="am-empty">Select a conversation to review its messages.</div></section></div></div></main>');
+  await load();
+})();
+</script>
+</body>
+</html>
