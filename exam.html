@@ -45,7 +45,7 @@ window.MathJax={
 .exam-solution-body{display:none;margin-top:14px;font-size:17px;line-height:1.9}
 .exam-solution-body.open{display:block}
 .exam-active-shell{min-height:100vh;background:var(--bg)}
-.exam-active-top{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:20px;padding:18px 24px 16px;background:var(--bg);border-bottom:1px solid var(--line)}
+.exam-active-top{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto;align-items:center;gap:20px;padding:18px 24px 16px;background:var(--bg);border-bottom:1px solid var(--line)}
 .exam-active-title{min-width:0}
 .exam-active-title h1{font-family:'Space Grotesk';font-size:23px;line-height:1.1;letter-spacing:-.8px;margin:4px 0 0}
 .exam-active-timer{font-family:'Space Grotesk';font-variant-numeric:tabular-nums;font-size:52px;font-weight:800;line-height:1;white-space:nowrap}
@@ -210,7 +210,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       clearTrackers();
       sessionCleanup?.();
       sessionCleanup=startExamSessionTracking();
-      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top"><div class="exam-active-title"><div class="exam-active-kicker">KARP · EXAM</div><h1>'+escapeHtml(title)+'</h1></div><div class="exam-active-timer" id="exam-timer">'+timerText(end-Date.now())+'</div><div class="exam-active-actions-top"><button class="exam-fullscreen" id="exam-fullscreen-button" type="button" aria-label="Fullscreen" title="Fullscreen">⛶</button></div></header><div class="exam-active-body"><section class="exam-active-paper"><div id="active-questions">'+questions.map((q,i)=>questionHtml(q,i,false)).join('')+'</div><div class="exam-active-actions"><button class="btn primary" id="finish-exam">Finish Exam</button></div></section></div>'+lockMarkup()+'</main>';
+      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top"><div class="exam-active-title"><div class="exam-active-kicker">KARP · EXAM</div><h1>'+escapeHtml(title)+'</h1></div><div class="exam-active-timer" id="exam-timer">'+timerText(end-Date.now())+'</div></header><div class="exam-active-body"><section class="exam-active-paper"><div id="active-questions">'+questions.map((q,i)=>questionHtml(q,i,false)).join('')+'</div><div class="exam-active-actions"><button class="btn primary" id="finish-exam">Finish Exam</button></div></section></div>'+lockMarkup()+'</main>';
       document.getElementById('finish-exam').onclick=()=>{if(confirm('Finish this exam now?'))finishExam('manual')};
       setKarpActivity({page:'Exam',label:'Taking exam',detail:title,question:1});
       typesetMath(document.getElementById('active-questions'));installFullscreen();installActivity();
