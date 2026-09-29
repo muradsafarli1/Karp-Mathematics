@@ -199,3 +199,4 @@ body,.section,.pagehero,.contest-page,.article-page,.account-page,.auth,.exam-sc
 .contest-problem+.contest-problem,.detail-divider,.solution-content,.exam-question,.rows,.row,.history-list,.history-row{border-color:#e1e3e7!important}
 .cards .card,.exam-card{background:#fff!important;box-shadow:0 8px 28px rgba(20,24,30,.06)!important}
 .theme-toggle{display:none!important}
+.toast{background:#fff!important;color:#17191c!important;border:1px solid #d9dce1!important;box-shadow:0 12px 35px rgba(20,24,30,.12)!important}
