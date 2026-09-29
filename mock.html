@@ -30,7 +30,7 @@
 </head><body>
 <script>
 (async()=>{
- const labels={A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'},qs=new URLSearchParams(location.search),reviewId=qs.get('review');
+ const labels={A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'},qs=new URLSearchParams(location.search),reviewId=qs.get('review'),savedId=qs.get('saved');
  let mock=null,timer=null,seconds=0,finished=false,lastSavedBucket=-1,cloudMockHistory=[],cloudActiveMock=null,historyExpanded=false,reviewFromBuilder=false;
 
  function esc(x){return escapeHtml(x==null?'':String(x))}
@@ -95,6 +95,7 @@
    document.getElementById('more-mocks')?.addEventListener('click',()=>{historyExpanded=!historyExpanded;renderBuilder()});
    document.getElementById('generate').onclick=()=>generate(false);document.getElementById('randomize').onclick=()=>{document.getElementById('mock-sequence').value='';generate(true)};
    if(reviewId){const item=past.find(x=>String(x.id)===String(reviewId));if(item)renderReview(item)}
+   if(savedId&&!reviewId){const item=past.find(x=>String(x.id)===String(savedId));if(item){mock=JSON.parse(JSON.stringify(item));renderPreview()}}
  }
  async function generate(randomize){
    if(!(await ensureSignedIn('Create your mock','Sign in or create an account before generating a custom mock.')))return;
