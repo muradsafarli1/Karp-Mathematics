@@ -161,11 +161,10 @@ let __fb=null;
 let __authReady=null;
 async function fb(){
   if(!__fb){
-    const [{initializeApp},{getAuth},{getFirestore},{getStorage}]=await Promise.all([
+    const [{initializeApp},{getAuth},{getFirestore}]=await Promise.all([
       import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js'),
       import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js'),
       import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js'),
-      import('https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js'),
     ]);
     const firebaseConfig={
       apiKey:"AIzaSyAjEd4pN33WpoJlT2rsAgDFMO3A4Uh-M4s",
@@ -178,8 +177,7 @@ async function fb(){
     const app=initializeApp(firebaseConfig);
     const auth=getAuth(app);
     const db=getFirestore(app);
-    const storage=getStorage(app);
-    __fb={app,auth,db,storage};
+    __fb={app,auth,db};
     __authReady=new Promise(async resolve=>{
       try{
         const {onAuthStateChanged}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
