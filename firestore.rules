@@ -142,7 +142,7 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     match /mathnetPools/{id} {
-      allow read: true;
+      allow read: if true;
       allow write: if isAdmin();
     }
     match /exams/{id} {
