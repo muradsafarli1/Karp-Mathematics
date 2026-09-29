@@ -621,7 +621,7 @@ function normalizeMathMarkdown(value=''){
     return pos+1;
   }
   function findClosingDelimiter(line,start){
-    const re=/\\(?:right|bigr|Bigr|bigr|Bigl|Bigr)\s*(?:\\[A-Za-z]+|[\])}>)|\\rbrack|\\rparen|\\rbrace|\\lvert|\\rvert|\\lVert|\\rVert)/g;
+    const re=/\\(?:right|bigr|Bigr|bigl|Bigl)\s*(?:\\[A-Za-z]+|[^A-Za-z\s])?/g;
     re.lastIndex=start;
     const m=re.exec(line);
     return m?m.index+m[0].length:-1;
