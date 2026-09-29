@@ -27,13 +27,13 @@
 @media(max-width:900px){.past-grid{grid-template-columns:1fr 1fr}.mock-grid{grid-template-columns:1fr}.mock-field.wide{grid-column:auto}.choice-grid{grid-template-columns:1fr 1fr}.mock-head,.preview-head,.review-head{flex-direction:column}.mock-timer{font-size:52px}.mock-paper{padding:22px 20px}}@media(max-width:520px){.mock-wrap{width:calc(100% - 28px)}.mock-builder,.past-box,.mock-review,.mock-preview{padding:21px}.past-grid,.choice-grid{grid-template-columns:1fr}}
 
 /* Full-page exam-paper skin + anti-cheat fullscreen */
-.mock-page,.mock-page .section,.mock-session{background:#eadbc7!important;color:#17191c!important}
-.mock-builder,.past-box,.mock-review,.mock-preview{background:#eadbc7!important;color:#17191c!important}.mock-paper{background:#eadbc7!important;color:#17191c!important;border-radius:0!important;box-shadow:none!important}
-.mock-field,.past-card{background:#f8f0e4!important;color:#17191c!important}
+.mock-page,.mock-page .section,.mock-session{background:#f7f7f5!important;color:#17191c!important}
+.mock-builder,.past-box,.mock-review,.mock-preview{background:#f7f7f5!important;color:#17191c!important}.mock-paper{background:#f7f7f5!important;color:#17191c!important;border-radius:0!important;box-shadow:none!important}
+.mock-field,.past-card{background:#f7f7f5!important;color:#17191c!important}
 .mock-field .muted,.past-meta,.past-open,.mock-head p,.mock-status,.session-meta,.mock-session-meta{color:#6f665d!important}
-.mock-timer{color:#17191c}.mock-top{background:#eadbc7!important}.mock-fullscreen{width:40px;height:40px;padding:0;border-radius:11px;display:inline-grid;place-items:center;font-size:20px;background:#f8f0e4!important;color:#17191c!important;border:1px solid #d7c5ad!important}
+.mock-timer{color:#17191c}.mock-top{background:#f7f7f5!important}.mock-fullscreen{width:40px;height:40px;padding:0;border-radius:11px;display:inline-grid;place-items:center;font-size:20px;background:#f7f7f5!important;color:#17191c!important;border:1px solid #d7c5ad!important}
 .mock-fullscreen-lock{position:fixed;inset:0;z-index:100000;display:none;place-items:center;padding:25px;background:rgba(234,219,199,.97);text-align:center}
-.mock-fullscreen-lock.open{display:grid}.mock-fullscreen-lock-card{width:min(520px,100%);padding:40px 28px;border-radius:22px;background:#f8f0e4;box-shadow:0 18px 50px rgba(69,52,34,.12)}
+.mock-fullscreen-lock.open{display:grid}.mock-fullscreen-lock-card{width:min(520px,100%);padding:40px 28px;border-radius:22px;background:#f7f7f5;box-shadow:0 18px 50px rgba(69,52,34,.12)}
 .mock-fullscreen-lock-card h2{font:800 30px/1.05 'Space Grotesk';margin:0 0 12px}.mock-fullscreen-lock-card p{font-size:11px;line-height:1.7;color:#6f665d;margin:0 0 22px}.mock-fullscreen-lock-card .mock-fullscreen{width:52px;height:52px;margin:auto;font-size:24px}
 .pdf-export{position:absolute!important;left:-12000px!important;top:0!important;width:210mm!important;opacity:1!important;visibility:visible!important;z-index:0!important;pointer-events:none!important;background:#fff!important;color:#111!important}
 @media(max-width:700px){.mock-paper{width:calc(100% - 28px)}.mock-fullscreen{width:38px;height:38px}}
@@ -102,7 +102,7 @@
   function renderManualSelected(){
     const host=document.getElementById('manual-selected');if(!host)return;
     host.innerHTML=manualQuestions.length
-      ? manualQuestions.map((q,i)=>'<div class="manual-row" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border-radius:10px;background:#f8f0e4;border:1px solid #ddccb6"><div><strong>'+esc(q.competition||q.title||'Problem')+'</strong><div class="muted">'+esc(manualQuestionMeta(q))+'</div></div><button class="btn" data-manual-remove="'+i+'" type="button">Remove</button></div>').join('')
+      ? manualQuestions.map((q,i)=>'<div class="manual-row" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border-radius:10px;background:#f7f7f5;border:1px solid #d9dad8"><div><strong>'+esc(q.competition||q.title||'Problem')+'</strong><div class="muted">'+esc(manualQuestionMeta(q))+'</div></div><button class="btn" data-manual-remove="'+i+'" type="button">Remove</button></div>').join('')
       : '<div class="muted">No manually selected problems.</div>';
     host.querySelectorAll('[data-manual-remove]').forEach(b=>b.onclick=()=>{manualQuestions.splice(Number(b.dataset.manualRemove),1);renderManualSelected()});
   }
@@ -114,7 +114,7 @@
       const results=await mathnetSearch(q,{limit:18});
       const selectedIds=new Set(manualQuestions.map(x=>String(x.id)));
       const list=results.filter(x=>!selectedIds.has(String(x.id)));
-      host.innerHTML=list.length?list.map(x=>'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border-radius:10px;background:#f8f0e4;border:1px solid #ddccb6"><div><strong>'+esc(x.competition||x.title||'Problem')+'</strong><div class="muted">'+esc(manualQuestionMeta(x))+'</div></div><button class="btn primary" data-manual-add="'+esc(x.id)+'" type="button">Add</button></div>').join(''):'<div class="muted">No matching problems.</div>';
+      host.innerHTML=list.length?list.map(x=>'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border-radius:10px;background:#f7f7f5;border:1px solid #d9dad8"><div><strong>'+esc(x.competition||x.title||'Problem')+'</strong><div class="muted">'+esc(manualQuestionMeta(x))+'</div></div><button class="btn primary" data-manual-add="'+esc(x.id)+'" type="button">Add</button></div>').join(''):'<div class="muted">No matching problems.</div>';
       host.querySelectorAll('[data-manual-add]').forEach(b=>b.onclick=async()=>{
         const id=b.dataset.manualAdd;if(manualQuestions.length>=count()){toast('You already selected the maximum number of questions.');return}
         try{
@@ -269,7 +269,7 @@
 </body></html>
 
 <style>
-.manual-row{background:#f8f0e4!important;border:1px solid #ddccb6!important}
-.mock-field{background:var(--skin,#eadbc7)!important}
-.mock-fullscreen-lock-card{background:#f8f0e4!important}
+.manual-row{background:#f7f7f5!important;border:1px solid #d9dad8!important}
+.mock-field{background:var(--skin,#f7f7f5)!important}
+.mock-fullscreen-lock-card{background:#f7f7f5!important}
 </style>

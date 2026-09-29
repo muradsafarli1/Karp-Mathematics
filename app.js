@@ -120,38 +120,40 @@
     .detail-image{max-height:520px!important;margin:28px auto!important}
     .detail-actions{margin-top:55px!important;padding-top:0!important;border-top-color:transparent!important;box-shadow:none!important}`;
   style.textContent += `
-/* KARP final skin — continuous warm surface */
-    html,html[data-theme="light"],html[data-theme="dark"]{
-      --skin:#eadbc7;--bg:var(--skin);--panel:#f8f0e4;--panel2:#f2e6d7;--line:#d8c6ad;--text:#17191c;--muted:#6f665d;--soft:#5d554d;
-    }
-    body,.section,.pagehero,.contest-page,.article-page,.account-page,.auth,.exam-screen,.exam-finished,.error-page,
-    .problem-page,.mock-page,.exam-page,.exam-active-shell,.exam-enter,.mock-session,.mock-top,.exam-active-top,.exam-active-body{
-      background:var(--skin)!important;color:var(--text)!important;background-image:none!important;
-    }
-    .problem-page .section,.problem-page .pagehero,.problem-detail,.problem-solution,
-    .contest-page .section,.contest-page .pagehero,.contest-paper,.contest-problem,.article-page .section,.article-page .pagehero,.article-paper,
-    .detail-actions,.exam-review,.exam-paper,.exam-active-paper,.exam-enter-card,
-    .mock-builder,.past-box,.mock-review,.mock-preview,.mock-paper{
-      background:var(--skin)!important;color:var(--text)!important;border:0!important;box-shadow:none!important;
-    }
-    .exam-question,.review-question,.preview-question,.session-question,.solution-group,.problem-content-markdown{
-      background:transparent!important;
-    }
-    /* Small raised boxes only */
-    .card,.exam-card,.bigcard,.account-card,.account-stat,.admin-side,.admin-main,.editor-card,
-    .video-card,.mock-field,.past-card,.mock-fullscreen-lock-card,.exam-fullscreen-lock-card{
-      background:#f8f0e4!important;color:var(--text)!important;border-color:#ddccb6!important;box-shadow:none!important;
-    }
-    .top,.footer{background:rgba(234,219,199,.97)!important;color:var(--text)!important;border-color:#d8c6ad!important}
-    .input,.select,.textarea,.video-search{background:#f8f0e4!important;color:var(--text)!important;border-color:#d6c3aa!important}
-    .btn,.google-btn,.language-switch{background:#f8f0e4!important;color:var(--text)!important;border-color:#d6c3aa!important}
-    .btn.primary,.submit{background:#2f78b7!important;color:#0b0d10!important;border-color:#2f78b7!important}
-    .pagehero,.contest-hero{background:var(--skin)!important;background-image:none!important}
-    .hero{background:var(--skin)!important}.hero:before,.hero:after,.noise,.orb{display:none!important}
-    .hero h1{background:none!important;color:var(--text)!important;-webkit-text-fill-color:var(--text)!important}
-    .detail-actions,.contest-problem+.contest-problem,.solution-content,.exam-question,.rows,.row,.history-list,.history-row{border-color:#d8c6ad!important}
-    .theme-toggle{display:none!important}
-    .theme-toggle{display:none!important}`;
+/* KARP final surface — unified light gray */
+html,html[data-theme="light"],html[data-theme="dark"]{
+  --skin:#f7f7f5;--bg:var(--skin);--panel:#f7f7f5;--panel2:#f7f7f5;--line:#d9dad8;--text:#17191c;--muted:#666b73;--soft:#5f646b;
+}
+html,body{background:#f7f7f5!important;color:#17191c!important}
+body,.top,.footer,.hero,.pagehero,.section,.contest-page,.article-page,.account-page,.auth,
+.admin,.admin-side,.admin-main,.exam-screen,.exam-finished,.error-page,.problem-page,.mock-page,.exam-page,
+.exam-active-shell,.exam-enter,.mock-session,.mock-top,.exam-active-top,.exam-active-body,
+.problem-page .section,.problem-page .pagehero,.problem-detail,.problem-solution,
+.contest-page .section,.contest-page .pagehero,.contest-paper,.contest-problem,
+.article-page .section,.article-page .pagehero,.article-paper,.detail-actions,
+.exam-review,.exam-paper,.exam-active-paper,.exam-enter-card,.mock-builder,.mock-field,
+.past-box,.past-card,.mock-review,.mock-preview,.mock-paper{
+  background:#f7f7f5!important;background-image:none!important;color:#17191c!important;
+}
+.card,.exam-card,.bigcard,.account-card,.account-stat,.authbox,.admin-mock-card,.live-presence,
+.admin-exam-card,.admin-user-summary,.admin-kpi-bar,.admin-participants,.editor-card,.video-card{
+  background:#f7f7f5!important;color:#17191c!important;border-color:#d9dad8!important;box-shadow:none!important;
+}
+.input,.select,.textarea,.video-search,.btn,.google-btn,.language-switch{
+  background:#f7f7f5!important;color:#17191c!important;border-color:#d9dad8!important;
+}
+.btn.primary,.submit{background:#2f78b7!important;color:#fff!important;border-color:#2f78b7!important}
+.problem-card-link,.problem-card-link:hover,.choice span,.difficulty,.active-card,.preview-question,
+.session-question,.review-question,.exam-question{background:#f7f7f5!important}
+.cards .card > .tag{background:#f7f7f5!important;border-color:#d9dad8!important;color:#666b73!important}
+.status-badge{background:#f7f7f5!important;border-color:#d9dad8!important}
+.admin-mock-questions section,.admin-kpi-bar div,.live-person{background:#f7f7f5!important;border-color:#d9dad8!important}
+.detail-content,.problem-detail,.problem-solution,.contest-paper,.article-paper,.question-text,
+.solution-content,.review-statement,.preview-statement,.session-statement{color:#17191c!important}
+.detail-actions,.contest-problem+.contest-problem,.solution-content,.exam-question,.rows,.row,
+.history-list,.history-row{border-color:#d9dad8!important}
+.theme-toggle{display:none!important}
+`;
   document.head.appendChild(style);
 })();
 
@@ -527,16 +529,25 @@ function normalizeMathMarkdown(value=''){
   };
   const dollar=String.fromCharCode(36);
 
-  // $$...$$ and $...$ become invisible MathJax delimiters.
   s=pair(s,dollar+dollar,'\\[','\\]');
   s=pair(s,'\\'+dollar,'\\(','\\)');
   s=pair(s,dollar,'\\(','\\)');
 
-  // Bare LaTeX environments are display math.
   s=s.replace(/(^|\n)([ \t]*\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})(?=\n|$)/g,'$1\\[$2\\]');
 
   s=s.replace(/\\\\\(/g,'\\(').replace(/\\\\\)/g,'\\)');
   s=s.replace(/\\\\\[/g,'\\[').replace(/\\\\\]/g,'\\]');
+
+  // Some archive rows contain bare TeX without \( ... \) or $...$.
+  // Wrap unmistakable formula-only lines so MathJax renders them like Overleaf.
+  s=s.split('\n').map(line=>{
+    const t=line.trim();
+    if(!t||/\\\(|\\\[|\$/.test(t))return line;
+    const commands=(t.match(/\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|sin|cos|tan|log|ln|mathbb|mathcal|mathrm|mathbf|overline|underline|begin|end|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|leq|geq|neq|equiv|in|notin|subset|supset|cdot|times|pm|mp|binom|pmod|mod|forall|exists)\b/g)||[]).length;
+    const longWords=(t.match(/\b[A-Za-z]{3,}\b/g)||[]).length;
+    const looksMath=commands>=2||(commands>=1&&(t.startsWith('\\')||longWords<=2)&&/[=^_{}+*/<>]/.test(t));
+    return looksMath?'\\['+t+'\\]':line;
+  }).join('\n');
 
   return s;
 }
