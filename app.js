@@ -151,7 +151,8 @@
     .hero h1{background:none!important;color:var(--text)!important;-webkit-text-fill-color:var(--text)!important}
     .detail-actions,.contest-problem+.contest-problem,.solution-content,.exam-question,.rows,.row,.history-list,.history-row{border-color:#d8c6ad!important}
     .theme-toggle{display:none!important}
-document.head.appendChild(style);
+    .theme-toggle{display:none!important}`;
+  document.head.appendChild(style);
 })();
 
 let __fb=null;
