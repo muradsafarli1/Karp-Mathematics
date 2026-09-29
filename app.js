@@ -98,10 +98,10 @@
 
   style.textContent += `/* KARP final visual normalization */
     html[data-theme="dark"]{
-      --bg:#08090b;--panel:#08090b;--panel2:#111317;--line:transparent;--text:#f3f4f6;--muted:#969ba5;
+      --bg:#08090b;--panel:#101216;--panel2:#171a20;--line:#292d34;--text:#f3f4f6;--muted:#969ba5;
     }
     html[data-theme="light"]{
-      --bg:#f7f7f5;--panel:#f7f7f5;--panel2:#ffffff;--line:transparent;--text:#17191c;--muted:#626770;
+      --bg:#f7f7f5;--panel:#ffffff;--panel2:#f1f2f3;--line:#dfe1e4;--text:#17191c;--muted:#626770;
     }
     body,.section,.pagehero,.contest-page,.article-page,.account-page,.auth{background:var(--bg)!important;color:var(--text)!important}
     .top,.footer,.card,.exam-card,.bigcard,.account-card,.account-stat,.authbox,.admin-side,.admin-main,.editor-card{background:var(--panel)!important;color:var(--text)!important;border-color:transparent!important}
@@ -318,7 +318,7 @@ async function karpUserState(){
     getDocs(collection(db,'users',uid,'solved')),
     getDocs(collection(db,'users',uid,'saved')),
     getDocs(collection(db,'users',uid,'mockHistory')),
-    getDoc(doc(db,'users',uid,'privateState'))
+    getDoc(doc(db,'users',uid,'privateState','state'))
   ]);
   const solved={},saved={};
   solvedSnap.forEach(s=>solved[s.id]={id:s.id,...s.data()});
@@ -359,7 +359,7 @@ async function karpMigrateLocalState(){
   }catch{}
   try{
     const active=JSON.parse(localStorage.getItem('karp_active_mock')||'null');
-    if(active)batch.set(doc(db,'users',uid,'privateState'),{activeMock:active},{merge:true}),changed=true;
+    if(active)batch.set(doc(db,'users',uid,'privateState','state'),{activeMock:active},{merge:true}),changed=true;
   }catch{}
   if(changed)await batch.commit();
   localStorage.setItem(marker,'1');
