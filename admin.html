@@ -32,7 +32,12 @@ function examList(d){return Array.isArray(d)?d:(d?.exams||[])}
 function presenceMillis(v){return v?.toMillis?v.toMillis():Number(v)||0}
 async function compressAdminImage(file,{maxSide=1400,maxChars=650000}={}){
   if(!file||!file.type.startsWith('image/'))throw new Error('Please choose an image file.');
-  const img=await createImageBitmap(file),scale=Math.min(1,maxSide/Math.max(img.width,img.height));
+  let img;
+  if(window.createImageBitmap)img=await createImageBitmap(file);
+  else img=await new Promise((resolve,reject)=>{
+    const reader=new FileReader();reader.onload=()=>{const x=new Image();x.onload=()=>resolve(x);x.onerror=reject;x.src=reader.result;};reader.onerror=reject;reader.readAsDataURL(file);
+  });
+  const scale=Math.min(1,maxSide/Math.max(img.width,img.height));
   const canvas=document.createElement('canvas');
   canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));
   canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);img.close?.();
