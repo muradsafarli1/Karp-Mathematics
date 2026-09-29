@@ -69,6 +69,12 @@ service cloud.firestore {
             && request.resource.data.fromUid == resource.data.fromUid
             && request.resource.data.toUid == resource.data.toUid
             && request.resource.data.status == 'cancelled')
+          ||
+          (request.auth.uid == resource.data.fromUid
+            && resource.data.status in ['rejected','cancelled']
+            && request.resource.data.fromUid == resource.data.fromUid
+            && request.resource.data.toUid == resource.data.toUid
+            && request.resource.data.status == 'pending')
         ));
       allow delete: if isAdmin();
     }
