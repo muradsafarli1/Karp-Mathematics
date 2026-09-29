@@ -1,6 +1,5 @@
 (function initTheme(){
-  const saved = localStorage.getItem('able_theme');
-  document.documentElement.dataset.theme = saved === 'light' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = 'light';
 })();
 
 (function ensureFavicon(){
@@ -120,6 +119,23 @@
     .contest-problem{padding:38px 0!important;min-height:0!important;border-top-color:transparent!important;border-bottom-color:transparent!important}
     .detail-image{max-height:520px!important;margin:28px auto!important}
     .detail-actions{margin-top:55px!important;padding-top:0!important;border-top-color:transparent!important;box-shadow:none!important}`;
+  style.textContent += `
+/* KARP permanent white visual mode */
+    html,html[data-theme="dark"],html[data-theme="light"]{--bg:#ffffff;--panel:#ffffff;--panel2:#f3f4f6;--line:#e1e3e7;--text:#17191c;--muted:#626770;--soft:#4f555e}
+    body,.section,.pagehero,.contest-page,.article-page,.account-page,.auth,.exam-screen,.exam-finished,.error-page{background:#fff!important;color:#17191c!important}
+    .top,.footer,.card,.exam-card,.bigcard,.account-card,.account-stat,.authbox,.admin-side,.admin-main,.editor-card,.mock-builder,.mock-paper,.contest-problem,.contest-paper,.article-paper{background:#fff!important;color:#17191c!important;border-color:#e1e3e7!important}
+    .top{background:rgba(255,255,255,.96)!important;border-bottom:1px solid #e1e3e7!important}
+    .navlinks{color:#626770!important}.navlinks a:hover,.navlinks a.active{color:#17191c!important}.brand{color:#17191c!important}
+    .btn,.google-btn,.theme-toggle,.language-switch{background:#f3f4f6!important;color:#17191c!important;border:1px solid #d9dce1!important}
+    .btn.primary,.submit{background:#17191c!important;color:#fff!important;border-color:#17191c!important}
+    .input,.select,.textarea,.authbox .input{background:#fff!important;color:#17191c!important;border:1px solid #d9dce1!important}
+    .card p,.exam-card p,.lead,.small,.muted,.profile-email,.profile-meta span,.account-stat-label,.exam-history-row .small{color:#626770!important}
+    .pagehero,.contest-hero,.hero{background:#fff!important;border-bottom-color:#e1e3e7!important}
+    .hero:before,.hero:after,.noise,.orb{display:none!important}
+    .hero h1{background:none!important;color:#17191c!important;-webkit-text-fill-color:#17191c!important}
+    .contest-problem+.contest-problem,.detail-divider,.solution-content,.exam-question,.rows,.row,.history-list,.history-row{border-color:#e1e3e7!important}
+    html[data-theme="light"] .card,html[data-theme="light"] .exam-card,html[data-theme="light"] .bigcard,html[data-theme="light"] .authbox{background:#fff!important;box-shadow:0 8px 28px rgba(20,24,30,.06)!important}
+    .theme-toggle{display:none!important}`;
   document.head.appendChild(style);
 })();
 
@@ -286,7 +302,7 @@ async function api(path, opts = {}) {
   }
   throw new Error('Not found');
 }
-function toggleTheme(){const next=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=next;localStorage.setItem('able_theme',next);const b=document.getElementById('theme-toggle');if(b){b.textContent=next==='light'?'☾':'☀';b.title=next==='light'?'Switch to dark mode':'Switch to light mode'}}
+function toggleTheme(){return false;}
 function showAuthPrompt(title='Sign in to continue',message='Create an account or sign in to use this feature.'){
   let box=document.getElementById('auth-action-modal');
   if(!box){
@@ -409,8 +425,8 @@ function richMarkdown(value=''){
   if(window.marked&&window.DOMPurify)return DOMPurify.sanitize(marked.parse(source,{breaks:true}));
   return escapeHtml(source).replace(/\\n/g,'<br>');
 }
-function nav(active){const links=[['Problems','/problems.html'],['Contests','/contests.html'],['Articles','/articles.html'],['Exams','/exams.html'],['Mocks','/mock.html'],['Messages','/messages.html'],['Videos','/videos.html']];const light=document.documentElement.dataset.theme==='light';const toolsMenu='<div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a><a href="/desmos.html"><span>Desmos</span><small>Graphing Calculator</small></a></div></div>';return `<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks">${links.map(x=>`<a class="${active===x[0]?'active':''}" href="${x[1]}">${x[0]}</a>`).join('')}${toolsMenu}<a class="${active==='About'?'active':''}" href="/about.html">About</a></nav><div class="actions" id="nav-actions"><button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()">${light?'☾':'☀'}</button><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header>`}
-async function updateNavUser(){const box=document.getElementById('nav-actions');if(!box)return;const u=await me();if(!u)return;const light=document.documentElement.dataset.theme==='light';const avatar=u.photoURL?`<img src="${escapeHtml(u.photoURL)}" alt="" class="nav-profile-img">`:`<span class="nav-profile-initial">${escapeHtml((u.name||'K').charAt(0).toUpperCase())}</span>`;box.innerHTML=`<button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()">${light?'☾':'☀'}</button><a class="nav-profile" href="/account.html" aria-label="Account" title="Account">${avatar}</a>${u.role==='admin'?'<a class="btn nav-admin" href="/admin.html">Admin</a>':''}<button class="nav-logout" onclick="logout()">Log out</button>`}
+function nav(active){const links=[['Problems','/problems.html'],['Contests','/contests.html'],['Articles','/articles.html'],['Exams','/exams.html'],['Mocks','/mock.html'],['Messages','/messages.html'],['Videos','/videos.html']];const toolsMenu='<div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a><a href="/desmos.html"><span>Desmos</span><small>Graphing Calculator</small></a></div></div>';return `<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks">${links.map(x=>`<a class="${active===x[0]?'active':''}" href="${x[1]}">${x[0]}</a>`).join('')}${toolsMenu}<a class="${active==='About'?'active':''}" href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header>`}
+async function updateNavUser(){const box=document.getElementById('nav-actions');if(!box)return;const u=await me();if(!u)return;const avatar=u.photoURL?`<img src="${escapeHtml(u.photoURL)}" alt="" class="nav-profile-img">`:`<span class="nav-profile-initial">${escapeHtml((u.name||'K').charAt(0).toUpperCase())}</span>`;box.innerHTML=`<a class="nav-profile" href="/account.html" aria-label="Account" title="Account">${avatar}</a>${u.role==='admin'?'<a class="btn nav-admin" href="/admin.html">Admin</a>':''}<button class="nav-logout" onclick="logout()">Log out</button>`}
 function shell(active,title,body){document.title=`KARP — ${title}`;document.body.innerHTML=nav(active)+body+footer();updateNavUser()}
 function footer(){return `<footer class="footer"><div class="wrap footgrid"><div><div class="brand">KARP</div><div class="small">Olympiad mathematics for serious problem solvers.</div></div><div class="footlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/articles.html">Articles</a><a href="/exams.html">Exams</a><a href="/mock.html">Mocks</a><a href="/messages.html">Messages</a><a href="/videos.html">Videos</a><a href="/about.html">About Us</a></div></div></footer>`}
 function currentLanguage(){return localStorage.getItem('able_lang')==='az'?'az':'en'}
