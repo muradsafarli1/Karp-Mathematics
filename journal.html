@@ -37,7 +37,7 @@
 <script type="module">
 import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
-window.KARPPdfJS=pdfjsLib;
+window.KARPPdfReady=pdfjsLib;
 </script>
 </head>
 <body>
@@ -45,6 +45,7 @@ window.KARPPdfJS=pdfjsLib;
 (async()=>{
   const {db}=await fb();
   const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const pdfjsLib=await window.KARPPdfReady;
 
   shell('Journal','Journal',
     '<main class="journal-page">'+
@@ -119,7 +120,7 @@ window.KARPPdfJS=pdfjsLib;
     if(!current)return;
     try{
       const bytes=await loadPdfBytes(current);
-      pdf=await window.KARPPdfJS.getDocument({data:bytes}).promise;
+      pdf=await pdfjsLib.getDocument({data:bytes}).promise;
       await renderPage(1);
     }catch(e){
       const loading=document.getElementById('journal-loading');if(loading)loading.textContent=e.message||'Could not load this PDF.';
