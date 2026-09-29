@@ -307,6 +307,85 @@ async function ensureSignedIn(title,message){
   return u;
 }
 function toast(msg){let t=document.getElementById('toast');if(!t){t=document.createElement('div');t.id='toast';t.className='toast';document.body.appendChild(t)}t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
+
+async function karpUserState(){
+  const {db,auth}=await fb();
+  await authReady();
+  const uid=auth.currentUser?.uid;
+  if(!uid)return {solved:{},saved:{},mocks:[],activeMock:null};
+  const {collection,getDocs,doc,getDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const [solvedSnap,savedSnap,mockSnap,activeSnap]=await Promise.all([
+    getDocs(collection(db,'users',uid,'solved')),
+    getDocs(collection(db,'users',uid,'saved')),
+    getDocs(collection(db,'users',uid,'mockHistory')),
+    getDoc(doc(db,'users',uid,'privateState'))
+  ]);
+  const solved={},saved={};
+  solvedSnap.forEach(s=>solved[s.id]={id:s.id,...s.data()});
+  savedSnap.forEach(s=>saved[s.id]={id:s.id,...s.data()});
+  const mocks=mockSnap.docs.map(s=>({id:s.id,...s.data()})).sort((a,b)=>new Date(b.completedAt||b.createdAt||0)-new Date(a.completedAt||a.createdAt||0));
+  const privateState=activeSnap.exists()?activeSnap.data():{};
+  return {solved,saved,mocks,activeMock:privateState.activeMock||null};
+}
+
+async function karpMigrateLocalState(){
+  const {db,auth}=await fb();
+  await authReady();
+  const uid=auth.currentUser?.uid;
+  if(!uid)return;
+  const marker='karp_cloud_migrated_v3_'+uid;
+  if(localStorage.getItem(marker))return;
+  const {collection,doc,setDoc,writeBatch}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const batch=writeBatch(db);
+  let changed=false;
+  try{
+    const solved=JSON.parse(localStorage.getItem('able_solved_problems')||'{}');
+    Object.entries(solved||{}).forEach(([id,data])=>{
+      batch.set(doc(db,'users',uid,'solved',id),{...data,migratedAt:new Date().toISOString()},{merge:true});changed=true;
+    });
+  }catch{}
+  try{
+    const saved=JSON.parse(localStorage.getItem('karp_saved_mathnet')||'{}');
+    Object.entries(saved||{}).forEach(([id,data])=>{
+      batch.set(doc(db,'users',uid,'saved',id),{...data,migratedAt:new Date().toISOString()},{merge:true});changed=true;
+    });
+  }catch{}
+  try{
+    const mocks=JSON.parse(localStorage.getItem('karp_mock_history')||'[]');
+    (Array.isArray(mocks)?mocks:[]).forEach((m,i)=>{
+      const id=String(m.id||('legacy-'+Date.now()+'-'+i)).replace(/[^A-Za-z0-9_-]/g,'_').slice(0,120);
+      batch.set(doc(db,'users',uid,'mockHistory',id),{...m,id},{merge:true});changed=true;
+    });
+  }catch{}
+  try{
+    const active=JSON.parse(localStorage.getItem('karp_active_mock')||'null');
+    if(active)batch.set(doc(db,'users',uid,'privateState'),{activeMock:active},{merge:true}),changed=true;
+  }catch{}
+  if(changed)await batch.commit();
+  localStorage.setItem(marker,'1');
+  localStorage.removeItem('able_solved_problems');
+  localStorage.removeItem('karp_solved_mathnet');
+  localStorage.removeItem('karp_saved_mathnet');
+  localStorage.removeItem('karp_mock_history');
+  localStorage.removeItem('karp_active_mock');
+}
+
+async function karpUserRecord(type,id,data){
+  const {db,auth}=await fb();
+  await authReady();
+  const uid=auth.currentUser?.uid;
+  if(!uid)throw new Error('Authentication required');
+  const {doc,setDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  await setDoc(doc(db,'users',uid,type,id),data,{merge:true});
+}
+async function karpDeleteUserRecord(type,id){
+  const {db,auth}=await fb();
+  await authReady();
+  const uid=auth.currentUser?.uid;
+  if(!uid)throw new Error('Authentication required');
+  const {doc,deleteDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  await deleteDoc(doc(db,'users',uid,type,id));
+}
 async function me(){try{return(await api('/api/me')).user}catch{return null}}
 async function logout(){try{await api('/api/logout',{method:'POST'})}finally{location.href='/'}}
 async function requireUser(){const u=await me();if(!u){location.href='/login.html';return null}return u}
