@@ -112,7 +112,8 @@
   if(!mocks.length)mockList.innerHTML='<div class="empty">No completed mocks yet.</div>';
   else mockList.innerHTML=mocks.map((m,i)=>'<div class="history-card"><div class="history-card-title">'+escapeHtml(m.title||('Mock '+(mocks.length-i)))+'</div><div class="history-card-meta">'+escapeHtml(dateText(m.completedAt))+' · '+escapeHtml((m.questions?.length||0)+' questions · '+(m.minutes||0)+' min')+'</div><div class="history-card-actions"><a class="btn" href="/mock.html?review='+encodeURIComponent(m.id||'')+'">Review</a><button class="btn danger" data-delete-mock="'+escapeHtml(m.id||'')+'">Delete</button></div></div>').join('');
 
-  document.querySelectorAll('#mock-list [data-delete-mock]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this mock permanently?'))return;try{await karpDeleteUserRecord('mockHistory',String(b.dataset.deleteMock));b.closest('.history-card')?.remove();toast('Mock deleted.');}catch(e){toast(e.message||'Could not delete mock.')}});\n  document.querySelectorAll('#activity-switch button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#activity-switch button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('activity-chart').innerHTML=chartHtml(b.dataset.mode);});
+  document.querySelectorAll('#mock-list [data-delete-mock]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this mock permanently?'))return;try{await karpDeleteUserRecord('mockHistory',String(b.dataset.deleteMock));b.closest('.history-card')?.remove();toast('Mock deleted.');}catch(e){toast(e.message||'Could not delete mock.')}});
+  document.querySelectorAll('#activity-switch button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#activity-switch button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('activity-chart').innerHTML=chartHtml(b.dataset.mode);});
 })();
 </script>
 </body>
