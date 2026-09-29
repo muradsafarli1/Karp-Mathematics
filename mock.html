@@ -27,7 +27,7 @@
 <script>
 (async()=>{
   const labels={A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'},qs=new URLSearchParams(location.search),reviewId=qs.get('review');
-  let mock=null,timer=null,seconds=0,finished=false,leaveGuard=false,lastSavedBucket=-1;
+  let mock=null,timer=null,seconds=0,finished=false,leaveGuard=false,lastSavedBucket=-1,cloudMockHistory=[];
 
   function esc(x){return escapeHtml(x==null?'':String(x))}
   function mathSource(s){return String(s||'').replace(/\\$\\$([\\s\\S]*?)\\$\\$/g,'\\\\[$1\\\\]').replace(/(^|[^\\\\])\\$([^$\\n]+)\\$/g,'$1\\\\($2\\\\)')}
@@ -38,7 +38,7 @@
   function minutes(){return Math.max(1,Math.min(600,Number(document.getElementById('mock-minutes').value||60)))}
   function difficulty(){return document.querySelector('input[name="mock-difficulty"]:checked')?.value||'any'}
   function sequence(){const raw=document.getElementById('mock-sequence').value.trim();if(!raw)return null;const list=raw.toUpperCase().replace(/[^ACGN,\\s]/g,'').split(/[,\\s]+/).filter(Boolean);return list.length===count()&&list.every(x=>['A','C','G','N'].includes(x))?list:null}
-  function history(){try{return JSON.parse(localStorage.getItem('karp_mock_history')||'[]')}catch{return []}}
+  function history(){return cloudMockHistory.slice()}
   function activeLoad(){try{return JSON.parse(localStorage.getItem('karp_active_mock')||'null')}catch{return null}}
   function activeSave(){localStorage.setItem('karp_active_mock',JSON.stringify({...mock,active:true,lastUpdatedAt:new Date().toISOString()}))}
   function activeClear(){localStorage.removeItem('karp_active_mock')}
