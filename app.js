@@ -349,43 +349,60 @@ async function karpMigrateLocalState(){
   await authReady();
   const uid=auth.currentUser?.uid;
   if(!uid)return;
-  const marker='karp_cloud_migrated_v3_'+uid;
+  // v4 re-runs once on each device so browsers that already passed an older
+  // migration can still merge their remaining local-only data into the cloud.
+  const marker='karp_cloud_migrated_v4_'+uid;
   if(localStorage.getItem(marker))return;
-  const {collection,doc,setDoc,writeBatch}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const batch=writeBatch(db);
-  let changed=false;
+  const {collection,doc,getDoc,getDocs,writeBatch}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
   try{
-    const solved=JSON.parse(localStorage.getItem('able_solved_problems')||'{}');
-    Object.entries(solved||{}).forEach(([id,data])=>{
-      batch.set(doc(db,'users',uid,'solved',id),{...data,migratedAt:new Date().toISOString()},{merge:true});changed=true;
-    });
-  }catch{}
-  try{
-    const saved=JSON.parse(localStorage.getItem('karp_saved_mathnet')||'{}');
-    Object.entries(saved||{}).forEach(([id,data])=>{
-      batch.set(doc(db,'users',uid,'saved',id),{...data,migratedAt:new Date().toISOString()},{merge:true});changed=true;
-    });
-  }catch{}
-  try{
-    const mocks=JSON.parse(localStorage.getItem('karp_mock_history')||'[]');
-    (Array.isArray(mocks)?mocks:[]).forEach((m,i)=>{
-      const id=String(m.id||('legacy-'+Date.now()+'-'+i)).replace(/[^A-Za-z0-9_-]/g,'_').slice(0,120);
-      batch.set(doc(db,'users',uid,'mockHistory',id),{...m,id},{merge:true});changed=true;
-    });
-  }catch{}
-  try{
-    const active=JSON.parse(localStorage.getItem('karp_active_mock')||'null');
-    if(active)batch.set(doc(db,'users',uid,'privateState','state'),{activeMock:active},{merge:true}),changed=true;
-  }catch{}
-  if(changed)await batch.commit();
-  localStorage.setItem(marker,'1');
-  localStorage.removeItem('able_solved_problems');
-  localStorage.removeItem('karp_solved_mathnet');
-  localStorage.removeItem('karp_saved_mathnet');
-  localStorage.removeItem('karp_mock_history');
-  localStorage.removeItem('karp_active_mock');
+    const [cloudSolved,cloudSaved,cloudMocks,cloudPrivate]=await Promise.all([
+      getDocs(collection(db,'users',uid,'solved')),
+      getDocs(collection(db,'users',uid,'saved')),
+      getDocs(collection(db,'users',uid,'mockHistory')),
+      getDoc(doc(db,'users',uid,'privateState','state'))
+    ]);
+    const solvedMap=new Map(cloudSolved.docs.map(s=>[s.id,s.data()]));
+    const savedMap=new Map(cloudSaved.docs.map(s=>[s.id,s.data()]));
+    const mockMap=new Map(cloudMocks.docs.map(s=>[s.id,s.data()]));
+    const batch=writeBatch(db);let changed=false;
+    try{
+      const local=JSON.parse(localStorage.getItem('able_solved_problems')||'{}')||{};
+      Object.entries(local).forEach(([id,data])=>{
+        const cloud=solvedMap.get(id);
+        const dates=[...(Array.isArray(cloud?.dates)?cloud.dates:[]),...(Array.isArray(data?.dates)?data.dates:[])];
+        batch.set(doc(db,'users',uid,'solved',id),{...(cloud||{}),...(data||{}),...(dates.length?{dates:[...new Set(dates)]}:{}),migratedAt:new Date().toISOString()},{merge:true});changed=true;
+      });
+    }catch{}
+    try{
+      const local=JSON.parse(localStorage.getItem('karp_saved_mathnet')||'{}')||{};
+      Object.entries(local).forEach(([id,data])=>{
+        const cloud=savedMap.get(id);
+        batch.set(doc(db,'users',uid,'saved',id),{...(cloud||{}),...(data||{}),migratedAt:new Date().toISOString()},{merge:true});changed=true;
+      });
+    }catch{}
+    try{
+      const local=JSON.parse(localStorage.getItem('karp_mock_history')||'[]');
+      (Array.isArray(local)?local:[]).forEach((m,i)=>{
+        const id=String(m.id||('legacy-'+Date.now()+'-'+i)).replace(/[^A-Za-z0-9_-]/g,'_').slice(0,120);
+        const cloud=mockMap.get(id);
+        batch.set(doc(db,'users',uid,'mockHistory',id),{...(m||{}),...(cloud||{}),id},{merge:true});changed=true;
+      });
+    }catch{}
+    try{
+      const local=JSON.parse(localStorage.getItem('karp_active_mock')||'null');
+      if(local&&!cloudPrivate.exists())batch.set(doc(db,'users',uid,'privateState','state'),{activeMock:local},{merge:true}),changed=true;
+    }catch{}
+    if(changed)await batch.commit();
+    localStorage.setItem(marker,'1');
+    localStorage.removeItem('able_solved_problems');
+    localStorage.removeItem('karp_solved_mathnet');
+    localStorage.removeItem('karp_saved_mathnet');
+    localStorage.removeItem('karp_mock_history');
+    localStorage.removeItem('karp_active_mock');
+  }catch(e){
+    console.warn('KARP cloud migration delayed:',e);
+  }
 }
-
 async function karpUserRecord(type,id,data){
   const {db,auth}=await fb();
   await authReady();
