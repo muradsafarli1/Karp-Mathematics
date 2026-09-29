@@ -106,7 +106,7 @@
    try{
      const result=await mathnetFind({categories:chosenCats,difficulty:diff,sequence:seq,count:n,seed:randomize?Date.now()+Math.floor(Math.random()*99999):Date.now(),onProgress:(found,total,stage)=>{status.textContent=stage==='cache'?'Using cached candidates…':'Scanning MathNet candidates…';out.innerHTML='<div class="mock-preview"><div class="muted">Selecting '+found+' / '+total+' proof problems…</div></div>'}});
      if(!result.questions||result.questions.length<n)throw new Error(result.reason||'Not enough matching proof problems.');
-     mock={id:'mock-'+Date.now(),title,minutes:minutes(),questions:result.questions,createdAt:new Date().toISOString(),status:'saved',categories:chosenCats,difficulty:diff,sequence:seq};
+     mock={id:'mock-'+Date.now(),title,minutes:minutes(),questions:result.questions,createdAt:new Date().toISOString(),status:'draft',categories:chosenCats,difficulty:diff,sequence:seq};
      mathnetSaveMock(mock);renderPreview();
    }catch(e){status.textContent=e.message||'Could not build the mock.';out.innerHTML='<div class="mock-preview"><div class="muted">'+esc(e.message||'Could not build the mock.')+'</div></div>'}
  }
