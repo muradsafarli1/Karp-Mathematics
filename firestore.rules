@@ -38,7 +38,7 @@ service cloud.firestore {
       match /mockHistory/{mockId} {
         allow read, create, update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
       }
-      match /privateState {
+      match /privateState/{stateId} {
         allow read, create, update: if isAdmin() || (signedIn() && request.auth.uid == uid);
       }
     }
