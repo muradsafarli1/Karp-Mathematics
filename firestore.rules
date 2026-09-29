@@ -78,7 +78,7 @@ service cloud.firestore {
     }
 
     match /friendships/{friendshipId} {
-      allow read: if isAdmin() || (signedIn() && conversationMember(resource.data));
+      allow read: if isAdmin() || (signedIn() && resource.data.members is list && request.auth.uid in resource.data.members);
       allow create: if isAdmin()
         || (signedIn()
           && request.resource.data.status == 'accepted'
@@ -92,7 +92,7 @@ service cloud.firestore {
     }
 
     match /conversations/{conversationId} {
-      allow read: if isAdmin() || conversationMember(resource.data);
+      allow read: if isAdmin() || (signedIn() && resource.data.members is list && request.auth.uid in resource.data.members);
       allow create: if isAdmin()
         || (signedIn()
           && request.resource.data.status == 'accepted'
