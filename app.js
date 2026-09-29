@@ -120,23 +120,38 @@
     .detail-image{max-height:520px!important;margin:28px auto!important}
     .detail-actions{margin-top:55px!important;padding-top:0!important;border-top-color:transparent!important;box-shadow:none!important}`;
   style.textContent += `
-/* KARP permanent white visual mode */
-    html,html[data-theme="dark"],html[data-theme="light"]{--bg:#ffffff;--panel:#ffffff;--panel2:#f3f4f6;--line:#e1e3e7;--text:#17191c;--muted:#626770;--soft:#4f555e}
-    body,.section,.pagehero,.contest-page,.article-page,.account-page,.auth,.exam-screen,.exam-finished,.error-page{background:#fff!important;color:#17191c!important}
-    .top,.footer,.card,.exam-card,.bigcard,.account-card,.account-stat,.authbox,.admin-side,.admin-main,.editor-card,.mock-builder,.mock-paper,.contest-problem,.contest-paper,.article-paper{background:#fff!important;color:#17191c!important;border-color:#e1e3e7!important}
-    .top{background:rgba(255,255,255,.96)!important;border-bottom:1px solid #e1e3e7!important}
-    .navlinks{color:#626770!important}.navlinks a:hover,.navlinks a.active{color:#17191c!important}.brand{color:#17191c!important}
-    .btn,.google-btn,.theme-toggle,.language-switch{background:#f3f4f6!important;color:#17191c!important;border:1px solid #d9dce1!important}
-    .btn.primary,.submit{background:#17191c!important;color:#fff!important;border-color:#17191c!important}
-    .input,.select,.textarea,.authbox .input{background:#fff!important;color:#17191c!important;border:1px solid #d9dce1!important}
-    .card p,.exam-card p,.lead,.small,.muted,.profile-email,.profile-meta span,.account-stat-label,.exam-history-row .small{color:#626770!important}
-    .pagehero,.contest-hero,.hero{background:#fff!important;border-bottom-color:#e1e3e7!important}
-    .hero:before,.hero:after,.noise,.orb{display:none!important}
-    .hero h1{background:none!important;color:#17191c!important;-webkit-text-fill-color:#17191c!important}
-    .contest-problem+.contest-problem,.detail-divider,.solution-content,.exam-question,.rows,.row,.history-list,.history-row{border-color:#e1e3e7!important}
-    html[data-theme="light"] .card,html[data-theme="light"] .exam-card,html[data-theme="light"] .bigcard,html[data-theme="light"] .authbox{background:#fff!important;box-shadow:0 8px 28px rgba(20,24,30,.06)!important}
-    .theme-toggle{display:none!important}`;
-  document.head.appendChild(style);
+/* KARP final skin — continuous warm surface */
+    html,html[data-theme="light"],html[data-theme="dark"]{
+      --skin:#eadbc7;--bg:var(--skin);--panel:#f8f0e4;--panel2:#f2e6d7;--line:#d8c6ad;--text:#17191c;--muted:#6f665d;--soft:#5d554d;
+    }
+    body,.section,.pagehero,.contest-page,.article-page,.account-page,.auth,.exam-screen,.exam-finished,.error-page,
+    .problem-page,.mock-page,.exam-page,.exam-active-shell,.exam-enter,.mock-session,.mock-top,.exam-active-top,.exam-active-body{
+      background:var(--skin)!important;color:var(--text)!important;background-image:none!important;
+    }
+    .problem-page .section,.problem-page .pagehero,.problem-detail,.problem-solution,
+    .contest-page .section,.contest-page .pagehero,.contest-paper,.contest-problem,.article-page .section,.article-page .pagehero,.article-paper,
+    .detail-actions,.exam-review,.exam-paper,.exam-active-paper,.exam-enter-card,
+    .mock-builder,.past-box,.mock-review,.mock-preview,.mock-paper{
+      background:var(--skin)!important;color:var(--text)!important;border:0!important;box-shadow:none!important;
+    }
+    .exam-question,.review-question,.preview-question,.session-question,.solution-group,.problem-content-markdown{
+      background:transparent!important;
+    }
+    /* Small raised boxes only */
+    .card,.exam-card,.bigcard,.account-card,.account-stat,.admin-side,.admin-main,.editor-card,
+    .video-card,.mock-field,.past-card,.mock-fullscreen-lock-card,.exam-fullscreen-lock-card{
+      background:#f8f0e4!important;color:var(--text)!important;border-color:#ddccb6!important;box-shadow:none!important;
+    }
+    .top,.footer{background:rgba(234,219,199,.97)!important;color:var(--text)!important;border-color:#d8c6ad!important}
+    .input,.select,.textarea,.video-search{background:#f8f0e4!important;color:var(--text)!important;border-color:#d6c3aa!important}
+    .btn,.google-btn,.language-switch{background:#f8f0e4!important;color:var(--text)!important;border-color:#d6c3aa!important}
+    .btn.primary,.submit{background:#2f78b7!important;color:#0b0d10!important;border-color:#2f78b7!important}
+    .pagehero,.contest-hero{background:var(--skin)!important;background-image:none!important}
+    .hero{background:var(--skin)!important}.hero:before,.hero:after,.noise,.orb{display:none!important}
+    .hero h1{background:none!important;color:var(--text)!important;-webkit-text-fill-color:var(--text)!important}
+    .detail-actions,.contest-problem+.contest-problem,.solution-content,.exam-question,.rows,.row,.history-list,.history-row{border-color:#d8c6ad!important}
+    .theme-toggle{display:none!important}
+document.head.appendChild(style);
 })();
 
 let __fb=null;
