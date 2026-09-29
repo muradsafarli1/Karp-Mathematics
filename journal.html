@@ -34,10 +34,11 @@
 @media(max-width:900px){.journal-issues{grid-template-columns:1fr}.journal-list{position:static;display:flex;overflow:auto;padding-bottom:3px}.journal-issue-card{min-width:235px}.journal-paper-wrap{min-height:460px;padding:12px}.journal-loading{min-height:460px}}
 @media(max-width:620px){.journal-layout{width:calc(100% - 28px);padding-top:20px}.journal-hero{padding-top:45px}.journal-viewer-head{flex-direction:column}.journal-paper-wrap{min-height:390px}}
 </style>
-<script type="module">
-import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
-pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
-window.KARPPdfReady=pdfjsLib;
+<script>
+window.KARPPdfReady=import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs').then(pdfjsLib=>{
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+  return pdfjsLib;
+});
 </script>
 </head>
 <body>
@@ -148,7 +149,10 @@ window.KARPPdfReady=pdfjsLib;
     renderLayout();
     if(current)await selectIssue(current.id);
     window.addEventListener('resize',()=>{if(pdf)renderPage(0).catch(()=>{})});
-  }catch(e){root.innerHTML='<div class="journal-empty">Could not load Journal.</div>'}
+  }catch(e){
+    console.error('KARP Journal load error',e);
+    root.innerHTML='<div class="journal-empty"><strong>Journal is temporarily unavailable.</strong><br><span style="display:block;margin-top:8px">Please refresh the page. '+escLocal(e?.message||'')+'</span></div>';
+  }
 })();
 </script>
 </body>
