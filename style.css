@@ -364,3 +364,14 @@ body,.top,.footer,.hero,.pagehero,.section,.contest-page,.article-page,.account-
 .history-list,.history-row{border-color:#d9dad8!important}
 .pagehero,.contest-hero,.hero{border-bottom-color:#d9dad8!important}
 .theme-toggle{display:none!important}
+
+/* Small controls/cards need a subtle surface contrast on the unified background. */
+.choice span,.difficulty,.difficulty span,.cards .card>.tag,.tag,.status-badge,
+.manual-row,.past-card,.mock-field,.history-card,.topic-card,.kpi,
+.input,.select,.textarea,.question-editor-row,.editor-card .field{
+  background:#eeeeeb!important;
+  border-color:#d5d5d1!important;
+}
+.choice input:checked+span,.difficulty input:checked+span{
+  background:#2f78b7!important;color:#fff!important;border-color:#2f78b7!important;
+}

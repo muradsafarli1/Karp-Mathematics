@@ -538,16 +538,17 @@ function normalizeMathMarkdown(value=''){
   s=s.replace(/\\\\\(/g,'\\(').replace(/\\\\\)/g,'\\)');
   s=s.replace(/\\\\\[/g,'\\[').replace(/\\\\\]/g,'\\]');
 
-  // Some archive rows contain bare TeX without \( ... \) or $...$.
-  // Wrap unmistakable formula-only lines so MathJax renders them like Overleaf.
-  s=s.split('\n').map(line=>{
+  // Render bare TeX that arrived without explicit math delimiters.
+  // MathJax needs delimiters such as \\( ... \\) or \\[ ... \\] to know that text is math. citeturn0search0
+  s=s.split('\\n').map(line=>{
     const t=line.trim();
-    if(!t||/\\\(|\\\[|\$/.test(t))return line;
-    const commands=(t.match(/\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|sin|cos|tan|log|ln|mathbb|mathcal|mathrm|mathbf|overline|underline|begin|end|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|leq|geq|neq|equiv|in|notin|subset|supset|cdot|times|pm|mp|binom|pmod|mod|forall|exists)\b/g)||[]).length;
-    const longWords=(t.match(/\b[A-Za-z]{3,}\b/g)||[]).length;
-    const looksMath=commands>=2||(commands>=1&&(t.startsWith('\\')||longWords<=2)&&/[=^_{}+*/<>]/.test(t));
-    return looksMath?'\\['+t+'\\]':line;
-  }).join('\n');
+    if(!t||/\\\\\(|\\\\\[|\\$/.test(t))return line;
+    const hasTex=/\\\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|sin|cos|tan|log|ln|mathbb|mathcal|mathrm|mathbf|overline|underline|begin|end|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|leq|geq|neq|equiv|in|notin|subset|supset|cdot|times|pm|mp|binom|pmod|mod|forall|exists)\\b/.test(t);
+    const hasMathPunctuation=/[=^_{}<>]|\\\\frac|\\\\sqrt|\\\\sum|\\\\prod|\\\\int/.test(t);
+    const words=(t.match(/\\b[A-Za-z]{3,}\\b/g)||[]).length;
+    const formulaOnly=hasTex&&hasMathPunctuation&&(words<=6||/^[\\\\0-9A-Za-z{}()[\]\\s=+*^_<>.,;:|/\\-]+$/.test(t));
+    return formulaOnly?'\\\\['+t+'\\\\]':line;
+  }).join('\\n');
 
   return s;
 }
