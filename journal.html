@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KARP — Journal</title>
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js"></script>
+<style>
+.journal-wrap{width:min(calc(100% - 42px),1120px);margin:0 auto;padding-bottom:90px}
+.journal-grid{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:14px;align-items:start}
+.journal-card{background:#eeeeeb!important;border:1px solid #d5d5d1!important;border-radius:20px;padding:24px;color:#17191c}
+.journal-card h2{font-family:'Space Grotesk';font-size:25px;margin:0 0 7px}
+.journal-card p,.journal-note{color:#666b73;font-size:11px;line-height:1.7}
+.journal-entry{background:#eeeeeb!important;border:1px solid #d5d5d1!important;border-radius:16px;padding:18px;margin-bottom:10px}
+.journal-entry h3{font-family:'Space Grotesk';font-size:18px;margin:0 0 6px}
+.journal-entry time{display:block;color:#777c84;font-size:10px;margin-bottom:12px}
+.journal-entry-body{white-space:pre-wrap;line-height:1.75;font-size:13px;color:#30343a}
+.journal-entry-actions{display:flex;justify-content:flex-end;margin-top:13px}
+.journal-empty{padding:55px 20px;text-align:center;color:#777c84;font-size:12px}
+@media(max-width:820px){.journal-grid{grid-template-columns:1fr}.journal-wrap{width:calc(100% - 28px)}}
+</style>
+</head>
+<body>
+<script>
+(async()=>{
+  const u=await requireUser(); if(!u)return;
+  const {db}=await fb();
+  const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const {collection,query,orderBy,onSnapshot,addDoc,deleteDoc,doc,serverTimestamp}=fs;
+
+  shell('Journal','Journal',
+    '<main class="journal-page"><section class="pagehero"><div class="wrap"><div class="eyebrow">07 — Journal</div><h1>Keep the ideas<br>that matter.</h1><p class="lead">A private notebook for proofs, training notes, observations and problems worth coming back to.</p></div></section>'+
+    '<section class="section"><div class="journal-wrap"><div class="journal-grid">'+
+      '<section class="journal-card"><h2>New entry</h2><p class="journal-note">Only you can read and manage your Journal entries.</p>'+
+      '<div class="field"><label>Title</label><input class="input" id="journal-title" maxlength="160" placeholder="Training notes, idea, proof sketch..."></div>'+
+      '<div class="field"><label>Entry</label><textarea class="textarea" id="journal-body" rows="16" placeholder="Write anything you want to keep."></textarea></div>'+
+      '<button class="btn primary" id="journal-save">Save entry</button></section>'+
+      '<section><div class="journal-card" style="margin-bottom:10px"><h2>My Journal</h2><p class="journal-note">Your newest entries appear first.</p></div><div id="journal-list" class="journal-list"><div class="journal-empty">Loading...</div></div></section>'+
+    '</div></div></section></main>'
+  );
+
+  const list=document.getElementById('journal-list');
+  const title=document.getElementById('journal-title'),body=document.getElementById('journal-body'),save=document.getElementById('journal-save');
+  const q=query(collection(db,'journals',u.id,'entries'),orderBy('createdAt','desc'));
+  onSnapshot(q,snap=>{
+    if(snap.empty){list.innerHTML='<div class="journal-card journal-empty">No journal entries yet.</div>';return}
+    list.innerHTML=snap.docs.map(x=>{
+      const d=x.data()||{},date=d.createdAt?.toDate?d.createdAt.toDate():new Date(d.createdAt||Date.now());
+      return '<article class="journal-entry"><h3>'+escapeHtml(d.title||'Untitled entry')+'</h3><time>'+escapeHtml(isNaN(date)?'':date.toLocaleString())+'</time><div class="journal-entry-body">'+escapeHtml(d.body||'')+'</div><div class="journal-entry-actions"><button class="btn danger" data-delete="'+escapeHtml(x.id)+'">Delete</button></div></article>';
+    }).join('');
+    list.querySelectorAll('[data-delete]').forEach(b=>b.onclick=async()=>{
+      if(!confirm('Delete this journal entry?'))return;
+      try{await deleteDoc(doc(db,'journals',u.id,'entries',b.dataset.delete))}catch(e){toast(e.message||'Could not delete entry.')}
+    });
+  },e=>{console.error(e);list.innerHTML='<div class="journal-card journal-empty">Could not load your Journal.</div>';});
+
+  save.onclick=async()=>{
+    const t=title.value.trim(),b=body.value.trim();
+    if(!t&&!b){toast('Write something first.');return}
+    save.disabled=true;save.textContent='Saving…';
+    try{
+      await addDoc(collection(db,'journals',u.id,'entries'),{title:t||'Untitled entry',body:b,createdAt:serverTimestamp()});
+      title.value='';body.value='';toast('Entry saved.');
+    }catch(e){toast(e.message||'Could not save entry.')}
+    save.disabled=false;save.textContent='Save entry';
+  };
+})();
+</script>
+</body>
+</html>
