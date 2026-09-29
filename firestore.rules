@@ -2,6 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
+    function isAdminUid(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid))
+        && get(/databases/$(database)/documents/users/$(uid)).data.role == 'admin';
+    }
     function isAdmin() {
       return signedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
@@ -113,6 +117,11 @@ service cloud.firestore {
               && request.resource.data.name is string
               && request.resource.data.name.size() >= 1
               && request.resource.data.name.size() <= 80)
+            ||
+            (request.resource.data.type == 'support'
+              && request.resource.data.members.size() == 2
+              && request.resource.data.createdBy == request.auth.uid
+              && (isAdminUid(request.resource.data.members[0]) || isAdminUid(request.resource.data.members[1])))
           ));
       allow update: if isAdmin()
         || (conversationMember(resource.data)
