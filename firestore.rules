@@ -28,12 +28,24 @@ service cloud.firestore {
           && request.auth.uid == uid
           && request.resource.data.role == resource.data.role);
       allow delete: if isAdmin();
+
+      match /solved/{problemId} {
+        allow read, create, update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      }
+      match /saved/{problemId} {
+        allow read, create, update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      }
+      match /mockHistory/{mockId} {
+        allow read, create, update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      }
+      match /privateState {
+        allow read, create, update: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      }
     }
 
     match /publicProfiles/{uid} {
       allow read: if signedIn();
-      allow create: if signedIn() && request.auth.uid == uid;
-      allow update: if signedIn() && request.auth.uid == uid;
+      allow create, update: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
     }
 
