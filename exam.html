@@ -189,7 +189,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       renderActive();
     }
     async function finishExam(reason){
-      if(finished)return;finished=true;clearInterval(timer);clearTrackers();sessionCleanup?.();sessionCleanup=null;
+      if(finished)return;finished=true;clearInterval(timer);clearTrackers();sessionCleanup?.();sessionCleanup=null;sessionCleanup?.();sessionCleanup=null;
       try{
         const current=JSON.parse(localStorage.getItem(storageKey)||'{}');
         const started=current.startedAt||sessionStartedAt||new Date().toISOString();
@@ -208,6 +208,8 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     }
     function renderActive(){
       clearTrackers();
+      sessionCleanup?.();
+      sessionCleanup=startExamSessionTracking();
       document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top"><div class="exam-active-title"><div class="exam-active-kicker">KARP · EXAM</div><h1>'+escapeHtml(title)+'</h1></div><div class="exam-active-timer" id="exam-timer">'+timerText(end-Date.now())+'</div><div class="exam-active-actions-top"><button class="exam-fullscreen" id="exam-fullscreen-button" type="button" aria-label="Fullscreen" title="Fullscreen">⛶</button></div></header><div class="exam-active-body"><section class="exam-active-paper"><div id="active-questions">'+questions.map((q,i)=>questionHtml(q,i,false)).join('')+'</div><div class="exam-active-actions"><button class="btn primary" id="finish-exam">Finish Exam</button></div></section></div>'+lockMarkup()+'</main>';
       document.getElementById('finish-exam').onclick=()=>{if(confirm('Finish this exam now?'))finishExam('manual')};
       setKarpActivity({page:'Exam',label:'Taking exam',detail:title,question:1});
