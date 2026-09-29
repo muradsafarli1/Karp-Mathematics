@@ -13,7 +13,10 @@
 <style>
 .account-page{min-height:calc(100vh - 76px)}
 .account-profile{text-align:center;padding:72px 20px 44px}
-.profile-avatar{width:158px;height:158px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 18px;background:var(--panel2)}
+.profile-avatar-wrap{width:158px;margin:0 auto 18px;display:flex;flex-direction:column;align-items:center;gap:9px}
+.profile-avatar{width:158px;height:158px;border-radius:50%;object-fit:cover;display:block;background:var(--panel2)}
+.profile-edit{width:31px;height:31px;border:1px solid #d5d5d1;background:#eeeeeb;color:#17191c;border-radius:50%;display:grid;place-items:center;cursor:pointer;font-size:14px;line-height:1}
+.profile-edit:hover{background:#e2e2de}
 .profile-initial{display:grid;place-items:center;font-size:52px;font-weight:800;color:var(--text)}
 .profile-name{font-size:19px;font-weight:800}.profile-email{margin-top:5px;font-size:12px;color:var(--muted)}
 .account-wrap{width:min(calc(100% - 42px),1220px);margin:0 auto;padding-bottom:90px}
@@ -30,7 +33,7 @@
 .review-panel{display:none;margin-top:12px;padding:16px 0 0;border-top:1px solid var(--line)}.review-panel.open{display:block}.review-question{padding:15px 0;border-top:1px solid var(--line)}.review-question:first-child{border-top:0}.review-qtitle{font-family:'Space Grotesk';font-size:13px;font-weight:800;margin-bottom:8px}.review-body{font-size:15px;line-height:1.8}.review-answer{margin-top:6px;font-size:10px;color:var(--muted)}.review-solution{margin-top:8px}.review-solution-body{display:none;margin-top:9px;font-size:14px;line-height:1.8}.review-solution-body.open{display:block}
 .empty{color:var(--muted);font-size:12px;padding:8px 0}.account-bottom{display:flex;justify-content:center;margin-top:25px}
 @media(max-width:900px){.kpi-grid{grid-template-columns:repeat(3,1fr)}.topic-cards{grid-template-columns:1fr 1fr}.history-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:620px){.account-profile{padding-top:50px}.profile-avatar{width:132px;height:132px}.account-wrap{width:calc(100% - 28px)}.kpi-grid{grid-template-columns:1fr 1fr}.dashboard,.history-box{padding:19px}.dashboard-head{align-items:flex-start;flex-direction:column}.switch{width:100%}.switch button{flex:1}.chart{height:210px;gap:4px}.bar-track{height:160px}.topic-cards{grid-template-columns:1fr 1fr}.topic-line{grid-template-columns:100px 1fr 28px}.history-grid{grid-template-columns:1fr}}
+@media(max-width:620px){.account-profile{padding-top:50px}.profile-avatar-wrap{width:132px}.profile-avatar{width:132px;height:132px}.account-wrap{width:calc(100% - 28px)}.kpi-grid{grid-template-columns:1fr 1fr}.dashboard,.history-box{padding:19px}.dashboard-head{align-items:flex-start;flex-direction:column}.switch{width:100%}.switch button{flex:1}.chart{height:210px;gap:4px}.bar-track{height:160px}.topic-cards{grid-template-columns:1fr 1fr}.topic-line{grid-template-columns:100px 1fr 28px}.history-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -78,8 +81,12 @@
   const maxTopic=Math.max(1,...Object.values(totals));
 
   const body='<main class="account-page"><section class="account-profile">'+
-    '<img class="profile-avatar" src="'+escapeHtml(u.photoURL||'')+'" style="'+(u.photoURL?'':'display:none')+'" alt="">'+
-    '<div class="profile-avatar profile-initial" style="'+(u.photoURL?'display:none':'')+'">'+escapeHtml((u.name||'K').charAt(0).toUpperCase())+'</div>'+
+    '<div class="profile-avatar-wrap">'+
+      '<img class="profile-avatar" id="account-avatar" src="'+escapeHtml(u.photoURL||'')+'" style="'+(u.photoURL?'':'display:none')+'" alt="">'+
+      '<div class="profile-avatar profile-initial" id="account-initial" style="'+(u.photoURL?'display:none':'')+'">'+escapeHtml((u.name||'K').charAt(0).toUpperCase())+'</div>'+
+      '<button class="profile-edit" id="profile-edit" type="button" aria-label="Change profile picture" title="Change profile picture">✎</button>'+
+      '<input id="profile-picker" type="file" accept="image/*" hidden>'+
+    '</div>'+
     '<div class="profile-name">'+escapeHtml(u.name||'KARP Member')+'</div><div class="profile-email">'+escapeHtml(u.email||'')+'</div>'+
     '</section><section class="account-wrap">'+
     '<div class="kpi-grid"><div class="kpi"><strong>'+solved.length+'</strong><span>Solved</span></div><div class="kpi"><strong>'+streak+'</strong><span>Day streak</span></div><div class="kpi"><strong>'+saved.length+'</strong><span>Saved</span></div><div class="kpi"><strong>'+exams.length+'</strong><span>Exams</span></div><div class="kpi"><strong>'+mocks.length+'</strong><span>Mocks</span></div></div>'+
@@ -95,6 +102,54 @@
     '<div class="account-bottom">'+(u.role==='admin'?'<a class="btn" href="/admin.html">Admin</a>':'')+' <button class="btn" onclick="logout()">Log out</button></div>'+
     '</section></main>';
   shell('','Account',body);
+
+  const avatarPicker=document.getElementById('profile-picker');
+  const avatarEdit=document.getElementById('profile-edit');
+  const avatarImg=document.getElementById('account-avatar');
+  const avatarInitial=document.getElementById('account-initial');
+
+  async function compressAvatar(file){
+    if(!file||!file.type.startsWith('image/')) throw new Error('Please choose an image file.');
+    const raw=await createImageBitmap(file);
+    const maxSide=256;
+    const scale=Math.min(1,maxSide/Math.max(raw.width,raw.height));
+    const canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(raw.width*scale));
+    canvas.height=Math.max(1,Math.round(raw.height*scale));
+    const ctx=canvas.getContext('2d');
+    ctx.drawImage(raw,0,0,canvas.width,canvas.height);
+    raw.close?.();
+    let quality=.78;
+    let url=canvas.toDataURL('image/jpeg',quality);
+    while(url.length>240000&&quality>.48){
+      quality-=.06;
+      url=canvas.toDataURL('image/jpeg',quality);
+    }
+    if(url.length>260000) throw new Error('Image is too large after compression. Please choose another image.');
+    return url;
+  }
+
+  avatarEdit.onclick=()=>avatarPicker.click();
+  avatarPicker.onchange=async()=>{
+    const file=avatarPicker.files?.[0];
+    if(!file)return;
+    avatarEdit.disabled=true;
+    avatarEdit.textContent='…';
+    try{
+      const photoURL=await compressAvatar(file);
+      const {db}=await fb();
+      const {doc,setDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+      await setDoc(doc(db,'users',u.id),{photoURL,updatedAt:new Date().toISOString()},{merge:true});
+      await setDoc(doc(db,'publicProfiles',u.id),{uid:u.id,name:u.name||'KARP Member',nameLower:String(u.name||'KARP Member').trim().toLowerCase(),photoURL,updatedAt:new Date().toISOString()},{merge:true});
+      u.photoURL=photoURL;
+      avatarImg.src=photoURL;
+      avatarImg.style.display='block';
+      avatarInitial.style.display='none';
+      document.querySelectorAll('.nav-profile').forEach(el=>{el.innerHTML='<img src="'+escapeHtml(photoURL)+'" alt="" class="nav-profile-img">';});
+      toast('Profile picture updated.');
+    }catch(e){toast(e.message||'Could not update profile picture.');}
+    finally{avatarEdit.disabled=false;avatarEdit.textContent='✎';avatarPicker.value='';}
+  };
 
   const fillSimple=(id,items)=>{
     const host=document.getElementById(id);
