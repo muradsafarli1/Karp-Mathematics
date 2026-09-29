@@ -108,8 +108,5 @@
         "type": 302
       }
     ]
-  },
-  "storage": {
-    "rules": "storage.rules"
   }
 }
