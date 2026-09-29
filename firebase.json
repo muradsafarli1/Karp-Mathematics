@@ -85,6 +85,10 @@
       {
         "source": "/mathnet-sync",
         "destination": "/mathnet-sync.html"
+      },
+      {
+        "source": "/journal",
+        "destination": "/journal.html"
       }
     ],
     "redirects": [
@@ -104,5 +108,8 @@
         "type": 302
       }
     ]
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }
