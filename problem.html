@@ -169,9 +169,9 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
     cloudSolved=cloud.solved||{};
     cloudSaved=cloud.saved||{};
     
-    const competition=currentProblem.competition||currentProblem.title||'MathNet Problem';
+    const competition=String(currentProblem.competition||'').trim();
     const sourceParts=[competition,currentProblem.section,currentProblem.problemNumber].filter(Boolean);
-    const title=sourceParts.join(' — ');
+    const title=sourceParts.length?sourceParts.join(' — '):(currentProblem.title||'Problem');
     const sourceMeta=[currentProblem.country,currentProblem.year].filter(Boolean).join(' · ');
     setKarpActivity({page:'Problem',label:'Viewing problem',detail:title,question:null});
 
@@ -179,9 +179,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
       <main class="problem-page">
         <section class="pagehero">
           <div class="wrap" style="max-width:1100px">
-            <div class="eyebrow">MathNet</div>
             <h1>${escapeHtml(title)}</h1>
-            <div class="problem-source">${escapeHtml(sourceMeta||'MathNet Problem')}</div>
           </div>
         </section>
         <section class="section">
