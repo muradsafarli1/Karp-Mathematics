@@ -451,5 +451,5 @@ async function mathnetFind(options){
   return{questions:picked,total:all.length,source:'ShadenA/MathNet'};
 }
 
-function mathnetSaveMock(mock){localStorage.setItem('karp_last_mock',JSON.stringify({...mock,savedAt:new Date().toISOString()}));}
-function mathnetLoadMock(){try{return JSON.parse(localStorage.getItem('karp_last_mock')||'null')}catch{return null;}}
+function mathnetSaveMock(mock){window.__karpLastMock=mock;return mock;}
+function mathnetLoadMock(){return window.__karpLastMock||null;}
