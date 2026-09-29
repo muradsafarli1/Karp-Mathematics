@@ -82,131 +82,120 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
 <body>
 <script>
 (async()=>{
-  const id=new URLSearchParams(location.search).get('id');
-  const reviewMode=new URLSearchParams(location.search).get('review')==='1';
+  const id=new URLSearchParams(location.search).get('id'),reviewMode=new URLSearchParams(location.search).get('review')==='1';
   if(!id){location.href='/exams.html';return}
+  let timer=null,finished=false,fullscreenCleanup=null,activityCleanup=null;
 
   try{
     const user=await me();
     const data=await api('/api/exams/'+encodeURIComponent(id));
     const exam=data.exam;
-    const registered=!!data.registered;
     if(!exam){location.href='/exams.html';return}
-
+    const registered=!!data.registered;
     const history=user?(await api('/api/exams/history').catch(()=>({history:[]}))).history||[]:[];
-    const previous=history.find(x=>x.examId===id);
-    const completed=!!previous;
+    const previous=history.find(x=>x.examId===id),completed=!!previous;
     const title=localized(exam,'title')||'Exam';
-    const description=localized(exam,'description')||'';
     const questions=Array.isArray(exam.questions)?exam.questions:[];
+    const durationMinutes=Number(exam.durationMinutes||60);
 
     function md(x){return richMarkdown(String(x||''))}
     function statement(q){return localized(q,'statement')||q.statementEn||q.statement||q.statementAz||q.text||''}
     function solution(q){return q.solution||q.solutionEn||q.solutionAz||''}
-    function metaText(){
-      const bits=[(exam.questions||[]).length+' questions',formatDuration(exam.durationMinutes)+' time'];
-      if(exam.date)bits.push(String(exam.date));
-      return bits.join(' · ');
-    }
+    function metaText(){const bits=[questions.length+' questions',formatDuration(durationMinutes)+' time'];if(exam.date)bits.push(String(exam.date));return bits.join(' · ')}
     function questionHtml(q,i,withSolution){
       const sol=solution(q);
-      return '<section class="exam-question">'
-        +'<div class="problem-number">Problem '+(i+1)+(q.code?' · '+escapeHtml(q.code):'')+'</div>'
-        +(q.imageUrl?'<img class="detail-image" src="'+escapeHtml(q.imageUrl)+'" alt="Problem '+(i+1)+'">':'')
-        +'<div class="question-text">'+md(statement(q))+'</div>'
-        +(withSolution?'<div class="exam-solution"><button class="btn">Show solution</button><div class="exam-solution-body">'+(sol?md(sol):'<div style="color:var(--muted)">No supplied solution.</div>')+'</div></div>':'')
-        +'</section>';
+      return '<section class="exam-question" data-question="'+(i+1)+'"><div class="problem-number">Problem '+(i+1)+(q.code?' · '+escapeHtml(q.code):'')+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+escapeHtml(q.imageUrl)+'" alt="Problem '+(i+1)+'">':'')+'<div class="question-text">'+md(statement(q))+'</div>'+(withSolution?'<div class="exam-solution"><button class="btn">Show solution</button><div class="exam-solution-body">'+(sol?md(sol):'<div style="color:var(--muted)">No supplied solution.</div>')+'</div></div>':'')+'</section>';
     }
-
-    function bindSolutions(host){
-      host.querySelectorAll('.exam-solution').forEach(box=>{
-        const b=box.querySelector('button'),body=box.querySelector('.exam-solution-body');
-        if(!b||!body)return;
-        b.onclick=()=>{const open=body.classList.toggle('open');b.textContent=open?'Hide solution':'Show solution';if(open)typesetMath(body)};
-      });
+    function bindSolutions(host){host.querySelectorAll('.exam-solution').forEach(box=>{const b=box.querySelector('button'),body=box.querySelector('.exam-solution-body');if(!b||!body)return;b.onclick=()=>{const open=body.classList.toggle('open');b.textContent=open?'Hide solution':'Show solution';if(open)typesetMath(body)}})}
+    function clearTrackers(){fullscreenCleanup?.();activityCleanup?.();fullscreenCleanup=null;activityCleanup=null}
+    function lockMarkup(){
+      return '<div class="exam-fullscreen-lock" id="exam-fullscreen-lock"><div class="exam-fullscreen-lock-card"><div class="exam-active-kicker">KARP · FULLSCREEN</div><h2>Fullscreen required</h2><p>Use the fullscreen button to continue the exam. The exam remains locked inside KARP while it is in progress.</p><button class="exam-fullscreen" id="exam-fullscreen-lock-btn" type="button" aria-label="Enter fullscreen" title="Enter fullscreen">⛶</button></div></div>';
     }
-
+    async function requestFullscreen(){
+      const target=document.querySelector('.exam-active-shell');
+      if(!target?.requestFullscreen){toast('Fullscreen is not supported by this browser.');return false}
+      try{await target.requestFullscreen();return true}catch(e){console.error(e);toast('Please allow fullscreen to start the exam.');return false}
+    }
+    function installFullscreen(){
+      const target=document.querySelector('.exam-active-shell'),lock=document.getElementById('exam-fullscreen-lock'),btn=document.getElementById('exam-fullscreen-button'),lockBtn=document.getElementById('exam-fullscreen-lock-btn');
+      const sync=()=>{const full=document.fullscreenElement===target;lock?.classList.toggle('open',!full);if(!full)setKarpActivity({page:'Exam',label:'Fullscreen required',detail:title,question:null})};
+      const handler=()=>sync();document.addEventListener('fullscreenchange',handler);
+      btn&&(btn.onclick=requestFullscreen);lockBtn&&(lockBtn.onclick=requestFullscreen);sync();
+      fullscreenCleanup=()=>document.removeEventListener('fullscreenchange',handler);
+    }
+    function installActivity(){
+      const host=document.getElementById('active-questions');if(!host)return;
+      const update=()=>{const qs=[...host.querySelectorAll('.exam-question')];if(!qs.length)return;let best=0,bestDist=Infinity;qs.forEach((q,i)=>{const r=q.getBoundingClientRect(),d=Math.abs(r.top-125);if(r.bottom>85&&d<bestDist){best=i;bestDist=d}});setKarpActivity({page:'Exam',label:'Taking exam',detail:title,question:best+1})};
+      const handler=()=>{clearTimeout(window.__karpExamActivityTimer);window.__karpExamActivityTimer=setTimeout(update,80)};
+      window.addEventListener('scroll',handler,{passive:true});update();
+      activityCleanup=()=>window.removeEventListener('scroll',handler);
+    }
     function renderReview(){
+      clearTrackers();setKarpActivity({page:'Exam Review',label:'Exam review',detail:title,question:null});
       const completedAt=previous?.submittedAt?new Date(previous.submittedAt).toLocaleString():'Completed exam';
-      document.body.innerHTML='<main class="exam-page">'
-        +'<section class="exam-hero"><div class="exam-hero-inner"><div class="eyebrow">KARP · EXAM REVIEW</div><h1>'+escapeHtml(title)+'</h1><div class="exam-hero-meta">'+escapeHtml(metaText()+' · '+completedAt)+'</div></div></section>'
-        +'<section class="exam-review-wrap"><section class="exam-review"><div class="exam-review-head"><div class="exam-review-kicker">COMPLETED EXAM</div><button class="btn" id="review-back">← Back to Exams</button></div><div id="review-questions">'+questions.map((q,i)=>questionHtml(q,i,true)).join('')+'</div></section></section>'
-        +'</main>';
+      document.body.innerHTML='<main class="exam-page"><section class="exam-hero"><div class="exam-hero-inner"><div class="eyebrow">KARP · EXAM REVIEW</div><h1>'+escapeHtml(title)+'</h1><div class="exam-hero-meta">'+escapeHtml(metaText()+' · '+completedAt)+'</div></div></section><section class="exam-review-wrap"><section class="exam-review"><div class="exam-review-head"><div class="exam-review-kicker">COMPLETED EXAM</div><button class="btn" id="review-back">← Back to Exams</button></div><div id="review-questions">'+questions.map((q,i)=>questionHtml(q,i,true)).join('')+'</div></section></section></main>';
       document.getElementById('review-back').onclick=()=>location.href='/exams.html';
       const host=document.getElementById('review-questions');bindSolutions(host);typesetMath(host);
     }
-
     if(completed||reviewMode){
-      if(!user){
-        document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM REVIEW</div><h1>Sign in required</h1><p>Sign in to review your completed exam.</p><div class="exam-enter-actions"><a class="btn primary" href="/login.html">Sign in</a><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';
-        return;
-      }
-      renderReview();
-      return;
+      if(!user){document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM REVIEW</div><h1>Sign in required</h1><p>Sign in to review your completed exam.</p><div class="exam-enter-actions"><a class="btn primary" href="/login.html">Sign in</a><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';return}
+      renderReview();return;
     }
-
     if(!registered){
       document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>Register to enter</h1><p>Register for this exam first.</p><div class="exam-enter-actions"><button class="btn primary" id="register-now">Register</button><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';
-      document.getElementById('register-now').onclick=async()=>{
-        if(!(await ensureSignedIn('Register for this exam','Sign in to register for this exam.')))return;
-        try{await api('/api/exams/'+encodeURIComponent(id)+'/register',{method:'POST'});location.reload()}catch(e){toast(e.message)}
-      };
+      document.getElementById('register-now').onclick=async()=>{if(!(await ensureSignedIn('Register for this exam','Sign in to register for this exam.')))return;try{await api('/api/exams/'+encodeURIComponent(id)+'/register',{method:'POST'});location.reload()}catch(e){toast(e.message)}};
       return;
     }
 
     const storageKey='able_exam_'+id;
-    let saved={};
-    try{saved=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{}
+    let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{}
+    if(saved.submitted){localStorage.removeItem(storageKey);saved={}}
     let end=Number(saved.end)||0;
-    if(!end||saved.submitted){end=Date.now()+Number(exam.durationMinutes||60)*60000;localStorage.setItem(storageKey,JSON.stringify({startedAt:new Date().toISOString(),end,submitted:false}))}
+    const hasStarted=!!saved.startedAt&&!saved.submitted&&end>Date.now();
 
-    let timer=null,finished=false;
-    function timerText(ms){
-      const s=Math.max(0,Math.ceil(ms/1000));
-      const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
-      return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+    async function beginExam(){
+      if(await requestFullscreen()){const startedAt=new Date().toISOString();end=Date.now()+durationMinutes*60000;localStorage.setItem(storageKey,JSON.stringify({startedAt,end,submitted:false}));renderActive();return}
+      renderActive();
     }
-
+    function resumeExam(){requestFullscreen().then(()=>renderActive())}
     async function finishExam(reason){
-      if(finished)return;
-      finished=true;
-      clearInterval(timer);
+      if(finished)return;finished=true;clearInterval(timer);window.onbeforeunload=null;clearTrackers();
       try{
-        const startedAt=(JSON.parse(localStorage.getItem(storageKey)||'{}').startedAt)||new Date().toISOString();
-        await api('/api/exams/'+encodeURIComponent(id)+'/submit',{method:'POST',body:JSON.stringify({answers:{},startedAt,reason})});
-        localStorage.setItem(storageKey,JSON.stringify({startedAt,end,submitted:true}));
+        const current=JSON.parse(localStorage.getItem(storageKey)||'{}');
+        await api('/api/exams/'+encodeURIComponent(id)+'/submit',{method:'POST',body:JSON.stringify({answers:{},startedAt:current.startedAt||new Date().toISOString(),reason})});
+        localStorage.setItem(storageKey,JSON.stringify({startedAt:current.startedAt||new Date().toISOString(),end,submitted:true}));
+        setKarpActivity({page:'Exam',label:'Exam finished',detail:title,question:null});
+        if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
         location.href='/exam.html?id='+encodeURIComponent(id)+'&review=1';
-      }catch(e){
-        finished=false;
-        toast(e.message||'Could not submit the exam.');
-      }
+      }catch(e){finished=false;toast(e.message||'Could not submit the exam.')}}
+    function renderEntry(resume){
+      document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>'+(resume?'Resume exam':'Start exam')+'</h1><p>'+(resume?'Your active exam is saved. Enter fullscreen to continue.':'Once you start, KARP enters fullscreen and keeps the exam locked until you finish it.')+'</p><div class="exam-enter-actions"><button class="btn primary" id="start-exam">'+(resume?'Resume exam':'Start exam')+'</button><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';
+      document.getElementById('start-exam').onclick=resume?resumeExam:beginExam;
     }
-
     function renderActive(){
-      document.body.innerHTML='<main class="exam-active-shell">'
-        +'<header class="exam-active-top"><div class="exam-active-title"><div class="exam-active-kicker">KARP · EXAM</div><h1>'+escapeHtml(title)+'</h1></div><div class="exam-active-timer" id="exam-timer">'+timerText(end-Date.now())+'</div><div class="exam-active-lang">'+languageSwitch()+'</div></header>'
-        +'<div class="exam-active-body"><section class="exam-active-paper"><div id="active-questions">'+questions.map((q,i)=>questionHtml(q,i,false)).join('')+'</div><div class="exam-active-actions"><button class="btn primary" id="finish-exam">Finish Exam</button></div></section></div>'
-        +'</main>';
-      bindLanguageSwitch(renderActive);
+      clearTrackers();
+      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top"><div class="exam-active-title"><div class="exam-active-kicker">KARP · EXAM</div><h1>'+escapeHtml(title)+'</h1></div><div class="exam-active-timer" id="exam-timer">'+timerText(end-Date.now())+'</div><div class="exam-active-actions-top"><button class="exam-fullscreen" id="exam-fullscreen-button" type="button" aria-label="Fullscreen" title="Fullscreen">⛶</button></div></header><div class="exam-active-body"><section class="exam-active-paper"><div id="active-questions">'+questions.map((q,i)=>questionHtml(q,i,false)).join('')+'</div><div class="exam-active-actions"><button class="btn primary" id="finish-exam">Finish Exam</button></div></section></div>'+lockMarkup()+'</main>';
       document.getElementById('finish-exam').onclick=()=>{if(confirm('Finish this exam now?'))finishExam('manual')};
-      typesetMath(document.getElementById('active-questions'));
+      setKarpActivity({page:'Exam',label:'Taking exam',detail:title,question:1});
+      typesetMath(document.getElementById('active-questions'));installFullscreen();installActivity();
     }
+    function timerText(ms){const s=Math.max(0,Math.ceil(ms/1000)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
+    function tick(){const el=document.getElementById('exam-timer');const left=end-Date.now();if(el)el.textContent=timerText(left);if(left<=0)finishExam('time')}
 
-    function tick(){
-      const el=document.getElementById('exam-timer');
-      const left=end-Date.now();
-      if(el)el.textContent=timerText(left);
-      if(left<=0)finishExam('time');
-    }
-
-    renderActive();
-    tick();
-    timer=setInterval(tick,500);
-  }catch(err){
-    console.error(err);
-    document.body.innerHTML='<main class="exam-error"><section class="exam-error-card"><div class="eyebrow">KARP · EXAM</div><h1>Unable to load exam</h1><p style="color:var(--muted)">'+escapeHtml(err.message||'Something went wrong.')+'</p><a class="btn" href="/exams.html">← Back to Exams</a></section></main>';
-  }
+    if(hasStarted){renderActive();requestFullscreen().then(()=>{});tick();timer=setInterval(tick,500)}
+    else if(saved.startedAt&&!saved.submitted){if(end<=Date.now()){localStorage.removeItem(storageKey);await finishExam('time')}else renderEntry(true)}
+    else renderEntry(false);
+  }catch(err){console.error(err);document.body.innerHTML='<main class="exam-error"><section class="exam-error-card"><div class="eyebrow">KARP · EXAM</div><h1>Unable to load exam</h1><p style="color:var(--muted)">'+escapeHtml(err.message||'Something went wrong.')+'</p><a class="btn" href="/exams.html">← Back to Exams</a></section></main>'}
 })();
 </script>
+<style>
+/* Full page warm paper background */
+.exam-page,.exam-active-shell,.exam-enter{background:#eadbc7!important;color:#17191c!important}
+.exam-active-body{background:#eadbc7!important}.exam-active-top{background:#eadbc7!important;border-bottom:1px solid #d7c5ad!important}
+.exam-active-paper,.exam-review,.exam-enter-card{background:#fff!important;color:#17191c!important;box-shadow:0 12px 38px rgba(69,52,34,.08)}
+.exam-active-actions-top{justify-self:end;display:flex;align-items:center;gap:8px}.exam-fullscreen{width:42px;height:42px;padding:0;border-radius:11px;display:inline-grid;place-items:center;font-size:21px;background:#fff!important;color:#17191c!important;border:1px solid #d7c5ad!important;cursor:pointer}
+.exam-fullscreen-lock{position:fixed;inset:0;z-index:100000;display:none;place-items:center;padding:25px;background:rgba(234,219,199,.97);text-align:center}
+.exam-fullscreen-lock.open{display:grid}.exam-fullscreen-lock-card{width:min(520px,100%);padding:40px 28px;border-radius:22px;background:#fff;box-shadow:0 25px 70px rgba(69,52,34,.16)}.exam-fullscreen-lock-card h2{font:800 30px/1.05 'Space Grotesk';margin:0 0 12px}.exam-fullscreen-lock-card p{font-size:11px;line-height:1.7;color:#6f665d;margin:0 0 22px}.exam-fullscreen-lock-card .exam-fullscreen{width:52px;height:52px;margin:auto}
+</style>
 </body>
 </html>
