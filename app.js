@@ -314,7 +314,21 @@ async function api(path, opts = {}) {
   }
   if(path==='/api/admin/users'&&method==='GET'){
     if(!user||user.role!=='admin') throw new Error('Admin access required');
-    const snap=await getDocs(collection(db,'users'));return {users:snap.docs.map(x=>({id:x.id,...x.data()}))};
+    const [snap,presenceSnap]=await Promise.all([
+      getDocs(collection(db,'users')),
+      getDocs(collection(db,'presence'))
+    ]);
+    const now=Date.now(),presenceByUid=new Map();
+    presenceSnap.forEach(x=>{
+      const d=x.data()||{};
+      const expires=d.expiresAt?.toMillis?d.expiresAt.toMillis():Number(d.expiresAt||0);
+      const last=d.lastSeen?.toDate?d.lastSeen.toDate().toISOString():(d.lastSeen||null);
+      presenceByUid.set(x.id,{...d,online:!!d.online&&expires>now,lastSeen:last});
+    });
+    return {users:snap.docs.map(x=>({
+      id:x.id,...x.data(),
+      ...(presenceByUid.get(x.id)||{online:false,lastSeen:null,activity:null})
+    }))};
   }
   throw new Error('Not found');
 }
