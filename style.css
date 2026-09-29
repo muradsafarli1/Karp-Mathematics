@@ -182,3 +182,20 @@ html[data-theme="dark"] .btn.primary,html[data-theme="dark"] .submit{background:
 html[data-theme="light"] .btn.primary,html[data-theme="light"] .submit{background:#17191c!important;color:#fff!important;border-color:transparent!important}
 .input,.select,.textarea,.authbox .input{background:var(--bg)!important;color:var(--text)!important;border-color:transparent!important}
 html[data-theme="light"] .input,html[data-theme="light"] .select,html[data-theme="light"] .textarea,html[data-theme="light"] .authbox .input{background:#fff!important;color:#17191c!important}
+
+
+/* KARP permanent white interface */
+html,body{background:#fff!important;color:#17191c!important}
+body,.section,.pagehero,.contest-page,.article-page,.account-page,.auth,.exam-screen,.exam-finished,.error-page{background:#fff!important;color:#17191c!important}
+.top,.footer,.card,.exam-card,.bigcard,.account-card,.account-stat,.authbox,.admin-side,.admin-main,.editor-card,.mock-builder,.mock-paper,.contest-problem,.contest-paper,.article-paper{background:#fff!important;color:#17191c!important;border-color:#e1e3e7!important}
+.top{background:rgba(255,255,255,.97)!important;border-bottom:1px solid #e1e3e7!important}
+.navlinks{color:#626770!important}.navlinks a:hover,.navlinks a.active{color:#17191c!important}.brand{color:#17191c!important}
+.btn,.google-btn,.language-switch{background:#f3f4f6!important;color:#17191c!important;border-color:#d9dce1!important}
+.btn.primary,.submit{background:#17191c!important;color:#fff!important;border-color:#17191c!important}
+.input,.select,.textarea,.authbox .input{background:#fff!important;color:#17191c!important;border-color:#d9dce1!important}
+.card p,.exam-card p,.lead,.small,.muted,.profile-email,.profile-meta span,.account-stat-label,.exam-history-row .small{color:#626770!important}
+.pagehero,.contest-hero,.hero{background:#fff!important;border-bottom-color:#e1e3e7!important}
+.hero:before,.hero:after,.noise,.orb{display:none!important}.hero h1{background:none!important;color:#17191c!important;-webkit-text-fill-color:#17191c!important}
+.contest-problem+.contest-problem,.detail-divider,.solution-content,.exam-question,.rows,.row,.history-list,.history-row{border-color:#e1e3e7!important}
+.cards .card,.exam-card{background:#fff!important;box-shadow:0 8px 28px rgba(20,24,30,.06)!important}
+.theme-toggle{display:none!important}
