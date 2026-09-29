@@ -48,7 +48,7 @@
  shell('','Admin Messages',body);
  document.getElementById('am-search').addEventListener('input',()=>{const q=document.getElementById('am-search').value.trim().toLowerCase();renderUsers(users.filter(x=>String(x.name||'').toLowerCase().includes(q)||String(x.email||'').toLowerCase().includes(q)))});
  await loadUsers();
- convUnsub=onSnapshot(query(collection(db,'conversations'),where('status','==','accepted')),refreshConvs,e=>{console.error('Admin conversations error',e);document.getElementById('am-convs').innerHTML='<div class="am-empty">Could not load conversations.<br>Please deploy the latest Firestore rules.</div>'});
+ convUnsub=onSnapshot(collection(db,'conversations'),snap=>refreshConvs(snap),e=>{console.error('Admin conversations error',e);document.getElementById('am-convs').innerHTML='<div class="am-empty">Could not load conversations.<br>Please check Firebase rules and refresh.</div>'});
  window.addEventListener('beforeunload',()=>{usersUnsub?.();convUnsub?.();msgUnsub?.()});
 })();
 </script>
