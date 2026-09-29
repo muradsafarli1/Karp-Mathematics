@@ -22,6 +22,7 @@ async function finishLogin(cred){
     const old=snap.data()||{};
     await setDoc(ref,{lastLoginAt:now,loginCount:Number(old.loginCount||0)+1},{merge:true});
   }
+  await setDoc(doc(db,"publicProfiles",cred.user.uid),{uid:cred.user.uid,name:cred.user.displayName||cred.user.email?.split("@")[0]||"User",nameLower:String(cred.user.displayName||cred.user.email?.split("@")[0]||"User").trim().toLowerCase(),photoURL:cred.user.photoURL||"",updatedAt:now},{merge:true});
   const profile=(await getDoc(ref)).data()||{};
   notice.className="notice success";notice.textContent="Signed in. Opening KARP…";
   location.replace(profile.role==="admin"?"/admin.html":"/account.html");
