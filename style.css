@@ -211,3 +211,117 @@ body,main,section,.section,.pagehero,.problem-page,.contest-page,.article-page,.
 .exam-question,.contest-problem+.contest-problem,.review-question,.preview-question,.session-question{background:transparent!important}
 .exam-review-wrap,.exam-active-wrap,.mock-wrap,.exams-wrap{background:transparent!important}
 .cards .card,.exam-card,.card,.bigcard,.editor-card,.admin-side,.admin-main{box-shadow:none!important}
+
+
+/* KARP — FINAL CONTINUOUS SURFACE
+   Every content section uses the exact page surface. No white/gray paper boxes. */
+html[data-theme="light"]{
+  --skin:#f7f7f5;
+  --bg:var(--skin);
+  --panel:var(--skin);
+  --panel2:var(--skin);
+}
+html[data-theme="dark"]{
+  --skin:#08090b;
+  --bg:var(--skin);
+  --panel:var(--skin);
+  --panel2:#111317;
+}
+
+/* Page + all major content shells */
+html[data-theme="light"] body,
+html[data-theme="light"] main,
+html[data-theme="light"] section,
+html[data-theme="light"] article,
+html[data-theme="light"] .section,
+html[data-theme="light"] .pagehero,
+html[data-theme="light"] .problem-page,
+html[data-theme="light"] .contest-page,
+html[data-theme="light"] .article-page,
+html[data-theme="light"] .exam-page,
+html[data-theme="light"] .exam-review-wrap,
+html[data-theme="light"] .exam-review,
+html[data-theme="light"] .exam-paper,
+html[data-theme="light"] .exam-active-body,
+html[data-theme="light"] .exam-active-paper,
+html[data-theme="light"] .exam-enter,
+html[data-theme="light"] .exam-enter-card,
+html[data-theme="light"] .contest-hero,
+html[data-theme="light"] .contest-paper,
+html[data-theme="light"] .contest-problem,
+html[data-theme="light"] .article-paper,
+html[data-theme="light"] .problem-detail,
+html[data-theme="light"] .problem-solution,
+html[data-theme="light"] .detail-actions,
+html[data-theme="light"] .mock-page,
+html[data-theme="light"] .mock-wrap,
+html[data-theme="light"] .mock-builder,
+html[data-theme="light"] .past-box,
+html[data-theme="light"] .mock-preview,
+html[data-theme="light"] .mock-review,
+html[data-theme="light"] .mock-paper,
+html[data-theme="light"] .mock-session,
+html[data-theme="light"] .mock-top,
+html[data-theme="light"] .exam-screen,
+html[data-theme="light"] .admin,
+html[data-theme="light"] .admin-side,
+html[data-theme="light"] .admin-main,
+html[data-theme="light"] .editor-card,
+html[data-theme="light"] .editor-section,
+html[data-theme="light"] .question-editor-row,
+html[data-theme="light"] .card,
+html[data-theme="light"] .exam-card,
+html[data-theme="light"] .bigcard,
+html[data-theme="light"] .account-card,
+html[data-theme="light"] .account-stat{
+  background:var(--skin)!important;
+  background-image:none!important;
+  box-shadow:none!important;
+}
+
+/* No separate paper/box behind individual questions */
+html[data-theme="light"] .exam-question,
+html[data-theme="light"] .review-question,
+html[data-theme="light"] .preview-question,
+html[data-theme="light"] .session-question,
+html[data-theme="light"] .contest-problem,
+html[data-theme="light"] .solution-group,
+html[data-theme="light"] .problem-content-markdown,
+html[data-theme="light"] .solution-content{
+  background:transparent!important;
+}
+
+/* Admin create/edit forms: the whole editor remains on the same skin surface. */
+html[data-theme="light"] .admin-grid,
+html[data-theme="light"] .admin-grid > *,
+html[data-theme="light"] .formgrid,
+html[data-theme="light"] .field,
+html[data-theme="light"] .editor-section-head{
+  background:transparent!important;
+}
+
+/* Mock/exam inner paper was the main source of the visible white/gray panel. */
+html[data-theme="light"] .mock-paper,
+html[data-theme="light"] .mock-preview,
+html[data-theme="light"] .mock-builder,
+html[data-theme="light"] .past-box,
+html[data-theme="light"] .mock-review,
+html[data-theme="light"] .exam-paper,
+html[data-theme="light"] .exam-review{
+  border:0!important;
+  border-color:transparent!important;
+}
+
+/* Light theme controls can still have borders, but never a separate page surface. */
+html[data-theme="light"] .input,
+html[data-theme="light"] .select,
+html[data-theme="light"] .textarea{
+  background:var(--skin)!important;
+}
+
+/* Remove the old decorative light gradients from content headers. */
+html[data-theme="light"] .pagehero,
+html[data-theme="light"] .contest-hero{
+  background:var(--skin)!important;
+  background-image:none!important;
+}
