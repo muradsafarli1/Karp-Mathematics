@@ -144,19 +144,20 @@ async function mathnetFind(options={}){
     ?options.sequence.map(x=>String(x).toUpperCase()).filter(x=>['A','C','G','N'].includes(x))
     :null;
   const wanted=sequence&&sequence.length===count?sequence:Array.from({length:count},(_,i)=>categories[i%categories.length]);
+  const excludeIds=new Set(Array.isArray(options.excludeIds)?options.excludeIds.map(String):[]);
+  const allowFallback=options.allowFallback!==false;
 
-  // Use the already-built Firebase shard index for random selection.
-  // This avoids Firestore composite queries such as category + orderBy(randomKey),
-  // so mock generation does not require a manually-created composite index.
+  // Use the Firebase shard index for random selection. This avoids composite
+  // Firestore queries and keeps mock generation entirely on the Firebase runtime DB.
   const index=await mathnetLoadAllIndex();
-  const used=new Set();
+  const used=new Set(excludeIds);
   const selected=[];
 
   function candidates(cat){
     return index.filter(p=>{
       if(p.category!==cat)return false;
       if((difficulty==='easy'||difficulty==='hard')&&p.difficulty!==difficulty)return false;
-      return !used.has(p.id);
+      return !used.has(String(p.id));
     });
   }
 
@@ -168,16 +169,16 @@ async function mathnetFind(options={}){
 
   for(const cat of wanted){
     const chosen=pick(cat);
-    if(chosen){used.add(chosen.id);selected.push(chosen.id)}
+    if(chosen){used.add(String(chosen.id));selected.push(chosen.id)}
   }
 
-  if(selected.length<count){
+  if(allowFallback && selected.length<count){
     for(const cat of categories){
       if(selected.length>=count)break;
       const docs=candidates(cat);
       for(const d of docs){
-        if(!used.has(d.id)){
-          used.add(d.id);
+        if(!used.has(String(d.id))){
+          used.add(String(d.id));
           selected.push(d.id);
           if(selected.length>=count)break;
         }
