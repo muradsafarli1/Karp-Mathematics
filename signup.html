@@ -17,9 +17,10 @@ const googleMarkup=googleBtn.innerHTML;
 async function finishGoogleSignup(cred){
   const ref=doc(db,"users",cred.user.uid),snap=await getDoc(ref);
   const now=new Date().toISOString();
+  const existingRole=snap.exists()?(snap.data()?.role||"user"):"user";
   if(!snap.exists()) await setDoc(ref,{name:cred.user.displayName||cred.user.email?.split("@")[0]||"User",email:cred.user.email||"",role:"user",createdAt:now,photoURL:cred.user.photoURL||"",lastLoginAt:now,loginCount:1});
   else await setDoc(ref,{lastLoginAt:now,loginCount:Number((snap.data()||{}).loginCount||0)+1},{merge:true});
-  await setDoc(doc(db,"publicProfiles",cred.user.uid),{uid:cred.user.uid,name:cred.user.displayName||cred.user.email?.split("@")[0]||"User",nameLower:String(cred.user.displayName||cred.user.email?.split("@")[0]||"User").trim().toLowerCase(),photoURL:cred.user.photoURL||"",updatedAt:now},{merge:true});
+  await setDoc(doc(db,"publicProfiles",cred.user.uid),{uid:cred.user.uid,name:cred.user.displayName||cred.user.email?.split("@")[0]||"User",nameLower:String(cred.user.displayName||cred.user.email?.split("@")[0]||"User").trim().toLowerCase(),photoURL:cred.user.photoURL||"",isAdmin:existingRole==="admin",updatedAt:now},{merge:true});
   const profile=(await getDoc(ref)).data()||{};
   notice.className="notice success";notice.textContent="Account ready. Opening KARP…";
   location.replace(profile.role==="admin"?"/admin.html":"/account.html");
