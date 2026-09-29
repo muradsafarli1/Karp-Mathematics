@@ -389,3 +389,14 @@ body,.top,.footer,.hero,.pagehero,.section,.contest-page,.article-page,.account-
   background:#eeeeeb!important;
   color:#666b73!important;
 }
+
+/* Problems archive cards: visible gray box against the light-gray page. */
+.virtual-cards .problem-card-link,
+.virtual-cards .problem-card-link:hover{
+  background:#eeeeeb!important;
+  border:1px solid #d5d5d1!important;
+}
+.virtual-cards .problem-card-link .tag{
+  background:#e5e5e1!important;
+  border-color:#d0d0cc!important;
+}
