@@ -504,20 +504,21 @@ function escapeHtml(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','
 function normalizeMathMarkdown(value=''){
   let s=String(value??'').replace(/\r\n?/g,'\n');
 
-  // Normalize escaped TeX delimiters and doubled command slashes from imports.
-  s=s.replace(/\\{2,}(?=\()/g,'\\');
-  s=s.replace(/\\{2,}(?=\))/g,'\\');
-  s=s.replace(/\\{2,}(?=\[)/g,'\\');
-  s=s.replace(/\\{2,}(?=\])/g,'\\');
-  s=s.replace(/\\\\(?=(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|sin|cos|tan|log|ln|mathbb|mathcal|mathrm|mathbf|operatorname|overline|underline|left|right|text|begin|end|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|le|leq|ge|geq|neq|equiv|in|notin|subset|subseteq|supset|supseteq|cdot|times|pm|mp|binom|pmod|mod|forall|exists|to|rightarrow|infty)\\b)/g,'\\');
+  // MathNet/admin content can arrive with escaped delimiters or repeated
+  // command slashes. Normalize those forms before Markdown parses the text.
+  s=s.replace(/\\+(?=\()/g,'\\');
+  s=s.replace(/\\+(?=\))/g,'\\');
+  s=s.replace(/\\+(?=\[)/g,'\\');
+  s=s.replace(/\\+(?=\])/g,'\\');
+  s=s.replace(/\\+(?=(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|sin|cos|tan|log|ln|mathbb|mathcal|mathrm|mathbf|operatorname|overline|underline|left|right|text|begin|end|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|le|leq|ge|geq|neq|equiv|in|notin|subset|subseteq|supset|supseteq|cdot|times|pm|mp|binom|pmod|mod|forall|exists|to|rightarrow|infty)\b)/g,'\\');
 
   const dollar=String.fromCharCode(36);
 
-  // Standard math forms.
+  // Standard TeX delimiters.
   s=s.replace(/\$\$([\s\S]*?)\$\$/g,'\\[$1\\]');
   s=s.replace(/(^|[^\\])\$([^$\n]+)\$/g,'$1\\($2\\)');
 
-  // TeX environments may arrive without delimiters.
+  // Standalone TeX environments.
   s=s.replace(/(^|\n)([ \t]*\\begin\{[^}\n]+\}[\s\S]*?\\end\{[^}\n]+\})(?=\n|$)/g,'$1\\[$2\\]');
 
   const texCommand=/\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|sin|cos|tan|log|ln|mathbb|mathcal|mathrm|mathbf|operatorname|overline|underline|left|right|text|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|le|leq|ge|geq|neq|equiv|in|notin|subset|subseteq|supset|supseteq|cdot|times|pm|mp|binom|pmod|mod|forall|exists|to|rightarrow|infty)\b/;
@@ -535,13 +536,18 @@ function normalizeMathMarkdown(value=''){
     const startsLikeProse=proseStart.test(t);
     const symbolOnly=formulaChars.test(t);
 
-    const formulaOnly=(commands&&punct&&(t.startsWith('\\')||!startsLikeProse||words<=6))
+    // Only whole-line-wrap a real formula. A prose sentence such as
+    // "Let x = \frac{a}{b}" is handled by the inline pass below.
+    const formulaOnly=(commands&&punct&&(t.startsWith('\\')||(!startsLikeProse&&words<=6)))
       ||(symbolOnly&&punct&&words<=6&&!startsLikeProse);
 
     if(formulaOnly)return '\\['+t+'\\]';
 
-    // For mixed prose, protect the common standalone TeX commands inline.
-    return line.replace(/\\(?:frac|dfrac|tfrac|sqrt|binom)(?:\s*\{[^{}\n]*\}){1,2}|\\(?:left|right)\s*[()[\]{}|]|\\(?:alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|le|leq|ge|geq|neq|equiv|in|notin|subset|subseteq|supset|supseteq|cdot|times|pm|mp|forall|exists|infty)\b/g,m=>'\\('+m+'\\)');
+    // Mixed prose with bare TeX: wrap common standalone commands inline.
+    return line.replace(
+      /\\(?:frac|dfrac|tfrac)(?:\s*\{[^{}\n]*\}){1,2}|\\sqrt(?:\s*\{[^{}\n]*\})?|\\binom(?:\s*\{[^{}\n]*\}){2}|\\(?:mathbb|mathcal|mathrm|mathbf|text|operatorname)\s*(?:\{[^{}\n]*\}|[A-Za-z])|\\(?:left|right)\s*[()[\]{}|]|\\(?:alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|le|leq|ge|geq|neq|equiv|in|notin|subset|subseteq|supset|supseteq|cdot|times|pm|mp|forall|exists|infty)\b/g,
+      m=>'\\('+m+'\\)'
+    );
   }).join('\n');
 
   return s;
@@ -549,7 +555,7 @@ function normalizeMathMarkdown(value=''){
 function richMarkdown(value=''){
   const source=normalizeMathMarkdown(value);
   if(window.marked&&window.DOMPurify){
-    // Protect math while Markdown is parsed so underscores/braces do not
+    // Protect TeX while Markdown is parsed so underscores/braces do not
     // become Markdown formatting before MathJax gets the text.
     const math=[];
     const tokenFor=i=>'KARP_MATH_SLOT_'+i+'_KARP';
