@@ -1,119 +1,57 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KARP — Account</title>
-<link rel="stylesheet" href="/style.css">
-<script src="/app.js"></script>
+<link rel="stylesheet" href="/style.css"><script src="/app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
 <script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"},startup:{typeset:false}};</script>
 <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
-.account-page{min-height:calc(100vh - 76px)}
-.account-profile{text-align:center;padding:72px 20px 44px}
-.profile-avatar{width:158px;height:158px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 18px;background:var(--panel2)}
-.profile-initial{display:grid;place-items:center;font-size:52px;font-weight:800;color:var(--text)}
-.profile-name{font-size:19px;font-weight:800}.profile-email{margin-top:5px;font-size:12px;color:var(--muted)}
-.account-wrap{width:min(calc(100% - 42px),1220px);margin:0 auto;padding-bottom:90px}
-.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
-.kpi{background:var(--panel2);border-radius:14px;padding:17px;text-align:center}.kpi strong{display:block;font-family:'Space Grotesk';font-size:30px;line-height:1}.kpi span{display:block;margin-top:6px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
-.dashboard{background:var(--panel);border-radius:20px;padding:25px;margin-bottom:14px}
-.dashboard-head{display:flex;justify-content:space-between;align-items:end;gap:15px;margin-bottom:18px}.dashboard-head h2{font-family:'Space Grotesk';font-size:27px;letter-spacing:-1px;margin:0}.dashboard-head p{font-size:11px;color:var(--muted);margin:5px 0 0}
-.switch{display:flex;background:var(--panel2);padding:3px;border-radius:9px;gap:2px}.switch button{border:0;background:transparent;color:var(--muted);padding:7px 11px;border-radius:7px;font-size:10px;font-weight:800;cursor:pointer}.switch button.active{background:var(--text);color:var(--bg)}
-.chart{height:235px;display:flex;align-items:flex-end;gap:8px;padding:6px 0}.bar-col{height:100%;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px}.bar-value{font-size:9px;color:var(--muted);height:12px}.bar-track{height:180px;width:100%;display:flex;align-items:flex-end;justify-content:center}.bar{width:min(34px,72%);min-height:2px;background:var(--text);border-radius:6px 6px 2px 2px}.bar-label{font-size:8px;color:var(--muted);max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.topic-chart{display:grid;gap:11px}.topic-line{display:grid;grid-template-columns:125px 1fr 34px;align-items:center;gap:10px}.topic-label{font-size:11px;color:var(--muted)}.topic-track{height:10px;background:var(--panel2);border-radius:99px;overflow:hidden}.topic-fill{height:100%;background:var(--text);border-radius:99px}.topic-number{font-size:10px;text-align:right;color:var(--muted)}
-.topic-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:18px}.topic-card{background:var(--panel2);border-radius:13px;padding:15px}.topic-card small{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}.topic-card strong{display:block;font-family:'Space Grotesk';font-size:29px;margin-top:5px}
-.history-box{background:var(--panel);border-radius:20px;padding:25px;margin-top:14px}.history-box h2{font-family:'Space Grotesk';font-size:28px;letter-spacing:-1px;margin:0}.history-note{font-size:11px;color:var(--muted);margin:5px 0 16px}
-.history-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.history-card{background:var(--panel2);border-radius:14px;padding:17px}.history-card-title{font-size:13px;font-weight:800}.history-card-meta{font-size:10px;color:var(--muted);margin-top:6px}.history-card-actions{margin-top:13px;display:flex;justify-content:flex-end;gap:6px}.history-card-actions .btn{font-size:10px!important;padding:7px 10px!important}
-.review-panel{display:none;margin-top:12px;padding:16px 0 0;border-top:1px solid var(--line)}.review-panel.open{display:block}.review-question{padding:15px 0;border-top:1px solid var(--line)}.review-question:first-child{border-top:0}.review-qtitle{font-family:'Space Grotesk';font-size:13px;font-weight:800;margin-bottom:8px}.review-body{font-size:15px;line-height:1.8}.review-answer{margin-top:6px;font-size:10px;color:var(--muted)}.review-solution{margin-top:8px}.review-solution-body{display:none;margin-top:9px;font-size:14px;line-height:1.8}.review-solution-body.open{display:block}
-.empty{color:var(--muted);font-size:12px;padding:8px 0}.account-bottom{display:flex;justify-content:center;margin-top:25px}
-@media(max-width:900px){.kpi-grid{grid-template-columns:repeat(3,1fr)}.topic-cards{grid-template-columns:1fr 1fr}.history-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:620px){.account-profile{padding-top:50px}.profile-avatar{width:132px;height:132px}.account-wrap{width:calc(100% - 28px)}.kpi-grid{grid-template-columns:1fr 1fr}.dashboard,.history-box{padding:19px}.dashboard-head{align-items:flex-start;flex-direction:column}.switch{width:100%}.switch button{flex:1}.chart{height:210px;gap:4px}.bar-track{height:160px}.topic-cards{grid-template-columns:1fr 1fr}.topic-line{grid-template-columns:100px 1fr 28px}.history-grid{grid-template-columns:1fr}}
+.account-page{min-height:calc(100vh - 76px)}.account-profile{text-align:center;padding:68px 20px 40px}.profile-avatar{width:150px;height:150px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 17px;background:#f2f4f5}.profile-initial{display:grid;place-items:center;font-size:50px;font-weight:800;color:#252a2f}.profile-name{font-size:19px;font-weight:800}.profile-email{margin-top:5px;font-size:12px;color:#707a83}.account-wrap{width:min(calc(100% - 42px),1220px);margin:0 auto;padding-bottom:90px}
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}.kpi{background:#f6f8f9;border:1px solid #e9edef;border-radius:14px;padding:17px;text-align:center}.kpi strong{display:block;font-family:'Space Grotesk';font-size:30px;line-height:1}.kpi span{display:block;margin-top:6px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#737d86}
+.dashboard,.history-box{background:#fff;border:1px solid #e3e7ea;border-radius:20px;padding:24px;margin-bottom:13px;box-shadow:0 9px 28px rgba(20,27,34,.035)}.dashboard-head{display:flex;justify-content:space-between;align-items:end;gap:15px;margin-bottom:18px}.dashboard-head h2,.history-box h2{font-family:'Space Grotesk';font-size:27px;letter-spacing:-1px;margin:0}.dashboard-head p,.history-note{font-size:10px;color:#7a838c;margin:5px 0 0}.switch{display:flex;background:#f3f5f6;padding:3px;border-radius:9px;gap:2px}.switch button{border:0;background:transparent;color:#707a83;padding:7px 11px;border-radius:7px;font-size:10px;font-weight:800;cursor:pointer}.switch button.active{background:#17191c;color:#fff}
+.chart{height:235px;display:flex;align-items:flex-end;gap:8px;padding:6px 0}.bar-col{height:100%;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px}.bar-value{font-size:9px;color:#7a838c;height:12px}.bar-track{height:180px;width:100%;display:flex;align-items:flex-end;justify-content:center}.bar{width:min(34px,72%);min-height:2px;background:#20252a;border-radius:6px 6px 2px 2px}.bar-label{font-size:8px;color:#7a838c;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topic-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:18px}.topic-card{background:#f6f8f9;border:1px solid #edf0f2;border-radius:13px;padding:15px}.topic-card small{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#7a838c}.topic-card strong{display:block;font-family:'Space Grotesk';font-size:29px;margin-top:5px}.topic-chart{display:grid;gap:11px}.topic-line{display:grid;grid-template-columns:125px 1fr 34px;align-items:center;gap:10px}.topic-label{font-size:10px;color:#7a838c}.topic-track{height:10px;background:#edf0f2;border-radius:99px;overflow:hidden}.topic-fill{height:100%;background:#20252a;border-radius:99px}.topic-number{font-size:10px;text-align:right;color:#7a838c}
+.history-head{display:flex;justify-content:space-between;align-items:end;gap:15px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:14px}.history-card{background:#f8f9fa;border:1px solid #e7eaed;border-radius:14px;padding:15px;min-height:130px;display:flex;flex-direction:column}.history-card-title{font-size:12px;font-weight:800;line-height:1.4}.history-card-meta{font-size:9px;color:#78828b;margin-top:6px;line-height:1.6}.history-card-actions{margin-top:auto;padding-top:13px;display:flex;justify-content:flex-end;gap:5px;flex-wrap:wrap}.history-card-actions .btn{font-size:9px!important;padding:7px 9px!important}.more-row{display:flex;justify-content:center;margin-top:13px}.more-btn{border:0;background:#eef1f3;border-radius:10px;padding:9px 13px;font-size:9px;font-weight:800;color:#58616a;cursor:pointer}.more-btn:hover{background:#e7eaec}.empty{color:#7d8790;font-size:11px;padding:10px 0}.account-bottom{display:flex;justify-content:center;margin-top:23px}
+@media(max-width:1000px){.kpi-grid{grid-template-columns:repeat(3,1fr)}.history-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:620px){.account-profile{padding-top:48px}.profile-avatar{width:130px;height:130px}.account-wrap{width:calc(100% - 28px)}.kpi-grid{grid-template-columns:1fr 1fr}.dashboard,.history-box{padding:19px}.dashboard-head{align-items:flex-start;flex-direction:column}.switch{width:100%}.switch button{flex:1}.chart{height:210px;gap:4px}.bar-track{height:160px}.topic-cards{grid-template-columns:1fr 1fr}.topic-line{grid-template-columns:100px 1fr 28px}.history-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <script>
 (async()=>{
-  const u=await requireUser(); if(!u)return;
-  try{
-    const {db}=await fb();
-    const {doc,setDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-    const now=new Date().toISOString();
-    await setDoc(doc(db,'publicProfiles',u.id),{uid:u.id,name:u.name||'KARP Member',nameLower:String(u.name||'KARP Member').trim().toLowerCase(),photoURL:u.photoURL||'',updatedAt:now},{merge:true});
-  }catch(e){console.warn('Could not sync public profile',e)}
-  await karpMigrateLocalState();
-  const cloudState=await karpUserState();
-  const solved=Object.values(cloudState.solved||{});
-  const saved=Object.values(cloudState.saved||{});
-  const mocks=Array.isArray(cloudState.mocks)?cloudState.mocks:[];
-  const exams=(await api('/api/exams/history').catch(()=>({history:[]}))).history||[];
-
-  const topicName=v=>({A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'}[String(v||'').toUpperCase()]||String(v||''));
-  function problemHref(p){if(p.sourceType==='custom'||p.customId)return '/problem.html?custom='+encodeURIComponent(p.customId||p.id);return '/problem.html?id='+encodeURIComponent(p.id)+(p.sourceConfig?'&config='+encodeURIComponent(p.sourceConfig):'')+(p.sourceIndex!=null?'&offset='+encodeURIComponent(p.sourceIndex):'');}
-  function meta(p){return [p.country,p.competition,p.year,p.problemNumber].filter(Boolean).join(' · ')||topicName(p.category||p.topic)||'Problem';}
-  function dateText(v){const d=v?new Date(v):null;return d&&!isNaN(d)?d.toLocaleString():'—';}
-  function md(x){return DOMPurify.sanitize(marked.parse(String(x||''),{breaks:true}));}
-
-  const solvedDates=solved.flatMap(p=>Array.isArray(p.dates)?p.dates:[]);
-  const days=new Set(solvedDates.map(v=>{const d=new Date(v);return isNaN(d)?'':d.toISOString().slice(0,10)}).filter(Boolean));
-  let streak=0;for(let d=new Date();days.has(d.toISOString().slice(0,10));d.setDate(d.getDate()-1))streak++;
-
-  function dataFor(mode){
-    const now=new Date(),a=[];
-    if(mode==='daily'){for(let i=13;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);const key=d.toISOString().slice(0,10);a.push({label:i===0?'Today':String(d.getDate()),value:solvedDates.filter(v=>String(v).slice(0,10)===key).length});}}
-    else if(mode==='monthly'){for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);a.push({label:d.toLocaleString(undefined,{month:'short'}),value:solvedDates.filter(v=>{const x=new Date(v);return !isNaN(x)&&x.getFullYear()===d.getFullYear()&&x.getMonth()===d.getMonth()}).length});}}
-    else{for(let i=4;i>=0;i--){const y=now.getFullYear()-i;a.push({label:String(y),value:solvedDates.filter(v=>{const x=new Date(v);return !isNaN(x)&&x.getFullYear()===y}).length});}}
-    return a;
-  }
-  function chartHtml(mode){
-    const data=dataFor(mode),max=Math.max(1,...data.map(x=>x.value));
-    if(!data.some(x=>x.value))return '<div class="chart"><div style="margin:auto;color:var(--muted);font-size:12px">No solved activity yet.</div></div>';
-    return '<div class="chart">'+data.map(x=>'<div class="bar-col"><div class="bar-value">'+x.value+'</div><div class="bar-track"><div class="bar" style="height:'+Math.max(2,x.value/max*100)+'%"></div></div><div class="bar-label">'+escapeHtml(x.label)+'</div></div>').join('')+'</div>';
-  }
-
-  const totals={A:0,C:0,G:0,N:0};
-  solved.forEach(x=>{const k=String(x.category||'').toUpperCase();if(totals[k]!=null)totals[k]++;else{const n=topicName(x.topic).toLowerCase();if(n==='algebra')totals.A++;else if(n==='combinatorics')totals.C++;else if(n==='geometry')totals.G++;else if(n==='number theory')totals.N++;}});
-  const maxTopic=Math.max(1,...Object.values(totals));
-
-  const body='<main class="account-page"><section class="account-profile">'+
-    '<img class="profile-avatar" src="'+escapeHtml(u.photoURL||'')+'" style="'+(u.photoURL?'':'display:none')+'" alt="">'+
-    '<div class="profile-avatar profile-initial" style="'+(u.photoURL?'display:none':'')+'">'+escapeHtml((u.name||'K').charAt(0).toUpperCase())+'</div>'+
-    '<div class="profile-name">'+escapeHtml(u.name||'KARP Member')+'</div><div class="profile-email">'+escapeHtml(u.email||'')+'</div>'+
-    '</section><section class="account-wrap">'+
-    '<div class="kpi-grid"><div class="kpi"><strong>'+solved.length+'</strong><span>Solved</span></div><div class="kpi"><strong>'+streak+'</strong><span>Day streak</span></div><div class="kpi"><strong>'+saved.length+'</strong><span>Saved</span></div><div class="kpi"><strong>'+exams.length+'</strong><span>Exams</span></div><div class="kpi"><strong>'+mocks.length+'</strong><span>Mocks</span></div></div>'+
-    '<section class="dashboard"><div class="dashboard-head"><div><h2>Solved activity</h2><p>Daily, monthly and yearly progress.</p></div><div class="switch" id="activity-switch"><button class="active" data-mode="daily">Daily</button><button data-mode="monthly">Monthly</button><button data-mode="yearly">Yearly</button></div></div><div id="activity-chart">'+chartHtml('daily')+'</div></section>'+
-    '<section class="dashboard"><div class="dashboard-head"><div><h2>Topic distribution</h2><p>How your solved problems are distributed across olympiad topics.</p></div></div>'+
-      '<div class="topic-cards"><div class="topic-card"><small>Algebra</small><strong>'+totals.A+'</strong></div><div class="topic-card"><small>Geometry</small><strong>'+totals.G+'</strong></div><div class="topic-card"><small>Combinatorics</small><strong>'+totals.C+'</strong></div><div class="topic-card"><small>Number Theory</small><strong>'+totals.N+'</strong></div></div>'+
-      '<div class="topic-chart">'+[['A','Algebra'],['G','Geometry'],['C','Combinatorics'],['N','Number Theory']].map(x=>'<div class="topic-line"><div class="topic-label">'+x[1]+'</div><div class="topic-track"><div class="topic-fill" style="width:'+(totals[x[0]]/maxTopic*100)+'%"></div></div><div class="topic-number">'+totals[x[0]]+'</div></div>').join('')+'</div>'+
-    '</section>'+
-    '<section class="history-box"><h2>Solved</h2><div class="history-note">Small cards. Click Open to return to the exact problem.</div><div id="solved-list" class="history-grid"></div></section>'+
-    '<section class="history-box"><h2>Saved</h2><div class="history-note">Your saved problems, each linked directly to its problem page.</div><div id="saved-list" class="history-grid"></div></section>'+
-    '<section class="history-box"><h2>Exam History</h2><div class="history-note">Open Review to see the selected exam in this section.</div><div id="exam-list" class="history-grid"></div></section>'+
-    '<section class="history-box"><h2>Mock History</h2><div class="history-note">Open Review to see that mock. Questions and solutions stay collapsed until you open them.</div><div id="mock-list" class="history-grid"></div></section>'+
-    '<div class="account-bottom">'+(u.role==='admin'?'<a class="btn" href="/admin.html">Admin</a>':'')+' <button class="btn" onclick="logout()">Log out</button></div>'+
-    '</section></main>';
-  shell('','Account',body);
-
-  const fillSimple=(id,items)=>{
-    const host=document.getElementById(id);
-    if(!items.length){host.innerHTML='<div class="empty">Nothing here yet.</div>';return;}
-    host.innerHTML=items.map((p,i)=>'<div class="history-card"><div class="history-card-title">'+escapeHtml(p.title||p.competition||'MathNet Problem')+'</div><div class="history-card-meta">'+escapeHtml(meta(p))+'</div><div class="history-card-actions"><a class="btn" href="'+problemHref(p)+'">Open</a></div></div>').join('');
-  };
-  fillSimple('solved-list',solved.slice().reverse());
-  fillSimple('saved-list',saved.slice().reverse());
-
-  const examList=document.getElementById('exam-list');
-  if(!exams.length)examList.innerHTML='<div class="empty">No completed exams yet.</div>';
-  else examList.innerHTML=exams.map((e,i)=>'<div class="history-card"><div class="history-card-title">'+escapeHtml(e.titleEn||e.title||'Exam')+'</div><div class="history-card-meta">'+escapeHtml(dateText(e.submittedAt))+'</div><div class="history-card-actions"><a class="btn" href="/exam.html?id='+encodeURIComponent(e.examId||e.id||'')+'&review=1">Review</a></div></div>').join('');
-
-  const mockList=document.getElementById('mock-list');
-  if(!mocks.length)mockList.innerHTML='<div class="empty">No completed mocks yet.</div>';
-  else mockList.innerHTML=mocks.map((m,i)=>'<div class="history-card"><div class="history-card-title">'+escapeHtml(m.title||('Mock '+(mocks.length-i)))+'</div><div class="history-card-meta">'+escapeHtml(dateText(m.completedAt))+' · '+escapeHtml((m.questions?.length||0)+' questions · '+(m.minutes||0)+' min')+'</div><div class="history-card-actions"><a class="btn" href="/mock.html?review='+encodeURIComponent(m.id||'')+'">Review</a></div></div>').join('');
-
-  document.querySelectorAll('#activity-switch button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#activity-switch button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('activity-chart').innerHTML=chartHtml(b.dataset.mode);});
+ const u=await requireUser();if(!u)return;
+ await karpMigrateLocalState();
+ let cloudState=await karpUserState();
+ const solved=Object.values(cloudState.solved||{}),saved=Object.values(cloudState.saved||{}),mocks=(cloudState.mocks||[]).slice(),exams=(await api('/api/exams/history').catch(()=>({history:[]}))).history||[];
+ const expanded={solved:false,saved:false,exams:false,mocks:false};
+ const topicName=v=>({A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'}[String(v||'').toUpperCase()]||String(v||''));
+ const problemHref=p=>{if(p.sourceType==='custom'||p.customId)return '/problem.html?custom='+encodeURIComponent(p.customId||p.id);return '/problem.html?id='+encodeURIComponent(p.id)+(p.sourceConfig?'&config='+encodeURIComponent(p.sourceConfig):'')+(p.sourceIndex!=null?'&offset='+encodeURIComponent(p.sourceIndex):'')};
+ const meta=p=>[p.country,p.competition,p.year,p.problemNumber].filter(Boolean).join(' · ')||topicName(p.category||p.topic)||'Problem';
+ const dateText=v=>{if(!v)return '—';const d=v?.toDate?v.toDate():new Date(v);return isNaN(d)?'—':d.toLocaleString()};
+ const days=new Set((solved.flatMap(p=>Array.isArray(p.dates)?p.dates:[])).map(v=>{const d=new Date(v);return isNaN(d)?'':d.toISOString().slice(0,10)}).filter(Boolean));
+ let streak=0;for(let d=new Date();days.has(d.toISOString().slice(0,10));d.setDate(d.getDate()-1))streak++;
+ const totals={A:0,C:0,G:0,N:0};solved.forEach(x=>{const k=String(x.category||'').toUpperCase();if(totals[k]!=null)totals[k]++;else{const n=topicName(x.topic).toLowerCase();if(n==='algebra')totals.A++;else if(n==='combinatorics')totals.C++;else if(n==='geometry')totals.G++;else if(n==='number theory')totals.N++}});
+ const chartData=mode=>{const now=new Date(),a=[];if(mode==='daily'){for(let i=13;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);const key=d.toISOString().slice(0,10);a.push({label:i===0?'Today':String(d.getDate()),value:solved.flatMap(p=>Array.isArray(p.dates)?p.dates:[]).filter(v=>String(v).slice(0,10)===key).length})}}else if(mode==='monthly'){for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);a.push({label:d.toLocaleString(undefined,{month:'short'}),value:solved.flatMap(p=>Array.isArray(p.dates)?p.dates:[]).filter(v=>{const x=new Date(v);return !isNaN(x)&&x.getFullYear()===d.getFullYear()&&x.getMonth()===d.getMonth()}).length})}}else{for(let i=4;i>=0;i--){const y=now.getFullYear()-i;a.push({label:String(y),value:solved.flatMap(p=>Array.isArray(p.dates)?p.dates:[]).filter(v=>{const x=new Date(v);return !isNaN(x)&&x.getFullYear()===y}).length})}}return a};
+ const chartHtml=mode=>{const data=chartData(mode),max=Math.max(1,...data.map(x=>x.value));if(!data.some(x=>x.value))return '<div class="chart"><div style="margin:auto;color:#7d8790;font-size:11px">No solved activity yet.</div></div>';return '<div class="chart">'+data.map(x=>'<div class="bar-col"><div class="bar-value">'+x.value+'</div><div class="bar-track"><div class="bar" style="height:'+Math.max(2,x.value/max*100)+'%"></div></div><div class="bar-label">'+escapeHtml(x.label)+'</div></div>').join('')+'</div>'};
+ const limited=(items,key)=>items.slice().reverse();
+ function cardHtml(kind,item){
+   if(kind==='problem')return '<article class="history-card"><div class="history-card-title">'+escapeHtml(item.title||item.competition||'MathNet Problem')+'</div><div class="history-card-meta">'+escapeHtml(meta(item))+'</div><div class="history-card-actions"><a class="btn" href="'+problemHref(item)+'">Open</a></div></article>';
+   if(kind==='exam')return '<article class="history-card"><div class="history-card-title">'+escapeHtml(item.titleEn||item.title||'Exam')+'</div><div class="history-card-meta">'+escapeHtml(dateText(item.submittedAt))+'</div><div class="history-card-actions"><a class="btn" href="/exam.html?id='+encodeURIComponent(item.examId||item.id||'')+'&review=1">Review</a></div></article>';
+   const savedMock=item.status==='saved'||(!item.completedAt&&item.status!=='completed');
+   return '<article class="history-card"><div class="history-card-title">'+escapeHtml(item.title||'Untitled Mock')+'</div><div class="history-card-meta">'+escapeHtml(savedMock?'Saved · '+dateText(item.savedAt||item.createdAt):dateText(item.completedAt))+' · '+escapeHtml((item.questions?.length||0)+' questions · '+(item.minutes||0)+' min')+'</div><div class="history-card-actions">'+(savedMock?'<a class="btn" href="/mock.html?saved='+encodeURIComponent(item.id)+'">Open</a>':'<a class="btn" href="/mock.html?review='+encodeURIComponent(item.id)+'">Review</a>')+'<button class="btn danger" data-delete-mock="'+escapeHtml(item.id)+'">Delete</button></div></article>';
+ }
+ function sectionHtml(title,note,id,items,kind){
+   const shown=expanded[id]?items:items.slice(0,4),more=items.length>4;
+   return '<section class="history-box"><div class="history-head"><div><h2>'+title+'</h2><div class="history-note">'+note+'</div></div></div><div id="'+id+'-list" class="history-grid">'+(shown.length?shown.map(x=>cardHtml(kind,x)).join(''):'<div class="empty" style="grid-column:1/-1">Nothing here yet.</div>')+'</div>'+(more?'<div class="more-row"><button class="more-btn" data-more="'+id+'">'+(expanded[id]?'Show less':'More')+' · '+(expanded[id]?items.length-4:items.length-4)+' more</button></div>':'')+'</section>';
+ }
+ const body='<main class="account-page"><section class="account-profile"><img class="profile-avatar" src="'+escapeHtml(u.photoURL||'')+'" style="'+(u.photoURL?'':'display:none')+'" alt=""><div class="profile-avatar profile-initial" style="'+(u.photoURL?'display:none':'')+'">'+escapeHtml((u.name||'K').charAt(0).toUpperCase())+'</div><div class="profile-name">'+escapeHtml(u.name||'KARP Member')+'</div><div class="profile-email">'+escapeHtml(u.email||'')+'</div></section><section class="account-wrap"><div class="kpi-grid"><div class="kpi"><strong>'+solved.length+'</strong><span>Solved</span></div><div class="kpi"><strong>'+streak+'</strong><span>Day streak</span></div><div class="kpi"><strong>'+saved.length+'</strong><span>Saved</span></div><div class="kpi"><strong>'+exams.length+'</strong><span>Exams</span></div><div class="kpi"><strong>'+mocks.length+'</strong><span>Mocks</span></div></div><section class="dashboard"><div class="dashboard-head"><div><h2>Solved activity</h2><p>Daily, monthly and yearly progress.</p></div><div class="switch" id="activity-switch"><button class="active" data-mode="daily">Daily</button><button data-mode="monthly">Monthly</button><button data-mode="yearly">Yearly</button></div></div><div id="activity-chart">'+chartHtml('daily')+'</div></section><section class="dashboard"><div class="dashboard-head"><div><h2>Topic distribution</h2><p>How your solved problems are distributed across olympiad topics.</p></div></div><div class="topic-cards"><div class="topic-card"><small>Algebra</small><strong>'+totals.A+'</strong></div><div class="topic-card"><small>Geometry</small><strong>'+totals.G+'</strong></div><div class="topic-card"><small>Combinatorics</small><strong>'+totals.C+'</strong></div><div class="topic-card"><small>Number Theory</small><strong>'+totals.N+'</strong></div></div><div class="topic-chart">'+[['A','Algebra'],['G','Geometry'],['C','Combinatorics'],['N','Number Theory']].map(x=>'<div class="topic-line"><div class="topic-label">'+x[1]+'</div><div class="topic-track"><div class="topic-fill" style="width:'+(totals[x[0]]/Math.max(1,...Object.values(totals))*100)+'%"></div></div><div class="topic-number">'+totals[x[0]]+'</div></div>').join('')+'</div></section>'+sectionHtml('Solved','Your first four solved problems are shown here; open More for the rest.','solved',solved,'problem')+sectionHtml('Saved','Your first four saved problems are shown here; open More for the rest.','saved',saved,'problem')+sectionHtml('Exam History','Your first four completed exams are shown here; open More for the rest.','exams',exams,'exam')+sectionHtml('Mock History','Your first four saved/completed mocks are shown here; open More for the rest.','mocks',mocks,'mock')+'<div class="account-bottom">'+(u.role==='admin'?'<a class="btn" href="/admin.html">Admin</a>':'')+' <button class="btn" onclick="logout()">Log out</button></div></section></main>';
+ shell('','Account',body);
+ document.querySelectorAll('[data-more]').forEach(b=>b.onclick=()=>{expanded[b.dataset.more]=!expanded[b.dataset.more];const old=document.getElementById(b.dataset.more+'-list');if(old){const items=b.dataset.more==='solved'?solved:b.dataset.more==='saved'?saved:b.dataset.more==='exams'?exams:mocks;old.innerHTML=(expanded[b.dataset.more]?items:items.slice(0,4)).map(x=>cardHtml(b.dataset.more==='exams'?'exam':b.dataset.more==='mocks'?'mock':'problem',x)).join('')||'<div class="empty" style="grid-column:1/-1">Nothing here yet.</div>';b.textContent=(expanded[b.dataset.more]?'Show less':'More')+' · '+(items.length-4)+' more';wireDeletes()}});
+ function wireDeletes(){document.querySelectorAll('[data-delete-mock]').forEach(btn=>btn.onclick=async()=>{if(!confirm('Delete this mock permanently?'))return;try{await karpDeleteUserRecord('mockHistory',String(btn.dataset.deleteMock));const idx=mocks.findIndex(x=>String(x.id)===String(btn.dataset.deleteMock));if(idx>=0)mocks.splice(idx,1);document.getElementById('mocks-list').innerHTML=(expanded.mocks?mocks:mocks.slice(0,4)).map(x=>cardHtml('mock',x)).join('')||'<div class="empty" style="grid-column:1/-1">Nothing here yet.</div>';toast('Mock deleted.');wireDeletes()}catch(e){toast(e.message||'Could not delete mock.')}})}
+ wireDeletes();
+ document.querySelectorAll('#activity-switch button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#activity-switch button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('activity-chart').innerHTML=chartHtml(b.dataset.mode)});
 })();
 </script>
-</body>
-</html>
+</body></html>
