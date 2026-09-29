@@ -161,10 +161,11 @@ let __fb=null;
 let __authReady=null;
 async function fb(){
   if(!__fb){
-    const [{initializeApp},{getAuth},{getFirestore}]=await Promise.all([
+    const [{initializeApp},{getAuth},{getFirestore},{getStorage}]=await Promise.all([
       import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js'),
       import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js'),
       import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js'),
+      import('https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js'),
     ]);
     const firebaseConfig={
       apiKey:"AIzaSyAjEd4pN33WpoJlT2rsAgDFMO3A4Uh-M4s",
@@ -177,7 +178,8 @@ async function fb(){
     const app=initializeApp(firebaseConfig);
     const auth=getAuth(app);
     const db=getFirestore(app);
-    __fb={app,auth,db};
+    const storage=getStorage(app);
+    __fb={app,auth,db,storage};
     __authReady=new Promise(async resolve=>{
       try{
         const {onAuthStateChanged}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
@@ -504,59 +506,93 @@ function escapeHtml(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','
 function normalizeMathMarkdown(value=''){
   let s=String(value??'').replace(/\r\n?/g,'\n');
 
-  // MathNet can contain JSON/Markdown escaping such as \\[, \\], \\\\frac, etc.
-  // Collapse repeated slashes before TeX delimiters and commands first.
+  // MathNet/admin exports can contain repeated escaping from JSON/Markdown.
   s=s.replace(/\\{2,}(?=[()[\]])/g,'\\');
-  s=s.replace(/\\{2,}(?=[A-Za-z])/g,'\\');
+  s=s.replace(/\\{2,}(?=[A-Za-z@])/g,'\\');
 
-  // Canonicalize common macros that are used in source booklets but are not
-  // consistently understood by MathJax's default TeX parser.
+  // Common MathNet/source-booklet aliases.
   const aliases={
-    Vangle:'angle',
-    vangle:'angle',
-    VAngle:'angle',
-    vect:'vec',
-    vector:'vec',
-    Bbb:'mathbb',
-    bbb:'mathbb',
-    mbf:'mathbf',
-    bf:'mathbf',
-    rm:'mathrm',
-    scr:'mathcal'
+    Vangle:'angle',VAngle:'angle',vangle:'angle',
+    vect:'vec',vector:'vec',
+    Bbb:'mathbb',bbb:'mathbb',
+    mbf:'mathbf',bf:'mathbf',rm:'mathrm',scr:'mathcal'
   };
   Object.entries(aliases).forEach(([from,to])=>{
-    s=s.replace(new RegExp('\\\\'+from+'\\b','g'),'\\'+to);
+    s=s.replace(new RegExp('\\\\'+from+'\\b','g'),()=> '\\'+to);
   });
 
-  // Short blackboard-letter macros frequently appear in extracted geometry /
-  // olympiad text. Only convert when used as a TeX command.
-  const blackboard={R:'R',N:'N',Z:'Z',Q:'Q',C:'C',F:'F',P:'P'};
-  Object.keys(blackboard).forEach(cmd=>{
-    s=s.replace(new RegExp('\\\\'+cmd+'\\b','g'),'\\mathbb{'+cmd+'}');
+  // Common one-letter blackboard macros.
+  ['R','N','Z','Q','C','F','P'].forEach(cmd=>{
+    s=s.replace(new RegExp('\\\\'+cmd+'\\b','g'),()=> '\\mathbb{'+cmd+'}');
   });
 
-  // Normalize degree notation so it cannot be split into a separate inline-math span.
+  // Degree symbols should never be parsed as a separate TeX command.
   s=s.replace(/\^\\circ\b/g,'°');
   s=s.replace(/\\circ\b/g,'°');
   s=s.replace(/\\deg\b/g,'°');
 
-  // Standard TeX delimiters.
+  // Standard display / inline TeX delimiters.
   s=s.replace(/\$\$([\s\S]*?)\$\$/g,'\\[$1\\]');
   s=s.replace(/(^|[^\\])\$([^$\n]+)\$/g,'$1\\($2\\)');
+
+  // Normalize raw booklet-style display blocks:
+  // [
+  //   formula / aligned equations
+  // ]
+  const rawLines=s.split('\n');
+  const normalizedLines=[];
+  let rawDisplay=false;
+  for(let i=0;i<rawLines.length;i++){
+    const line=rawLines[i],trim=line.trim();
+    if(trim==='['){
+      if(!rawDisplay){normalizedLines.push('\\[');rawDisplay=true;}
+      else normalizedLines.push(line);
+      continue;
+    }
+    if(trim===']'){
+      if(rawDisplay){normalizedLines.push('\\]');rawDisplay=false;}
+      else normalizedLines.push(line);
+      continue;
+    }
+    if(!rawDisplay && /^\s*\[(.+)\]\s*$/.test(line)){
+      const body=line.replace(/^\s*\[|\]\s*$/g,'');
+      if(/[=^_{}<>]|\\[A-Za-z@]+/.test(body)){
+        normalizedLines.push('\\['+body+'\\]');
+        continue;
+      }
+    }
+    normalizedLines.push(line);
+  }
+  if(rawDisplay){
+    normalizedLines.push('\\]');
+    rawDisplay=false;
+  }
+  s=normalizedLines.join('\n');
 
   // TeX environments are display math.
   s=s.replace(/(^|\n)([ \t]*\\begin\{[^}\n]+\}[\s\S]*?\\end\{[^}\n]+\})(?=\n|$)/g,'$1\\[$2\\]');
 
+  // Repair multiline display blocks copied from align/array source. MathNet
+  // often gives '&=' plus a single trailing '\' per line instead of '\\'.
+  s=s.replace(/\\\[([\s\S]*?)\\\]/g,(all,body)=>{
+    let b=String(body).replace(/\\[ \t]*\n/g,'\\\\\n').trim();
+    const isAligned=/&(?=\s*[^&\n]*=)|&=/.test(b) && /\n/.test(b);
+    if(isAligned && !/\\begin\{(?:aligned|alignedat|array|gathered|cases|split)\}/.test(b)){
+      b='\\begin{aligned}\n'+b+'\n\\end{aligned}';
+    }
+    return '\\[\n'+b+'\n\\]';
+  });
+
   const commandSet=new Set([
-    'frac','dfrac','tfrac','sqrt','binom','sum','prod','int','lim',
-    'sin','cos','tan','cot','sec','csc','arcsin','arccos','arctan',
-    'log','ln','exp','max','min','sup','inf',
+    'frac','dfrac','tfrac','cfrac','binom','dbinom','tbinom','sqrt','root',
+    'sum','prod','int','iint','iiint','lim','sin','cos','tan','cot','sec','csc',
+    'arcsin','arccos','arctan','log','ln','exp','max','min','sup','inf',
     'mathbb','mathcal','mathfrak','mathrm','mathbf','boldsymbol','operatorname',
     'overline','underline','overrightarrow','overleftarrow','vec','widehat','widetilde',
-    'text','textbf','textrm','emph',
+    'text','textbf','textrm','textit','emph','mbox',
     'alpha','beta','gamma','delta','epsilon','varepsilon','zeta','eta','theta','vartheta',
     'iota','kappa','lambda','mu','nu','xi','pi','varpi','rho','varrho','sigma','varsigma',
-    'tau','upsilon','phi','varphi','chi','psi','omega','varepsilon',
+    'tau','upsilon','phi','varphi','chi','psi','omega',
     'le','leq','ge','geq','neq','equiv','cong','sim','simeq','approx','asymp',
     'in','notin','subset','subseteq','supset','supseteq','ni','notni',
     'parallel','nparallel','perp','angle','measuredangle','sphericalangle','triangle',
@@ -566,15 +602,16 @@ function normalizeMathMarkdown(value=''){
     'left','right','big','Big','bigl','Bigl','bigr','Bigr',
     'lvert','rvert','lVert','rVert','Vert','vert','langle','rangle',
     'lceil','rceil','lfloor','rfloor','dots','ldots','cdots','vdots','ddots',
-    'pmod','mod','not','overbrace','underbrace','partial','nabla'
+    'pmod','mod','not','overbrace','underbrace','partial','nabla','doteq','propto',
+    'simultaneously','stackrel','overset','underset'
   ]);
 
   const argumentCommands=new Set([
-    'frac','dfrac','tfrac','binom',
+    'frac','dfrac','tfrac','cfrac','binom','dbinom','tbinom',
     'sqrt','overline','underline','overrightarrow','overleftarrow','vec',
     'widehat','widetilde','mathbb','mathcal','mathfrak','mathrm','mathbf',
-    'boldsymbol','operatorname','text','textbf','textrm','emph',
-    'overbrace','underbrace'
+    'boldsymbol','operatorname','text','textbf','textrm','textit','emph','mbox',
+    'overbrace','underbrace','stackrel','overset','underset'
   ]);
 
   const knownZeroArg=new Set([
@@ -582,19 +619,18 @@ function normalizeMathMarkdown(value=''){
     'iota','kappa','lambda','mu','nu','xi','pi','varpi','rho','varrho','sigma','varsigma',
     'tau','upsilon','phi','varphi','chi','psi','omega','le','leq','ge','geq','neq','equiv',
     'cong','sim','simeq','approx','asymp','in','notin','subset','subseteq','supset',
-    'supseteq','ni','notni','parallel','nparallel','perp','angle','measuredangle',
-    'sphericalangle','triangle','cdot','times','pm','mp','ast','star','circ','bullet','oplus','otimes',
-    'forall','exists','to','mapsto','rightarrow','leftarrow','leftrightarrow','Rightarrow',
-    'Leftarrow','Leftrightarrow','implies','iff','infty','lvert','rvert','lVert','rVert',
-    'Vert','vert','langle','rangle','lceil','rceil','lfloor','rfloor','dots','ldots',
-    'cdots','vdots','ddots','partial','nabla'
+    'supseteq','ni','notni','parallel','nparallel','perp','cdot','times','pm','mp','ast',
+    'star','circ','bullet','oplus','otimes','forall','exists','to','mapsto','rightarrow',
+    'leftarrow','leftrightarrow','Rightarrow','Leftarrow','Leftrightarrow','implies','iff',
+    'infty','lvert','rvert','lVert','rVert','Vert','vert','langle','rangle','lceil','rceil',
+    'lfloor','rfloor','dots','ldots','cdots','vdots','ddots','partial','nabla','doteq','propto'
   ]);
 
-  const anyCommand=/\\([A-Za-z@]+)(?![A-Za-z@])/;
+  const anyCommand=/\\([A-Za-z@]+)/;
   const texCommand=/\\(?:[A-Za-z@]+)/;
-  const formulaPunctuation=/[=^_{}<>]|\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|binom|angle|Vangle|vec|overline|mathbb)\b/;
-  const formulaChars=/^[\\0-9A-Za-z{}()\[\]\s=+*^_<>.,;:|/\\-]+$/;
-  const proseStart=/^(?:let|find|prove|show|suppose|given|assume|determine|consider|if|there|for|we|the|where|hence|thus|then)\b/i;
+  const formulaPunctuation=/[=^_{}<>]|\\(?:frac|dfrac|tfrac|cfrac|sqrt|sum|prod|int|binom|angle|Vangle|vec|overline|mathbb)\b/;
+  const formulaChars=/^[\\0-9A-Za-z{}()\[\]\s=+*^_<>.,;:|/\\\-]+$/;
+  const proseStart=/^(?:let|find|prove|show|suppose|given|assume|determine|consider|if|there|for|we|the|where|hence|thus|then|clearly|and)\b/i;
 
   function skipSpaces(line,pos){
     while(pos<line.length&&/\s/.test(line[pos]))pos++;
@@ -618,13 +654,11 @@ function normalizeMathMarkdown(value=''){
     const m=line.slice(pos).match(/^[A-Za-z0-9]+/);
     return m?pos+m[0].length:pos;
   }
-
   function consumeArgument(line,pos){
     pos=skipSpaces(line,pos);
     if(pos<line.length&&line[pos]==='{')return consumeBalanced(line,pos,'{','}');
     return consumeWord(line,pos);
   }
-
   function consumeAtom(line,pos){
     pos=skipSpaces(line,pos);
     if(pos>=line.length)return pos;
@@ -645,39 +679,12 @@ function normalizeMathMarkdown(value=''){
   }
 
   function looksLikeFormula(text){
-    const t=text.trim();
+    const t=String(text).trim();
     if(!t)return false;
     const command=texCommand.test(t);
     const punct=formulaPunctuation.test(t);
     const words=(t.match(/\b[A-Za-z]{3,}\b/g)||[]).length;
-    return command || (formulaChars.test(t)&&punct&&words<=8);
-  }
-
-  function fixDisplayLine(line){
-    const open=line.indexOf('\\[');
-    const close=line.indexOf('\\]');
-    if(open<0&&close<0)return line;
-
-    // Already balanced.
-    if(open>=0&&close>=open)return line;
-
-    // A dangling opener: treat the remainder as one display formula when it
-    // looks mathematical; otherwise remove the literal TeX delimiter.
-    if(open>=0&&close<open){
-      const before=line.slice(0,open);
-      const after=line.slice(open+2);
-      if(looksLikeFormula(after))return before+'\\['+after+'\\]';
-      return line.slice(0,open)+'['+after;
-    }
-
-    // A dangling closer: convert a formula-like prefix into display math.
-    if(close>=0&&open<0){
-      const before=line.slice(0,close);
-      const after=line.slice(close+2);
-      if(looksLikeFormula(before))return '\\['+before+'\\]'+after;
-      return before+']'+after;
-    }
-    return line;
+    return command || (formulaChars.test(t)&&punct&&words<=10);
   }
 
   function wrapBareTexInline(line){
@@ -686,38 +693,36 @@ function normalizeMathMarkdown(value=''){
       const m=line.slice(pos).match(anyCommand);
       if(!m){pos++;continue;}
       const cmd=m[1];
-      if(!commandSet.has(cmd) && !/^[A-Za-z@]+$/.test(cmd)){pos+=m[0].length;continue;}
-
-      // Do not wrap environment markers; they are handled above.
+      if(!commandSet.has(cmd)){pos+=m[0].length;continue;}
       if(cmd==='begin'||cmd==='end'){pos+=m[0].length;continue;}
 
       let end=pos+m[0].length;
       if(argumentCommands.has(cmd)){
-        if(cmd==='frac'||cmd==='dfrac'||cmd==='tfrac'||cmd==='binom'){
+        if(cmd==='frac'||cmd==='dfrac'||cmd==='tfrac'||cmd==='cfrac'||cmd==='binom'||cmd==='dbinom'||cmd==='tbinom'){
           end=consumeArgument(line,end);
           end=consumeArgument(line,end);
         }else{
           end=consumeArgument(line,end);
         }
-      }else if(cmd==='sum'||cmd==='prod'||cmd==='int'||cmd==='lim'){
-        // Consume optional lower/upper limits and the following atom.
+      }else if(cmd==='sum'||cmd==='prod'||cmd==='int'||cmd==='iint'||cmd==='iiint'||cmd==='lim'){
         while(true){
           const p=skipSpaces(line,end);
           if(line[p]==='_'||line[p]==='^')end=consumeAtom(line,p+1);
           else break;
         }
-        end=consumeAtom(line,end);
+        end=consumeArgument(line,end);
       }else if(cmd==='sin'||cmd==='cos'||cmd==='tan'||cmd==='cot'||cmd==='sec'||cmd==='csc'||
                cmd==='arcsin'||cmd==='arccos'||cmd==='arctan'||cmd==='log'||cmd==='ln'||cmd==='exp'||
                cmd==='max'||cmd==='min'||cmd==='sup'||cmd==='inf'||cmd==='angle'||cmd==='measuredangle'||
-               cmd==='sphericalangle'||cmd==='triangle'){
+               cmd==='sphericalangle'||cmd==='triangle'||cmd==='vec'){
         end=consumeWord(line,end);
       }else if(cmd==='left'||cmd==='big'||cmd==='Big'||cmd==='bigl'||cmd==='Bigl'||cmd==='bigr'||cmd==='Bigr'){
         const found=findClosingDelimiter(line,end);
         end=found>=0?found:line.length;
+      }else if(cmd==='right'){
+        end=skipSpaces(line,end);
+        if(end<line.length)end++;
       }else if(!knownZeroArg.has(cmd)){
-        // Unknown but syntactically TeX-like macro: keep a nearby group/atom
-        // inside the same math span instead of leaving the command as prose.
         const next=skipSpaces(line,end);
         if(line[next]==='{')end=consumeAtom(line,next);
       }
@@ -729,14 +734,19 @@ function normalizeMathMarkdown(value=''){
     return out+line.slice(cursor);
   }
 
-  s=s.split('\n').map(rawLine=>{
-    let line=fixDisplayLine(rawLine);
+  const processed=[];
+  let insideRawDisplay=false;
+  s.split('\n').forEach(rawLine=>{
+    const line=rawLine;
     const t=line.trim();
-    if(!t)return line;
+    if(!t){processed.push(line);return;}
 
-    // Lines that already contain valid MathJax delimiters are left intact.
-    if(/\\\([\s\S]*\\\)|\\\[[\s\S]*\\\]/.test(t))return line;
+    // Already canonical/protected math.
+    if(/\\\(|\\\[/.test(t)){processed.push(line);return;}
 
+    // A line inside a raw [ ... ] block is display math and must not be split
+    // into Markdown. The block was converted above, so this only catches
+    // unusual malformed input that still carries an unmatched delimiter.
     const hasAnyCommand=texCommand.test(t);
     const punct=formulaPunctuation.test(t);
     const words=(t.match(/\b[A-Za-z]{3,}\b/g)||[]).length;
@@ -744,15 +754,29 @@ function normalizeMathMarkdown(value=''){
     const symbolOnly=formulaChars.test(t);
 
     const formulaOnly=
-      (hasAnyCommand&&punct&&(t.startsWith('\\')||(!startsLikeProse&&words<=10))) ||
-      (symbolOnly&&punct&&words<=10&&!startsLikeProse);
+      (hasAnyCommand&&punct&&(t.startsWith('\\')||(!startsLikeProse&&words<=12))) ||
+      (symbolOnly&&punct&&words<=12&&!startsLikeProse) ||
+      (/&=?/.test(t)&&(/[=^_{}]/.test(t)||/\\\\/.test(t)));
 
-    if(formulaOnly)return '\\['+t+'\\]';
-    return wrapBareTexInline(line);
-  }).join('\n');
+    if(formulaOnly){
+      processed.push('\\['+t+'\\]');
+      return;
+    }
+    processed.push(wrapBareTexInline(line));
+  });
+  s=processed.join('\n');
 
-  // Final guard: no stray display delimiters survive into the renderer.
-  s=s.split('\n').map(fixDisplayLine).join('\n');
+  // One last pass catches malformed/unbalanced display delimiters.
+  const opens=(s.match(/\\\[/g)||[]).length;
+  const closes=(s.match(/\\\]/g)||[]).length;
+  if(opens>closes)s+='\\]'.repeat(opens-closes);
+  else if(closes>opens){
+    let extra=closes-opens;
+    s=s.replace(/\\\]/g,match=>{
+      if(extra>0){extra--;return '';}
+      return match;
+    });
+  }
   return s;
 }
 function richMarkdown(value=''){
@@ -777,10 +801,10 @@ function richMarkdown(value=''){
   return escapeHtml(source).replace(/\n/g,'<br>');
 }
 
-function nav(active){const links=[['Problems','/problems.html'],['Contests','/contests.html'],['Articles','/articles.html'],['Exams','/exams.html'],['Mocks','/mock.html'],['Videos','/videos.html']];const toolsMenu='<div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a><a href="/desmos.html"><span>Desmos</span><small>Graphing Calculator</small></a></div></div>';return `<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks">${links.map(x=>`<a class="${active===x[0]?'active':''}" href="${x[1]}">${x[0]}</a>`).join('')}${toolsMenu}<a class="${active==='About'?'active':''}" href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header>`}
+function nav(active){const links=[['Problems','/problems.html'],['Contests','/contests.html'],['Articles','/articles.html'],['Exams','/exams.html'],['Mocks','/mock.html'],['Videos','/videos.html'],['Journal','/journal.html']];const toolsMenu='<div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a><a href="/desmos.html"><span>Desmos</span><small>Graphing Calculator</small></a></div></div>';return `<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks">${links.map(x=>`<a class="${active===x[0]?'active':''}" href="${x[1]}">${x[0]}</a>`).join('')}${toolsMenu}<a class="${active==='About'?'active':''}" href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header>`}
 async function updateNavUser(){const box=document.getElementById('nav-actions');if(!box)return;const u=await me();if(!u)return;const avatar=u.photoURL?`<img src="${escapeHtml(u.photoURL)}" alt="" class="nav-profile-img">`:`<span class="nav-profile-initial">${escapeHtml((u.name||'K').charAt(0).toUpperCase())}</span>`;box.innerHTML=`<a class="nav-profile" href="/account.html" aria-label="Account" title="Account">${avatar}</a>${u.role==='admin'?'<a class="btn nav-admin" href="/admin.html">Admin</a>':''}<button class="nav-logout" onclick="logout()">Log out</button>`}
 function shell(active,title,body){document.title=`KARP — ${title}`;document.body.innerHTML=nav(active)+body+footer();updateNavUser()}
-function footer(){return `<footer class="footer"><div class="wrap footgrid"><div><div class="brand">KARP</div><div class="small">Olympiad mathematics for serious problem solvers.</div></div><div class="footlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/articles.html">Articles</a><a href="/exams.html">Exams</a><a href="/mock.html">Mocks</a><a href="/videos.html">Videos</a><a href="/about.html">About Us</a></div></div></footer>`}
+function footer(){return `<footer class="footer"><div class="wrap footgrid"><div><div class="brand">KARP</div><div class="small">Olympiad mathematics for serious problem solvers.</div></div><div class="footlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/articles.html">Articles</a><a href="/exams.html">Exams</a><a href="/mock.html">Mocks</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/about.html">About Us</a></div></div></footer>`}
 function currentLanguage(){return localStorage.getItem('able_lang')==='az'?'az':'en'}
 function setLanguage(lang){localStorage.setItem('able_lang',lang);return lang}
 function localized(item,field,lang=currentLanguage()){const az=item?.[`${field}Az`],en=item?.[`${field}En`],old=item?.[field];return lang==='az'?(az||en||old||''):(en||az||old||'')}
