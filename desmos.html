@@ -6,22 +6,46 @@
 <title>KARP — Desmos</title>
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js"></script>
+<script src="https://www.desmos.com/api/v1.12/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
 <style>
 .tool-page{height:calc(100vh - 76px);min-height:0;padding:0;background:var(--bg,#08090b);overflow:hidden}
 .tool-inner{width:100%;height:100%}
-.tool-frame{display:block;width:100%;height:100%;border:0;border-radius:0;background:#fff}
+#desmos-calculator{width:100%;height:100%;background:#fff}
+.desmos-error{height:100%;display:grid;place-items:center;background:#fff;color:#17191c;font:16px system-ui,sans-serif}
 </style>
 </head>
 <body>
 <script>
-shell('Tools','Desmos',`<main class="tool-page"><div class="tool-inner"><iframe
-  id="desmos-frame"
-  class="tool-frame"
-  title="Desmos Graphing Calculator"
-  src="https://www.desmos.com/calculator?embed"
-  allow="clipboard-read; clipboard-write"
-  loading="eager"
-  referrerpolicy="strict-origin-when-cross-origin"></iframe></div></main>`);
+shell('Tools','Desmos',`<main class="tool-page"><div class="tool-inner"><div id="desmos-calculator"></div></div></main>`);
+
+function initDesmos(){
+  const el=document.getElementById('desmos-calculator');
+  if(!el || !window.Desmos) return false;
+  try{
+    window.karpDesmos=Desmos.GraphingCalculator(el,{
+      expressions:true,
+      settingsMenu:true,
+      zoomButtons:true,
+      keypad:true,
+      graphpaper:true,
+      expressionsCollapsed:false,
+      border:false
+    });
+    requestAnimationFrame(()=>window.karpDesmos?.resize());
+    return true;
+  }catch(err){
+    console.error('Desmos initialization failed:',err);
+    return false;
+  }
+}
+
+window.addEventListener('load',()=>{
+  if(!initDesmos()){
+    const el=document.getElementById('desmos-calculator');
+    if(el) el.innerHTML='<div class="desmos-error">Desmos could not be loaded. Please refresh the page.</div>';
+  }
+});
+window.addEventListener('resize',()=>window.karpDesmos?.resize());
 </script>
 </body>
 </html>
