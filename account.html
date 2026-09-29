@@ -43,12 +43,11 @@
     const now=new Date().toISOString();
     await setDoc(doc(db,'publicProfiles',u.id),{uid:u.id,name:u.name||'KARP Member',nameLower:String(u.name||'KARP Member').trim().toLowerCase(),photoURL:u.photoURL||'',updatedAt:now},{merge:true});
   }catch(e){console.warn('Could not sync public profile',e)}
-  const solvedMap=()=>{try{const a=JSON.parse(localStorage.getItem('able_solved_problems')||'{}');const b=JSON.parse(localStorage.getItem('karp_solved_mathnet')||'{}');return {...a,...b};}catch{return {}}};
-  const savedMap=()=>{try{return JSON.parse(localStorage.getItem('karp_saved_mathnet')||'{}')}catch{return {}}};
-  const mockHistory=()=>{try{return JSON.parse(localStorage.getItem('karp_mock_history')||'[]')}catch{return []}};
-  const solved=Object.entries(solvedMap()).map(([id,v])=>({id,...v}));
-  const saved=Object.values(savedMap());
-  const mocks=mockHistory();
+  await karpMigrateLocalState();
+  const cloudState=await karpUserState();
+  const solved=Object.values(cloudState.solved||{});
+  const saved=Object.values(cloudState.saved||{});
+  const mocks=Array.isArray(cloudState.mocks)?cloudState.mocks:[];
   const exams=(await api('/api/exams/history').catch(()=>({history:[]}))).history||[];
 
   const topicName=v=>({A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'}[String(v||'').toUpperCase()]||String(v||''));
