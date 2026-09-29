@@ -375,3 +375,17 @@ body,.top,.footer,.hero,.pagehero,.section,.contest-page,.article-page,.account-
 .choice input:checked+span,.difficulty input:checked+span{
   background:#2f78b7!important;color:#fff!important;border-color:#2f78b7!important;
 }
+
+/* Problems archive topic badge should visibly read as a small gray box. */
+.problem-card-link > .tag{
+  display:inline-flex!important;
+  align-self:flex-start!important;
+  width:max-content!important;
+  box-sizing:border-box;
+  padding:5px 9px!important;
+  margin:0 0 2px!important;
+  border:1px solid #d5d5d1!important;
+  border-radius:7px!important;
+  background:#eeeeeb!important;
+  color:#666b73!important;
+}
