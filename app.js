@@ -504,59 +504,70 @@ function escapeHtml(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','
 function normalizeMathMarkdown(value=''){
   let s=String(value??'').replace(/\r\n?/g,'\n');
 
-  const collapseDelimiterEscapes=(src)=>{
-    for(let i=0;i<8;i++){
-      src=src.replace(/\\{2,}(?=\()/g,'\\');
-      src=src.replace(/\\{2,}(?=\))/g,'\\');
-      src=src.replace(/\\{2,}(?=\[)/g,'\\');
-      src=src.replace(/\\{2,}(?=\])/g,'\\');
-    }
-    return src;
-  };
-  s=collapseDelimiterEscapes(s);
+  // Normalize escaped TeX delimiters and doubled command slashes from imports.
+  s=s.replace(/\\{2,}(?=\()/g,'\\');
+  s=s.replace(/\\{2,}(?=\))/g,'\\');
+  s=s.replace(/\\{2,}(?=\[)/g,'\\');
+  s=s.replace(/\\{2,}(?=\])/g,'\\');
+  s=s.replace(/\\\\(?=(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|sin|cos|tan|log|ln|mathbb|mathcal|mathrm|mathbf|operatorname|overline|underline|left|right|text|begin|end|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|le|leq|ge|geq|neq|equiv|in|notin|subset|subseteq|supset|supseteq|cdot|times|pm|mp|binom|pmod|mod|forall|exists|to|rightarrow|infty)\\b)/g,'\\');
 
-  const pair=(src,token,open,close)=>{
-    let out='',from=0;
-    while(true){
-      const a=src.indexOf(token,from);
-      if(a<0){out+=src.slice(from);break;}
-      const b=src.indexOf(token,a+token.length);
-      if(b<0){out+=src.slice(from);break;}
-      out+=src.slice(from,a)+open+src.slice(a+token.length,b)+close;
-      from=b+token.length;
-    }
-    return out;
-  };
   const dollar=String.fromCharCode(36);
 
-  s=pair(s,dollar+dollar,'\\[','\\]');
-  s=pair(s,'\\'+dollar,'\\(','\\)');
-  s=pair(s,dollar,'\\(','\\)');
+  // Standard math forms.
+  s=s.replace(/\$\$([\s\S]*?)\$\$/g,'\\[$1\\]');
+  s=s.replace(/(^|[^\\])\$([^$\n]+)\$/g,'$1\\($2\\)');
 
-  s=s.replace(/(^|\n)([ \t]*\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})(?=\n|$)/g,'$1\\[$2\\]');
+  // TeX environments may arrive without delimiters.
+  s=s.replace(/(^|\n)([ \t]*\\begin\{[^}\n]+\}[\s\S]*?\\end\{[^}\n]+\})(?=\n|$)/g,'$1\\[$2\\]');
 
-  s=s.replace(/\\\\\(/g,'\\(').replace(/\\\\\)/g,'\\)');
-  s=s.replace(/\\\\\[/g,'\\[').replace(/\\\\\]/g,'\\]');
+  const texCommand=/\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|sin|cos|tan|log|ln|mathbb|mathcal|mathrm|mathbf|operatorname|overline|underline|left|right|text|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|le|leq|ge|geq|neq|equiv|in|notin|subset|subseteq|supset|supseteq|cdot|times|pm|mp|binom|pmod|mod|forall|exists|to|rightarrow|infty)\b/;
+  const mathPunctuation=/[=^_{}<>]|\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|binom)\b/;
+  const formulaChars=/^[\\0-9A-Za-z{}()[\]\s=+*^_<>.,;:|/\\-]+$/;
+  const proseStart=/^(?:let|find|prove|show|suppose|given|assume|determine|consider|if|there|for|we|the)\b/i;
 
-  // Render bare TeX that arrived without explicit math delimiters.
-  // MathJax needs delimiters such as \\( ... \\) or \\[ ... \\] to know that text is math. citeturn0search0
-  s=s.split('\\n').map(line=>{
+  s=s.split('\n').map(line=>{
     const t=line.trim();
-    if(!t||/\\\\\(|\\\\\[|\\$/.test(t))return line;
-    const hasTex=/\\\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|sin|cos|tan|log|ln|mathbb|mathcal|mathrm|mathbf|overline|underline|begin|end|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|leq|geq|neq|equiv|in|notin|subset|supset|cdot|times|pm|mp|binom|pmod|mod|forall|exists)\\b/.test(t);
-    const hasMathPunctuation=/[=^_{}<>]|\\\\frac|\\\\sqrt|\\\\sum|\\\\prod|\\\\int/.test(t);
-    const words=(t.match(/\\b[A-Za-z]{3,}\\b/g)||[]).length;
-    const formulaOnly=hasTex&&hasMathPunctuation&&(words<=6||/^[\\\\0-9A-Za-z{}()[\]\\s=+*^_<>.,;:|/\\-]+$/.test(t));
-    return formulaOnly?'\\\\['+t+'\\\\]':line;
-  }).join('\\n');
+    if(!t||/\\\(|\\\[/.test(t)||t.includes(dollar))return line;
+
+    const commands=texCommand.test(t);
+    const punct=mathPunctuation.test(t);
+    const words=(t.match(/\b[A-Za-z]{3,}\b/g)||[]).length;
+    const startsLikeProse=proseStart.test(t);
+    const symbolOnly=formulaChars.test(t);
+
+    const formulaOnly=(commands&&punct&&(t.startsWith('\\')||!startsLikeProse||words<=6))
+      ||(symbolOnly&&punct&&words<=6&&!startsLikeProse);
+
+    if(formulaOnly)return '\\['+t+'\\]';
+
+    // For mixed prose, protect the common standalone TeX commands inline.
+    return line.replace(/\\(?:frac|dfrac|tfrac|sqrt|binom)(?:\s*\{[^{}\n]*\}){1,2}|\\(?:left|right)\s*[()[\]{}|]|\\(?:alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|le|leq|ge|geq|neq|equiv|in|notin|subset|subseteq|supset|supseteq|cdot|times|pm|mp|forall|exists|infty)\b/g,m=>'\\('+m+'\\)');
+  }).join('\n');
 
   return s;
 }
 function richMarkdown(value=''){
   const source=normalizeMathMarkdown(value);
-  if(window.marked&&window.DOMPurify)return DOMPurify.sanitize(marked.parse(source,{breaks:true}));
-  return escapeHtml(source).replace(/\\n/g,'<br>');
+  if(window.marked&&window.DOMPurify){
+    // Protect math while Markdown is parsed so underscores/braces do not
+    // become Markdown formatting before MathJax gets the text.
+    const math=[];
+    const tokenFor=i=>'KARP_MATH_SLOT_'+i+'_KARP';
+    const protectedSource=source.replace(/\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)/g,m=>{
+      const i=math.push(m)-1;
+      return tokenFor(i);
+    });
+    let html=marked.parse(protectedSource,{breaks:true});
+    html=DOMPurify.sanitize(html);
+    math.forEach((m,i)=>{
+      const safe=m.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html=html.split(tokenFor(i)).join(safe);
+    });
+    return html;
+  }
+  return escapeHtml(source).replace(/\n/g,'<br>');
 }
+
 function nav(active){const links=[['Problems','/problems.html'],['Contests','/contests.html'],['Articles','/articles.html'],['Exams','/exams.html'],['Mocks','/mock.html'],['Videos','/videos.html']];const toolsMenu='<div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a><a href="/desmos.html"><span>Desmos</span><small>Graphing Calculator</small></a></div></div>';return `<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks">${links.map(x=>`<a class="${active===x[0]?'active':''}" href="${x[1]}">${x[0]}</a>`).join('')}${toolsMenu}<a class="${active==='About'?'active':''}" href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header>`}
 async function updateNavUser(){const box=document.getElementById('nav-actions');if(!box)return;const u=await me();if(!u)return;const avatar=u.photoURL?`<img src="${escapeHtml(u.photoURL)}" alt="" class="nav-profile-img">`:`<span class="nav-profile-initial">${escapeHtml((u.name||'K').charAt(0).toUpperCase())}</span>`;box.innerHTML=`<a class="nav-profile" href="/account.html" aria-label="Account" title="Account">${avatar}</a>${u.role==='admin'?'<a class="btn nav-admin" href="/admin.html">Admin</a>':''}<button class="nav-logout" onclick="logout()">Log out</button>`}
 function shell(active,title,body){document.title=`KARP — ${title}`;document.body.innerHTML=nav(active)+body+footer();updateNavUser()}
