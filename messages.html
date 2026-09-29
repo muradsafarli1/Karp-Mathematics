@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KARP — Messages</title>
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js"></script>
+<style>
+.messages-page{min-height:calc(100vh - 76px);padding:55px 0 80px}
+.messages-wrap{width:min(calc(100% - 42px),1200px);margin:0 auto}
+.messages-grid{display:grid;grid-template-columns:360px 1fr;gap:14px}
+.messages-panel{background:var(--panel);border-radius:20px;padding:20px;min-height:650px}
+.messages-title{font-family:'Space Grotesk';font-size:34px;letter-spacing:-1.3px;margin:0}
+.messages-sub{color:var(--muted);font-size:12px;line-height:1.7;margin:5px 0 18px}
+.messages-search{display:flex;gap:7px;margin-bottom:14px}
+.messages-search .input{min-width:0}
+.user-results,.request-list,.conversation-list{display:grid;gap:7px}
+.user-row,.request-row,.conversation-row{display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;border:0;border-radius:12px;background:var(--panel2);color:var(--text);padding:11px;text-align:left}
+.user-row{cursor:pointer}.user-row:hover,.conversation-row:hover{transform:translateY(-1px)}
+.avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--bg);display:grid;place-items:center;flex:0 0 36px;font-size:12px;font-weight:800}
+.user-info{min-width:0;flex:1}.user-name{font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.user-meta{font-size:10px;color:var(--muted);margin-top:2px}
+.request-actions{margin-left:auto;display:flex;gap:5px}.request-actions .btn{font-size:9px;padding:7px 9px}
+.section-label{font-size:10px;text-transform:uppercase;letter-spacing:1.6px;font-weight:800;color:var(--muted);margin:20px 0 9px}
+.messages-divider{height:1px;background:var(--line);margin:18px 0}
+.chat-empty{height:100%;min-height:610px;display:grid;place-items:center;text-align:center;color:var(--muted);font-size:12px}
+.chat{display:flex;flex-direction:column;height:610px}
+.chat-head{display:flex;align-items:center;gap:12px;padding-bottom:15px;border-bottom:1px solid var(--line)}
+.chat-head h2{font-family:'Space Grotesk';font-size:23px;margin:0}.chat-head p{color:var(--muted);font-size:10px;margin:3px 0 0}
+.chat-messages{flex:1;overflow:auto;padding:18px 4px;display:flex;flex-direction:column;gap:7px}
+.bubble-row{display:flex}.bubble-row.mine{justify-content:flex-end}.bubble{max-width:min(72%,620px);padding:10px 13px;border-radius:14px;background:var(--panel2);font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.mine .bubble{background:var(--text);color:var(--bg)}.message-time{font-size:9px;color:var(--muted);margin-top:3px;padding:0 3px}
+.chat-compose{display:flex;gap:7px;border-top:1px solid var(--line);padding-top:14px}.chat-compose textarea{min-height:48px;max-height:130px;resize:vertical}.chat-note{font-size:9px;color:var(--muted);margin-top:7px}
+.status-note{font-size:10px;color:var(--muted);min-height:17px;margin:6px 0}
+.empty-mini{color:var(--muted);font-size:11px;padding:12px 2px}
+@media(max-width:900px){.messages-grid{grid-template-columns:1fr}.messages-panel{min-height:auto}.chat{height:600px}.chat-empty{min-height:400px}}
+@media(max-width:520px){.messages-page{padding-top:32px}.messages-wrap{width:calc(100% - 28px)}.messages-panel{padding:17px}.bubble{max-width:84%}.request-actions .btn{padding:6px 8px}}
+</style>
+</head>
+<body>
+<script>
+(async()=>{
+  const user=await requireUser(); if(!user)return;
+  const {db}=await fb();
+  const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const {doc,getDoc,getDocs,setDoc,updateDoc,collection,query,where,orderBy,startAt,endAt,limit,onSnapshot,Timestamp}=fs;
+  const myUid=user.id;
+
+  const state={selected:null,conversationUnsub:null,messageUnsub:null};
+  const publicProfile=async(uid)=>{
+    const s=await getDoc(doc(db,'publicProfiles',uid));
+    return s.exists()?{uid,...s.data()}:{uid,name:'User',photoURL:''};
+  };
+  const esc=x=>escapeHtml(x==null?'':String(x));
+  const initials=x=>String(x||'K').trim().charAt(0).toUpperCase();
+  const avatar=(p,cls='avatar')=>p?.photoURL
+    ?'<img class="'+cls+'" src="'+esc(p.photoURL)+'" alt="">'
+    :'<div class="'+cls+'">'+esc(initials(p?.name))+'</div>';
+  const friendshipId=(a,b)=>a<b?a+'_'+b:b+'_'+a;
+  const requestId=(a,b)=>a+'_'+b;
+
+  async function ensureOwnProfile(){
+    const ref=doc(db,'publicProfiles',myUid),snap=await getDoc(ref);
+    if(!snap.exists()||String(snap.data()?.name||'')!==String(user.name||'')){
+      await setDoc(ref,{uid:myUid,name:user.name||'KARP Member',nameLower:String(user.name||'KARP Member').trim().toLowerCase(),photoURL:user.photoURL||'',updatedAt:Timestamp.now()},{merge:true});
+    }
+  }
+
+  function formatTime(v){const d=v?.toDate?v.toDate():new Date(v);return isNaN(d)?'':d.toLocaleString()}
+  function setStatus(t,ok=false){const el=document.getElementById('message-status');if(el){el.textContent=t||'';el.style.color=ok?'var(--text)':'var(--muted)';}}
+  function clearChat(){
+    state.selected=null;
+    if(state.messageUnsub){state.messageUnsub();state.messageUnsub=null}
+    document.getElementById('chat').innerHTML='<div class="chat-empty">Select an accepted friend to start messaging.</div>';
+  }
+
+  async function isAccepted(other){
+    const s=await getDoc(doc(db,'friendships',friendshipId(myUid,other)));
+    return s.exists()&&s.data()?.status==='accepted';
+  }
+
+  async function sendRequest(target){
+    if(target.uid===myUid)return;
+    if(await isAccepted(target.uid)){toast('You are already friends.');return}
+    const reverse=await getDoc(doc(db,'friendRequests',requestId(target.uid,myUid)));
+    if(reverse.exists()&&reverse.data()?.status==='pending'){
+      await acceptRequest(reverse.id,reverse.data());
+      return;
+    }
+    const ref=doc(db,'friendRequests',requestId(myUid,target.uid)),snap=await getDoc(ref);
+    if(snap.exists()&&snap.data()?.status==='pending'){toast('Friend request already sent.');return}
+    await setDoc(ref,{fromUid:myUid,toUid:target.uid,fromName:user.name||'KARP Member',fromPhotoURL:user.photoURL||'',toName:target.name||'User',status:'pending',createdAt:Timestamp.now()});
+    toast('Friend request sent.');
+    await renderRequests();
+  }
+
+  async function acceptRequest(id,data){
+    if(!data||data.toUid!==myUid)return;
+    await updateDoc(doc(db,'friendRequests',id),{status:'accepted',respondedAt:Timestamp.now()});
+    const fid=friendshipId(data.fromUid,data.toUid);
+    const members=[data.fromUid,data.toUid].sort();
+    await setDoc(doc(db,'friendships',fid),{id:fid,members,status:'accepted',requestId:id,createdAt:data.createdAt||Timestamp.now(),updatedAt:Timestamp.now()},{merge:true});
+    await setDoc(doc(db,'conversations',fid),{id:fid,members,status:'accepted',createdAt:data.createdAt||Timestamp.now(),updatedAt:Timestamp.now(),lastMessage:'',lastMessageAt:null},{merge:true});
+    toast('Friend request accepted.');
+    await renderRequests();
+    await renderConversations();
+  }
+
+  async function rejectRequest(id,data){
+    if(!data||data.toUid!==myUid)return;
+    await updateDoc(doc(db,'friendRequests',id),{status:'rejected',respondedAt:Timestamp.now()});
+    toast('Friend request rejected.');
+    renderRequests();
+  }
+
+  async function renderRequests(){
+    const incomingSnap=await getDocs(query(collection(db,'friendRequests'),where('toUid','==',myUid)));
+    const outgoingSnap=await getDocs(query(collection(db,'friendRequests'),where('fromUid','==',myUid)));
+    const incoming=incomingSnap.docs.map(s=>({id:s.id,...s.data()})).filter(x=>x.status==='pending');
+    const outgoing=outgoingSnap.docs.map(s=>({id:s.id,...s.data()})).filter(x=>x.status==='pending');
+    const inEl=document.getElementById('incoming');
+    inEl.innerHTML=incoming.length?incoming.map(x=>'<div class="request-row">'+avatar({name:x.fromName,photoURL:x.fromPhotoURL})+'<div class="user-info"><div class="user-name">'+esc(x.fromName)+'</div><div class="user-meta">Friend request</div></div><div class="request-actions"><button class="btn primary" data-accept="'+esc(x.id)+'">Accept</button><button class="btn" data-reject="'+esc(x.id)+'">Reject</button></div></div>').join(''):'<div class="empty-mini">No incoming requests.</div>';
+    inEl.querySelectorAll('[data-accept]').forEach(b=>b.onclick=async()=>{const x=incoming.find(r=>r.id===b.dataset.accept);if(x)await acceptRequest(x.id,x)});
+    inEl.querySelectorAll('[data-reject]').forEach(b=>b.onclick=async()=>{const x=incoming.find(r=>r.id===b.dataset.reject);if(x)await rejectRequest(x.id,x)});
+    const outEl=document.getElementById('outgoing');
+    outEl.innerHTML=outgoing.length?outgoing.map(x=>'<div class="request-row">'+avatar({name:x.toName,photoURL:x.toPhotoURL})+'<div class="user-info"><div class="user-name">'+esc(x.toName)+'</div><div class="user-meta">Pending</div></div></div>').join(''):'<div class="empty-mini">No pending outgoing requests.</div>';
+  }
+
+  async function renderConversations(){
+    const snap=await getDocs(query(collection(db,'conversations'),where('members','array-contains',myUid)));
+    const items=[];
+    for(const s of snap.docs){
+      const d=s.data(),otherUid=(d.members||[]).find(x=>x!==myUid);
+      const p=await publicProfile(otherUid);
+      items.push({id:s.id,otherUid,profile:p,lastMessage:d.lastMessage||'',lastMessageAt:d.lastMessageAt});
+    }
+    items.sort((a,b)=>{
+      const ad=a.lastMessageAt?.toMillis?a.lastMessageAt.toMillis():0,bd=b.lastMessageAt?.toMillis?b.lastMessageAt.toMillis():0;
+      return bd-ad;
+    });
+    const el=document.getElementById('conversations');
+    el.innerHTML=items.length?items.map(x=>'<button class="conversation-row" data-conv="'+esc(x.id)+'">'+avatar(x.profile)+'<div class="user-info"><div class="user-name">'+esc(x.profile.name)+'</div><div class="user-meta">'+esc(x.lastMessage||'Start a conversation')+'</div></div></button>').join(''):'<div class="empty-mini">No chats yet. Accept a friend request to start one.</div>';
+    el.querySelectorAll('[data-conv]').forEach(b=>{b.onclick=()=>openConversation(items.find(x=>x.id===b.dataset.conv))});
+  }
+
+  async function openConversation(item){
+    if(!item)return;
+    state.selected=item;
+    if(state.messageUnsub){state.messageUnsub();state.messageUnsub=null}
+    const host=document.getElementById('chat');
+    host.innerHTML='<div class="chat"><div class="chat-head">'+avatar(item.profile)+'<div><h2>'+esc(item.profile.name)+'</h2><p>Friends · direct messages</p></div></div><div id="message-list" class="chat-messages"></div><form id="composer" class="chat-compose"><textarea id="message-box" class="textarea" maxlength="4000" placeholder="Write a message…"></textarea><button class="btn primary" type="submit">Send</button></form><div class="chat-note">Messages are available to KARP administrators for moderation and safety.</div></div>';
+    const list=document.getElementById('message-list');
+    const q=query(collection(db,'conversations',item.id,'messages'),orderBy('createdAt','asc'));
+    state.messageUnsub=onSnapshot(q,(snap)=>{
+      list.innerHTML=snap.docs.map(s=>{
+        const m=s.data(),mine=m.senderId===myUid;
+        return '<div class="bubble-row '+(mine?'mine':'')+'"><div><div class="bubble">'+esc(m.text)+'</div><div class="message-time">'+esc(formatTime(m.createdAt))+'</div></div></div>';
+      }).join('')||'<div class="empty-mini" style="margin:auto">No messages yet.</div>';
+      list.scrollTop=list.scrollHeight;
+    },err=>setStatus(err.message));
+    document.getElementById('composer').onsubmit=async ev=>{
+      ev.preventDefault();
+      const box=document.getElementById('message-box'),text=box.value.trim();
+      if(!text)return;
+      const ref=doc(collection(db,'conversations',item.id,'messages'));
+      await setDoc(ref,{senderId:myUid,text,createdAt:Timestamp.now()});
+      await updateDoc(doc(db,'conversations',item.id),{lastMessage:text.slice(0,140),lastMessageAt:Timestamp.now(),updatedAt:Timestamp.now()});
+      box.value='';
+      box.focus();
+      renderConversations();
+    };
+  }
+
+  async function searchUsers(){
+    const qv=document.getElementById('user-search').value.trim().toLowerCase();
+    const el=document.getElementById('search-results');
+    if(qv.length<2){el.innerHTML='<div class="empty-mini">Type at least 2 characters.</div>';return}
+    const snap=await getDocs(query(collection(db,'publicProfiles'),orderBy('nameLower'),startAt(qv),endAt(qv+'\uf8ff'),limit(12)));
+    const rows=snap.docs.map(s=>({uid:s.id,...s.data()})).filter(x=>x.uid!==myUid);
+    el.innerHTML=rows.length?rows.map(x=>'<button class="user-row" data-user="'+esc(x.uid)+'">'+avatar(x)+'<div class="user-info"><div class="user-name">'+esc(x.name)+'</div><div class="user-meta">KARP member</div></div><span class="btn">Add friend</span></button>').join(''):'<div class="empty-mini">No users found.</div>';
+    el.querySelectorAll('[data-user]').forEach(b=>b.onclick=async()=>{const p=rows.find(x=>x.uid===b.dataset.user);if(p)await sendRequest(p)});
+  }
+
+  await ensureOwnProfile();
+  shell('Messages','Messages','<main class="messages-page"><div class="messages-wrap"><div class="eyebrow">KARP · COMMUNITY</div><h1 class="messages-title">Messages</h1><p class="messages-sub">Find KARP members by name, send a friend request, and message only after the request is accepted.</p><div class="messages-grid"><section class="messages-panel"><div class="section-label">Find people</div><div class="messages-search"><input id="user-search" class="input" placeholder="Search name…"><button id="search-users" class="btn primary">Search</button></div><div id="search-results" class="user-results"></div><div class="messages-divider"></div><div class="section-label">Incoming requests</div><div id="incoming" class="request-list"></div><div class="section-label">Sent requests</div><div id="outgoing" class="request-list"></div><div class="section-label">Chats</div><div id="conversations" class="conversation-list"></div></section><section class="messages-panel"><div id="chat" style="height:100%"><div class="chat-empty">Select an accepted friend to start messaging.</div></div><div id="message-status" class="status-note"></div></section></div></div></main>');
+  document.getElementById('search-users').onclick=searchUsers;
+  document.getElementById('user-search').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchUsers()}});
+  await renderRequests();
+  await renderConversations();
+})();
+</script>
+</body>
+</html>
