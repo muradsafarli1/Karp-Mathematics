@@ -613,6 +613,18 @@ function normalizeMathMarkdown(value=''){
     }
     return line.length;
   }
+  function consumeWord(line,pos){
+    pos=skipSpaces(line,pos);
+    const m=line.slice(pos).match(/^[A-Za-z0-9]+/);
+    return m?pos+m[0].length:pos;
+  }
+
+  function consumeArgument(line,pos){
+    pos=skipSpaces(line,pos);
+    if(pos<line.length&&line[pos]==='{')return consumeBalanced(line,pos,'{','}');
+    return consumeWord(line,pos);
+  }
+
   function consumeAtom(line,pos){
     pos=skipSpaces(line,pos);
     if(pos>=line.length)return pos;
@@ -682,10 +694,10 @@ function normalizeMathMarkdown(value=''){
       let end=pos+m[0].length;
       if(argumentCommands.has(cmd)){
         if(cmd==='frac'||cmd==='dfrac'||cmd==='tfrac'||cmd==='binom'){
-          end=consumeAtom(line,end);
-          end=consumeAtom(line,end);
+          end=consumeArgument(line,end);
+          end=consumeArgument(line,end);
         }else{
-          end=consumeAtom(line,end);
+          end=consumeArgument(line,end);
         }
       }else if(cmd==='sum'||cmd==='prod'||cmd==='int'||cmd==='lim'){
         // Consume optional lower/upper limits and the following atom.
@@ -699,7 +711,7 @@ function normalizeMathMarkdown(value=''){
                cmd==='arcsin'||cmd==='arccos'||cmd==='arctan'||cmd==='log'||cmd==='ln'||cmd==='exp'||
                cmd==='max'||cmd==='min'||cmd==='sup'||cmd==='inf'||cmd==='angle'||cmd==='measuredangle'||
                cmd==='sphericalangle'||cmd==='triangle'){
-        end=consumeAtom(line,end);
+        end=consumeWord(line,end);
       }else if(cmd==='left'||cmd==='big'||cmd==='Big'||cmd==='bigl'||cmd==='Bigl'||cmd==='bigr'||cmd==='Bigr'){
         const found=findClosingDelimiter(line,end);
         end=found>=0?found:line.length;
