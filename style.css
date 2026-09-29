@@ -400,3 +400,28 @@ body,.top,.footer,.hero,.pagehero,.section,.contest-page,.article-page,.account-
   background:#e5e5e1!important;
   border-color:#d0d0cc!important;
 }
+
+
+/* Final small visual cleanup requested. */
+.about-grid .tag,
+.exam-card > .tag{
+  background:transparent!important;
+  border:0!important;
+  padding:0!important;
+  box-shadow:none!important;
+  width:auto!important;
+  display:block!important;
+  color:#666b73!important;
+}
+
+.contest-page .toolbar .input{
+  flex:1 1 720px!important;
+  width:100%!important;
+  max-width:760px!important;
+}
+
+.virtual-cards .problem-card-link{
+  background:#eeeeeb!important;
+  border:1px solid #d5d5d1!important;
+  box-shadow:0 4px 16px rgba(20,24,30,.04)!important;
+}
