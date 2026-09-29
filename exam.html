@@ -127,85 +127,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       return '<section class="exam-question" data-question="'+(i+1)+'"><div class="problem-number">Problem '+(i+1)+(q.code?' · '+escapeHtml(q.code):'')+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+escapeHtml(q.imageUrl)+'" alt="Problem '+(i+1)+'">':'')+'<div class="question-text">'+md(statement(q))+'</div>'+(withSolution?'<div class="exam-solution"><button class="btn">Show solution</button><div class="exam-solution-body">'+(sol?md(sol):'<div style="color:var(--muted)">No supplied solution.</div>')+'</div></div>':'')+'</section>';
     }
     function bindSolutions(host){host.querySelectorAll('.exam-solution').forEach(box=>{const b=box.querySelector('button'),body=box.querySelector('.exam-solution-body');if(!b||!body)return;b.onclick=()=>{const open=body.classList.toggle('open');b.textContent=open?'Hide solution':'Show solution';if(open)typesetMath(body)}})}
-    function clearTrackers(){fullscreenCleanup?.();activityCleanup?.();examGuardCleanup?.();fullscreenCleanup=null;activityCleanup=null;examGuardCleanup=null}
-    function lockMarkup(){
-      return '<div class="exam-fullscreen-lock" id="exam-fullscreen-lock"><div class="exam-fullscreen-lock-card"><div class="exam-active-kicker">KARP · EXAM LOCK</div><h2 id="exam-lock-title">Exam locked</h2><p id="exam-lock-text">The active exam requires fullscreen and continuous focus. Return to the exam and press the button below to continue.</p><button class="exam-fullscreen" id="exam-fullscreen-lock-btn" type="button" aria-label="Resume exam" title="Resume exam">⛶</button></div></div>';
-    }
-    async function requestFullscreen(){
-      const target=document.querySelector('.exam-active-shell');
-      if(!target?.requestFullscreen){toast('Fullscreen is not supported by this browser.');return false}
-      try{await target.requestFullscreen();return true}catch(e){console.error(e);toast('Please allow fullscreen to start the exam.');return false}
-    }
-    function installFullscreen(){
-      const target=document.querySelector('.exam-active-shell');
-      const lock=document.getElementById('exam-fullscreen-lock');
-      const lockTitle=document.getElementById('exam-lock-title');
-      const lockText=document.getElementById('exam-lock-text');
-      const btn=document.getElementById('exam-fullscreen-button');
-      const lockBtn=document.getElementById('exam-fullscreen-lock-btn');
-
-      const sync=()=>{
-        const full=document.fullscreenElement===target;
-        const hidden=document.hidden;
-        const locked=hidden||!full||focusLost;
-        lock?.classList.toggle('open',locked);
-        if(lockTitle)lockTitle.textContent=focusLost?'Exam focus lost':(full?'Exam locked':'Fullscreen required');
-        if(lockText)lockText.textContent=focusLost
-          ?'The exam lost browser focus. Stay on this exam page and press Resume exam to continue.'
-          :'The active exam requires fullscreen. Browser navigation is locked while the exam is in progress.';
-        if(locked)setKarpActivity({page:'Exam',label:focusLost?'Exam focus lost':'Fullscreen required',detail:title,question:null});
-      };
-
-      const onFullscreen=()=>sync();
-      const onVisibility=()=>{
-        if(document.hidden){
-          focusLost=true;
-          writeExamSession({
-            lastActivityAt:new Date().toISOString(),
-            focusLostAt:new Date().toISOString(),
-            focusLost:true
-          });
-        }
-        sync();
-      };
-      const onWindowBlur=()=>{
-        if(document.hidden)return;
-        focusLost=true;
-        writeExamSession({lastActivityAt:new Date().toISOString(),focusLostAt:new Date().toISOString(),focusLost:true});
-        sync();
-      };
-      const onWindowFocus=()=>sync();
-      const onKeyDown=e=>{
-        const blocked=e.key==='F11'||e.key==='Escape'||e.key==='Tab'||
-          (e.altKey&&['ArrowLeft','ArrowRight','Left','Right'].includes(e.key))||
-          (e.ctrlKey&&['l','L','t','T','w','W','n','N'].includes(e.key))||
-          (e.metaKey&&['l','L','t','T','w','W','n','N'].includes(e.key));
-        if(blocked){e.preventDefault();e.stopPropagation();}
-      };
-      const onPopState=()=>history.pushState({karpExam:true},'',location.href);
-      history.pushState({karpExam:true},'',location.href);
-
-      document.addEventListener('fullscreenchange',onFullscreen);
-      document.addEventListener('visibilitychange',onVisibility);
-      window.addEventListener('blur',onWindowBlur);
-      window.addEventListener('focus',onWindowFocus);
-      document.addEventListener('keydown',onKeyDown,true);
-      window.addEventListener('popstate',onPopState);
-      window.addEventListener('beforeunload',e=>{if(!finished){e.preventDefault();e.returnValue='';}});
-
-      btn&&(btn.onclick=async()=>{focusLost=false;await requestFullscreen();sync()});
-      lockBtn&&(lockBtn.onclick=async()=>{await requestFullscreen();if(document.fullscreenElement===target)focusLost=false;sync()});
-      sync();
-
-      fullscreenCleanup=()=>{
-        document.removeEventListener('fullscreenchange',onFullscreen);
-        document.removeEventListener('visibilitychange',onVisibility);
-        window.removeEventListener('blur',onWindowBlur);
-        window.removeEventListener('focus',onWindowFocus);
-        document.removeEventListener('keydown',onKeyDown,true);
-        window.removeEventListener('popstate',onPopState);
-      };
-    }
+    function clearTrackers(){activityCleanup?.();fullscreenCleanup=null;activityCleanup=null;examGuardCleanup=null;}
     function installActivity(){
       const host=document.getElementById('active-questions');if(!host)return;
       const update=()=>{const qs=[...host.querySelectorAll('.exam-question')];if(!qs.length)return;let best=0,bestDist=Infinity;qs.forEach((q,i)=>{const r=q.getBoundingClientRect(),d=Math.abs(r.top-125);if(r.bottom>85&&d<bestDist){best=i;bestDist=d}});setKarpActivity({page:'Exam',label:'Taking exam',detail:title,question:best+1})};
@@ -242,14 +164,12 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       end=Date.now()+durationMinutes*60000;
       localStorage.setItem(storageKey,JSON.stringify({startedAt,end,submitted:false}));
       await writeExamSession({status:'active',startedAt,entryAt:startedAt,endedAt:null,exitAt:null,durationSeconds:0});
-      await requestFullscreen();
       renderActive();
     }
     async function resumeExam(){
       const current=JSON.parse(localStorage.getItem(storageKey)||'{}');
       sessionStartedAt=current.startedAt||new Date().toISOString();
       await writeExamSession({status:'active',startedAt:sessionStartedAt,resumedAt:new Date().toISOString(),lastActivityAt:new Date().toISOString()});
-      await requestFullscreen();
       renderActive();
     }
     async function finishExam(reason){
@@ -266,23 +186,24 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
         if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
         location.href='/exam.html?id='+encodeURIComponent(id)+'&review=1';
       }catch(e){finished=false;toast(e.message||'Could not submit the exam.')}}
-    function renderEntry(resume){
-      document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><p class="exam-gate-text">This exam runs in fullscreen. Click below to begin.</p><button class="exam-continue" id="start-exam" type="button">Continue in Fullscreen</button></section></main>';
-      document.getElementById('start-exam').onclick=resume?resumeExam:beginExam;
+    async function renderEntry(resume){
+      if(resume){await resumeExam();return}
+      await beginExam();
     }
     function renderActive(){
       clearTrackers();
       sessionCleanup?.();
       sessionCleanup=startExamSessionTracking();
-      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top"><div class="exam-active-title"><div class="exam-active-kicker">KARP · EXAM</div><h1>'+escapeHtml(title)+'</h1></div><div class="exam-active-timer" id="exam-timer">'+timerText(end-Date.now())+'</div></header><div class="exam-active-body"><section class="exam-active-paper"><div id="active-questions">'+questions.map((q,i)=>questionHtml(q,i,false)).join('')+'</div><div class="exam-active-actions"><button class="btn primary" id="finish-exam">Finish Exam</button></div></section></div>'+lockMarkup()+'</main>';
+      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top"><div class="exam-active-lang">'+languageSwitch()+'</div><div class="exam-active-title"><div class="exam-active-kicker">KARP · EXAM</div><h1>'+escapeHtml(title)+'</h1></div><div class="exam-active-timer" id="exam-timer">'+timerText(end-Date.now())+'</div></header><div class="exam-active-body"><section class="exam-active-paper"><div id="active-questions">'+questions.map((q,i)=>questionHtml(q,i,false)).join('')+'</div><div class="exam-active-actions"><button class="btn primary" id="finish-exam">Finish Exam</button></div></section></div></main>';
       document.getElementById('finish-exam').onclick=()=>{if(confirm('Finish this exam now?'))finishExam('manual')};
+      bindLanguageSwitch(()=>renderActive());
       setKarpActivity({page:'Exam',label:'Taking exam',detail:title,question:1});
-      typesetMath(document.getElementById('active-questions'));installFullscreen();installActivity();
+      typesetMath(document.getElementById('active-questions'));installActivity();
     }
     function timerText(ms){const s=Math.max(0,Math.ceil(ms/1000)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
     function tick(){const el=document.getElementById('exam-timer');const left=end-Date.now();if(el)el.textContent=timerText(left);if(left<=0)finishExam('time')}
 
-    if(hasStarted){renderActive();requestFullscreen().then(()=>{});tick();timer=setInterval(tick,500)}
+    if(hasStarted){renderActive();tick();timer=setInterval(tick,500)}
     else if(saved.startedAt&&!saved.submitted){if(end<=Date.now()){localStorage.removeItem(storageKey);await finishExam('time')}else renderEntry(true)}
     else renderEntry(false);
   }catch(err){console.error(err);document.body.innerHTML='<main class="exam-error"><section class="exam-error-card"><div class="eyebrow">KARP · EXAM</div><h1>Unable to load exam</h1><p style="color:var(--muted)">'+escapeHtml(err.message||'Something went wrong.')+'</p><a class="btn" href="/exams.html">← Back to Exams</a></section></main>'}
@@ -336,4 +257,23 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
   cursor:pointer!important;
 }
 .exam-review,.exam-review-wrap,.exam-active-body,.exam-active-paper{background:#f7f7f5!important;border:0!important;box-shadow:none!important}
+</style>
+
+<style>
+/* Direct exam entry: no fullscreen gate, no overlay lock, normal browser controls. */
+.exam-active-shell{min-height:100vh!important;background:#f7f7f5!important;color:#17191c!important}
+.exam-active-top{position:sticky!important;top:0!important;z-index:20!important;display:grid!important;grid-template-columns:auto 1fr auto!important;align-items:center!important;gap:18px!important;width:100%!important;padding:16px 24px!important;background:#f7f7f5!important;border-bottom:1px solid #d9dad8!important}
+.exam-active-lang{justify-self:start!important;grid-column:1!important;grid-row:1!important}
+.exam-active-title{grid-column:2!important;grid-row:1!important}
+.exam-active-timer{grid-column:3!important;grid-row:1!important;color:#17191c!important}
+.exam-fullscreen-lock{display:none!important}
+.exam-active-body{background:#f7f7f5!important}
+.exam-active-paper{background:#f7f7f5!important;border:0!important;box-shadow:none!important;border-radius:0!important}
+@media(max-width:800px){
+  .exam-active-top{grid-template-columns:auto 1fr auto!important;gap:10px!important;padding:12px 14px!important}
+  .exam-active-title h1{font-size:18px!important}
+  .exam-active-timer{font-size:28px!important}
+  .exam-active-lang .language-switch{margin-bottom:0!important}
+  .exam-active-lang .language-switch button{padding:6px 8px!important;font-size:10px!important}
+}
 </style>
