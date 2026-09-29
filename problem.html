@@ -50,10 +50,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
     return pieces.join(' · ') || 'MathNet Problem';
   }
 
-  function getSolved(){
-
-    try{return JSON.parse(localStorage.getItem('able_solved_problems')||'{}')}catch{return {}}
-  }
+  function getSolved(){return cloudSolved||{}}
 
   function saveRecord(){
     return {id:currentProblem?.id||id,title:currentProblem?.title||'MathNet Problem',topic:currentProblem?.category||'Other',
@@ -62,15 +59,18 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
       sourceConfig:currentProblem?.sourceConfig||'all',sourceIndex:currentProblem?.sourceIndex??0,sourceShard:currentProblem?.sourceShard??null};
   }
 
-  function getSaved(){
-    try{return JSON.parse(localStorage.getItem('karp_saved_mathnet')||'{}')}catch{return {}}
-  }
+  function getSaved(){return cloudSaved||{}}
 
   async function toggleSave(){
-    if(!(await ensureSignedIn('Save a problem','Sign in or create an account to save problems and find them later in your account.')))return;
-    const data=getSaved();
-    if(data[id]) delete data[id]; else data[id]=saveRecord();
-    localStorage.setItem('karp_saved_mathnet',JSON.stringify(data));
+    const u=await ensureSignedIn('Save a problem','Sign in or create an account to save problems and find them later in your account.');if(!u)return;
+    if(cloudSaved[id]){
+      await karpDeleteUserRecord('saved',id);
+      delete cloudSaved[id];
+    }else{
+      const record=saveRecord();
+      await karpUserRecord('saved',id,record);
+      cloudSaved[id]=record;
+    }
     syncSaveButton();
   }
 
@@ -80,12 +80,15 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
   }
 
   async function toggleSolved(){
-    if(!(await ensureSignedIn('Mark a problem solved','Sign in or create an account to keep your solved-problem history and progress.')))return;
-    const data=getSolved();
-    if(data[id]) delete data[id];
-    else data[id]={...saveRecord(),dates:[new Date().toISOString()]};
-    localStorage.setItem('able_solved_problems',JSON.stringify(data));
-    localStorage.setItem('karp_solved_mathnet',JSON.stringify(data));
+    const u=await ensureSignedIn('Mark a problem solved','Sign in or create an account to keep your solved-problem history and progress.');if(!u)return;
+    if(cloudSolved[id]){
+      await karpDeleteUserRecord('solved',id);
+      delete cloudSolved[id];
+    }else{
+      const record={...saveRecord(),dates:[new Date().toISOString()]};
+      await karpUserRecord('solved',id,record);
+      cloudSolved[id]=record;
+    }
     syncSolvedButton();
   }
 
@@ -130,6 +133,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
   window.toggleSolved=toggleSolved;
 
   let currentProblem=null;
+  let cloudSolved={},cloudSaved={};
 
   try{
     if(customId){
@@ -160,6 +164,11 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
       }
     }
 
+    await karpMigrateLocalState();
+    const cloud=await karpUserState();
+    cloudSolved=cloud.solved||{};
+    cloudSaved=cloud.saved||{};
+    
     const competition=currentProblem.competition||currentProblem.title||'MathNet Problem';
     const sourceParts=[competition,currentProblem.section,currentProblem.problemNumber].filter(Boolean);
     const title=sourceParts.join(' — ');
