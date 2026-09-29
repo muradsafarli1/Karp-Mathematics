@@ -154,7 +154,10 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     const hasStarted=!!saved.startedAt&&!saved.submitted&&end>Date.now();
 
     async function beginExam(){
-      if(await requestFullscreen()){const startedAt=new Date().toISOString();end=Date.now()+durationMinutes*60000;localStorage.setItem(storageKey,JSON.stringify({startedAt,end,submitted:false}));renderActive();return}
+      const startedAt=new Date().toISOString();
+      end=Date.now()+durationMinutes*60000;
+      localStorage.setItem(storageKey,JSON.stringify({startedAt,end,submitted:false}));
+      await requestFullscreen();
       renderActive();
     }
     function resumeExam(){requestFullscreen().then(()=>renderActive())}
