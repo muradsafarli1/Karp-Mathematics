@@ -122,7 +122,16 @@
    await setDoc(doc(db,'conversations',friendship),{id:friendship,type:'direct',members,status:'accepted',createdBy:x.toUid,lastMessage:'',lastMessageAt:null,updatedAt:Timestamp.now()},{merge:true});
    toast('Friend request accepted.');
  }
- async function updateRequest(x,status){await setDoc(doc(db,'friendRequests',x.id),{status,respondedAt:Timestamp.now()},{merge:true});}
+ async function updateRequest(x,status){await setDoc(doc(db,'friendRequests',x.id),{status,respondedAt:Timestamp.now()},{merge:true});} async function ensureAdminSupport(){
+   try{
+     const snap=await getDocs(query(collection(db,'publicProfiles'),where('isAdmin','==',true),limit(1)));
+     const admin=snap.docs.map(x=>({uid:x.id,...x.data()})).find(x=>x.uid!==uid);
+     if(!admin)return;
+     const id='support_'+fid(uid,admin.uid),ref=doc(db,'conversations',id),existing=await getDoc(ref);
+     if(!existing.exists())await setDoc(ref,{id,type:'support',members:[uid,admin.uid].sort(),status:'accepted',createdBy:uid,lastMessage:'',lastMessageAt:null,createdAt:Timestamp.now(),updatedAt:Timestamp.now()});
+   }catch(e){console.warn('Could not initialize admin support chat:',e)}
+ }
+
  async function openFriend(p){
    const id=fid(uid,p.uid);
    const s=await getDoc(doc(db,'conversations',id));
@@ -193,7 +202,7 @@
  document.querySelectorAll('.msg-tab').forEach(b=>b.onclick=()=>{state.tab=b.dataset.tab;renderSidebar();});
  document.getElementById('new-group').onclick=showGroupModal;
  document.getElementById('people-search').addEventListener('input',()=>{clearTimeout(state.searchTimer);state.searchTimer=setTimeout(searchPeople,220)});
- await ensureProfile();installListeners();
+ await ensureProfile();await ensureAdminSupport();installListeners();
  window.addEventListener('beforeunload',()=>{state.chatUnsub?.();state.convUnsub?.();state.friendUnsub?.();state.requestUnsub?.()});
 })();
 </script>
