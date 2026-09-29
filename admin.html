@@ -99,8 +99,6 @@ async function render(){
         ]);
         return {id:x.id,...x.data(),regs:regSnap.docs.map(d=>({id:d.id,...d.data()})),subs:subSnap.docs.map(d=>({id:d.id,...d.data()}))};
       }));
-      const fmtTime=v=>v?new Date(v).toLocaleString():'—';
-      const fmtDuration=sec=>{const n=Math.max(0,Number(sec||0));if(!n)return'—';const h=Math.floor(n/3600),m=Math.floor((n%3600)/60),ss=n%60;return h?(h+'h '+m+'m'):(m+'m '+ss+'s')};
       const exams=examBase.sort((a,b)=>new Date(String(b.date||b.createdAt||0))-new Date(String(a.date||a.createdAt||0)));
       m.innerHTML='<div class="admin-head"><div><h2>Exams</h2><span class="admin-count">'+exams.length+' exams · participant/session analytics</span></div><button class="btn primary" onclick="newItem()">+ New</button></div>'+
         '<div class="admin-exam-list">'+(exams.length?exams.map(ex=>{
