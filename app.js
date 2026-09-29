@@ -504,103 +504,204 @@ function escapeHtml(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','
 function normalizeMathMarkdown(value=''){
   let s=String(value??'').replace(/\r\n?/g,'\n');
 
-  // MathNet/admin content can arrive with escaped delimiters or repeated
-  // command slashes. Normalize those forms before Markdown parses the text.
-  s=s.replace(/\\+(?=\()/g,'\\');
-  s=s.replace(/\\+(?=\))/g,'\\');
-  s=s.replace(/\\+(?=\[)/g,'\\');
-  s=s.replace(/\\+(?=\])/g,'\\');
-  s=s.replace(/\\+(?=(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|sin|cos|tan|log|ln|mathbb|mathcal|mathrm|mathbf|operatorname|overline|underline|left|right|text|begin|end|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|le|leq|ge|geq|neq|equiv|in|notin|subset|subseteq|supset|supseteq|cdot|times|pm|mp|binom|pmod|mod|forall|exists|to|rightarrow|infty)\b)/g,'\\');
+  // MathNet can contain JSON/Markdown escaping such as \\[, \\], \\\\frac, etc.
+  // Collapse repeated slashes before TeX delimiters and commands first.
+  s=s.replace(/\\{2,}(?=[()[\]])/g,'\\');
+  s=s.replace(/\\{2,}(?=[A-Za-z])/g,'\\');
 
-  const dollar=String.fromCharCode(36);
+  // Canonicalize common macros that are used in source booklets but are not
+  // consistently understood by MathJax's default TeX parser.
+  const aliases={
+    Vangle:'angle',
+    vangle:'angle',
+    VAngle:'angle',
+    vect:'vec',
+    vector:'vec',
+    Bbb:'mathbb',
+    bbb:'mathbb',
+    mbf:'mathbf',
+    bf:'mathbf',
+    rm:'mathrm',
+    scr:'mathcal'
+  };
+  Object.entries(aliases).forEach(([from,to])=>{
+    s=s.replace(new RegExp('\\\\'+from+'\\b','g'),'\\\\'+to);
+  });
+
+  // Short blackboard-letter macros frequently appear in extracted geometry /
+  // olympiad text. Only convert when used as a TeX command.
+  const blackboard={R:'R',N:'N',Z:'Z',Q:'Q',C:'C',F:'F',P:'P'};
+  Object.keys(blackboard).forEach(cmd=>{
+    s=s.replace(new RegExp('\\\\'+cmd+'\\b','g'),'\\\\mathbb{'+cmd+'}');
+  });
 
   // Standard TeX delimiters.
   s=s.replace(/\$\$([\s\S]*?)\$\$/g,'\\[$1\\]');
   s=s.replace(/(^|[^\\])\$([^$\n]+)\$/g,'$1\\($2\\)');
 
-  // Standalone TeX environments.
+  // TeX environments are display math.
   s=s.replace(/(^|\n)([ \t]*\\begin\{[^}\n]+\}[\s\S]*?\\end\{[^}\n]+\})(?=\n|$)/g,'$1\\[$2\\]');
 
-  const texCommands=new Set([
+  const commandSet=new Set([
     'frac','dfrac','tfrac','sqrt','binom','sum','prod','int','lim',
-    'sin','cos','tan','log','ln','mathbb','mathcal','mathrm','mathbf',
-    'operatorname','overline','underline','text','alpha','beta','gamma',
-    'delta','epsilon','theta','lambda','mu','pi','rho','sigma','phi',
-    'psi','omega','le','leq','ge','geq','neq','equiv','in','notin',
-    'subset','subseteq','supset','supseteq','cdot','times','pm','mp',
-    'forall','exists','to','rightarrow','infty','left','right','big','Big','bigl','Bigl','bigr','Bigr'
+    'sin','cos','tan','cot','sec','csc','arcsin','arccos','arctan',
+    'log','ln','exp','max','min','sup','inf',
+    'mathbb','mathcal','mathfrak','mathrm','mathbf','boldsymbol','operatorname',
+    'overline','underline','overrightarrow','overleftarrow','vec','widehat','widetilde',
+    'text','textbf','textrm','emph',
+    'alpha','beta','gamma','delta','epsilon','varepsilon','zeta','eta','theta','vartheta',
+    'iota','kappa','lambda','mu','nu','xi','pi','varpi','rho','varrho','sigma','varsigma',
+    'tau','upsilon','phi','varphi','chi','psi','omega','varepsilon',
+    'le','leq','ge','geq','neq','equiv','cong','sim','simeq','approx','asymp',
+    'in','notin','subset','subseteq','supset','supseteq','ni','notni',
+    'parallel','nparallel','perp','angle','measuredangle','sphericalangle',
+    'cdot','times','pm','mp','ast','star','circ','bullet','oplus','otimes',
+    'forall','exists','to','mapsto','rightarrow','leftarrow','leftrightarrow',
+    'Rightarrow','Leftarrow','Leftrightarrow','implies','iff','infty',
+    'left','right','big','Big','bigl','Bigl','bigr','Bigr',
+    'lvert','rvert','lVert','rVert','Vert','vert','langle','rangle',
+    'lceil','rceil','lfloor','rfloor','dots','ldots','cdots','vdots','ddots',
+    'pmod','mod','not','overbrace','underbrace','partial','nabla'
   ]);
-  const commandRegex=/\\([A-Za-z]+)/;
-  const texCommand=/\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|sin|cos|tan|log|ln|mathbb|mathcal|mathrm|mathbf|operatorname|overline|underline|left|right|text|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|le|leq|ge|geq|neq|equiv|in|notin|subset|subseteq|supset|supseteq|cdot|times|pm|mp|binom|pmod|mod|forall|exists|to|rightarrow|infty)\b/;
-  const mathPunctuation=/[=^_{}<>]|\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|binom)\b/;
-  const formulaChars=/^[\\0-9A-Za-z{}()[\]\s=+*^_<>.,;:|/\\-]+$/;
-  const proseStart=/^(?:let|find|prove|show|suppose|given|assume|determine|consider|if|there|for|we|the)\b/i;
+
+  const argumentCommands=new Set([
+    'frac','dfrac','tfrac','binom',
+    'sqrt','overline','underline','overrightarrow','overleftarrow','vec',
+    'widehat','widetilde','mathbb','mathcal','mathfrak','mathrm','mathbf',
+    'boldsymbol','operatorname','text','textbf','textrm','emph',
+    'overbrace','underbrace'
+  ]);
+
+  const knownZeroArg=new Set([
+    'alpha','beta','gamma','delta','epsilon','varepsilon','zeta','eta','theta','vartheta',
+    'iota','kappa','lambda','mu','nu','xi','pi','varpi','rho','varrho','sigma','varsigma',
+    'tau','upsilon','phi','varphi','chi','psi','omega','le','leq','ge','geq','neq','equiv',
+    'cong','sim','simeq','approx','asymp','in','notin','subset','subseteq','supset',
+    'supseteq','ni','notni','parallel','nparallel','perp','angle','measuredangle',
+    'sphericalangle','cdot','times','pm','mp','ast','star','circ','bullet','oplus','otimes',
+    'forall','exists','to','mapsto','rightarrow','leftarrow','leftrightarrow','Rightarrow',
+    'Leftarrow','Leftrightarrow','implies','iff','infty','lvert','rvert','lVert','rVert',
+    'Vert','vert','langle','rangle','lceil','rceil','lfloor','rfloor','dots','ldots',
+    'cdots','vdots','ddots','partial','nabla'
+  ]);
+
+  const anyCommand=/\\([A-Za-z@]+)(?![A-Za-z@])/;
+  const texCommand=/\\(?:[A-Za-z@]+)/;
+  const formulaPunctuation=/[=^_{}<>]|\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|binom|angle|Vangle|vec|overline|mathbb)\b/;
+  const formulaChars=/^[\\0-9A-Za-z{}()[\]\s=+*^_<>.,;:|/\\\-]+$/;
+  const proseStart=/^(?:let|find|prove|show|suppose|given|assume|determine|consider|if|there|for|we|the|where|hence|thus|then)\b/i;
 
   function skipSpaces(line,pos){
     while(pos<line.length&&/\s/.test(line[pos]))pos++;
     return pos;
   }
+  function consumeBalanced(line,pos,open='{',close='}'){
+    pos=skipSpaces(line,pos);
+    if(pos>=line.length||line[pos]!==open)return pos;
+    let depth=0;
+    for(let j=pos;j<line.length;j++){
+      if(line[j]===open)depth++;
+      else if(line[j]===close){
+        depth--;
+        if(depth===0)return j+1;
+      }
+    }
+    return line.length;
+  }
   function consumeAtom(line,pos){
     pos=skipSpaces(line,pos);
     if(pos>=line.length)return pos;
-    if(line[pos]==='{'){
-      let depth=0;
-      for(let j=pos;j<line.length;j++){
-        if(line[j]==='{')depth++;
-        else if(line[j]==='}'){
-          depth--;
-          if(depth===0)return j+1;
-        }
-      }
-      return line.length;
-    }
-    if(line[pos]==='['){
-      let depth=0;
-      for(let j=pos;j<line.length;j++){
-        if(line[j]==='[')depth++;
-        else if(line[j]===']'){
-          depth--;
-          if(depth===0)return j+1;
-        }
-      }
-      return line.length;
+    if(line[pos]==='{')return consumeBalanced(line,pos,'{','}');
+    if(line[pos]==='[')return consumeBalanced(line,pos,'[',']');
+    if(line[pos]==='(')return consumeBalanced(line,pos,'(',')');
+    if(line[pos]==='\\'){
+      const cm=line.slice(pos).match(anyCommand);
+      if(cm)return pos+cm[0].length;
     }
     return pos+1;
   }
+  function findClosingDelimiter(line,start){
+    const re=/\\(?:right|bigr|Bigr|bigr|Bigl|Bigr)\s*(?:\\[A-Za-z]+|[\])}>)|\\rbrack|\\rparen|\\rbrace|\\lvert|\\rvert|\\lVert|\\rVert)/g;
+    re.lastIndex=start;
+    const m=re.exec(line);
+    return m?m.index+m[0].length:-1;
+  }
+
+  function looksLikeFormula(text){
+    const t=text.trim();
+    if(!t)return false;
+    const command=texCommand.test(t);
+    const punct=formulaPunctuation.test(t);
+    const words=(t.match(/\b[A-Za-z]{3,}\b/g)||[]).length;
+    return command || (formulaChars.test(t)&&punct&&words<=8);
+  }
+
+  function fixDisplayLine(line){
+    const open=line.indexOf('\\[');
+    const close=line.indexOf('\\]');
+    if(open<0&&close<0)return line;
+
+    // Already balanced.
+    if(open>=0&&close>=open)return line;
+
+    // A dangling opener: treat the remainder as one display formula when it
+    // looks mathematical; otherwise remove the literal TeX delimiter.
+    if(open>=0&&close<open){
+      const before=line.slice(0,open);
+      const after=line.slice(open+2);
+      if(looksLikeFormula(after))return before+'\\['+after+'\\]';
+      return line.slice(0,open)+'['+after;
+    }
+
+    // A dangling closer: convert a formula-like prefix into display math.
+    if(close>=0&&open<0){
+      const before=line.slice(0,close);
+      const after=line.slice(close+2);
+      if(looksLikeFormula(before))return '\\['+before+'\\]'+after;
+      return before+']'+after;
+    }
+    return line;
+  }
+
   function wrapBareTexInline(line){
     let cursor=0,pos=0,out='';
     while((pos=line.indexOf('\\',pos))>=0){
-      const m=line.slice(pos).match(commandRegex);
+      const m=line.slice(pos).match(anyCommand);
       if(!m){pos++;continue;}
       const cmd=m[1];
-      if(!texCommands.has(cmd)){pos+=2;continue;}
-      let end=pos+m[0].length;
+      if(!commandSet.has(cmd) && !/^[A-Za-z@]+$/.test(cmd)){pos+=m[0].length;continue;}
 
-      if(cmd==='frac'||cmd==='dfrac'||cmd==='tfrac'||cmd==='binom'){
-        end=consumeAtom(line,end);end=consumeAtom(line,end);
-      }else if(cmd==='sqrt'||cmd==='overline'||cmd==='underline'||cmd==='text'||cmd==='mathbb'||cmd==='mathcal'||cmd==='mathrm'||cmd==='mathbf'||cmd==='operatorname'){
-        end=consumeAtom(line,end);
+      // Do not wrap environment markers; they are handled above.
+      if(cmd==='begin'||cmd==='end'){pos+=m[0].length;continue;}
+
+      let end=pos+m[0].length;
+      if(argumentCommands.has(cmd)){
+        if(cmd==='frac'||cmd==='dfrac'||cmd==='tfrac'||cmd==='binom'){
+          end=consumeAtom(line,end);
+          end=consumeAtom(line,end);
+        }else{
+          end=consumeAtom(line,end);
+        }
       }else if(cmd==='sum'||cmd==='prod'||cmd==='int'||cmd==='lim'){
+        // Consume optional lower/upper limits and the following atom.
         while(true){
           const p=skipSpaces(line,end);
-          if(line[p]==='_'||line[p]==='^'){
-            end=consumeAtom(line,p+1);
-          }else break;
+          if(line[p]==='_'||line[p]==='^')end=consumeAtom(line,p+1);
+          else break;
         }
         end=consumeAtom(line,end);
-      }else if(cmd==='sin'||cmd==='cos'||cmd==='tan'||cmd==='log'||cmd==='ln'){
+      }else if(cmd==='sin'||cmd==='cos'||cmd==='tan'||cmd==='cot'||cmd==='sec'||cmd==='csc'||
+               cmd==='arcsin'||cmd==='arccos'||cmd==='arctan'||cmd==='log'||cmd==='ln'||cmd==='exp'||
+               cmd==='max'||cmd==='min'||cmd==='sup'||cmd==='inf'){
         end=consumeAtom(line,end);
       }else if(cmd==='left'||cmd==='big'||cmd==='Big'||cmd==='bigl'||cmd==='Bigl'||cmd==='bigr'||cmd==='Bigr'){
-        // Keep bracketed/delimited TeX together so [ ], ( ), { } and
-        // similar delimiters never leak out as literal characters.
-        const rightRe=/\\(?:right|bigr|Bigr)\\s*(?:\]|\)|\}|\||>|\\rbrack|\\rparen|\\rbrace)/g;
-        rightRe.lastIndex=end;
-        const rm=rightRe.exec(line);
-        if(rm)end=rm.index+rm[0].length;
-        else end=line.length;
-      }else if(cmd==='right'){
-        end=skipSpaces(line,end);
-        if(end<line.length)end++;
+        const found=findClosingDelimiter(line,end);
+        end=found>=0?found:line.length;
+      }else if(!knownZeroArg.has(cmd)){
+        // Unknown but syntactically TeX-like macro: keep a nearby group/atom
+        // inside the same math span instead of leaving the command as prose.
+        const next=skipSpaces(line,end);
+        if(line[next]==='{')end=consumeAtom(line,next);
       }
 
       out+=line.slice(cursor,pos)+'\\('+line.slice(pos,end)+'\\)';
@@ -610,25 +711,30 @@ function normalizeMathMarkdown(value=''){
     return out+line.slice(cursor);
   }
 
-  s=s.split('\n').map(line=>{
+  s=s.split('\n').map(rawLine=>{
+    let line=fixDisplayLine(rawLine);
     const t=line.trim();
-    if(!t||/\\\(|\\\[/.test(t)||t.includes(dollar))return line;
+    if(!t)return line;
 
-    const commands=texCommand.test(t);
-    const punct=mathPunctuation.test(t);
+    // Lines that already contain valid MathJax delimiters are left intact.
+    if(/\\\([\s\S]*\\\)|\\\[[\s\S]*\\\]/.test(t))return line;
+
+    const hasAnyCommand=texCommand.test(t);
+    const punct=formulaPunctuation.test(t);
     const words=(t.match(/\b[A-Za-z]{3,}\b/g)||[]).length;
     const startsLikeProse=proseStart.test(t);
     const symbolOnly=formulaChars.test(t);
 
-    // Whole-line display math only for an actual formula line. Prose such as
-    // "Prove that a_n = \frac{n(n+1)}2" is kept as prose and handled inline.
-    const formulaOnly=(commands&&punct&&(t.startsWith('\\')||(!startsLikeProse&&words<=6)))
-      ||(symbolOnly&&punct&&words<=6&&!startsLikeProse);
+    const formulaOnly=
+      (hasAnyCommand&&punct&&(t.startsWith('\\')||(!startsLikeProse&&words<=10))) ||
+      (symbolOnly&&punct&&words<=10&&!startsLikeProse);
 
     if(formulaOnly)return '\\['+t+'\\]';
     return wrapBareTexInline(line);
   }).join('\n');
 
+  // Final guard: no stray display delimiters survive into the renderer.
+  s=s.split('\n').map(fixDisplayLine).join('\n');
   return s;
 }
 function richMarkdown(value=''){
