@@ -535,6 +535,11 @@ function normalizeMathMarkdown(value=''){
     s=s.replace(new RegExp('\\\\'+cmd+'\\b','g'),'\\\\mathbb{'+cmd+'}');
   });
 
+  // Normalize degree notation so it cannot be split into a separate inline-math span.
+  s=s.replace(/\^\\circ\b/g,'°');
+  s=s.replace(/\\circ\b/g,'°');
+  s=s.replace(/\\deg\b/g,'°');
+
   // Standard TeX delimiters.
   s=s.replace(/\$\$([\s\S]*?)\$\$/g,'\\[$1\\]');
   s=s.replace(/(^|[^\\])\$([^$\n]+)\$/g,'$1\\($2\\)');
@@ -554,7 +559,7 @@ function normalizeMathMarkdown(value=''){
     'tau','upsilon','phi','varphi','chi','psi','omega','varepsilon',
     'le','leq','ge','geq','neq','equiv','cong','sim','simeq','approx','asymp',
     'in','notin','subset','subseteq','supset','supseteq','ni','notni',
-    'parallel','nparallel','perp','angle','measuredangle','sphericalangle',
+    'parallel','nparallel','perp','angle','measuredangle','sphericalangle','triangle',
     'cdot','times','pm','mp','ast','star','circ','bullet','oplus','otimes',
     'forall','exists','to','mapsto','rightarrow','leftarrow','leftrightarrow',
     'Rightarrow','Leftarrow','Leftrightarrow','implies','iff','infty',
@@ -578,7 +583,7 @@ function normalizeMathMarkdown(value=''){
     'tau','upsilon','phi','varphi','chi','psi','omega','le','leq','ge','geq','neq','equiv',
     'cong','sim','simeq','approx','asymp','in','notin','subset','subseteq','supset',
     'supseteq','ni','notni','parallel','nparallel','perp','angle','measuredangle',
-    'sphericalangle','cdot','times','pm','mp','ast','star','circ','bullet','oplus','otimes',
+    'sphericalangle','triangle','cdot','times','pm','mp','ast','star','circ','bullet','oplus','otimes',
     'forall','exists','to','mapsto','rightarrow','leftarrow','leftrightarrow','Rightarrow',
     'Leftarrow','Leftrightarrow','implies','iff','infty','lvert','rvert','lVert','rVert',
     'Vert','vert','langle','rangle','lceil','rceil','lfloor','rfloor','dots','ldots',
@@ -692,7 +697,8 @@ function normalizeMathMarkdown(value=''){
         end=consumeAtom(line,end);
       }else if(cmd==='sin'||cmd==='cos'||cmd==='tan'||cmd==='cot'||cmd==='sec'||cmd==='csc'||
                cmd==='arcsin'||cmd==='arccos'||cmd==='arctan'||cmd==='log'||cmd==='ln'||cmd==='exp'||
-               cmd==='max'||cmd==='min'||cmd==='sup'||cmd==='inf'){
+               cmd==='max'||cmd==='min'||cmd==='sup'||cmd==='inf'||cmd==='angle'||cmd==='measuredangle'||
+               cmd==='sphericalangle'||cmd==='triangle'){
         end=consumeAtom(line,end);
       }else if(cmd==='left'||cmd==='big'||cmd==='Big'||cmd==='bigl'||cmd==='Bigl'||cmd==='bigr'||cmd==='Bigr'){
         const found=findClosingDelimiter(line,end);
