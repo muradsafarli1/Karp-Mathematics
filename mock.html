@@ -39,9 +39,10 @@
   function difficulty(){return document.querySelector('input[name="mock-difficulty"]:checked')?.value||'any'}
   function sequence(){const raw=document.getElementById('mock-sequence').value.trim();if(!raw)return null;const list=raw.toUpperCase().replace(/[^ACGN,\\s]/g,'').split(/[,\\s]+/).filter(Boolean);return list.length===count()&&list.every(x=>['A','C','G','N'].includes(x))?list:null}
   function history(){return cloudMockHistory.slice()}
-  function activeLoad(){try{return JSON.parse(localStorage.getItem('karp_active_mock')||'null')}catch{return null}}
-  function activeSave(){localStorage.setItem('karp_active_mock',JSON.stringify({...mock,active:true,lastUpdatedAt:new Date().toISOString()}))}
-  function activeClear(){localStorage.removeItem('karp_active_mock')}
+  let cloudActiveMock=null;
+  function activeLoad(){return cloudActiveMock||(()=>{try{return JSON.parse(localStorage.getItem('karp_active_mock')||'null')}catch{return null}})()}
+  async function activeSave(){const data={...mock,active:true,lastUpdatedAt:new Date().toISOString()};localStorage.setItem('karp_active_mock',JSON.stringify(data));cloudActiveMock=data;try{await karpUserRecord('privateState','state',{activeMock:data})}catch(e){console.warn('Could not persist active mock',e)}}
+  async function activeClear(){localStorage.removeItem('karp_active_mock');cloudActiveMock=null;try{await karpUserRecord('privateState','state',{activeMock:null})}catch(e){console.warn('Could not clear active mock',e)}}
   function dateText(v){return v?new Date(v).toLocaleString():'—'}
 
   function renderReview(item){
@@ -99,12 +100,12 @@
   }
   async function saveFinished(){await karpUserRecord('mockHistory',String(mock.id),{...mock,id:String(mock.id)});cloudMockHistory=[mock,...history().filter(x=>x.id!==mock.id)].slice(0,30);activeClear()}
   function installGuard(on){leaveGuard=on;window.onbeforeunload=on?e=>{e.preventDefault();e.returnValue='Are you sure you want to leave this mock? Your mock is saved and can be resumed later.'}:null}
-  function startMock(item){if(item&&item.id)mock=JSON.parse(JSON.stringify(item));if(!mock)return;finished=false;mock.endAt=mock.endAt||Date.now()+Number(mock.minutes||60)*60000;seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));activeSave();installGuard(true);renderSession();clearInterval(timer);timer=setInterval(tick,1000)}
+  async function startMock(item){if(item&&item.id)mock=JSON.parse(JSON.stringify(item));if(!mock)return;finished=false;mock.endAt=mock.endAt||Date.now()+Number(mock.minutes||60)*60000;seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));await activeSave();installGuard(true);renderSession();clearInterval(timer);timer=setInterval(tick,1000)}
   function renderSession(){document.body.innerHTML='<main class="mock-session"><header class="mock-top"><div class="mock-kicker">KARP · MOCK IN PROGRESS</div><div class="mock-timer" id="mock-timer">'+clock(seconds)+'</div><div class="mock-session-meta">'+esc(mock.title)+' · '+mock.questions.length+' questions · '+mock.minutes+' min</div></header><div class="mock-paper" id="mock-paper">'+mock.questions.map((q,i)=>'<section class="session-question"><div class="session-qtitle">Question '+(i+1)+'</div><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div><div class="session-statement">'+md(q.statement)+'</div></section>').join('')+'<div class="session-bottom"><span class="session-note">Leaving the mock asks for confirmation. You can resume it later.</span><button class="btn primary" id="finish-mock">Finish Mock</button></div></div></main>';document.getElementById('finish-mock').onclick=()=>finishMock(false);renderMath(document.getElementById('mock-paper'));window.scrollTo(0,0)}
   function clock(s){const x=Math.max(0,Number(s||0));return String(Math.floor(x/3600)).padStart(2,'0')+':'+String(Math.floor(x%3600/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0')}
   function tick(){seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));const el=document.getElementById('mock-timer');if(el)el.textContent=clock(seconds);const bucket=Math.floor(seconds/2);if(bucket!==lastSavedBucket){lastSavedBucket=bucket;activeSave()}if(seconds<=0)finishMock(true)}
   async function finishMock(auto){if(finished)return;finished=true;clearInterval(timer);installGuard(false);mock={...mock,completedAt:new Date().toISOString(),timedOut:!!auto};try{await saveFinished();renderReview(mock)}catch(e){finished=false;toast(e.message||'Could not save mock history.')}}
-  (async()=>{try{await karpMigrateLocalState();const cloud=await karpUserState();cloudMockHistory=Array.isArray(cloud.mocks)?cloud.mocks:[];renderBuilder()}catch(e){console.error(e);renderBuilder()}})();
+  (async()=>{try{await karpMigrateLocalState();const cloud=await karpUserState();cloudMockHistory=Array.isArray(cloud.mocks)?cloud.mocks:[];cloudActiveMock=cloud.activeMock||null;renderBuilder()}catch(e){console.error(e);renderBuilder()}})();
 })();
 </script>
 </body></html>
