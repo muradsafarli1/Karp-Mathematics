@@ -528,7 +528,7 @@ function normalizeMathMarkdown(value=''){
     'delta','epsilon','theta','lambda','mu','pi','rho','sigma','phi',
     'psi','omega','le','leq','ge','geq','neq','equiv','in','notin',
     'subset','subseteq','supset','supseteq','cdot','times','pm','mp',
-    'forall','exists','to','rightarrow','infty','left','right'
+    'forall','exists','to','rightarrow','infty','left','right','big','Big','bigl','Bigl','bigr','Bigr'
   ]);
   const commandRegex=/\\([A-Za-z]+)/;
   const texCommand=/\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|sin|cos|tan|log|ln|mathbb|mathcal|mathrm|mathbf|operatorname|overline|underline|left|right|text|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|le|leq|ge|geq|neq|equiv|in|notin|subset|subseteq|supset|supseteq|cdot|times|pm|mp|binom|pmod|mod|forall|exists|to|rightarrow|infty)\b/;
@@ -590,11 +590,10 @@ function normalizeMathMarkdown(value=''){
         end=consumeAtom(line,end);
       }else if(cmd==='sin'||cmd==='cos'||cmd==='tan'||cmd==='log'||cmd==='ln'){
         end=consumeAtom(line,end);
-      }else if(cmd==='left'){
-        // Keep \left[ ... \right], \left( ... \right), etc. together.
-        // Splitting them into separate math spans leaves literal brackets
-        // visible outside MathJax.
-        const rightRe=/\\right\\s*[()[\]{}|]/g;
+      }else if(cmd==='left'||cmd==='big'||cmd==='Big'||cmd==='bigl'||cmd==='Bigl'||cmd==='bigr'||cmd==='Bigr'){
+        // Keep bracketed/delimited TeX together so [ ], ( ), { } and
+        // similar delimiters never leak out as literal characters.
+        const rightRe=/\\(?:right|bigr|Bigr)\\s*(?:\]|\)|\}|\||>|\\rbrack|\\rparen|\\rbrace)/g;
         rightRe.lastIndex=end;
         const rm=rightRe.exec(line);
         if(rm)end=rm.index+rm[0].length;
