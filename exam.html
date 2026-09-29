@@ -84,7 +84,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
 (async()=>{
   const id=new URLSearchParams(location.search).get('id'),reviewMode=new URLSearchParams(location.search).get('review')==='1';
   if(!id){location.href='/exams.html';return}
-  let timer=null,finished=false,fullscreenCleanup=null,activityCleanup=null;
+  let timer=null,finished=false,fullscreenCleanup=null,activityCleanup=null,sessionCleanup=null,sessionStartedAt=null;
 
   try{
     const user=await me();
@@ -97,6 +97,25 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     const title=localized(exam,'title')||'Exam';
     const questions=Array.isArray(exam.questions)?exam.questions:[];
     const durationMinutes=Number(exam.durationMinutes||60);
+
+    async function writeExamSession(patch={}){
+      try{
+        const user=await me();if(!user)return;
+        const {db}=await fb();
+        const {doc,setDoc,updateDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+        const ref=doc(db,'examSessions',id+'_'+user.id);
+        const now=new Date().toISOString();
+        const base={examId:id,uid:user.id,lastActivityAt:now};
+        await setDoc(ref,{...base,...patch},{merge:true});
+      }catch(e){console.warn('Exam session tracking failed:',e)}
+    }
+    function startExamSessionTracking(){
+      const save=()=>writeExamSession({lastActivityAt:new Date().toISOString(),lastKnownRemainingMs:Math.max(0,end-Date.now())});
+      document.addEventListener('visibilitychange',save);
+      window.addEventListener('pagehide',save);
+      window.addEventListener('beforeunload',save);
+      return ()=>{document.removeEventListener('visibilitychange',save);window.removeEventListener('pagehide',save);window.removeEventListener('beforeunload',save)};
+    }
 
     function md(x){return richMarkdown(String(x||''))}
     function statement(q){return localized(q,'statement')||q.statementEn||q.statement||q.statementAz||q.text||''}
@@ -155,24 +174,36 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
 
     async function beginExam(){
       const startedAt=new Date().toISOString();
+      sessionStartedAt=startedAt;
       end=Date.now()+durationMinutes*60000;
       localStorage.setItem(storageKey,JSON.stringify({startedAt,end,submitted:false}));
+      await writeExamSession({status:'active',startedAt,entryAt:startedAt,endedAt:null,exitAt:null,durationSeconds:0});
       await requestFullscreen();
       renderActive();
     }
-    function resumeExam(){requestFullscreen().then(()=>renderActive())}
+    async function resumeExam(){
+      const current=JSON.parse(localStorage.getItem(storageKey)||'{}');
+      sessionStartedAt=current.startedAt||new Date().toISOString();
+      await writeExamSession({status:'active',startedAt:sessionStartedAt,resumedAt:new Date().toISOString(),lastActivityAt:new Date().toISOString()});
+      await requestFullscreen();
+      renderActive();
+    }
     async function finishExam(reason){
-      if(finished)return;finished=true;clearInterval(timer);window.onbeforeunload=null;clearTrackers();
+      if(finished)return;finished=true;clearInterval(timer);clearTrackers();sessionCleanup?.();sessionCleanup=null;
       try{
         const current=JSON.parse(localStorage.getItem(storageKey)||'{}');
-        await api('/api/exams/'+encodeURIComponent(id)+'/submit',{method:'POST',body:JSON.stringify({answers:{},startedAt:current.startedAt||new Date().toISOString(),reason})});
-        localStorage.setItem(storageKey,JSON.stringify({startedAt:current.startedAt||new Date().toISOString(),end,submitted:true}));
+        const started=current.startedAt||sessionStartedAt||new Date().toISOString();
+        await api('/api/exams/'+encodeURIComponent(id)+'/submit',{method:'POST',body:JSON.stringify({answers:{},startedAt:started,reason})});
+        const endedAt=new Date().toISOString();
+        const durationSeconds=Math.max(0,Math.round((Date.parse(endedAt)-Date.parse(started))/1000));
+        await writeExamSession({status:'completed',startedAt:started,entryAt:started,endedAt,exitAt:endedAt,durationSeconds,lastActivityAt:endedAt,exitReason:reason});
+        localStorage.setItem(storageKey,JSON.stringify({startedAt:started,end,submitted:true}));
         setKarpActivity({page:'Exam',label:'Exam finished',detail:title,question:null});
         if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
         location.href='/exam.html?id='+encodeURIComponent(id)+'&review=1';
       }catch(e){finished=false;toast(e.message||'Could not submit the exam.')}}
     function renderEntry(resume){
-      document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>'+(resume?'Resume exam':'Start exam')+'</h1><p>'+(resume?'Your active exam is saved. Enter fullscreen to continue.':'Once you start, KARP enters fullscreen and keeps the exam locked until you finish it.')+'</p><div class="exam-enter-actions"><button class="btn primary" id="start-exam">'+(resume?'Resume exam':'Start exam')+'</button><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';
+      document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><p class="exam-gate-text">This exam runs in fullscreen. Click below to begin.</p><button class="exam-continue" id="start-exam" type="button">Continue in Fullscreen</button></section></main>';
       document.getElementById('start-exam').onclick=resume?resumeExam:beginExam;
     }
     function renderActive(){
@@ -209,4 +240,34 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
   background:var(--bg)!important;color:var(--text)!important;box-shadow:none!important;border-color:transparent!important
 }
 .exam-question{background:transparent!important}
+</style>
+
+<style>
+/* Exact fullscreen gate: no extra copy/buttons and a blue action with black text. */
+.exam-enter{background:#eadbc7!important}
+.exam-enter-card{
+  background:#eadbc7!important;
+  border:0!important;
+  box-shadow:none!important;
+  padding:25px!important;
+}
+.exam-gate-text{
+  margin:0 0 22px!important;
+  color:#17191c!important;
+  font-size:18px!important;
+  line-height:1.6!important;
+}
+.exam-continue{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:13px 20px!important;
+  border-radius:11px!important;
+  border:1px solid #2f78b7!important;
+  background:#2f78b7!important;
+  color:#0b0d10!important;
+  font-weight:800!important;
+  cursor:pointer!important;
+}
+.exam-review,.exam-review-wrap,.exam-active-body,.exam-active-paper{background:#eadbc7!important;border:0!important;box-shadow:none!important}
 </style>
