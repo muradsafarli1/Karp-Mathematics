@@ -588,7 +588,7 @@ function normalizeMathMarkdown(value=''){
   const anyCommand=/\\([A-Za-z@]+)(?![A-Za-z@])/;
   const texCommand=/\\(?:[A-Za-z@]+)/;
   const formulaPunctuation=/[=^_{}<>]|\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|binom|angle|Vangle|vec|overline|mathbb)\b/;
-  const formulaChars=/^[\\0-9A-Za-z{}()[\]\s=+*^_<>.,;:|/\\\-]+$/;
+  const formulaChars=/^[\\0-9A-Za-z{}()\[\]\s=+*^_<>.,;:|/\\-]+$/;
   const proseStart=/^(?:let|find|prove|show|suppose|given|assume|determine|consider|if|there|for|we|the|where|hence|thus|then)\b/i;
 
   function skipSpaces(line,pos){
