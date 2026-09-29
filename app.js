@@ -590,7 +590,16 @@ function normalizeMathMarkdown(value=''){
         end=consumeAtom(line,end);
       }else if(cmd==='sin'||cmd==='cos'||cmd==='tan'||cmd==='log'||cmd==='ln'){
         end=consumeAtom(line,end);
-      }else if(cmd==='left'||cmd==='right'){
+      }else if(cmd==='left'){
+        // Keep \left[ ... \right], \left( ... \right), etc. together.
+        // Splitting them into separate math spans leaves literal brackets
+        // visible outside MathJax.
+        const rightRe=/\\right\\s*[()[\]{}|]/g;
+        rightRe.lastIndex=end;
+        const rm=rightRe.exec(line);
+        if(rm)end=rm.index+rm[0].length;
+        else end=line.length;
+      }else if(cmd==='right'){
         end=skipSpaces(line,end);
         if(end<line.length)end++;
       }
