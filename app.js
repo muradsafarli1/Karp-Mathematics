@@ -525,14 +525,14 @@ function normalizeMathMarkdown(value=''){
     scr:'mathcal'
   };
   Object.entries(aliases).forEach(([from,to])=>{
-    s=s.replace(new RegExp('\\\\'+from+'\\b','g'),'\\\\'+to);
+    s=s.replace(new RegExp('\\\\'+from+'\\b','g'),'\\'+to);
   });
 
   // Short blackboard-letter macros frequently appear in extracted geometry /
   // olympiad text. Only convert when used as a TeX command.
   const blackboard={R:'R',N:'N',Z:'Z',Q:'Q',C:'C',F:'F',P:'P'};
   Object.keys(blackboard).forEach(cmd=>{
-    s=s.replace(new RegExp('\\\\'+cmd+'\\b','g'),'\\\\mathbb{'+cmd+'}');
+    s=s.replace(new RegExp('\\\\'+cmd+'\\b','g'),'\\mathbb{'+cmd+'}');
   });
 
   // Normalize degree notation so it cannot be split into a separate inline-math span.
