@@ -84,7 +84,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
 (async()=>{
   const id=new URLSearchParams(location.search).get('id'),reviewMode=new URLSearchParams(location.search).get('review')==='1';
   if(!id){location.href='/exams.html';return}
-  let timer=null,finished=false,fullscreenCleanup=null,activityCleanup=null,sessionCleanup=null,sessionStartedAt=null;
+  let timer=null,finished=false,fullscreenCleanup=null,activityCleanup=null,sessionCleanup=null,sessionStartedAt=null,examGuardCleanup=null,focusLost=false;
 
   try{
     const user=await me();
@@ -127,9 +127,9 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       return '<section class="exam-question" data-question="'+(i+1)+'"><div class="problem-number">Problem '+(i+1)+(q.code?' · '+escapeHtml(q.code):'')+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+escapeHtml(q.imageUrl)+'" alt="Problem '+(i+1)+'">':'')+'<div class="question-text">'+md(statement(q))+'</div>'+(withSolution?'<div class="exam-solution"><button class="btn">Show solution</button><div class="exam-solution-body">'+(sol?md(sol):'<div style="color:var(--muted)">No supplied solution.</div>')+'</div></div>':'')+'</section>';
     }
     function bindSolutions(host){host.querySelectorAll('.exam-solution').forEach(box=>{const b=box.querySelector('button'),body=box.querySelector('.exam-solution-body');if(!b||!body)return;b.onclick=()=>{const open=body.classList.toggle('open');b.textContent=open?'Hide solution':'Show solution';if(open)typesetMath(body)}})}
-    function clearTrackers(){fullscreenCleanup?.();activityCleanup?.();fullscreenCleanup=null;activityCleanup=null}
+    function clearTrackers(){fullscreenCleanup?.();activityCleanup?.();examGuardCleanup?.();fullscreenCleanup=null;activityCleanup=null;examGuardCleanup=null}
     function lockMarkup(){
-      return '<div class="exam-fullscreen-lock" id="exam-fullscreen-lock"><div class="exam-fullscreen-lock-card"><div class="exam-active-kicker">KARP · FULLSCREEN</div><h2>Fullscreen required</h2><p>Use the fullscreen button to continue the exam. The exam remains locked inside KARP while it is in progress.</p><button class="exam-fullscreen" id="exam-fullscreen-lock-btn" type="button" aria-label="Enter fullscreen" title="Enter fullscreen">⛶</button></div></div>';
+      return '<div class="exam-fullscreen-lock" id="exam-fullscreen-lock"><div class="exam-fullscreen-lock-card"><div class="exam-active-kicker">KARP · EXAM LOCK</div><h2 id="exam-lock-title">Exam locked</h2><p id="exam-lock-text">The active exam requires fullscreen and continuous focus. Return to the exam and press the button below to continue.</p><button class="exam-fullscreen" id="exam-fullscreen-lock-btn" type="button" aria-label="Resume exam" title="Resume exam">⛶</button></div></div>';
     }
     async function requestFullscreen(){
       const target=document.querySelector('.exam-active-shell');
@@ -137,11 +137,74 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       try{await target.requestFullscreen();return true}catch(e){console.error(e);toast('Please allow fullscreen to start the exam.');return false}
     }
     function installFullscreen(){
-      const target=document.querySelector('.exam-active-shell'),lock=document.getElementById('exam-fullscreen-lock'),btn=document.getElementById('exam-fullscreen-button'),lockBtn=document.getElementById('exam-fullscreen-lock-btn');
-      const sync=()=>{const full=document.fullscreenElement===target;lock?.classList.toggle('open',!full);if(!full)setKarpActivity({page:'Exam',label:'Fullscreen required',detail:title,question:null})};
-      const handler=()=>sync();document.addEventListener('fullscreenchange',handler);
-      btn&&(btn.onclick=requestFullscreen);lockBtn&&(lockBtn.onclick=requestFullscreen);sync();
-      fullscreenCleanup=()=>document.removeEventListener('fullscreenchange',handler);
+      const target=document.querySelector('.exam-active-shell');
+      const lock=document.getElementById('exam-fullscreen-lock');
+      const lockTitle=document.getElementById('exam-lock-title');
+      const lockText=document.getElementById('exam-lock-text');
+      const btn=document.getElementById('exam-fullscreen-button');
+      const lockBtn=document.getElementById('exam-fullscreen-lock-btn');
+
+      const sync=()=>{
+        const full=document.fullscreenElement===target;
+        const hidden=document.hidden;
+        const locked=hidden||!full||focusLost;
+        lock?.classList.toggle('open',locked);
+        if(lockTitle)lockTitle.textContent=focusLost?'Exam focus lost':(full?'Exam locked':'Fullscreen required');
+        if(lockText)lockText.textContent=focusLost
+          ?'The exam lost browser focus. Stay on this exam page and press Resume exam to continue.'
+          :'The active exam requires fullscreen. Browser navigation is locked while the exam is in progress.';
+        if(locked)setKarpActivity({page:'Exam',label:focusLost?'Exam focus lost':'Fullscreen required',detail:title,question:null});
+      };
+
+      const onFullscreen=()=>sync();
+      const onVisibility=()=>{
+        if(document.hidden){
+          focusLost=true;
+          writeExamSession({
+            lastActivityAt:new Date().toISOString(),
+            focusLostAt:new Date().toISOString(),
+            focusLost:true
+          });
+        }
+        sync();
+      };
+      const onWindowBlur=()=>{
+        if(document.hidden)return;
+        focusLost=true;
+        writeExamSession({lastActivityAt:new Date().toISOString(),focusLostAt:new Date().toISOString(),focusLost:true});
+        sync();
+      };
+      const onWindowFocus=()=>sync();
+      const onKeyDown=e=>{
+        const blocked=e.key==='F11'||e.key==='Escape'||e.key==='Tab'||
+          (e.altKey&&['ArrowLeft','ArrowRight','Left','Right'].includes(e.key))||
+          (e.ctrlKey&&['l','L','t','T','w','W','n','N'].includes(e.key))||
+          (e.metaKey&&['l','L','t','T','w','W','n','N'].includes(e.key));
+        if(blocked){e.preventDefault();e.stopPropagation();}
+      };
+      const onPopState=()=>history.pushState({karpExam:true},'',location.href);
+      history.pushState({karpExam:true},'',location.href);
+
+      document.addEventListener('fullscreenchange',onFullscreen);
+      document.addEventListener('visibilitychange',onVisibility);
+      window.addEventListener('blur',onWindowBlur);
+      window.addEventListener('focus',onWindowFocus);
+      document.addEventListener('keydown',onKeyDown,true);
+      window.addEventListener('popstate',onPopState);
+      window.addEventListener('beforeunload',e=>{if(!finished){e.preventDefault();e.returnValue='';}});
+
+      btn&&(btn.onclick=async()=>{focusLost=false;await requestFullscreen();sync()});
+      lockBtn&&(lockBtn.onclick=async()=>{await requestFullscreen();if(document.fullscreenElement===target)focusLost=false;sync()});
+      sync();
+
+      fullscreenCleanup=()=>{
+        document.removeEventListener('fullscreenchange',onFullscreen);
+        document.removeEventListener('visibilitychange',onVisibility);
+        window.removeEventListener('blur',onWindowBlur);
+        window.removeEventListener('focus',onWindowFocus);
+        document.removeEventListener('keydown',onKeyDown,true);
+        window.removeEventListener('popstate',onPopState);
+      };
     }
     function installActivity(){
       const host=document.getElementById('active-questions');if(!host)return;
