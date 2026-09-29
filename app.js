@@ -487,21 +487,41 @@ function escapeHtml(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','
 function normalizeMathMarkdown(value=''){
   let s=String(value??'').replace(/\r\n?/g,'\n');
 
-  // MathNet/admin data may contain TeX delimiters escaped more than once.
-  // Reduce ONLY delimiter escapes, never TeX command backslashes such as \frac.
-  for(let i=0;i<8;i++){
-    s=s.replace(/\\{2,}(?=\()/g,'\\');
-    s=s.replace(/\\{2,}(?=\))/g,'\\');
-    s=s.replace(/\\{2,}(?=\[)/g,'\\');
-    s=s.replace(/\\{2,}(?=\])/g,'\\');
-  }
+  const collapseDelimiterEscapes=(src)=>{
+    for(let i=0;i<8;i++){
+      src=src.replace(/\\{2,}(?=\()/g,'\\');
+      src=src.replace(/\\{2,}(?=\))/g,'\\');
+      src=src.replace(/\\{2,}(?=\[)/g,'\\');
+      src=src.replace(/\\{2,}(?=\])/g,'\\');
+    }
+    return src;
+  };
+  s=collapseDelimiterEscapes(s);
 
-  // Accept common MathNet forms and normalize them to MathJax delimiters.
-  s=s.replace(/\$\$([\s\S]*?)\$\$/g,'\\[$1\\]');
-  s=s.replace(/(^|[^\\])\$([^$\n]+?)\$(?!\$)/g,'$1\\($2\\)');
+  const pair=(src,token,open,close)=>{
+    let out='',from=0;
+    while(true){
+      const a=src.indexOf(token,from);
+      if(a<0){out+=src.slice(from);break;}
+      const b=src.indexOf(token,a+token.length);
+      if(b<0){out+=src.slice(from);break;}
+      out+=src.slice(from,a)+open+src.slice(a+token.length,b)+close;
+      from=b+token.length;
+    }
+    return out;
+  };
+  const dollar=String.fromCharCode(36);
 
-  // Convert bare LaTeX environments into display math.
+  // $$...$$ and $...$ become invisible MathJax delimiters.
+  s=pair(s,dollar+dollar,'\\[','\\]');
+  s=pair(s,'\\'+dollar,'\\(','\\)');
+  s=pair(s,dollar,'\\(','\\)');
+
+  // Bare LaTeX environments are display math.
   s=s.replace(/(^|\n)([ \t]*\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})(?=\n|$)/g,'$1\\[$2\\]');
+
+  s=s.replace(/\\\\\(/g,'\\(').replace(/\\\\\)/g,'\\)');
+  s=s.replace(/\\\\\[/g,'\\[').replace(/\\\\\]/g,'\\]');
 
   return s;
 }
