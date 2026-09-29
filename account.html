@@ -13,11 +13,6 @@
 <style>
 .account-page{min-height:calc(100vh - 76px)}
 .account-profile{text-align:center;padding:72px 20px 44px}
-.profile-avatar-wrap{position:relative;width:158px;height:158px;margin:0 auto 18px}
-.profile-avatar-wrap .profile-avatar{margin:0;width:158px;height:158px}
-.profile-avatar-upload{position:absolute;right:-4px;bottom:8px;width:28px;height:28px;border:1px solid #d5d5d1;border-radius:50%;background:#eeeeeb;color:#17191c;font-size:19px;line-height:26px;font-weight:700;cursor:pointer;display:grid;place-items:center;box-shadow:0 3px 10px rgba(0,0,0,.12)}
-.profile-avatar-upload:hover{transform:scale(1.04)}
-.profile-avatar-file{display:none}
 .profile-avatar{width:158px;height:158px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 18px;background:var(--panel2)}
 .profile-initial{display:grid;place-items:center;font-size:52px;font-weight:800;color:var(--text)}
 .profile-name{font-size:19px;font-weight:800}.profile-email{margin-top:5px;font-size:12px;color:var(--muted)}
@@ -83,12 +78,8 @@
   const maxTopic=Math.max(1,...Object.values(totals));
 
   const body='<main class="account-page"><section class="account-profile">'+
-    '<div class="profile-avatar-wrap">'+
-      '<img class="profile-avatar" src="'+escapeHtml(u.photoURL||'')+'" style="'+(u.photoURL?'':'display:none')+'" alt="">'+
-      '<div class="profile-avatar profile-initial" style="'+(u.photoURL?'display:none':'')+'">'+escapeHtml((u.name||'K').charAt(0).toUpperCase())+'</div>'+
-      '<button class="profile-avatar-upload" id="profile-avatar-upload" type="button" aria-label="Upload profile picture" title="Upload profile picture">+</button>'+
-      '<input class="profile-avatar-file" id="profile-avatar-file" type="file" accept="image/*">'+
-    '</div>'+
+    '<img class="profile-avatar" src="'+escapeHtml(u.photoURL||'')+'" style="'+(u.photoURL?'':'display:none')+'" alt="">'+
+    '<div class="profile-avatar profile-initial" style="'+(u.photoURL?'display:none':'')+'">'+escapeHtml((u.name||'K').charAt(0).toUpperCase())+'</div>'+
     '<div class="profile-name">'+escapeHtml(u.name||'KARP Member')+'</div><div class="profile-email">'+escapeHtml(u.email||'')+'</div>'+
     '</section><section class="account-wrap">'+
     '<div class="kpi-grid"><div class="kpi"><strong>'+solved.length+'</strong><span>Solved</span></div><div class="kpi"><strong>'+streak+'</strong><span>Day streak</span></div><div class="kpi"><strong>'+saved.length+'</strong><span>Saved</span></div><div class="kpi"><strong>'+exams.length+'</strong><span>Exams</span></div><div class="kpi"><strong>'+mocks.length+'</strong><span>Mocks</span></div></div>'+
@@ -122,27 +113,6 @@
   else mockList.innerHTML=mocks.map((m,i)=>{const done=!!m.completedAt||m.status==='completed';return '<div class="history-card"><div class="history-card-title">'+escapeHtml(m.title||('Mock '+(mocks.length-i)))+'</div><div class="history-card-meta">'+escapeHtml(done?dateText(m.completedAt):'Saved draft · '+dateText(m.savedAt||m.createdAt))+' · '+escapeHtml((m.questions?.length||0)+' questions · '+(m.minutes||0)+' min')+'</div><div class="history-card-actions"><a class="btn" href="/mock.html?'+(done?'review=':'saved=')+encodeURIComponent(m.id||'')+'">'+(done?'Review':'Open')+'</a><button class="btn danger" data-delete-mock="'+escapeHtml(m.id||'')+'">Delete</button></div></div>'}).join('');
 
   document.querySelectorAll('#mock-list [data-delete-mock]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this mock permanently?'))return;try{await karpDeleteUserRecord('mockHistory',String(b.dataset.deleteMock));b.closest('.history-card')?.remove();toast('Mock deleted.');}catch(e){toast(e.message||'Could not delete mock.')}});
-  document.getElementById('profile-avatar-upload').onclick=()=>document.getElementById('profile-avatar-file').click();
-  document.getElementById('profile-avatar-file').onchange=async e=>{
-    const file=e.target.files?.[0];if(!file)return;
-    if(!file.type.startsWith('image/')){toast('Please choose an image file.');e.target.value='';return;}
-    const btn=document.getElementById('profile-avatar-upload');btn.disabled=true;btn.textContent='…';
-    try{
-      const {db,auth,storage}=await fb();
-      const {ref,uploadBytes,getDownloadURL}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js');
-      const {doc,updateDoc,setDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-      const safeName=(file.name||'avatar').replace(/[^a-zA-Z0-9._-]/g,'_');
-      const storageRef=ref(storage,'profiles/'+u.id+'/'+Date.now()+'-'+safeName);
-      await uploadBytes(storageRef,file,{contentType:file.type});
-      const url=await getDownloadURL(storageRef);
-      await updateDoc(doc(db,'users',u.id),{photoURL:url});
-      await setDoc(doc(db,'publicProfiles',u.id),{photoURL:url,updatedAt:new Date().toISOString()},{merge:true});
-      if(auth.currentUser){try{const {updateProfile}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');await updateProfile(auth.currentUser,{photoURL:url})}catch{}}
-      location.reload();
-    }catch(err){console.error(err);toast(err.message||'Could not upload profile picture.');btn.disabled=false;btn.textContent='+';}
-    e.target.value='';
-  };
-
   document.querySelectorAll('#activity-switch button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#activity-switch button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('activity-chart').innerHTML=chartHtml(b.dataset.mode);});
 })();
 </script>
