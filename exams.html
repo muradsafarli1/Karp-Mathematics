@@ -19,6 +19,7 @@
     const d=await api('/api/exams');
     const history=u?(await api('/api/exams/history').catch(()=>({history:[]}))).history||[]:[];
     const completed=new Set(history.map(h=>h.examId)),now=Date.now();
+    setKarpActivity({page:'Exams',label:'Exam list',detail:'Browsing available exams',question:null});
     const parseDate=e=>e.date?Date.parse(String(e.date).replace(' ','T')):NaN;
     function renderCard(e){
       const dt=parseDate(e),past=completed.has(e.id)||e.status==='Finished'||(!Number.isNaN(dt)&&dt+Number(e.durationMinutes||60)*60000<now);
