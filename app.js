@@ -473,16 +473,22 @@ async function requireUser(){const u=await me();if(!u){location.href='/login.htm
 async function requireAdmin(){const u=await me();if(!u||u.role!=='admin'){location.href='/login.html';return null}return u}
 function escapeHtml(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function normalizeMathMarkdown(value=''){
-  let s=String(value??'').replace(/\\r\\n?/g,'\\n');
-  // MathNet rows occasionally contain escaped delimiters (for example \\\\( ... \\\\)).
-  // Normalize those first so MathJax receives one valid delimiter layer.
-  s=s.replaceAll('\\\\\\\\[','\\\\[').replaceAll('\\\\\\\\]','\\\\]');
-  s=s.replaceAll('\\\\\\\\(','\\\\(').replaceAll('\\\\\\\\)','\\\\)');
-  // Normalize display and inline dollar math to explicit MathJax delimiters.
-  s=s.replace(/\\$\\$([\\s\\S]*?)\\$\\$/g,'\\\\[$1\\\\]');
-  s=s.replace(/(^|[^\\\\])\\$([^$\\n]+?)\\$(?!\\$)/g,'$1\\\\($2\\\\)');
-  // Convert a few common bare-TeX cases that otherwise leak commands into normal text.
-  s=s.replace(/(^|[.!?]\\s+|\\n)(\\s*)(\\\\(?:begin\\|end)\\{[^}]+\\}[\\s\\S]*?)(?=\\n|$)/g,'$1$2\\\\[$3\\\\]');
+  let s=String(value??'').replace(/\r\n?/g,'\n');
+
+  // MathNet/KARP can store TeX delimiters with multiple escaped backslashes.
+  // Collapse only backslashes immediately before a math delimiter.
+  for(let i=0;i<4;i++){
+    s=s.replace(/\\{2,}(?=[(\[])/g,'\\');
+    s=s.replace(/\\{2,}(?=[)\]])/g,'\\');
+  }
+
+  // Normalize dollar and bracket forms to the delimiters configured in MathJax.
+  s=s.replace(/\$\$([\s\S]*?)\$\$/g,'\\[$1\\]');
+  s=s.replace(/(^|[^\\])\$([^$\n]+?)\$(?!\$)/g,'$1\\($2\\)');
+
+  // MathNet occasionally stores a LaTeX environment without an outer delimiter.
+  s=s.replace(/(^|\n)([ \t]*\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})(?=\n|$)/g,'$1\\[$2\\]');
+
   return s;
 }
 function richMarkdown(value=''){
