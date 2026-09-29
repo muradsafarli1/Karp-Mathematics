@@ -143,6 +143,12 @@ service cloud.firestore {
       }
     }
 
+    match /presence/{uid} {
+      allow read: if isAdmin();
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+    }
+
     match /problems/{id} {
       allow read: if true;
       allow write: if isAdmin();
@@ -196,8 +202,11 @@ service cloud.firestore {
 
       match /submissions/{uid} {
         allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
-        allow create, update: if signedIn() && request.auth.uid == uid;
-        allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow create: if signedIn()
+          && request.auth.uid == uid
+          && !exists(/databases/$(database)/documents/exams/$(examId)/submissions/$(uid));
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
       }
     }
   }
