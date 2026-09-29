@@ -587,6 +587,7 @@ function normalizeMathMarkdown(value=''){
             end=consumeAtom(line,p+1);
           }else break;
         }
+        end=consumeAtom(line,end);
       }else if(cmd==='sin'||cmd==='cos'||cmd==='tan'||cmd==='log'||cmd==='ln'){
         end=consumeAtom(line,end);
       }else if(cmd==='left'||cmd==='right'){
