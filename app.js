@@ -171,7 +171,6 @@ async function fb(){
       apiKey:"AIzaSyAjEd4pN33WpoJlT2rsAgDFMO3A4Uh-M4s",
       authDomain:"able-2ca24.firebaseapp.com",
       projectId:"able-2ca24",
-      storageBucket:"able-2ca24.firebasestorage.app",
       messagingSenderId:"784635231366",
       appId:"1:784635231366:web:fbde7a6daaf4e3e4f0e507",
       measurementId:"G-L9C4YX8MEJ"
