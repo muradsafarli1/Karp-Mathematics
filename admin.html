@@ -162,8 +162,8 @@ async function uploadAdminStorageFile(file,folder){
   });
 }
 async function saveItem(){syncCurrent();const data={};document.querySelectorAll('[id^="f-"]').forEach(e=>data[e.id.slice(2)]=e.type==='number'?Number(e.value):e.value);if(state.type==='exams'){data.durationMinutes=Number(data.durationMinutes)||60;data.questions=(state.editing.questions||[]).map(q=>({...q,statementEn:normalizeMathMarkdown(q.statementEn||''),statementAz:normalizeMathMarkdown(q.statementAz||''),solution:normalizeMathMarkdown(q.solution||'')}))}if(state.type==='contests')data.problems=(state.editing.problems||[]).map(q=>({...q,statementEn:normalizeMathMarkdown(q.statementEn||''),statementAz:normalizeMathMarkdown(q.statementAz||'')}));if(state.type==='problems'){data.statementEn=normalizeMathMarkdown(data.statementEn||'');data.statementAz=normalizeMathMarkdown(data.statementAz||'');data.solutionEn=normalizeMathMarkdown(data.solutionEn||'');data.solutionAz=normalizeMathMarkdown(data.solutionAz||'')}if(state.type==='videos'){
-  data.thumbnail=String(data.thumbnail||'').trim();
-  data.videoUrl=String(data.videoUrl||'').trim();
+  data.thumbnail=String(data.thumbnail||state.editing?.thumbnail||'').trim();
+  data.videoUrl=String(data.videoUrl||state.editing?.videoUrl||'').trim();
   const videoFile=document.getElementById('f-videoFile')?.files?.[0];
   const thumbnailFile=document.getElementById('f-thumbnailFile')?.files?.[0];
   const status=document.getElementById('admin-upload-status');
