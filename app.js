@@ -521,10 +521,85 @@ function normalizeMathMarkdown(value=''){
   // Standalone TeX environments.
   s=s.replace(/(^|\n)([ \t]*\\begin\{[^}\n]+\}[\s\S]*?\\end\{[^}\n]+\})(?=\n|$)/g,'$1\\[$2\\]');
 
+  const texCommands=new Set([
+    'frac','dfrac','tfrac','sqrt','binom','sum','prod','int','lim',
+    'sin','cos','tan','log','ln','mathbb','mathcal','mathrm','mathbf',
+    'operatorname','overline','underline','text','alpha','beta','gamma',
+    'delta','epsilon','theta','lambda','mu','pi','rho','sigma','phi',
+    'psi','omega','le','leq','ge','geq','neq','equiv','in','notin',
+    'subset','subseteq','supset','supseteq','cdot','times','pm','mp',
+    'forall','exists','to','rightarrow','infty','left','right'
+  ]);
+  const commandRegex=/\\([A-Za-z]+)/;
   const texCommand=/\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|lim|sin|cos|tan|log|ln|mathbb|mathcal|mathrm|mathbf|operatorname|overline|underline|left|right|text|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|le|leq|ge|geq|neq|equiv|in|notin|subset|subseteq|supset|supseteq|cdot|times|pm|mp|binom|pmod|mod|forall|exists|to|rightarrow|infty)\b/;
   const mathPunctuation=/[=^_{}<>]|\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|binom)\b/;
   const formulaChars=/^[\\0-9A-Za-z{}()[\]\s=+*^_<>.,;:|/\\-]+$/;
   const proseStart=/^(?:let|find|prove|show|suppose|given|assume|determine|consider|if|there|for|we|the)\b/i;
+
+  function skipSpaces(line,pos){
+    while(pos<line.length&&/\s/.test(line[pos]))pos++;
+    return pos;
+  }
+  function consumeAtom(line,pos){
+    pos=skipSpaces(line,pos);
+    if(pos>=line.length)return pos;
+    if(line[pos]==='{'){
+      let depth=0;
+      for(let j=pos;j<line.length;j++){
+        if(line[j]==='{')depth++;
+        else if(line[j]==='}'){
+          depth--;
+          if(depth===0)return j+1;
+        }
+      }
+      return line.length;
+    }
+    if(line[pos]==='['){
+      let depth=0;
+      for(let j=pos;j<line.length;j++){
+        if(line[j]==='[')depth++;
+        else if(line[j]===']'){
+          depth--;
+          if(depth===0)return j+1;
+        }
+      }
+      return line.length;
+    }
+    return pos+1;
+  }
+  function wrapBareTexInline(line){
+    let cursor=0,pos=0,out='';
+    while((pos=line.indexOf('\\',pos))>=0){
+      const m=line.slice(pos).match(commandRegex);
+      if(!m){pos++;continue;}
+      const cmd=m[1];
+      if(!texCommands.has(cmd)){pos+=2;continue;}
+      let end=pos+m[0].length;
+
+      if(cmd==='frac'||cmd==='dfrac'||cmd==='tfrac'||cmd==='binom'){
+        end=consumeAtom(line,end);end=consumeAtom(line,end);
+      }else if(cmd==='sqrt'||cmd==='overline'||cmd==='underline'||cmd==='text'||cmd==='mathbb'||cmd==='mathcal'||cmd==='mathrm'||cmd==='mathbf'||cmd==='operatorname'){
+        end=consumeAtom(line,end);
+      }else if(cmd==='sum'||cmd==='prod'||cmd==='int'||cmd==='lim'){
+        while(true){
+          const p=skipSpaces(line,end);
+          if(line[p]==='_'||line[p]==='^'){
+            end=consumeAtom(line,p+1);
+          }else break;
+        }
+      }else if(cmd==='sin'||cmd==='cos'||cmd==='tan'||cmd==='log'||cmd==='ln'){
+        end=consumeAtom(line,end);
+      }else if(cmd==='left'||cmd==='right'){
+        end=skipSpaces(line,end);
+        if(end<line.length)end++;
+      }
+
+      out+=line.slice(cursor,pos)+'\\('+line.slice(pos,end)+'\\)';
+      cursor=end;
+      pos=end;
+    }
+    return out+line.slice(cursor);
+  }
 
   s=s.split('\n').map(line=>{
     const t=line.trim();
@@ -536,18 +611,13 @@ function normalizeMathMarkdown(value=''){
     const startsLikeProse=proseStart.test(t);
     const symbolOnly=formulaChars.test(t);
 
-    // Only whole-line-wrap a real formula. A prose sentence such as
-    // "Let x = \frac{a}{b}" is handled by the inline pass below.
+    // Whole-line display math only for an actual formula line. Prose such as
+    // "Prove that a_n = \frac{n(n+1)}2" is kept as prose and handled inline.
     const formulaOnly=(commands&&punct&&(t.startsWith('\\')||(!startsLikeProse&&words<=6)))
       ||(symbolOnly&&punct&&words<=6&&!startsLikeProse);
 
     if(formulaOnly)return '\\['+t+'\\]';
-
-    // Mixed prose with bare TeX: wrap common standalone commands inline.
-    return line.replace(
-      /\\(?:frac|dfrac|tfrac)(?:\s*\{[^{}\n]*\}){1,2}|\\sqrt(?:\s*\{[^{}\n]*\})?|\\binom(?:\s*\{[^{}\n]*\}){2}|\\(?:mathbb|mathcal|mathrm|mathbf|text|operatorname)\s*(?:\{[^{}\n]*\}|[A-Za-z])|\\(?:left|right)\s*[()[\]{}|]|\\(?:alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|rho|sigma|phi|psi|omega|le|leq|ge|geq|neq|equiv|in|notin|subset|subseteq|supset|supseteq|cdot|times|pm|mp|forall|exists|infty)\b/g,
-      m=>'\\('+m+'\\)'
-    );
+    return wrapBareTexInline(line);
   }).join('\n');
 
   return s;
