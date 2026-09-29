@@ -472,18 +472,20 @@ function escapeHtml(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','
 function normalizeMathMarkdown(value=''){
   let s=String(value??'').replace(/\r\n?/g,'\n');
 
-  // MathNet/KARP can store TeX delimiters with multiple escaped backslashes.
-  // Collapse only backslashes immediately before a math delimiter.
-  for(let i=0;i<4;i++){
-    s=s.replace(/\\{2,}(?=[(\[])/g,'\\');
-    s=s.replace(/\\{2,}(?=[)\]])/g,'\\');
+  // MathNet/admin data may contain TeX delimiters escaped more than once.
+  // Reduce ONLY delimiter escapes, never TeX command backslashes such as \frac.
+  for(let i=0;i<8;i++){
+    s=s.replace(/\\{2,}(?=\()/g,'\\');
+    s=s.replace(/\\{2,}(?=\))/g,'\\');
+    s=s.replace(/\\{2,}(?=\[)/g,'\\');
+    s=s.replace(/\\{2,}(?=\])/g,'\\');
   }
 
-  // Normalize dollar and bracket forms to the delimiters configured in MathJax.
+  // Accept common MathNet forms and normalize them to MathJax delimiters.
   s=s.replace(/\$\$([\s\S]*?)\$\$/g,'\\[$1\\]');
   s=s.replace(/(^|[^\\])\$([^$\n]+?)\$(?!\$)/g,'$1\\($2\\)');
 
-  // MathNet occasionally stores a LaTeX environment without an outer delimiter.
+  // Convert bare LaTeX environments into display math.
   s=s.replace(/(^|\n)([ \t]*\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\})(?=\n|$)/g,'$1\\[$2\\]');
 
   return s;
@@ -504,17 +506,25 @@ function languageSwitch(){const lang=currentLanguage();return `<div class="langu
 function bindLanguageSwitch(renderFn){document.querySelectorAll('.language-switch button').forEach(b=>b.onclick=()=>{setLanguage(b.dataset.lang);renderFn()})}
 async function typesetMath(root,retries=40){
   if(!root)return false;
-  if(window.MathJax?.startup?.promise){
-    try{await MathJax.startup.promise}catch{}
-  }
-  if(window.MathJax?.typesetPromise){
+  const run=async()=>{
+    if(window.MathJax?.startup?.promise){
+      try{await window.MathJax.startup.promise}catch{}
+    }
+    if(!window.MathJax?.typesetPromise)return false;
     try{
-      if(MathJax.typesetClear)MathJax.typesetClear([root]);
-      await MathJax.typesetPromise([root]);
+      if(window.MathJax.typesetClear)window.MathJax.typesetClear([root]);
+      await window.MathJax.typesetPromise([root]);
       return true;
-    }catch(e){if(retries<=1)console.error(e)}
+    }catch(e){
+      if(retries<=1)console.error('KARP MathJax typeset error',e);
+      return false;
+    }
+  };
+  const ok=await run();
+  if(ok)return true;
+  if(retries>0){
+    setTimeout(()=>typesetMath(root,retries-1),250);
   }
-  if(retries>0)setTimeout(()=>typesetMath(root,retries-1),250);
   return false;
 }
 function formatDuration(m){m=Number(m||60);const h=Math.floor(m/60),mm=m%60;return `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`}
