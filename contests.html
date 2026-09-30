@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js"></script>
 <style>
-.cards .card{text-align:center!important}
+.cards .card{text-align:center!important;position:relative;padding-bottom:54px!important}.content-read-count{position:absolute;right:18px;bottom:17px;font-size:10px;font-weight:700;color:var(--muted);white-space:nowrap}
 .card h3{font-size:28px!important;line-height:1.18!important;letter-spacing:-1px!important;margin-top:32px!important;text-align:center!important}
 </style>
 </head>
@@ -18,9 +18,17 @@
     const d=await api('/api/content');
     const contests=d.contests||[];
     function render(list){
-      return list.map(c=>`<article class="card contest-card" style="cursor:pointer" onclick="location.href='/contest.html?id=${encodeURIComponent(c.id)}'"><div class="tag">${escapeHtml(c.type||'Contest')} · ${escapeHtml(c.year||'')}</div><h3>${escapeHtml(localized(c,'title')||c.titleEn||c.titleAz||c.title||'Untitled contest')}</h3><p>${escapeHtml(localized(c,'description')||c.descriptionEn||c.descriptionAz||c.description||'')}</p></article>`).join('')||'<div class="empty">No contests found.</div>';
+      return list.map(c=>{const n=Math.max(0,Number(c.readCount||0));return `<article class="card contest-card" data-read-id="${escapeHtml(c.id)}" style="cursor:pointer"><div class="tag">${escapeHtml(c.type||'Contest')} · ${escapeHtml(c.year||'')}</div><h3>${escapeHtml(localized(c,'title')||c.titleEn||c.titleAz||c.title||'Untitled contest')}</h3><p>${escapeHtml(localized(c,'description')||c.descriptionEn||c.descriptionAz||c.description||'')}</p><span class="content-read-count">${n===1?'1 read':n.toLocaleString()+' reads'}</span></article>`}).join('')||'<div class="empty">No contests found.</div>';
     }
     shell('Contests','Contests',`<main class="contest-page"><section class="pagehero"><div class="wrap"><h1>Contests</h1></div></section><section class="section"><div class="wrap"><div class="toolbar"><input id="contestSearch" class="input" type="search" placeholder="Search contests..." aria-label="Search contests"></div><div id="contestCards" class="cards">${render(contests)}</div></div></section></main>`);
+    const readHost=document.getElementById('contestCards');
+    readHost.addEventListener('click',async event=>{
+      const card=event.target.closest('[data-read-id]');
+      if(!card)return;
+      event.preventDefault();
+      await markKarpRead('contest',card.dataset.readId);
+      location.href='/contest.html?id='+encodeURIComponent(card.dataset.readId);
+    });
     const input=document.getElementById('contestSearch');
     input.addEventListener('input',()=>{const q=input.value.trim().toLowerCase();document.getElementById('contestCards').innerHTML=render(contests.filter(c=>[c.title,c.titleEn,c.titleAz,c.type,c.year,c.description,c.descriptionEn,c.descriptionAz].filter(Boolean).some(v=>String(v).toLowerCase().includes(q))));});
   }catch(e){console.error(e);document.body.innerHTML=`<div class="error-page"><h1>Unable to load contests</h1><p>${escapeHtml(e.message)}</p><a href="/">← Back to KARP</a></div>`}
