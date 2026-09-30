@@ -169,6 +169,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
     cloudSolved=cloud.solved||{};
     cloudSaved=cloud.saved||{};
     
+    await markKarpRead('problem',customId?String(customId):id,currentProblem.sourceType==='custom'?'custom':'mathnet');
     const competition=String(currentProblem.competition||'').trim();
     const sourceParts=[competition,currentProblem.section,currentProblem.problemNumber].filter(Boolean);
     const title=sourceParts.length?sourceParts.join(' — '):(currentProblem.title||'Problem');
