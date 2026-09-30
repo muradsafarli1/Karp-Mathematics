@@ -535,12 +535,20 @@ async function getKarpReadCounts(type,items=[]){
         const chunk=entries.slice(i,i+30),ids=chunk.map(x=>x.id);
         try{
           const snap=await getDocs(query(collection(db,collectionName),where(documentId(),'in',ids)));
-          snap.forEach(s=>{result[collectionName+'|'+s.id]=Number(s.data()?.readCount||0)});
+          snap.forEach(s=>{
+            const n=Number(s.data()?.readCount||0);
+            result[collectionName+'|'+s.id]=n;
+            result[String(type)+'|'+s.id]=n;
+          });
         }catch(e){
           for(const x of chunk){
             try{
               const snap=await getDocs(query(collection(db,collectionName),where(documentId(),'==',x.id)));
-              snap.forEach(s=>{result[collectionName+'|'+s.id]=Number(s.data()?.readCount||0)});
+              snap.forEach(s=>{
+                const n=Number(s.data()?.readCount||0);
+                result[collectionName+'|'+s.id]=n;
+                result[String(type)+'|'+s.id]=n;
+              });
             }catch{}
           }
         }
