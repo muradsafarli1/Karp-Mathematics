@@ -164,15 +164,19 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
       }
     }
 
+    // Mark a read immediately when this problem page is entered.
+    markKarpRead('problem',customId?String(customId):id,currentProblem.sourceType==='custom'?'custom':'mathnet').catch(()=>{});
+
     await karpMigrateLocalState();
     const cloud=await karpUserState();
     cloudSolved=cloud.solved||{};
     cloudSaved=cloud.saved||{};
     
-    await markKarpRead('problem',customId?String(customId):id,currentProblem.sourceType==='custom'?'custom':'mathnet');
     const competition=String(currentProblem.competition||'').trim();
     const sourceParts=[competition,currentProblem.section,currentProblem.problemNumber].filter(Boolean);
-    const title=sourceParts.length?sourceParts.join(' — '):(currentProblem.title||'Problem');
+    const title=currentProblem.sourceType==='custom'
+      ? String(currentProblem.title||sourceParts.join(' — ')||'Problem').trim()
+      : (sourceParts.length?sourceParts.join(' — '):(currentProblem.title||'Problem'));
     const sourceMeta=[currentProblem.country,currentProblem.year].filter(Boolean).join(' · ');
     setKarpActivity({page:'Problem',label:'Viewing problem',detail:title,question:null});
 
