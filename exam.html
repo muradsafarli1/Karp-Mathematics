@@ -163,12 +163,14 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       sessionStartedAt=startedAt;
       end=Date.now()+durationMinutes*60000;
       localStorage.setItem(storageKey,JSON.stringify({startedAt,end,submitted:false}));
+      await markKarpExamEntry(id);
       await writeExamSession({status:'active',startedAt,entryAt:startedAt,endedAt:null,exitAt:null,durationSeconds:0});
       renderActive();
     }
     async function resumeExam(){
       const current=JSON.parse(localStorage.getItem(storageKey)||'{}');
       sessionStartedAt=current.startedAt||new Date().toISOString();
+      await markKarpExamEntry(id);
       await writeExamSession({status:'active',startedAt:sessionStartedAt,resumedAt:new Date().toISOString(),lastActivityAt:new Date().toISOString()});
       renderActive();
     }
@@ -186,9 +188,19 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
         if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
         location.href='/exam.html?id='+encodeURIComponent(id)+'&review=1';
       }catch(e){finished=false;toast(e.message||'Could not submit the exam.')}}
-    async function renderEntry(resume){
-      if(resume){await resumeExam();return}
-      await beginExam();
+    async function enterExamFullscreen(){
+      const el=document.documentElement;
+      if(document.fullscreenElement===el)return true;
+      if(!el.requestFullscreen){toast('Fullscreen is not supported by this browser.');return false}
+      try{await el.requestFullscreen();return true}catch(e){console.error('Exam fullscreen error:',e);toast('Please allow fullscreen to start the exam.');return false}
+    }
+    function renderEntry(resume){
+      document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><p class="exam-gate-text">This exam runs in fullscreen. Click below to begin.</p><button class="exam-continue" id="exam-continue" type="button">Continue in Fullscreen</button></section></main>';
+      document.getElementById('exam-continue').onclick=async()=>{
+        const ok=await enterExamFullscreen();
+        if(!ok)return;
+        if(resume)await resumeExam();else await beginExam();
+      };
     }
     function renderActive(){
       clearTrackers();
@@ -260,8 +272,9 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
 </style>
 
 <style>
-/* Direct exam entry: no fullscreen gate, no overlay lock, normal browser controls. */
-.exam-active-shell{min-height:100vh!important;background:#f7f7f5!important;color:#17191c!important}
+/* Fullscreen exam with normal page scrolling. */
+html,body{overflow:auto!important;height:auto!important}
+.exam-active-shell{min-height:100vh!important;background:#f7f7f5!important;color:#17191c!important;overflow:visible!important}
 .exam-active-top{position:sticky!important;top:0!important;z-index:20!important;display:grid!important;grid-template-columns:auto 1fr auto!important;align-items:center!important;gap:18px!important;width:100%!important;padding:16px 24px!important;background:#f7f7f5!important;border-bottom:1px solid #d9dad8!important}
 .exam-active-lang{justify-self:start!important;grid-column:1!important;grid-row:1!important}
 .exam-active-title{grid-column:2!important;grid-row:1!important}
