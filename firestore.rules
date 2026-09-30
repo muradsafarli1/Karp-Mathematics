@@ -45,6 +45,16 @@ service cloud.firestore {
       match /privateState/{stateId} {
         allow read, create, update: if isAdmin() || (signedIn() && request.auth.uid == uid);
       }
+      match /readMarks/{markId} {
+        allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow create: if signedIn() && request.auth.uid == uid;
+        allow update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      }
+      match /examEntries/{examId} {
+        allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow create: if signedIn() && request.auth.uid == uid;
+        allow update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      }
     }
 
     match /examSessions/{sessionId} {
@@ -166,15 +176,39 @@ service cloud.firestore {
 
     match /problems/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+      allow update: if isAdmin()
+        || (signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readCount'])
+          && (
+            (!resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == 1)
+            || (resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == resource.data.readCount + 1)
+          ));
     }
     match /articles/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+      allow update: if isAdmin()
+        || (signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readCount'])
+          && (
+            (!resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == 1)
+            || (resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == resource.data.readCount + 1)
+          ));
     }
     match /contests/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+      allow update: if isAdmin()
+        || (signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readCount'])
+          && (
+            (!resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == 1)
+            || (resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == resource.data.readCount + 1)
+          ));
     }
     match /videos/{id} {
       allow read: if true;
@@ -183,7 +217,15 @@ service cloud.firestore {
 
     match /mathnetProblems/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+      allow update: if isAdmin()
+        || (signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readCount'])
+          && (
+            (!resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == 1)
+            || (resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == resource.data.readCount + 1)
+          ));
     }
     match /mathnetIndexShards/{id} {
       allow read: if true;
@@ -195,7 +237,15 @@ service cloud.firestore {
     }
     match /mathnetProblemsV2/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+      allow update: if isAdmin()
+        || (signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readCount'])
+          && (
+            (!resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == 1)
+            || (resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == resource.data.readCount + 1)
+          ));
     }
     match /mathnetIndexShardsV2/{id} {
       allow read: if true;
@@ -207,7 +257,20 @@ service cloud.firestore {
     }
     match /exams/{id} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registrationCount'])
+          && (
+            (!resource.data.keys().hasAny(['registrationCount']) && request.resource.data.registrationCount == 1)
+            || (resource.data.keys().hasAny(['registrationCount']) && request.resource.data.registrationCount == resource.data.registrationCount + 1)
+          ))
+        || (signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['entryCount'])
+          && (
+            (!resource.data.keys().hasAny(['entryCount']) && request.resource.data.entryCount == 1)
+            || (resource.data.keys().hasAny(['entryCount']) && request.resource.data.entryCount == resource.data.entryCount + 1)
+          ));
 
       match /registrations/{uid} {
         allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
