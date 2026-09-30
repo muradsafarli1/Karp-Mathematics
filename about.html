@@ -7,13 +7,23 @@
   <link rel="stylesheet" href="/style.css">
   <script defer src="/app.js"></script>
   <style>
-    .founder-block{max-width:1240px;margin:0 auto 34px;text-align:center;padding:0 21px}
-    .founder-kicker{font-size:11px;letter-spacing:2.3px;text-transform:uppercase;font-weight:800;color:#6f665d;margin-bottom:12px}
-    .founder-image{display:block;width:min(520px,100%);max-height:520px;object-fit:cover;margin:0 auto 18px;border-radius:18px}
-    .founder-block h2{font-family:'Space Grotesk';font-size:34px;letter-spacing:-1px;margin:0}
+    .founder-block{width:100%;margin:0 0 34px;padding:0}
+    .founder-box{display:grid;grid-template-columns:minmax(250px,34%) minmax(0,1fr);gap:44px;align-items:center;background:#fff;border:1px solid #dedfe2;border-radius:18px;padding:28px;min-height:420px}
+    .founder-visual{text-align:center}
+    .founder-image-frame{width:min(100%,300px);aspect-ratio:210/297;margin:0 auto 14px;border-radius:14px;overflow:hidden;background:#f1f2f3;border:1px solid #d9dad8;display:grid;place-items:center}
+    .founder-image{display:block;width:100%;height:100%;object-fit:cover}
+    .founder-placeholder{color:#858b93;font-size:12px;padding:24px}
+    .founder-name{font-family:'Space Grotesk';font-size:24px;line-height:1.15;letter-spacing:-.7px;margin:0}
+    .founder-copy h2{font-family:'Space Grotesk';font-size:clamp(34px,4vw,58px);line-height:1.02;letter-spacing:-2.5px;margin:0 0 18px;color:#111}
+    .founder-copy p{font-size:16px;line-height:1.8;color:#626770;white-space:pre-line;margin:0;max-width:760px}
     .about-card-image{display:block;width:100%;max-height:360px;object-fit:cover;border-radius:14px;margin:0 0 22px}
     .about-grid .bigcard h2{margin-top:10px}
     .about-card-copy{white-space:pre-line}
+    .about-founder-admin-preview{display:grid;grid-template-columns:180px minmax(0,1fr);gap:18px;align-items:center;margin:12px 0 18px}
+    .about-founder-file-wrap{width:180px;aspect-ratio:210/297;border:1px solid #d9dad8;border-radius:12px;overflow:hidden;background:#f1f2f3}
+    .about-founder-file-wrap img{width:100%;height:100%;object-fit:cover}
+    .about-founder-placeholder{width:100%;height:100%;place-items:center;text-align:center;padding:16px;color:#858b93;font-size:11px}
+    @media(max-width:760px){.founder-box{grid-template-columns:1fr;gap:24px;padding:20px}.founder-image-frame{width:min(260px,100%)}.about-founder-admin-preview{grid-template-columns:1fr}.about-founder-file-wrap{width:150px}}
   </style>
 </head>
 <body>
@@ -33,7 +43,18 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     <main class="about-page">
       <section class="pagehero"><div class="wrap"><h1>About Us</h1></div></section>
       <section class="section"><div class="wrap">
-        ${founderImg?'<div class="founder-block"><div class="founder-kicker">Founder</div><img class="founder-image" src="'+escapeHtml(founderImg)+'" alt="Founder">'+(about.founderName?'<h2>'+escapeHtml(about.founderName)+'</h2>':'')+'</div>':''}
+        <section class="founder-block">
+          <div class="founder-box">
+            <div class="founder-visual">
+              <div class="founder-image-frame">${founderImg?'<img class="founder-image" src="'+escapeHtml(founderImg)+'" alt="Founder">':'<div class="founder-placeholder">Founder image will appear here.</div>'}</div>
+              ${about.founderName?'<h3 class="founder-name">'+escapeHtml(about.founderName)+'</h3>':''}
+            </div>
+            <div class="founder-copy">
+              <h2>${escapeHtml(about.founderTitle||'About KARP')}</h2>
+              <p>${escapeHtml(about.founderText||'')}</p>
+            </div>
+          </div>
+        </section>
         <div class="about-grid">
           ${cards.map(card=>'<article class="bigcard">'+(card.showImage&&String(card.imageUrl||'').trim()?'<img class="about-card-image" src="'+escapeHtml(card.imageUrl)+'" alt="'+escapeHtml(card.title||'')+'">':'')+(card.tag?'<div class="tag">'+escapeHtml(card.tag)+'</div>':'')+'<h2>'+escapeHtml(card.title||'')+'</h2><p class="about-card-copy">'+escapeHtml(card.text||'')+'</p></article>').join('')}
         </div>
