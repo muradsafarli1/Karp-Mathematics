@@ -229,17 +229,19 @@ async function api(path, opts = {}) {
     // by everyone according to firestore.rules. The previous implementation
     // returned empty arrays here, so items saved successfully in Admin could
     // never appear on the public site.
-    const [problemsSnap,articlesSnap,contestsSnap,videosSnap]=await Promise.all([
+    const [problemsSnap,articlesSnap,contestsSnap,videosSnap,aboutSnap]=await Promise.all([
       getDocs(collection(db,'problems')),
       getDocs(collection(db,'articles')),
       getDocs(collection(db,'contests')),
-      getDocs(collection(db,'videos'))
+      getDocs(collection(db,'videos')),
+      getDoc(doc(db,'about','global'))
     ]);
     return {
       problems: problemsSnap.docs.map(x=>({id:x.id,...x.data()})),
       articles: articlesSnap.docs.map(x=>({id:x.id,...x.data()})),
       contests: contestsSnap.docs.map(x=>({id:x.id,...x.data()})),
-      videos: videosSnap.docs.map(x=>({id:x.id,...x.data()}))
+      videos: videosSnap.docs.map(x=>({id:x.id,...x.data()})),
+      about:aboutSnap.exists()?{id:aboutSnap.id,...aboutSnap.data()}:{}
     };
   }
   if(path==='/api/exams'){
@@ -286,12 +288,16 @@ async function api(path, opts = {}) {
     await setDoc(subRef,{userId:uid,userName:user.name,answers:body.answers||{},startedAt:body.startedAt||null,submittedAt:new Date().toISOString(),reason:body.reason||'manual'});
     return {ok:true};
   }
-  const am=path.match(/^\/api\/admin\/(problems|articles|contests|videos|exams)(?:\/([^/]+))?$/);
+  const am=path.match(/^\/api\/admin\/(problems|articles|contests|videos|exams|about)(?:\/([^/]+))?$/);
   if(am){
     if(!user||user.role!=='admin') throw new Error('Admin access required');
-    const type=am[1],id=am[2],ref=id?doc(db,type,id):null;
+    const type=am[1],id=am[2],aboutType=type==='about',aboutId='global',ref=doc(db,type,aboutType?(id||aboutId):(id||crypto.randomUUID()));
     if(method==='GET'){
       if(type==='users') return {users:[]};
+      if(aboutType){
+        const snap=await getDoc(ref);
+        return {about:snap.exists()?{id:snap.id,...snap.data()}:{}};
+      }
       const snap=await getDocs(collection(db,type));
       if(type==='exams'){
         const exams=[];
@@ -308,11 +314,15 @@ async function api(path, opts = {}) {
       return {[type]:items};
     }
     if(method==='POST'){
-      const item={...body,id:crypto.randomUUID(),createdAt:new Date().toISOString()};
+      const item={...body,id:aboutType?'global':crypto.randomUUID(),createdAt:new Date().toISOString()};
+      if(aboutType){await setDoc(doc(db,'about','global'),item);return item;}
       if(type==='exams'){item.questions=(Array.isArray(item.questions)?item.questions:[]).map((q,i)=>({...q,id:q.id||crypto.randomUUID(),code:q.code||'Q'+(i+1)}));item.registrations=[];item.submissions=[];await setDoc(doc(db,type,item.id),item);return item;}
       await setDoc(doc(db,type,item.id),item);return item;
     }
-    if(method==='PUT'){await updateDoc(ref,{...body,id,updatedAt:new Date().toISOString()});const s=await getDoc(ref);return {id:s.id,...s.data()};}
+    if(method==='PUT'){
+      await updateDoc(ref,{...body,id:id||'global',updatedAt:new Date().toISOString()});
+      const ss=await getDoc(ref);return {id:ss.id,...ss.data()};
+    }
     if(method==='DELETE'){await deleteDoc(ref);return {ok:true};}
   }
   if(path==='/api/admin/users'&&method==='GET'){
