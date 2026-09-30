@@ -165,15 +165,16 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       localStorage.setItem(storageKey,JSON.stringify({startedAt,end,submitted:false}));
       await markKarpExamEntry(id);
       await writeExamSession({status:'active',startedAt,entryAt:startedAt,endedAt:null,exitAt:null,durationSeconds:0});
-      renderActive();
+      renderActive();startExamTimer();
     }
     async function resumeExam(){
       const current=JSON.parse(localStorage.getItem(storageKey)||'{}');
       sessionStartedAt=current.startedAt||new Date().toISOString();
       await markKarpExamEntry(id);
       await writeExamSession({status:'active',startedAt:sessionStartedAt,resumedAt:new Date().toISOString(),lastActivityAt:new Date().toISOString()});
-      renderActive();
+      renderActive();startExamTimer();
     }
+    function startExamTimer(){clearInterval(timer);tick();timer=setInterval(tick,500)}
     async function finishExam(reason){
       if(finished)return;finished=true;clearInterval(timer);clearTrackers();sessionCleanup?.();sessionCleanup=null;sessionCleanup?.();sessionCleanup=null;
       try{
@@ -215,9 +216,10 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     function timerText(ms){const s=Math.max(0,Math.ceil(ms/1000)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
     function tick(){const el=document.getElementById('exam-timer');const left=end-Date.now();if(el)el.textContent=timerText(left);if(left<=0)finishExam('time')}
 
-    if(hasStarted){renderActive();tick();timer=setInterval(tick,500)}
-    else if(saved.startedAt&&!saved.submitted){if(end<=Date.now()){localStorage.removeItem(storageKey);await finishExam('time')}else renderEntry(true)}
-    else renderEntry(false);
+    if(saved.startedAt&&!saved.submitted){
+      if(end<=Date.now()){localStorage.removeItem(storageKey);await finishExam('time')}
+      else renderEntry(true);
+    }else renderEntry(false);
   }catch(err){console.error(err);document.body.innerHTML='<main class="exam-error"><section class="exam-error-card"><div class="eyebrow">KARP · EXAM</div><h1>Unable to load exam</h1><p style="color:var(--muted)">'+escapeHtml(err.message||'Something went wrong.')+'</p><a class="btn" href="/exams.html">← Back to Exams</a></section></main>'}
 })();
 </script>
