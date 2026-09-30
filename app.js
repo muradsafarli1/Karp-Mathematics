@@ -952,7 +952,7 @@ function footer(){return `<footer class="footer"><div class="wrap footgrid"><div
 function currentLanguage(){return localStorage.getItem('able_lang')==='az'?'az':'en'}
 function setLanguage(lang){localStorage.setItem('able_lang',lang);return lang}
 function localized(item,field,lang=currentLanguage()){const az=item?.[`${field}Az`],en=item?.[`${field}En`],old=item?.[field];return lang==='az'?(az||en||old||''):(en||az||old||'')}
-function languageSwitch(){const lang=currentLanguage();return `<div class="language-switch" role="group" aria-label="Language"><button type="button" class="${lang==='az'?'active':''}" data-lang="az">AZE</button><button type="button" class="${lang==='en'?'active':''}" data-lang="en">ENG</button></div>`}
+function languageSwitch(){const lang=currentLanguage();return `<div class="language-switch" role="group" aria-label="Language"><button type="button" class="${lang==='en'?'active':''}" data-lang="en">ENG</button><button type="button" class="${lang==='az'?'active':''}" data-lang="az">AZE</button></div>`}
 function bindLanguageSwitch(renderFn){document.querySelectorAll('.language-switch button').forEach(b=>b.onclick=()=>{setLanguage(b.dataset.lang);renderFn()})}
 async function typesetMath(root,retries=40){
   if(!root)return false;
