@@ -51,6 +51,9 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
   }
 
   function getSolved(){return cloudSolved||{}}
+  // Use the actual loaded problem ID for user Saved/Solved records.
+  // MathNet uses "id"; admin-added problems use "custom" and become "custom-<id>".
+  function problemStateId(){return String(currentProblem?.id||id||'').trim();}
 
   function saveRecord(){
     return {id:currentProblem?.id||id,title:currentProblem?.title||'MathNet Problem',topic:currentProblem?.category||'Other',
@@ -63,31 +66,31 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
 
   async function toggleSave(){
     const u=await ensureSignedIn('Save a problem','Sign in or create an account to save problems and find them later in your account.');if(!u)return;
-    if(cloudSaved[id]){
-      await karpDeleteUserRecord('saved',id);
-      delete cloudSaved[id];
+    if(cloudSaved[problemStateId()]){
+      await karpDeleteUserRecord('saved',problemStateId());
+      delete cloudSaved[problemStateId()];
     }else{
       const record=saveRecord();
-      await karpUserRecord('saved',id,record);
-      cloudSaved[id]=record;
+      await karpUserRecord('saved',problemStateId(),record);
+      cloudSaved[problemStateId()]=record;
     }
     syncSaveButton();
   }
 
   function syncSaveButton(){
     const b=document.getElementById('save-btn'); if(!b)return;
-    b.textContent=getSaved()[id]?'Saved ✓':'Save';
+    b.textContent=getSaved()[problemStateId()]?'Saved ✓':'Save';
   }
 
   async function toggleSolved(){
     const u=await ensureSignedIn('Mark a problem solved','Sign in or create an account to keep your solved-problem history and progress.');if(!u)return;
-    if(cloudSolved[id]){
-      await karpDeleteUserRecord('solved',id);
-      delete cloudSolved[id];
+    if(cloudSolved[problemStateId()]){
+      await karpDeleteUserRecord('solved',problemStateId());
+      delete cloudSolved[problemStateId()];
     }else{
       const record={...saveRecord(),dates:[new Date().toISOString()]};
-      await karpUserRecord('solved',id,record);
-      cloudSolved[id]=record;
+      await karpUserRecord('solved',problemStateId(),record);
+      cloudSolved[problemStateId()]=record;
     }
     syncSolvedButton();
   }
@@ -95,7 +98,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
   function syncSolvedButton(){
     const b=document.getElementById('solved-btn');
     if(!b)return;
-    const solved=!!getSolved()[id];
+    const solved=!!getSolved()[problemStateId()];
     b.textContent=solved?'Solved ✓':'Solved';
     b.classList.toggle('solved-active',solved);
   }
