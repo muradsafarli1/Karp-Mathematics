@@ -206,7 +206,7 @@ async function api(path, opts = {}) {
   const {db,auth}=await fb();
   await authReady();
   const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const {collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc}=fs;
+  const {collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,runTransaction}=fs;
   const method=(opts.method||'GET').toUpperCase();
   let body={};
   try{body=opts.body?JSON.parse(opts.body):{}}catch{}
@@ -280,7 +280,17 @@ async function api(path, opts = {}) {
     if(er[2]==='register'){
       const subRef=doc(db,'exams',er[1],'submissions',uid),sub=await getDoc(subRef);
       if(sub.exists())throw new Error('This exam has already been completed.');
-      await setDoc(doc(db,'exams',er[1],'registrations',uid),{userId:uid,registeredAt:new Date().toISOString()},{merge:true});
+      await runTransaction(db,async tx=>{
+        const examRef=doc(db,'exams',er[1]);
+        const regRef=doc(db,'exams',er[1],'registrations',uid);
+        const regSnap=await tx.get(regRef);
+        const examForCount=await tx.get(examRef);
+        if(regSnap.exists())return;
+        const data=examForCount.data()||{};
+        const current=Number(data.registrationCount||0);
+        tx.set(regRef,{userId:uid,registeredAt:new Date().toISOString()},{merge:true});
+        tx.update(examRef,{registrationCount:current+1});
+      });
       return {ok:true};
     }
     const subRef=doc(db,'exams',er[1],'submissions',uid),existingSub=await getDoc(subRef);
@@ -461,6 +471,103 @@ async function karpDeleteUserRecord(type,id){
   if(!uid)throw new Error('Authentication required');
   const {doc,deleteDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
   await deleteDoc(doc(db,'users',uid,type,id));
+}
+
+function karpReadMarkerId(type,collectionName,id){
+  let s=String(type)+'|'+String(collectionName)+'|'+String(id),h=2166136261;
+  for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}
+  return (h>>>0).toString(16);
+}
+async function karpReadCollection(type,sourceType){
+  if(type==='problem'){
+    if(sourceType==='custom')return 'problems';
+    try{
+      if(typeof mathnetRuntimeCollections==='function'){
+        const {db}=await fb();
+        const {getDoc,doc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+        return (await mathnetRuntimeCollections(db,getDoc,doc)).problems;
+      }
+    }catch{}
+    return 'mathnetProblemsV2';
+  }
+  if(type==='contest')return 'contests';
+  if(type==='article')return 'articles';
+  return String(type);
+}
+async function markKarpRead(type,id,sourceType=''){
+  const {db,auth}=await fb();
+  await authReady();
+  const uid=auth.currentUser?.uid;
+  if(!uid||!id)return false;
+  const collectionName=await karpReadCollection(type,sourceType);
+  const {doc,runTransaction}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const markerRef=doc(db,'users',uid,'readMarks',karpReadMarkerId(type,collectionName,id));
+  const contentRef=doc(db,collectionName,String(id));
+  try{
+    return await runTransaction(db,async tx=>{
+      const marker=await tx.get(markerRef);
+      if(marker.exists())return false;
+      const content=await tx.get(contentRef);
+      if(!content.exists())return false;
+      const count=Number(content.data()?.readCount||0);
+      tx.set(markerRef,{type:String(type),contentId:String(id),collection:String(collectionName),readAt:new Date().toISOString()});
+      tx.update(contentRef,{readCount:count+1});
+      return true;
+    });
+  }catch(e){console.warn('KARP read tracking failed:',e);return false}
+}
+async function getKarpReadCounts(type,items=[]){
+  const list=Array.isArray(items)?items:[],result={};
+  if(!list.length)return result;
+  const grouped={};
+  for(const item of list){
+    const sourceType=item.sourceType==='custom'?'custom':'mathnet';
+    const id=String(sourceType==='custom'?(item.customId??item.id):item.id||'');
+    if(!id)continue;
+    const key=await karpReadCollection(type,sourceType);
+    (grouped[key] ||= []).push({id,item,sourceType});
+  }
+  try{
+    const {db}=await fb();
+    const {collection,getDocs,query,where,documentId}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    for(const [collectionName,entries] of Object.entries(grouped)){
+      for(let i=0;i<entries.length;i+=30){
+        const chunk=entries.slice(i,i+30),ids=chunk.map(x=>x.id);
+        try{
+          const snap=await getDocs(query(collection(db,collectionName),where(documentId(),'in',ids)));
+          snap.forEach(s=>{result[collectionName+'|'+s.id]=Number(s.data()?.readCount||0)});
+        }catch(e){
+          for(const x of chunk){
+            try{
+              const snap=await getDocs(query(collection(db,collectionName),where(documentId(),'==',x.id)));
+              snap.forEach(s=>{result[collectionName+'|'+s.id]=Number(s.data()?.readCount||0)});
+            }catch{}
+          }
+        }
+      }
+    }
+  }catch(e){console.warn('KARP read counts unavailable:',e)}
+  return result;
+}
+async function markKarpExamEntry(examId){
+  const {db,auth}=await fb();
+  await authReady();
+  const uid=auth.currentUser?.uid;
+  if(!uid||!examId)return false;
+  const {doc,runTransaction}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const examRef=doc(db,'exams',String(examId));
+  const markerRef=doc(db,'users',uid,'examEntries',String(examId));
+  try{
+    return await runTransaction(db,async tx=>{
+      const exam=await tx.get(examRef);
+      const marker=await tx.get(markerRef);
+      if(!exam.exists()||marker.exists())return false;
+      const count=Number(exam.data()?.entryCount||0);
+      tx.set(markerRef,{examId:String(examId),enteredAt:new Date().toISOString()},{merge:true});
+      tx.update(examRef,{entryCount:count+1});
+      return true;
+    });
+  }catch(e){console.warn('KARP exam entry tracking failed:',e);return false}
 }
 let __karpPresence=null;
 async function __writeKarpPresence(online=true){
