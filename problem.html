@@ -145,11 +145,11 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
       const topic=String(p.topic||'').toLowerCase();
       const category=topic.includes('geometry')?'G':topic.includes('combinator')?'C':topic.includes('number')?'N':'A';
       currentProblem={
-        id:'custom-'+String(p.id),customId:String(p.id),sourceType:'custom',country:'KARP',
-        competition:p.titleEn||p.title||'KARP Problem',year:p.year||'',
-        problemNumber:p.code||'',section:'KARP Problems',language:'English',problemType:'proof only',
+        id:'custom-'+String(p.id),customId:String(p.id),sourceType:'custom',country:'',
+        competition:p.source||p.sourceName||'',year:'',
+        problemNumber:p.code||'',section:'',language:'English',problemType:'proof only',
         statement,solutions:solution?[solution]:[],category,hasSolution:!!solution,
-        title:p.titleEn||p.title||'KARP Problem'
+        title:p.titleEn||p.title||'Problem'
       };
     }else{
       currentProblem=await mathnetProblemById(id,sourceConfig,sourceIndex,sourceShard);
