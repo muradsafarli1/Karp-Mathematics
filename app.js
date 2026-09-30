@@ -330,7 +330,9 @@ async function api(path, opts = {}) {
       await setDoc(doc(db,type,item.id),item);return item;
     }
     if(method==='PUT'){
-      await updateDoc(ref,{...body,id:id||'global',updatedAt:new Date().toISOString()});
+      const payload={...body,id:id||'global',updatedAt:new Date().toISOString()};
+      if(aboutType) await setDoc(ref,payload,{merge:true});
+      else await updateDoc(ref,payload);
       const ss=await getDoc(ref);return {id:ss.id,...ss.data()};
     }
     if(method==='DELETE'){await deleteDoc(ref);return {ok:true};}
