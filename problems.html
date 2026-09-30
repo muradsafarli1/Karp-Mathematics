@@ -91,9 +91,8 @@
       const items=links.map(a=>({id:a.dataset.readId,customId:a.dataset.readSource==='custom'?a.dataset.readId:'',sourceType:a.dataset.readSource==='custom'?'custom':'mathnet'}));
       getKarpReadCounts('problem',items).then(counts=>{
         links.forEach(a=>{
-          const source=a.dataset.readSource==='custom'?'problems':(typeof karpReadCollection==='function'?'mathnetProblemsV2':'mathnetProblemsV2');
-          const el=a.querySelector('[data-read-count="'+CSS.escape(a.dataset.readId)+'"]');
-          const n=Number(counts[source+'|'+a.dataset.readId]);
+          const el=[...a.querySelectorAll('[data-read-count]')].find(x=>x.dataset.readCount===a.dataset.readId);
+          const n=Number(counts['problem|'+a.dataset.readId]);
           if(el&&Number.isFinite(n)){el.textContent=n===1?'1 read':n.toLocaleString()+' reads';}
         });
       }).catch(()=>{});
