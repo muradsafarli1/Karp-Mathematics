@@ -29,7 +29,7 @@
         :'<button class="btn primary" data-register-id="'+escapeHtml(e.id)+'">Register →</button>';
       return '<article class="exam-card"><div class="tag">'+(past?'Past':(e.status||'Upcoming'))+' · '+formatDuration(e.durationMinutes)+'</div><h2>'+escapeHtml(title)+'</h2><p>'+escapeHtml(desc)+'</p><div class="exam-meta"><span>'+escapeHtml(e.date||'Date TBA')+'</span><span>'+((e.questions||[]).length)+' questions</span></div><div class="exam-card-actions">'+action+'</div></article>';
     }
-    shell('Exams','Exams','<main><section class="pagehero"><div class="wrap"><div class="eyebrow">04 — Exams</div><h1>Test yourself.<br>Under pressure.</h1><p class="lead">Browse every KARP exam. Registration and starting an active exam require an account; public exam information stays visible.</p></div></section><section class="section"><div class="exams-wrap"><div class="exam-grid">'+((d.exams||[]).map(renderCard).join('')||'<div class="empty">No exams available yet.</div>')+'</div></div></section></main>');
+    shell('Exams','Exams','<main><section class="pagehero"><div class="wrap"><h1>Exams</h1></div></section><section class="section" style="padding-top:0!important"><div class="exams-wrap"><div class="exam-grid">'+((d.exams||[]).map(renderCard).join('')||'<div class="empty">No exams available yet.</div>')+'</div></div></section></main>');
     document.querySelectorAll('[data-register-id]').forEach(b=>b.onclick=()=>registerAndOpen(b.dataset.registerId));
     window.registerAndOpen=async id=>{
       if(!(await ensureSignedIn('Register for this exam','Sign in or create an account before registering for or starting an exam.')))return;
