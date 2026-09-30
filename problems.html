@@ -15,7 +15,7 @@
 .problem-tools{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:10px;margin-bottom:18px}
 .problem-archive-status{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin:0 0 10px}.problem-archive-status strong{color:var(--text)}
 .problem-progress{height:3px;background:var(--panel2);border-radius:99px;overflow:hidden;margin-bottom:18px}.problem-progress>i{display:block;height:100%;width:0;background:var(--text);transition:width .2s}
-.virtual-cards{position:relative}.virtual-card{position:absolute;box-sizing:border-box;padding:0 7px 14px}
+.virtual-cards{position:relative}.virtual-card{position:absolute;box-sizing:border-box;padding:0 7px 10px}
 .problem-card-link{display:flex!important;height:100%;min-height:178px;box-sizing:border-box;flex-direction:column;justify-content:flex-start;text-decoration:none!important;background:var(--panel2)!important;border:1px solid transparent!important;border-radius:16px;padding:21px!important;box-shadow:none!important;transition:transform .15s,background .15s}
 .problem-card-link:hover{transform:translateY(-2px);background:var(--panel2)!important}
 .problem-card-link{position:relative}.problem-card-link .tag{align-self:flex-start}.status-badges{position:absolute;top:13px;right:13px;display:flex;align-items:center;gap:5px;z-index:2}.status-badge{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.12);font-family:'Segoe UI Symbol','Noto Sans Symbols 2',sans-serif;font-size:20px;line-height:1}.status-badge.solved{color:#e53935}.status-badge.saved{color:#22a447}.status-badge.solved{color:#e53935}.status-badge.saved{color:#22a447}.solved-only{position:absolute;top:13px;right:13px}.problem-card-link h3{font-family:'Space Grotesk';font-size:21px;line-height:1.14;letter-spacing:-.7px;margin:16px 0 9px;text-align:left!important;color:var(--text)!important}
@@ -43,12 +43,12 @@
     const title=p.titleEn||p.title||'KARP Problem';
     const statement=p.statementEn||p.statement||'';
     const solution=p.solutionEn||p.solution||'';
-    const created=p.createdAt?new Date(p.createdAt).getFullYear():'';
+    const created='';
     const category=customCategory(p);
     const source=String(p.source||p.sourceName||'').trim();
     return {id:'custom-'+id,customId:id,sourceType:'custom',country:'',competition:source,year:p.year||created||'',problemNumber:p.code||'',section:'',language:'English',problemType:'proof only',statement,solutions:solution?[solution]:[],category,difficulty:String(p.difficulty||'').toLowerCase(),hasSolution:!!solution,title,source};
   }
-  function metaPrimary(p){return [p.source||p.competition,p.year,p.problemNumber].filter(Boolean).join(' · ');}
+  function metaPrimary(p){return [p.source||p.competition,p.problemNumber].filter(Boolean).join(' · ');}
   function isSolved(p){return !!cloudSolved[String(p.id||'')]}
   function isSaved(p){return !!cloudSaved[String(p.id||'')]}
   async function refreshUserState(){try{await karpMigrateLocalState();const s=await karpUserState();cloudSolved=s.solved||{};cloudSaved=s.saved||{};}catch(e){console.warn('Could not load cloud problem state',e)}}
@@ -67,13 +67,13 @@
       :'/problem.html?id='+encodeURIComponent(p.id)+'&config='+encodeURIComponent(p.sourceConfig||'all')+'&offset='+encodeURIComponent(p.sourceIndex)+(p.sourceShard!=null?'&shard='+encodeURIComponent(p.sourceShard):'');
     const secondary=p.sourceType==='custom'?'':[p.sourceBooklet||'',p.section].filter(Boolean).join(' · ');
     const primary=custom?metaPrimary(p):[p.country,p.year,p.problemNumber].filter(Boolean).join(' · ')||'MathNet';
-    const heading=custom?(p.title||'KARP Problem'):(p.competition||p.title||'MathNet Problem');
-    return '<a class="problem-card-link" href="'+href+'" onclick="rememberProblemState()"><div class="tag">'+esc(topicNames[p.category]||'Problem')+'</div>'+statusHtml(p)+'<h3>'+esc(heading)+'</h3><div class="problem-meta-primary">'+esc(primary)+'</div>'+(secondary?'<div class="problem-meta-secondary">'+esc(secondary)+'</div>':'')+'</a>';
+    const heading=custom?(p.title||'Problem'):(p.competition||p.title||'MathNet Problem');
+    const longTitle=String(heading||'').length>58;return '<a class="problem-card-link'+(longTitle?' long-title':'')+'" href="'+href+'" onclick="rememberProblemState()"><div class="tag">'+esc(topicNames[p.category]||'Problem')+'</div>'+statusHtml(p)+'<h3>'+esc(heading)+'</h3><div class="problem-meta-primary">'+esc(primary)+'</div>'+(secondary?'<div class="problem-meta-secondary">'+esc(secondary)+'</div>':'')+'</a>';
   }
   function columns(){const w=document.getElementById('cards').clientWidth||1200;if(w>=1180)return 4;if(w>=820)return 3;if(w>=560)return 2;return 1;}
   function renderVirtual(){
     const holder=document.getElementById('cards');if(!holder)return;
-    const cols=columns(),rowHeight=205,totalRows=Math.ceil(visibleRows.length/cols);
+    const cols=columns(),rowHeight=220,totalRows=Math.ceil(visibleRows.length/cols);
     holder.style.height=(totalRows*rowHeight)+'px';
     const top=holder.getBoundingClientRect().top+window.scrollY;
     const from=Math.max(0,Math.floor((window.scrollY-top)/rowHeight)-3);
@@ -126,7 +126,7 @@
     try{fromProblem=new URL(document.referrer,location.href).pathname.endsWith('/problem.html')}catch{}
     pendingRestore=fromProblem?storedScroll:0;
     await refreshUserState();
-    shell('Problems','Problems','<main class="problem-page"><section class="pagehero"><div class="wrap"><div class="eyebrow">01 — Problems</div><h1>MathNet Problems</h1><p class="lead">MathNet and KARP-added olympiad problems in one searchable archive.</p></div></section><section class="section"><div class="wrap" style="max-width:1320px"><div class="problem-tools"><input id="search" class="input" placeholder="Search country, contest, year, P-number or problem text…"><select id="topic" class="select"><option>All topics</option><option>Algebra</option><option>Geometry</option><option>Number Theory</option><option>Combinatorics</option></select></div><div class="problem-archive-status"><span id="status">Opening the problem archive…</span><span id="count">0 qualifying problems</span></div><div class="problem-progress"><i id="progress"></i></div><div id="cards" class="virtual-cards"></div><div id="no-results" class="empty-archive" style="display:none">No qualifying problems match this search.</div></div></section></main>');
+    shell('Problems','Problems','<main class="problem-page"><section class="pagehero"><div class="wrap"><h1>Problems</h1></div></section><section class="section"><div class="wrap" style="max-width:1320px"><div class="problem-tools"><input id="search" class="input" placeholder="Search country, contest, year, P-number or problem text…"><select id="topic" class="select"><option>All topics</option><option>Algebra</option><option>Geometry</option><option>Number Theory</option><option>Combinatorics</option></select></div><div class="problem-archive-status"><span id="status">Opening the problem archive…</span><span id="count">0 qualifying problems</span></div><div class="problem-progress"><i id="progress"></i></div><div id="cards" class="virtual-cards"></div><div id="no-results" class="empty-archive" style="display:none">No qualifying problems match this search.</div></div></section></main>');
     document.getElementById('search').value=query;document.getElementById('topic').value=topic;
     document.getElementById('search').oninput=function(){query=this.value;saveState();applyFilters();runSearch()};
     document.getElementById('topic').onchange=function(){topic=this.value;saveState();applyFilters()};
@@ -161,4 +161,6 @@
 })();
 </script>
 </body>
-</html>
+</html><style>
+.virtual-cards .problem-card-link.long-title{min-height:210px!important}
+</style>
