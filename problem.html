@@ -164,9 +164,6 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
       }
     }
 
-    // Mark a read immediately when this problem page is entered.
-    markKarpRead('problem',customId?String(customId):id,currentProblem.sourceType==='custom'?'custom':'mathnet').catch(()=>{});
-
     await karpMigrateLocalState();
     const cloud=await karpUserState();
     cloudSolved=cloud.solved||{};
