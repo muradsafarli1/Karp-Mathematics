@@ -215,11 +215,12 @@
   async function startMock(item){
     if(item&&item.id)mock=JSON.parse(JSON.stringify(item));if(!mock)return;
     const fullscreenAttempt=requestMockFullscreen();
+    if(!(await fullscreenAttempt))return;
     try{await saveMockDraft(mock)}catch(e){toast(e.message||'Could not save mock.');return}
     finished=false;
     mock.endAt=mock.endAt||Date.now()+Number(mock.minutes||60)*60000;
     seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));
-    await activeSave();installGuard(true);renderSession();await fullscreenAttempt;clearInterval(timer);timer=setInterval(tick,1000);
+    await activeSave();installGuard(true);renderSession();clearInterval(timer);timer=setInterval(tick,1000);
   }
 
   async function requestMockFullscreen(){
