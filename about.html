@@ -6,53 +6,40 @@
   <title>KARP — About Us</title>
   <link rel="stylesheet" href="/style.css">
   <script defer src="/app.js"></script>
-<style>
-.founder-block{max-width:1240px;margin:0 auto 34px;text-align:center;padding:0 21px}
-.founder-kicker{font-size:11px;letter-spacing:2.3px;text-transform:uppercase;font-weight:800;color:#6f665d;margin-bottom:12px}
-.founder-image{display:block;width:min(520px,100%);max-height:520px;object-fit:cover;margin:0 auto 18px;border-radius:18px}
-.founder-block h2{font-family:'Space Grotesk';font-size:34px;letter-spacing:-1px;margin:0}.about-card-image{display:block;width:100%;max-height:360px;object-fit:cover;border-radius:14px;margin:0 0 22px}.about-grid .bigcard h2{margin-top:10px}
-</style></head>
+  <style>
+    .founder-block{max-width:1240px;margin:0 auto 34px;text-align:center;padding:0 21px}
+    .founder-kicker{font-size:11px;letter-spacing:2.3px;text-transform:uppercase;font-weight:800;color:#6f665d;margin-bottom:12px}
+    .founder-image{display:block;width:min(520px,100%);max-height:520px;object-fit:cover;margin:0 auto 18px;border-radius:18px}
+    .founder-block h2{font-family:'Space Grotesk';font-size:34px;letter-spacing:-1px;margin:0}
+    .about-card-image{display:block;width:100%;max-height:360px;object-fit:cover;border-radius:14px;margin:0 0 22px}
+    .about-grid .bigcard h2{margin-top:10px}
+    .about-card-copy{white-space:pre-line}
+  </style>
+</head>
 <body>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async ()=>{
   const defaultCards=[
     {tag:'WHY KARP',title:'For people who actually want to solve.',text:'The goal is not to add another gamified dashboard. KARP is intentionally calmer: strong problem archives, useful handouts, contest collections, clean solutions and a library you can return to.',imageUrl:'',showImage:false},
     {tag:'THE LIBRARY',title:'Built to keep growing.',text:'Problems, contests, articles, PDFs and LaTeX are separated into their own pages so the platform can become large without making every click a long scroll.',imageUrl:'',showImage:false},
     {tag:'TECHNIQUE',title:'Ideas should travel.',text:'Some methods deserve to be remembered across many problems. Lambda substitution is one example: KARP can turn these recurring ideas into focused handouts rather than burying them inside solutions.',imageUrl:'',showImage:false},
     {tag:'COMMUNITY',title:'Join Us.',text:'Create an account to keep your place in the platform. Later, the same account layer can power saved problems, submissions, contributor access and more.',imageUrl:'',showImage:false}
   ];
-  let aboutData={};
-  function renderAbout(a){
-    const cards=Array.isArray(a.cards)&&a.cards.length?a.cards:defaultCards;
-    const cardsHtml=cards.map(card=>{
-      const img=String(card.imageUrl||'').trim();
-      return '<article class="bigcard">'+(card.showImage&&img?'<img class="about-card-image" src="'+escapeHtml(img)+'" alt="'+escapeHtml(card.title||'')+'">':'')+(card.tag?'<div class="tag">'+escapeHtml(card.tag)+'</div>':'')+'<h2>'+escapeHtml(card.title||'')+'</h2><p>'+escapeHtml(card.text||'')+'</p></article>';
-    }).join('');
-    const founderImg=String(a.founderImage||'').trim();
-    document.getElementById('about-content').innerHTML=(founderImg?'<div class="founder-block"><div class="founder-kicker">Founder</div><img class="founder-image" src="'+escapeHtml(founderImg)+'" alt="Founder">'+(a.founderName?'<h2>'+escapeHtml(a.founderName)+'</h2>':'')+'</div>':'')+'<div class="about-grid">'+cardsHtml+'</div>';
-  }
+  let about={};
+  try{about=(await api('/api/content')).about||{}}catch(e){about={}}
+  const cards=Array.isArray(about.cards)&&about.cards.length?about.cards:defaultCards;
+  const founderImg=String(about.founderImage||'').trim();
   shell('About','About Us',`
-    <section class="pagehero"><div class="wrap"><h1>About Us</h1></div></section>
-    <section class="section"><div class="wrap" id="about-content"></div></section>
+    <main class="about-page">
+      <section class="pagehero"><div class="wrap"><h1>About Us</h1></div></section>
+      <section class="section"><div class="wrap">
+        ${founderImg?'<div class="founder-block"><div class="founder-kicker">Founder</div><img class="founder-image" src="'+escapeHtml(founderImg)+'" alt="Founder">'+(about.founderName?'<h2>'+escapeHtml(about.founderName)+'</h2>':'')+'</div>':''}
+        <div class="about-grid">
+          ${cards.map(card=>'<article class="bigcard">'+(card.showImage&&String(card.imageUrl||'').trim()?'<img class="about-card-image" src="'+escapeHtml(card.imageUrl)+'" alt="'+escapeHtml(card.title||'')+'">':'')+(card.tag?'<div class="tag">'+escapeHtml(card.tag)+'</div>':'')+'<h2>'+escapeHtml(card.title||'')+'</h2><p class="about-card-copy">'+escapeHtml(card.text||'')+'</p></article>').join('')}
+        </div>
+      </div></section>
+    </main>
   `);
-  try{
-    const d=await api('/api/content');
-    aboutData=d.about||{};
-  }catch(e){aboutData={}}
-  renderAbout(aboutData);
-  (async()=>{
-    try{
-      const d=await api('/api/content');
-      const a=d.about||{};
-      const image=String(a.founderImage||'').trim();
-      if(image){
-        const slot=document.getElementById('founder-slot');
-        if(slot){
-          slot.innerHTML='<div class="founder-block"><div class="founder-kicker">Founder</div><img class="founder-image" src="'+escapeHtml(image)+'" alt="Founder">'+(a.founderName?'<h2>'+escapeHtml(a.founderName)+'</h2>':'')+'</div>';
-        }
-      }
-    }catch(e){console.warn('About founder data unavailable',e)}
-  })();
 });
 </script>
 </body>
