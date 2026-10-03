@@ -1,19 +1,103 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KARP — Join Us</title><link rel="stylesheet" href="/style.css"><script src="/app.js"></script></head><body>
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KARP — Join Us</title>
+<link rel="stylesheet" href="/style.css"><script src="/app.js?v=20261003a"></script>
+</head><body>
 <header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><div class="auth-nav-actions"><a class="btn" href="/login.html">Log in</a></div></div></header>
-<main class="auth"><form class="authbox" id="form"><div class="eyebrow">JOIN KARP</div><h1>Create your account.</h1><p>One account for the KARP platform.</p>
-<div class="field"><label>Name</label><input class="input" name="name" required autocomplete="name"></div>
-<div class="field"><label>Email</label><input class="input" name="email" type="email" required autocomplete="email"></div>
-<div class="field"><label>Password</label><input class="input" name="password" type="password" minlength="8" required autocomplete="new-password"><div class="small">At least 8 characters.</div></div>
-<button class="submit" id="email-submit">Create account</button>
-<div class="auth-divider"><span></span><small>OR</small><span></span></div>
-<button type="button" class="google-btn" id="google-signup"><svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.55-.22-2.27H12v4.3h6.45a5.51 5.51 0 0 1-2.39 3.62v3.01h3.87c2.27-2.09 3.56-5.17 3.56-8.66Z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.9l-3.87-3.01c-1.07.72-2.44 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.95H1.27v3.1A12 12 0 0 0 12 24Z"/><path fill="#FBBC05" d="M5.27 14.29A7.22 7.22 0 0 1 4.9 12c0-.79.14-1.57.37-2.29V6.61H1.27A12 12 0 0 0 0 12c0 1.94.47 3.78 1.27 5.39l4-3.1Z"/><path fill="#EA4335" d="M12 4.76c1.76 0 3.34.61 4.58 1.81l3.43-3.43C17.95 1.19 15.23 0 12 0A12 12 0 0 0 1.27 6.61l4 3.1C6.22 6.87 8.87 4.76 12 4.76Z"/></svg><span>Continue with Google</span></button>
-<div class="notice" id="notice"></div></form></main>
+<main class="auth"><div class="authbox">
+  <div id="signup-form-wrap">
+    <form id="form">
+      <div class="eyebrow">JOIN KARP</div><h1>Create your account.</h1><p>One account for the KARP platform.</p>
+      <div class="field"><label>Name</label><input class="input" name="name" required autocomplete="name"></div>
+      <div class="field"><label>Email</label><input class="input" name="email" type="email" required autocomplete="email"></div>
+      <div class="field"><label>Password</label><input class="input" name="password" type="password" minlength="8" required autocomplete="new-password"><div class="small">At least 8 characters.</div></div>
+      <button class="submit" id="email-submit">Create account</button>
+      <div class="auth-divider"><span></span><small>OR</small><span></span></div>
+      <button type="button" class="google-btn" id="google-signup"><svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.55-.22-2.27H12v4.3h6.45a5.51 5.51 0 0 1-2.39 3.62v3.01h3.87c2.27-2.09 3.56-5.17 3.56-8.66Z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.9l-3.87-3.01c-1.07.72-2.44 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.95H1.27v3.1A12 12 0 0 0 12 24Z"/><path fill="#FBBC05" d="M5.27 14.29A7.22 7.22 0 0 1 4.9 12c0-.79.14-1.57.37-2.29V6.61H1.27A12 12 0 0 0 0 12c0 1.94.47 3.78 1.27 5.39l4-3.1Z"/><path fill="#EA4335" d="M12 4.76c1.76 0 3.34.61 4.58 1.81l3.43-3.43C17.95 1.19 15.23 0 12 0A12 12 0 0 0 1.27 6.61l4 3.1C6.22 6.87 8.87 4.76 12 4.76Z"/></svg><span>Continue with Google</span></button>
+      <div class="notice" id="notice"></div>
+    </form>
+  </div>
+
+  <div id="verification-state" style="display:none">
+    <div class="eyebrow">VERIFY YOUR EMAIL</div>
+    <h1>Check your inbox.</h1>
+    <p>We sent a verification link to <strong id="verification-email"></strong>.</p>
+    <div class="verify-note">Open the email and click <strong>Verify your email</strong>. Your KARP account will become available after the email is confirmed.</div>
+    <div class="verify-actions">
+      <button class="submit" type="button" id="verification-check">I've verified my email</button>
+      <button class="btn" type="button" id="verification-resend">Resend email</button>
+    </div>
+    <div class="notice" id="verification-notice"></div>
+    <div class="small">Didn't receive it? Check your spam or junk folder.</div>
+    <button class="btn verify-switch" type="button" id="verification-signout">Use a different account</button>
+  </div>
+</div></main>
+
 <script type="module">
 import {auth,db} from "/karp-firebase.js";
-import {createUserWithEmailAndPassword,updateProfile,signInWithPopup,signInWithRedirect,getRedirectResult,GoogleAuthProvider} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import {createUserWithEmailAndPassword,updateProfile,sendEmailVerification,signInWithPopup,signInWithRedirect,getRedirectResult,GoogleAuthProvider,signOut} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {doc,getDoc,setDoc} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+const form=document.getElementById("form"),formWrap=document.getElementById("signup-form-wrap");
 const notice=document.getElementById("notice"),emailBtn=document.getElementById("email-submit"),googleBtn=document.getElementById("google-signup");
+const verificationState=document.getElementById("verification-state"),verificationEmail=document.getElementById("verification-email");
+const verificationCheck=document.getElementById("verification-check"),verificationResend=document.getElementById("verification-resend");
+const verificationNotice=document.getElementById("verification-notice"),verificationSignout=document.getElementById("verification-signout");
 const googleMarkup=googleBtn.innerHTML;
+let resendTimer=0;
+
+function verificationSettings(){
+  return {url:window.location.origin+"/login.html?verified=1",handleCodeInApp:false};
+}
+function setVerificationNotice(message,type=""){
+  verificationNotice.className="notice"+(type?" "+type:"");
+  verificationNotice.textContent=message;
+}
+function showVerification(user){
+  formWrap.style.display="none";
+  verificationState.style.display="block";
+  verificationEmail.textContent=user?.email||"your email address";
+  setVerificationNotice("Verification email sent. Please check your inbox.","success");
+}
+function startResendCooldown(seconds=30){
+  clearInterval(resendTimer);
+  let left=seconds;verificationResend.disabled=true;
+  verificationResend.textContent="Resend email ("+left+"s)";
+  resendTimer=setInterval(()=>{
+    left--;
+    if(left<=0){clearInterval(resendTimer);verificationResend.disabled=false;verificationResend.textContent="Resend email";}
+    else verificationResend.textContent="Resend email ("+left+"s)";
+  },1000);
+}
+async function sendVerification(user=auth.currentUser){
+  if(!user)return;
+  try{
+    await sendEmailVerification(user,verificationSettings());
+    setVerificationNotice("A new verification email has been sent.","success");
+    startResendCooldown();
+  }catch(err){
+    setVerificationNotice(err.code==="auth/too-many-requests"?"Please wait a moment before requesting another email.":(err.message||"Could not send the verification email."),"error");
+  }
+}
+async function finishVerifiedSignup(){
+  const user=auth.currentUser;
+  if(!user){location.href="/login.html";return}
+  try{
+    await user.reload();
+    if(!user.emailVerified){
+      setVerificationNotice("Your email is not verified yet. Click the link in the email, then try again.","error");
+      return;
+    }
+    await setDoc(doc(db,"users",user.uid),{
+      requiresEmailVerification:false,
+      emailVerifiedAt:new Date().toISOString()
+    },{merge:true});
+    location.replace("/account.html");
+  }catch(err){
+    setVerificationNotice(err.message||"Could not confirm your verification yet.","error");
+  }
+}
+
 async function finishGoogleSignup(cred){
   const ref=doc(db,"users",cred.user.uid),snap=await getDoc(ref);
   const now=new Date().toISOString();
@@ -42,18 +126,41 @@ async function googleSignup(){
 getRedirectResult(auth).then(result=>{if(result?.user)return finishGoogleSignup(result)}).catch(err=>{
   notice.className="notice error";notice.textContent=err.code==="auth/unauthorized-domain"?"This domain is not authorized in Firebase Authentication.":err.message;
 });
-document.getElementById("form").onsubmit=async e=>{
+
+form.onsubmit=async e=>{
   e.preventDefault();emailBtn.disabled=true;emailBtn.textContent="Creating…";
   const f=new FormData(e.target);
   try{
-    const cred=await createUserWithEmailAndPassword(auth,f.get("email"),f.get("password"));
-    await updateProfile(cred.user,{displayName:f.get("name")});
+    const cred=await createUserWithEmailAndPassword(auth,String(f.get("email")).trim(),f.get("password"));
+    await updateProfile(cred.user,{displayName:String(f.get("name")||"").trim()});
     const now=new Date().toISOString();
-    await setDoc(doc(db,"users",cred.user.uid),{name:f.get("name"),email:cred.user.email,role:"user",createdAt:now,photoURL:cred.user.photoURL||"",lastLoginAt:now,loginCount:1});
-    await setDoc(doc(db,"publicProfiles",cred.user.uid),{uid:cred.user.uid,name:f.get("name"),nameLower:String(f.get("name")||"").trim().toLowerCase(),photoURL:cred.user.photoURL||"",updatedAt:now},{merge:true});
-    notice.className="notice success";notice.textContent="Account created. Opening KARP…";location.replace("/account.html");
-  }catch(err){emailBtn.disabled=false;emailBtn.textContent="Create account";notice.className="notice error";notice.textContent=err.code==="auth/email-already-in-use"?"An account with this email already exists.":err.message}
+    await setDoc(doc(db,"users",cred.user.uid),{
+      name:String(f.get("name")||"").trim(),email:cred.user.email,role:"user",
+      createdAt:now,photoURL:cred.user.photoURL||"",lastLoginAt:now,loginCount:1,
+      requiresEmailVerification:true
+    });
+    await setDoc(doc(db,"publicProfiles",cred.user.uid),{
+      uid:cred.user.uid,name:String(f.get("name")||"").trim(),
+      nameLower:String(f.get("name")||"").trim().toLowerCase(),photoURL:cred.user.photoURL||"",updatedAt:now
+    },{merge:true});
+    await sendEmailVerification(cred.user,verificationSettings());
+    showVerification(cred.user);
+    startResendCooldown();
+  }catch(err){
+    emailBtn.disabled=false;emailBtn.textContent="Create account";
+    notice.className="notice error";
+    notice.textContent=err.code==="auth/email-already-in-use"?"An account with this email already exists.":err.code==="auth/too-many-requests"?"Too many requests. Please try again in a moment.":err.message;
+  }
 };
-googleBtn.onclick=googleSignup;
+verificationCheck.onclick=finishVerifiedSignup;
+verificationResend.onclick=()=>sendVerification();
+verificationSignout.onclick=async()=>{await signOut(auth);clearInterval(resendTimer);verificationState.style.display="none";formWrap.style.display="block";form.reset();emailBtn.disabled=false;emailBtn.textContent="Create account";};
 </script>
-<style>.auth-nav-actions{display:flex;align-items:center;gap:9px}</style></body></html>
+<style>
+.auth-nav-actions{display:flex;align-items:center;gap:9px}
+.verify-note{margin:22px 0;padding:14px 15px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);font-size:12px;line-height:1.7;color:var(--muted)}
+.verify-note strong{color:var(--text)}
+.verify-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.verify-actions .submit{flex:1;min-width:190px}.verify-actions .btn{min-width:130px}
+.verify-switch{margin-top:17px;width:100%}
+</style>
+</body></html>
