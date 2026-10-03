@@ -217,7 +217,7 @@ async function api(path, opts = {}) {
       const userDoc=await getDoc(doc(db,'users',uid));
       if(userDoc.exists()) user={id:uid,...userDoc.data()};
     }
-    return {user:user?{id:user.id,name:user.name,email:user.email,role:user.role||'user',createdAt:user.createdAt,photoURL:user.photoURL||''}:null};
+    return {user:user?{id:user.id,name:user.name,email:user.email,role:user.role||'user',createdAt:user.createdAt,photoURL:user.photoURL||'',requiresEmailVerification:user.requiresEmailVerification===true,emailVerified:!!auth.currentUser?.emailVerified}:null};
   }
   if(path==='/api/logout'){await (await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js')).signOut(auth);return {ok:true};}
   if(uid && (path.startsWith('/api/exams/history') || path.match(/^\/api\/exams\/[^/]+\/(register|submit)$/) || path.startsWith('/api/admin/'))){
@@ -625,8 +625,24 @@ async function startKarpPresence(){
 }
 async function me(){try{return(await api('/api/me')).user}catch{return null}}
 async function logout(){try{await api('/api/logout',{method:'POST'})}finally{location.href='/'}}
-async function requireUser(){const u=await me();if(!u){location.href='/login.html';return null}return u}
-async function requireAdmin(){const u=await me();if(!u||u.role!=='admin'){location.href='/login.html';return null}return u}
+async function requireUser(){
+  const u=await me();
+  if(!u){location.href='/login.html';return null}
+  if(u.requiresEmailVerification && u.emailVerified!==true){
+    location.href='/login.html?verify=1';
+    return null;
+  }
+  return u;
+}
+async function requireAdmin(){
+  const u=await me();
+  if(!u||u.role!=='admin'){location.href='/login.html';return null}
+  if(u.requiresEmailVerification && u.emailVerified!==true){
+    location.href='/login.html?verify=1';
+    return null;
+  }
+  return u;
+}
 function escapeHtml(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function normalizeMathMarkdown(value=''){
   let s=String(value??'').replace(/\r\n?/g,'\n');
