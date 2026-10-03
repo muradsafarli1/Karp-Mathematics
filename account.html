@@ -34,6 +34,7 @@
 .empty{color:var(--muted);font-size:12px;padding:8px 0}.account-bottom{display:flex;justify-content:center;margin-top:25px}
 @media(max-width:900px){.kpi-grid{grid-template-columns:repeat(3,1fr)}.topic-cards{grid-template-columns:1fr 1fr}.history-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:620px){.account-profile{padding-top:50px}.profile-avatar-wrap{width:132px}.profile-avatar{width:132px;height:132px}.account-wrap{width:calc(100% - 28px)}.kpi-grid{grid-template-columns:1fr 1fr}.dashboard,.history-box{padding:19px}.dashboard-head{align-items:flex-start;flex-direction:column}.switch{width:100%}.switch button{flex:1}.chart{height:210px;gap:4px}.bar-track{height:160px}.topic-cards{grid-template-columns:1fr 1fr}.topic-line{grid-template-columns:100px 1fr 28px}.history-grid{grid-template-columns:1fr}}
+ .account-security{max-width:420px;margin:20px auto 0;text-align:center}.security-toggle{border:0;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}.security-toggle:hover{color:var(--text)}.password-panel{margin-top:12px;padding:17px;background:var(--panel);border-radius:14px;text-align:left}.password-panel .field{margin-bottom:10px}.password-panel .submit{width:100%;margin-top:4px}.password-panel .notice{margin-top:10px}
 </style>
 </head>
 <body>
@@ -99,9 +100,50 @@
     '<section class="history-box"><h2>Saved</h2><div class="history-note">Your saved problems, each linked directly to its problem page.</div><div id="saved-list" class="history-grid"></div></section>'+
     '<section class="history-box"><h2>Exam History</h2><div class="history-note">Open Review to see the selected exam in this section.</div><div id="exam-list" class="history-grid"></div></section>'+
     '<section class="history-box"><h2>Mock History</h2><div class="history-note">Open Review to see that mock. Questions and solutions stay collapsed until you open them.</div><div id="mock-list" class="history-grid"></div></section>'+
-    '<div class="account-bottom">'+(u.role==='admin'?'<a class="btn" href="/admin.html">Admin</a>':'')+' <button class="btn" onclick="logout()">Log out</button></div>'+
+    '<section class="account-security">
+      <button class="security-toggle" id="password-toggle" type="button">Change password</button>
+      <div class="password-panel" id="password-panel" style="display:none">
+        <div class="field"><label>Current password</label><input class="input" id="current-password" type="password" autocomplete="current-password"></div>
+        <div class="field"><label>New password</label><input class="input" id="new-password" type="password" autocomplete="new-password" minlength="6"></div>
+        <div class="field"><label>Confirm new password</label><input class="input" id="confirm-password" type="password" autocomplete="new-password" minlength="6"></div>
+        <button class="submit" id="password-save" type="button">Update password</button>
+        <div class="notice" id="password-notice"></div>
+      </div>
+    </section>
+    <div class="account-bottom">'+(u.role==='admin'?'<a class="btn" href="/admin.html">Admin</a>':'')+' <button class="btn" onclick="logout()">Log out</button></div>'+
     '</section></main>';
   shell('','Account',body);
+
+  const passwordToggle=document.getElementById('password-toggle');
+  const passwordPanel=document.getElementById('password-panel');
+  const passwordSave=document.getElementById('password-save');
+  const passwordNotice=document.getElementById('password-notice');
+  const passwordCurrent=document.getElementById('current-password');
+  const passwordNew=document.getElementById('new-password');
+  const passwordConfirm=document.getElementById('confirm-password');
+  const passwordProvider=(u.providerData||[]).find(p=>p.providerId==='password');
+  if(!passwordProvider){passwordToggle.style.display='none';}
+  passwordToggle.onclick=()=>{passwordPanel.style.display=passwordPanel.style.display==='none'?'block':'none';};
+  passwordSave.onclick=async()=>{
+    const current=passwordCurrent.value,newPass=passwordNew.value,confirmPass=passwordConfirm.value;
+    passwordNotice.className='notice';
+    if(!current||!newPass||!confirmPass){passwordNotice.className='notice error';passwordNotice.textContent='Please fill in all password fields.';return}
+    if(newPass.length<6){passwordNotice.className='notice error';passwordNotice.textContent='New password must be at least 6 characters.';return}
+    if(newPass!==confirmPass){passwordNotice.className='notice error';passwordNotice.textContent='New passwords do not match.';return}
+    passwordSave.disabled=true;passwordSave.textContent='Updating…';
+    try{
+      const {auth}=await fb();
+      const {EmailAuthProvider,reauthenticateWithCredential,updatePassword}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
+      const credential=EmailAuthProvider.credential(auth.currentUser.email,current);
+      await reauthenticateWithCredential(auth.currentUser,credential);
+      await updatePassword(auth.currentUser,newPass);
+      passwordNotice.className='notice success';passwordNotice.textContent='Password updated successfully.';
+      passwordCurrent.value='';passwordNew.value='';passwordConfirm.value='';
+    }catch(e){
+      passwordNotice.className='notice error';
+      passwordNotice.textContent=e.code==='auth/invalid-credential'?'Current password is incorrect.':e.code==='auth/weak-password'?'New password is too weak.':(e.message||'Could not update your password.');
+    }finally{passwordSave.disabled=false;passwordSave.textContent='Update password';}
+  };
 
   const avatarPicker=document.getElementById('profile-picker');
   const avatarEdit=document.getElementById('profile-edit');
