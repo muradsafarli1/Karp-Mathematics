@@ -19,7 +19,7 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/friendships/$(friendshipId(a,b))).data.status == 'accepted';
     }
     function conversationMember(data) {
-      return signedIn() && data.members is list && request.auth.uid in data.members;
+      return verifiedAccount(request.auth.uid) && data.members is list && request.auth.uid in data.members;
     }
 
     match /users/{uid} {
@@ -37,10 +37,10 @@ service cloud.firestore {
         allow read, create, update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
       }
       match /saved/{problemId} {
-        allow read, create, update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow read, create, update, delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
       }
       match /mockHistory/{mockId} {
-        allow read, create, update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow read, create, update, delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
       }
       match /privateState/{stateId} {
         allow read, create, update: if isAdmin() || (signedIn() && request.auth.uid == uid);
@@ -51,9 +51,9 @@ service cloud.firestore {
         allow update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
       }
       match /examEntries/{examId} {
-        allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
-        allow create: if signedIn() && request.auth.uid == uid;
-        allow update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow read: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
+        allow create: if verifiedAccount(uid) && request.auth.uid == uid;
+        allow update, delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
       }
     }
 
