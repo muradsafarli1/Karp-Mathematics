@@ -2,6 +2,14 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
+    function verifiedAccount(uid) {
+      return signedIn()
+        && (
+          !exists(/databases/$(database)/documents/users/$(uid))
+          || get(/databases/$(database)/documents/users/$(uid)).data.requiresEmailVerification != true
+          || request.auth.token.email_verified == true
+        );
+    }
     function isAdminUid(uid) {
       return exists(/databases/$(database)/documents/users/$(uid))
         && get(/databases/$(database)/documents/users/$(uid)).data.role == 'admin';
@@ -30,7 +38,14 @@ service cloud.firestore {
       allow update: if isAdmin()
         || (signedIn()
           && request.auth.uid == uid
-          && request.resource.data.role == resource.data.role);
+          && request.resource.data.role == resource.data.role
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['requiresEmailVerification'])
+            || (
+              request.auth.token.email_verified == true
+              && request.resource.data.requiresEmailVerification == false
+            )
+          ));
       allow delete: if isAdmin();
 
       match /solved/{problemId} {
