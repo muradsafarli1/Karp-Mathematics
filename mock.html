@@ -90,7 +90,7 @@
     document.body.innerHTML='<main class="mock-page"><section class="pagehero"><div class="wrap"><h1>'+esc(item.title||'Mock')+'</h1><p class="lead">'+esc((item.questions?.length||0)+' questions · '+(item.minutes||0)+' minutes · '+dateText(item.completedAt))+'</p></div></section><section class="section"><div class="mock-wrap"><section class="mock-review"><div class="review-head"><div></div><button class="btn" id="review-back">← Back to Mocks</button></div><div id="review-questions"></div></section></div></section></main>';
     const host=document.getElementById('review-questions');
     (item.questions||[]).forEach((q,i)=>{
-      const sec=document.createElement('section');sec.className='review-question';sec.innerHTML='<h3>Question '+(i+1)+'</h3><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div><div class="review-statement">'+md(q.statement)+'</div><div class="review-solution"><button class="btn">Show solution</button><div class="review-solution-body">'+((q.solutions||[]).map((s,j)=>'<div style="margin-top:8px"><div class="mock-kicker">SOLUTION '+(j+1)+'</div>'+md(s)+'</div>').join('')||'<div class="muted">No supplied solution.</div>')+'</div></div>';
+      const sec=document.createElement('section');sec.className='review-question';sec.innerHTML='<h3>Question '+(i+1)+'</h3><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+esc(q.imageUrl)+'" alt="Problem image" loading="lazy" style="margin:10px 0 16px">':'')+'<div class="review-statement">'+md(q.statement)+'</div><div class="review-solution"><button class="btn">Show solution</button><div class="review-solution-body">'+((q.solutions||[]).map((s,j)=>'<div style="margin-top:8px"><div class="mock-kicker">SOLUTION '+(j+1)+'</div>'+md(s)+'</div>').join('')||'<div class="muted">No supplied solution.</div>')+'</div></div>';
       const b=sec.querySelector('button'),body=sec.querySelector('.review-solution-body');b.onclick=()=>{const open=body.classList.toggle('open');b.textContent=open?'Hide solution':'Show solution';if(open)renderMath(body)};host.appendChild(sec);
     });
     document.getElementById('review-back').onclick=()=>location.href='/mock.html';renderMath(host);
@@ -169,7 +169,7 @@
     const d=await api('/api/content');
     const c=(d.contests||[]).find(x=>String(x.id)===String(id));
     if(!c)throw new Error('Contest not found.');
-    const problems=(c.problems||[]).map((p,i)=>({id:'contest-'+String(c.id)+'-'+i,country:c.country||'',competition:localized(c,'title')||c.titleEn||c.titleAz||c.title||'Contest',year:c.year||'',problemNumber:p.code||('A'+(i+1)),statement:localized(p,'statement')||p.statement||'',solutions:Array.isArray(p.solutions)?p.solutions:[],category:p.category||null,fixed:true,sourceType:'contest'})).filter(p=>p.statement);
+    const problems=(c.problems||[]).map((p,i)=>({id:'contest-'+String(c.id)+'-'+i,country:c.country||'',competition:localized(c,'title')||c.titleEn||c.titleAz||c.title||'Contest',year:c.year||'',problemNumber:p.code||('A'+(i+1)),statement:localized(p,'statement')||p.statement||'',imageUrl:p.imageUrl||'',solutions:Array.isArray(p.solutions)?p.solutions:[],category:p.category||null,fixed:true,sourceType:'contest'})).filter(p=>p.statement);
     if(!problems.length)throw new Error('This contest has no problems yet.');
     return {contest:c,questions:problems};
   }
@@ -217,7 +217,7 @@
     try{
       let generated=[];
       if(remaining){
-        const remainingSequence=seq?seq.slice(manualQuestions.length):null;
+        const remainingSequence=seq?seq.slice(selectedQuestions.length):null;
         const result=await mathnetFind({
           categories:cats(),difficulty:difficulty(),sequence:remainingSequence,count:remaining,
           excludeIds:manualQuestions.map(q=>String(q.id)),
@@ -241,7 +241,7 @@
   function renderPreview(){
     const saved=mock.status==='saved'||mock.status==='active';
     let html='<div class="mock-preview"><div class="preview-head"><div><div class="mock-kicker">'+(saved?'SAVED':'READY')+'</div><h2>'+esc(mock.title)+'</h2><div class="muted">'+mock.questions.length+' questions · '+mock.minutes+' minutes</div>'+(saved?'<div class="saved-note">Saved in your KARP account.</div>':'')+'</div><div class="preview-actions"><button class="btn" id="save-mock">'+(saved?'Save changes':'Save Mock')+'</button><button class="btn primary" id="start-mock">Start Mock</button></div></div>';
-    mock.questions.forEach((q,i)=>html+='<section class="preview-question"><div class="preview-qhead"><div><div class="mock-kicker">QUESTION '+(i+1)+' · '+esc(q.custom?'Custom':(labels[q.category]||'Problem'))+'</div><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div></div>'+(q.custom||q.fixed?'':'<button class="btn" data-change="'+i+'">Change</button>')+'</div><div class="preview-statement">'+md(q.statement)+'</div></section>');
+    mock.questions.forEach((q,i)=>html+='<section class="preview-question"><div class="preview-qhead"><div><div class="mock-kicker">QUESTION '+(i+1)+' · '+esc(q.custom?'Custom':(q.sourceType==='contest'?'Contest':(labels[q.category]||'Problem')))+'</div><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div></div>'+(q.custom||q.fixed?'':'<button class="btn" data-change="'+i+'">Change</button>')+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+esc(q.imageUrl)+'" alt="Problem image" loading="lazy">':'')+'<div class="preview-statement">'+md(q.statement)+'</div></section>');
     html+='</div>';document.getElementById('mock-output').innerHTML=html;
     setKarpActivity({page:'Mock Preview',label:'Mock preview',detail:mock.title,question:null});document.getElementById('start-mock').onclick=()=>startMock(mock);
     document.getElementById('save-mock').onclick=async()=>{const b=document.getElementById('save-mock');b.disabled=true;try{mock=await saveMockDraft(mock);toast('Mock saved.');renderPreview()}catch(e){toast(e.message||'Could not save mock.')}finally{b.disabled=false}};
@@ -313,7 +313,7 @@
   function renderSession(){
     mockAutoSaveCleanup?.();
     mockAutoSaveCleanup=installMockAutoSave();
-    document.body.innerHTML='<main class="mock-session"><header class="mock-top"><div class="mock-session-title">'+esc(mock.title)+'</div><div class="mock-timer" id="mock-timer">'+clock(seconds)+'</div><div></div></header><div class="mock-paper" id="mock-paper">'+mock.questions.map((q,i)=>'<section class="session-question"><div class="session-qtitle">Question '+(i+1)+'</div><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div><div class="session-statement">'+md(q.statement)+'</div></section>').join('')+'<div class="session-bottom"><span class="session-note">Your mock is saved automatically.</span><button class="btn primary" id="finish-mock">Finish Mock</button></div></div></main>';
+    document.body.innerHTML='<main class="mock-session"><header class="mock-top"><div class="mock-session-title">'+esc(mock.title)+'</div><div class="mock-timer" id="mock-timer">'+clock(seconds)+'</div><div></div></header><div class="mock-paper" id="mock-paper">'+mock.questions.map((q,i)=>'<section class="session-question"><div class="session-qtitle">Question '+(i+1)+'</div><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+esc(q.imageUrl)+'" alt="Problem image" loading="lazy" style="margin:10px 0 16px">':'')+'<div class="session-statement">'+md(q.statement)+'</div></section>').join('')+'<div class="session-bottom"><span class="session-note">Your mock is saved automatically.</span><button class="btn primary" id="finish-mock">Finish Mock</button></div></div></main>';
     document.getElementById('finish-mock').onclick=()=>finishMock(false);
     renderMath(document.getElementById('mock-paper'));window.scrollTo(0,0);
     setKarpActivity({page:'Mock',label:'Taking mock',detail:mock.title,question:1});
