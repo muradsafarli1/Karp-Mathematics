@@ -246,7 +246,16 @@ async function api(path, opts = {}) {
   }
   if(path==='/api/exams'){
     const snap=await getDocs(collection(db,'exams'));
-    return {exams:snap.docs.map(x=>({id:x.id,...x.data()})).map(publicExam)};
+    const exams=snap.docs.map(x=>({id:x.id,...x.data()}));
+    if(uid){
+      const regEntries=await Promise.all(exams.map(async exam=>{
+        const reg=await getDoc(doc(db,'exams',exam.id,'registrations',uid));
+        return [exam.id,reg.exists()];
+      }));
+      const registeredById=new Map(regEntries);
+      return {exams:exams.map(exam=>({...publicExam(exam),registeredByCurrentUser:registeredById.get(exam.id)===true}))};
+    }
+    return {exams:exams.map(publicExam)};
   }
   if(path==='/api/exams/history'){
     if(!user) throw new Error('Authentication required');
