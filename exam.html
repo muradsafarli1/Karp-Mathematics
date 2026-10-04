@@ -45,11 +45,11 @@ window.MathJax={
 .exam-solution-body{display:none;margin-top:14px;font-size:17px;line-height:1.9}
 .exam-solution-body.open{display:block}
 .exam-active-shell{min-height:100vh;background:var(--bg)}
-.exam-active-top{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto;align-items:center;gap:20px;padding:18px 24px 16px;background:var(--bg);border-bottom:1px solid var(--line)}
-.exam-active-title{min-width:0}
+.exam-active-top{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:20px;padding:18px 24px 16px;background:var(--bg);border-bottom:1px solid var(--line)}
+.exam-active-title{grid-column:1;grid-row:1;justify-self:start;min-width:0}
 .exam-active-title h1{font-family:'Space Grotesk';font-size:23px;line-height:1.1;letter-spacing:-.8px;margin:4px 0 0}
-.exam-active-timer{font-family:'Space Grotesk';font-variant-numeric:tabular-nums;font-size:52px;font-weight:800;line-height:1;white-space:nowrap}
-.exam-active-lang{justify-self:end}
+.exam-active-timer{grid-column:2;grid-row:1;justify-self:center;font-family:'Space Grotesk';font-variant-numeric:tabular-nums;font-size:52px;font-weight:800;line-height:1;white-space:nowrap}
+.exam-active-lang{grid-column:3;grid-row:1;justify-self:end;align-self:end;margin-bottom:-2px}
 .exam-active-body{width:min(1400px,96vw);margin:0 auto;padding:28px 0 70px}
 .exam-active-paper{background:var(--panel);border-radius:22px;padding:34px 54px}
 .exam-active-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:24px}
@@ -63,8 +63,9 @@ window.MathJax={
 @media(max-width:800px){
   .exam-review,.exam-paper,.exam-active-paper{padding:25px 22px}
   .exam-active-top{grid-template-columns:1fr auto;gap:12px;padding:15px 16px}
+  .exam-active-title{grid-column:1;grid-row:1}
   .exam-active-timer{grid-column:2;grid-row:1;font-size:32px}
-  .exam-active-lang{grid-column:1/-1;grid-row:2;justify-self:end}
+  .exam-active-lang{grid-column:2;grid-row:2;justify-self:end;align-self:start;margin-top:2px}
   .exam-active-title h1{font-size:18px}
   .question-text{font-size:18px;line-height:1.8}
 }
@@ -97,6 +98,13 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     const title=localized(exam,'title')||'Exam';
     const questions=Array.isArray(exam.questions)?exam.questions:[];
     const durationMinutes=Number(exam.durationMinutes||60);
+    const examDateMs=exam.date?Date.parse(String(exam.date).replace(' ','T')):NaN;
+    const examFinished=String(exam.status||'').toLowerCase()==='finished'||(!Number.isNaN(examDateMs)&&examDateMs+durationMinutes*60000<=Date.now());
+    const examActive=!examFinished&&((String(exam.status||'').toLowerCase()==='active')||(!Number.isNaN(examDateMs)&&examDateMs<=Date.now()));
+    function examStartText(){
+      if(Number.isNaN(examDateMs))return 'This exam is not open yet.';
+      return 'This exam will open on '+new Date(examDateMs).toLocaleString()+' .';
+    }
 
     async function writeExamSession(patch={}){
       try{
@@ -147,8 +155,13 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       renderReview();return;
     }
     if(!registered){
-      document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>Register to enter</h1><p>Register for this exam first.</p><div class="exam-enter-actions"><button class="btn primary" id="register-now">Register</button><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';
+      document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>Register to enter</h1><p>'+ (examActive?'Register for this exam first.':'Register now to reserve your place. You can start only when the exam opens.') +'</p><div class="exam-enter-actions"><button class="btn primary" id="register-now">Register</button><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';
       document.getElementById('register-now').onclick=async()=>{if(!(await ensureSignedIn('Register for this exam','Sign in to register for this exam.')))return;try{await api('/api/exams/'+encodeURIComponent(id)+'/register',{method:'POST'});location.reload()}catch(e){toast(e.message)}};
+      return;
+    }
+
+    if(!examActive){
+      document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>Exam not open yet</h1><p>'+escapeHtml(examStartText())+'</p><div class="exam-enter-actions"><a class="btn primary" href="/exams.html">Back to Exams</a></div></section></main>';
       return;
     }
 
