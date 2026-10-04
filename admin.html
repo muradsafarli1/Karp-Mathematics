@@ -150,8 +150,8 @@ async function render(){
       const fmtLast=u=>u.online?'Online now':(u.lastSeen?new Date(u.lastSeen).toLocaleString():'Never');
       m.innerHTML='<div class="admin-head"><div><h2>Users</h2><span class="admin-count">'+users.length+' users</span></div></div>'+
         '<div class="bigcard admin-user-summary"><strong>'+users.filter(u=>u.online).length+'</strong> online · <strong>'+users.filter(u=>!u.online).length+'</strong> offline · last-seen and current activity are shown below.</div>'+
-        '<div class="bigcard" style="overflow-x:auto"><table class="table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Role</th><th>Last login</th><th>Last seen</th><th>Current activity</th><th>Logins</th></tr></thead><tbody>'+
-        users.slice().sort((x,y)=>Number(y.online)-Number(x.online)||new Date(y.lastLoginAt||0)-new Date(x.lastLoginAt||0)).map(u=>'<tr><td><span class="'+(u.online?'admin-online-dot':'admin-offline-dot')+'"></span>'+ (u.online?'Online':'Offline') +'</td><td>'+esc(u.name||'—')+'</td><td>'+esc(u.email||'—')+'</td><td>'+esc(u.role||'user')+'</td><td>'+(u.lastLoginAt?new Date(u.lastLoginAt).toLocaleString():'Never')+'</td><td>'+fmtLast(u)+'</td><td>'+esc(presenceLabel(u))+'</td><td>'+Number(u.loginCount||0)+'</td></tr>').join('')+
+        '<div class="bigcard" style="overflow-x:auto"><table class="table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Role</th><th>Account created</th><th>Last login</th><th>Last seen</th><th>Last logout</th><th>Current activity</th><th>Logins</th></tr></thead><tbody>'+
+        users.slice().sort((x,y)=>Number(y.online)-Number(x.online)||new Date(y.lastLoginAt||0)-new Date(x.lastLoginAt||0)).map(u=>'<tr><td><span class="'+(u.online?'admin-online-dot':'admin-offline-dot')+'"></span>'+ (u.online?'Online':'Offline') +'</td><td>'+esc(u.name||'—')+'</td><td>'+esc(u.email||'—')+'</td><td>'+esc(u.role||'user')+'</td><td>'+(u.createdAt?new Date(u.createdAt).toLocaleString():'—')+'</td><td>'+(u.lastLoginAt?new Date(u.lastLoginAt).toLocaleString():'Never')+'</td><td>'+fmtLast(u)+'</td><td>'+(u.lastLogoutAt?new Date(u.lastLogoutAt).toLocaleString():'—')+'</td><td>'+esc(presenceLabel(u))+'</td><td>'+Number(u.loginCount||0)+'</td></tr>').join('')+
         '</tbody></table></div>';
     }catch(e){m.innerHTML='<div class="bigcard"><h3>Could not load users</h3><p>'+esc(e.message)+'</p></div>'}
     return;
@@ -210,14 +210,17 @@ async function render(){
       const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
       const snap=await getDocs(collection(db,'journalIssues'));
       const issues=snap.docs.map(x=>({id:x.id,...x.data()})).filter(x=>x.published!==false).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
-      m.innerHTML='<div class="admin-head"><div><h2>Journals</h2><span class="admin-count">'+issues.length+' published issues</span></div></div>'+
+      const totalDownloads=issues.reduce((sum,x)=>sum+Number(x.downloadCount||0),0);
+      m.innerHTML='<div class="admin-head"><div><h2>Journals</h2><span class="admin-count">'+issues.length+' published issues · '+totalDownloads+' total downloads</span></div></div>'+
+        '<div class="bigcard admin-kpi-bar"><div><strong>'+issues.length+'</strong><span>Published issues</span></div><div><strong>'+totalDownloads+'</strong><span>Total downloads</span></div><div><strong>'+(issues.length?Math.round(totalDownloads/issues.length):0)+'</strong><span>Average per issue</span></div></div>'+
+        '<div class="editor-card"><div class="tag">UPLOAD JOURNAL PDF</div>'+
         '<div class="editor-card"><div class="tag">UPLOAD JOURNAL PDF</div>'+
         '<div class="field"><label>Journal title</label><input class="input" id="journal-upload-title" maxlength="180" placeholder="e.g. KARP Journal — September 2026"></div>'+
         '<div class="field"><label>Description (optional)</label><textarea class="textarea" id="journal-upload-description" rows="3" placeholder="Short description..."></textarea></div>'+
         '<div class="field"><label>PDF file</label><input class="input" id="journal-upload-file" type="file" accept="application/pdf,.pdf"></div>'+
         '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px"><button class="btn primary" id="journal-upload-btn" type="button" onclick="uploadJournalIssue()">Upload & publish</button><span id="journal-upload-status" class="admin-upload-status"></span></div>'+
         '<p style="font-size:10px;color:#666b73;margin:12px 0 0">Storage is not used. PDFs are split into Firestore chunks; maximum PDF size is 15 MB.</p></div>'+
-        '<div class="rows">'+(issues.length?issues.map(x=>'<div class="row"><div><h3>'+esc(x.title||x.fileName||'Untitled Journal')+'</h3><p>'+esc(x.description||x.fileName||'')+' · '+(Number(x.size||0)/1024/1024).toFixed(2)+' MB</p></div><div>published</div><div class="right"><button class="btn danger" data-delete-journal="'+esc(x.id)+'">Delete</button></div></div>').join(''):'<div class="empty">No journals published yet.</div>')+'</div>';
+        '<div class="rows">'+(issues.length?issues.map(x=>'<div class="row"><div><h3>'+esc(x.title||x.fileName||'Untitled Journal')+'</h3><p>'+esc(x.description||x.fileName||'')+' · '+(Number(x.size||0)/1024/1024).toFixed(2)+' MB</p></div><div><strong>'+Number(x.downloadCount||0)+'</strong> downloads</div><div class="right"><button class="btn danger" data-delete-journal="'+esc(x.id)+'">Delete</button></div></div>').join(''):'<div class="empty">No journals published yet.</div>')+'</div>';
       m.querySelectorAll('[data-delete-journal]').forEach(b=>b.onclick=()=>deleteJournalIssue(b.dataset.deleteJournal));
     }catch(e){m.innerHTML='<div class="bigcard"><h3>Could not load journals</h3><p>'+esc(e.message||'Check Firestore permissions.')+'</p></div>'}
     return;
