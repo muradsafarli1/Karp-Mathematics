@@ -127,10 +127,26 @@ window.KARPPdfReady=import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/buil
       const loading=document.getElementById('journal-loading');if(loading)loading.textContent=e.message||'Could not load this PDF.';
     }
   }
+  async function trackJournalRead(){
+    if(!current)return;
+    try{
+      const {doc,runTransaction}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+      await runTransaction(db,async tx=>{
+        const ref=doc(db,'journalIssues',current.id);
+        const snap=await tx.get(ref);
+        if(!snap.exists())return;
+        const nextCount=Number(snap.data()?.readCount||0)+1;
+        tx.update(ref,{readCount:nextCount});
+        current.readCount=nextCount;
+      });
+    }catch(e){console.warn('KARP Journal read count update failed:',e)}
+  }
   async function changePage(delta){
     if(!pdf)return;
     const next=page+delta;if(next<1||next>pdf.numPages)return;
-    page=next;await renderPage(delta);
+    page=next;
+    if(delta>0)trackJournalRead();
+    await renderPage(delta);
   }
   async function downloadCurrent(){
     if(!current)return;
