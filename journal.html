@@ -136,6 +136,17 @@ window.KARPPdfReady=import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/buil
     if(!current)return;
     try{
       const bytes=await loadPdfBytes(current);
+      try{
+        const {doc,runTransaction}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+        await runTransaction(db,async tx=>{
+          const ref=doc(db,'journalIssues',current.id);
+          const snap=await tx.get(ref);
+          if(!snap.exists())return;
+          const next=Number(snap.data()?.downloadCount||0)+1;
+          tx.update(ref,{downloadCount:next});
+          current.downloadCount=next;
+        });
+      }catch(e){console.warn('KARP Journal download count update failed:',e)}
       const blob=new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');
       a.href=url;a.download=current.fileName||((current.title||'journal').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')+'.pdf');document.body.appendChild(a);a.click();a.remove();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
