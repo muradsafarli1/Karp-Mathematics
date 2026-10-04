@@ -202,41 +202,7 @@ async function mathnetFind(options={}){
 function mathnetSaveMock(mock){window.__karpLastMock=mock;return mock}
 function mathnetLoadMock(){return window.__karpLastMock||null}
 
-
-async function mathnetLoadIndexPage(page=0,pageSize=1500){
-  const safePage=Math.max(0,Number(page)||0);
-  const size=Math.max(1,Math.min(1500,Number(pageSize)||1500));
-  const {db}=await fb();
-  const {doc,getDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const runtime=await mathnetRuntimeCollections(db,getDoc,doc);
-  const state=runtime.state;
-  if(!state.ready)throw Object.assign(new Error('MathNet archive has not been synced to Firebase yet.'),{warmingUp:true});
-  const version=String(state.version||'');
-  const shardSize=300;
-  const start=safePage*size;
-  const end=Math.min(Number(state.count||0),start+size);
-  if(start>=end)return {rows:[],page:safePage,pageSize:size,total:Number(state.count||0),hasNext:false,hasPrevious:safePage>0};
-  const firstShard=Math.floor(start/shardSize);
-  const lastShard=Math.floor((end-1)/shardSize);
-  const snaps=await Promise.all(Array.from({length:lastShard-firstShard+1},(_,i)=>
-    getDoc(doc(db,runtime.shards,'shard-'+String(firstShard+i).padStart(4,'0')))
-  ));
-  const rows=[];
-  snaps.forEach(s=>{
-    if(!s.exists())return;
-    const d=s.data();
-    if(version && d.version!==version)return;
-    (Array.isArray(d.items)?d.items:[]).forEach(x=>{
-      const index=Number(x?.sourceIndex??-1);
-      if(index>=start && index<end)rows.push({...x,sourceType:'mathnet',category:mathnetCategory(x),title:x.title||mathnetTitle(x),hasSolution:true});
-    });
-  });
-  rows.sort((a,b)=>Number(a.sourceIndex||0)-Number(b.sourceIndex||0));
-  return {rows,page:safePage,pageSize:size,total:Number(state.count||0),hasNext:end<Number(state.count||0),hasPrevious:safePage>0};
-}
-
 window.mathnetLoadAllIndex=mathnetLoadAllIndex;
-window.mathnetLoadIndexPage=mathnetLoadIndexPage;
 window.mathnetSearch=mathnetSearch;
 window.mathnetFind=mathnetFind;
 window.mathnetProblemById=mathnetProblemById;
