@@ -142,7 +142,7 @@ async function render(){
   if(state.type==='users'){
     try{
       const d=await api('/api/admin/users');
-      const users=(d.users||[]).filter(u=>!(u.role==='user'&&u.requiresEmailVerification===true));
+      const users=d.users||[];
       const presenceLabel=u=>{
         const a=u.activity||{};
         return a.page?((a.label||a.page)+(a.detail?' · '+a.detail:'')+(a.question?' · Problem '+a.question:'')):'Not active';
