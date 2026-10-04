@@ -211,8 +211,9 @@ async function render(){
       const snap=await getDocs(collection(db,'journalIssues'));
       const issues=snap.docs.map(x=>({id:x.id,...x.data()})).filter(x=>x.published!==false).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
       const totalDownloads=issues.reduce((sum,x)=>sum+Number(x.downloadCount||0),0);
-      m.innerHTML='<div class="admin-head"><div><h2>Journals</h2><span class="admin-count">'+issues.length+' published issues · '+totalDownloads+' total downloads</span></div></div>'+
-        '<div class="bigcard admin-kpi-bar"><div><strong>'+issues.length+'</strong><span>Published issues</span></div><div><strong>'+totalDownloads+'</strong><span>Total downloads</span></div><div><strong>'+(issues.length?Math.round(totalDownloads/issues.length):0)+'</strong><span>Average per issue</span></div></div>'+
+      const totalReads=issues.reduce((sum,x)=>sum+Number(x.readCount||0),0);
+      m.innerHTML='<div class="admin-head"><div><h2>Journals</h2><span class="admin-count">'+issues.length+' published issues · '+totalReads+' total page-turn reads · '+totalDownloads+' total downloads</span></div></div>'+
+        '<div class="bigcard admin-kpi-bar"><div><strong>'+issues.length+'</strong><span>Published issues</span></div><div><strong>'+totalReads+'</strong><span>Total page-turn reads</span></div><div><strong>'+totalDownloads+'</strong><span>Total downloads</span></div></div>'+
         '<div class="editor-card"><div class="tag">UPLOAD JOURNAL PDF</div>'+
         '<div class="editor-card"><div class="tag">UPLOAD JOURNAL PDF</div>'+
         '<div class="field"><label>Journal title</label><input class="input" id="journal-upload-title" maxlength="180" placeholder="e.g. KARP Journal — September 2026"></div>'+
@@ -220,7 +221,7 @@ async function render(){
         '<div class="field"><label>PDF file</label><input class="input" id="journal-upload-file" type="file" accept="application/pdf,.pdf"></div>'+
         '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px"><button class="btn primary" id="journal-upload-btn" type="button" onclick="uploadJournalIssue()">Upload & publish</button><span id="journal-upload-status" class="admin-upload-status"></span></div>'+
         '<p style="font-size:10px;color:#666b73;margin:12px 0 0">Storage is not used. PDFs are split into Firestore chunks; maximum PDF size is 15 MB.</p></div>'+
-        '<div class="rows">'+(issues.length?issues.map(x=>'<div class="row"><div><h3>'+esc(x.title||x.fileName||'Untitled Journal')+'</h3><p>'+esc(x.description||x.fileName||'')+' · '+(Number(x.size||0)/1024/1024).toFixed(2)+' MB</p></div><div><strong>'+Number(x.downloadCount||0)+'</strong> downloads</div><div class="right"><button class="btn danger" data-delete-journal="'+esc(x.id)+'">Delete</button></div></div>').join(''):'<div class="empty">No journals published yet.</div>')+'</div>';
+        '<div class="rows">'+(issues.length?issues.map(x=>'<div class="row"><div><h3>'+esc(x.title||x.fileName||'Untitled Journal')+'</h3><p>'+esc(x.description||x.fileName||'')+' · '+(Number(x.size||0)/1024/1024).toFixed(2)+' MB</p></div><div><strong>'+Number(x.readCount||0)+'</strong> reads<br><span style="font-size:10px;color:#666b73">'+Number(x.downloadCount||0)+' downloads</span></div><div class="right"><button class="btn danger" data-delete-journal="'+esc(x.id)+'">Delete</button></div></div>').join(''):'<div class="empty">No journals published yet.</div>')+'</div>';
       m.querySelectorAll('[data-delete-journal]').forEach(b=>b.onclick=()=>deleteJournalIssue(b.dataset.deleteJournal));
     }catch(e){m.innerHTML='<div class="bigcard"><h3>Could not load journals</h3><p>'+esc(e.message||'Check Firestore permissions.')+'</p></div>'}
     return;
