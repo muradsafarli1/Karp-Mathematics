@@ -109,8 +109,8 @@
         <button class="submit" id="password-save" type="button">Update password</button>
         <div class="notice" id="password-notice"></div>
       </div>
-    </section>`
-    <div class="account-bottom">'+(u.role==='admin'?'<a class="btn" href="/admin.html">Admin</a>':'')+' <button class="btn" onclick="logout()">Log out</button></div>'+
+    </section>`+
+    '<div class="account-bottom">'+(u.role==='admin'?'<a class="btn" href="/admin.html">Admin</a>':'')+' <button class="btn" onclick="logout()">Log out</button></div>'+
     '</section></main>';
   shell('','Account',body);
 
