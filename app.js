@@ -625,7 +625,6 @@ async function startKarpPresence(){
     await authReady();
     if(!auth.currentUser)return;
     if(auth.currentUser.emailVerified!==true){
-      location.replace('/login.html?verify=1');
       return;
     }
     const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
