@@ -100,7 +100,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     const durationMinutes=Number(exam.durationMinutes||60);
     const examDateMs=exam.date?Date.parse(String(exam.date).replace(' ','T')):NaN;
     const examFinished=String(exam.status||'').toLowerCase()==='finished'||(!Number.isNaN(examDateMs)&&examDateMs+durationMinutes*60000<=Date.now());
-    const examActive=!examFinished&&((String(exam.status||'').toLowerCase()==='active')||(!Number.isNaN(examDateMs)&&examDateMs<=Date.now()));
+    const examActive=!examFinished&&(!Number.isNaN(examDateMs)?examDateMs<=Date.now():String(exam.status||'').toLowerCase()==='active');
     function examStartText(){
       if(Number.isNaN(examDateMs))return 'This exam is not open yet.';
       return 'This exam will open on '+new Date(examDateMs).toLocaleString()+' .';
@@ -161,7 +161,9 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     }
 
     if(!examActive){
-      document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>Exam not open yet</h1><p>'+escapeHtml(examStartText())+'</p><div class="exam-enter-actions"><a class="btn primary" href="/exams.html">Back to Exams</a></div></section></main>';
+      const closedTitle=examFinished?'Exam closed':'Exam not open yet';
+      const closedText=examFinished?'This exam is no longer accepting entries.':examStartText();
+      document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>'+closedTitle+'</h1><p>'+escapeHtml(closedText)+'</p><div class="exam-enter-actions"><a class="btn primary" href="/exams.html">Back to Exams</a></div></section></main>';
       return;
     }
 
