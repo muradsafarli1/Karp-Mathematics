@@ -314,6 +314,11 @@ service cloud.firestore {
           && (
             (!resource.data.keys().hasAny(['downloadCount']) && request.resource.data.downloadCount == 1)
             || (resource.data.keys().hasAny(['downloadCount']) && request.resource.data.downloadCount == resource.data.downloadCount + 1)
+          ))
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readCount'])
+          && (
+            (!resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == 1)
+            || (resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == resource.data.readCount + 1)
           ));
     }
     match /journalIssues/{journalId}/chunks/{chunkId} {
