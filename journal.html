@@ -134,6 +134,8 @@ window.KARPPdfReady=import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/buil
   }
   async function downloadCurrent(){
     if(!current)return;
+    const user=await ensureSignedIn('Download Journal','Sign in or create an account before downloading a Journal PDF.');
+    if(!user)return;
     try{
       const bytes=await loadPdfBytes(current);
       try{
