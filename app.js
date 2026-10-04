@@ -633,7 +633,18 @@ async function startKarpPresence(){
   }catch(e){console.warn('KARP presence could not start:',e)}
 }
 async function me(){try{return(await api('/api/me')).user}catch{return null}}
-async function logout(){try{await api('/api/logout',{method:'POST'})}finally{location.href='/'}}
+async function logout(){
+  try{
+    const {db,auth}=await fb();
+    await authReady();
+    const uid=auth.currentUser?.uid;
+    if(uid){
+      const {doc,updateDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+      await updateDoc(doc(db,'users',uid),{lastLogoutAt:new Date().toISOString()}).catch(()=>{});
+    }
+    await api('/api/logout',{method:'POST'});
+  }finally{location.href='/'}
+}
 async function requireUser(){
   const u=await me();
   if(!u){location.href='/login.html';return null}
