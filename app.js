@@ -624,6 +624,10 @@ async function startKarpPresence(){
     const {db,auth}=await fb();
     await authReady();
     if(!auth.currentUser)return;
+    if(auth.currentUser.emailVerified!==true){
+      location.replace('/login.html?verify=1');
+      return;
+    }
     const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
     __karpPresence={db,user:auth.currentUser,fs,activity:window.__karpPendingActivity||{page:'KARP',label:'Browsing',detail:'',question:null}};
     await __writeKarpPresence(true);
@@ -648,7 +652,7 @@ async function logout(){
 async function requireUser(){
   const u=await me();
   if(!u){location.href='/login.html';return null}
-  if(u.requiresEmailVerification && u.emailVerified!==true){
+  if(u.emailVerified!==true){
     location.href='/login.html?verify=1';
     return null;
   }
@@ -657,7 +661,7 @@ async function requireUser(){
 async function requireAdmin(){
   const u=await me();
   if(!u||u.role!=='admin'){location.href='/login.html';return null}
-  if(u.requiresEmailVerification && u.emailVerified!==true){
+  if(u.emailVerified!==true){
     location.href='/login.html?verify=1';
     return null;
   }
