@@ -247,7 +247,7 @@ async function render(){
     const items=state.type==='videos'?(d.videos||[]):(d[state.type]||[]);
     const editingId=state.editing?.id||null;
     const isNew=!!state.editing&&!editingId;
-    const head='<div class="admin-head"><div><h2>'+state.type[0].toUpperCase()+state.type.slice(1)+'</h2><span class="admin-count">'+items.length+' items</span></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">'+(state.type==='contests'?'<button class="btn" onclick="importOlympiadCatalog()">Import IMO + BMO catalog</button>':'')+'<button class="btn primary" onclick="newItem()">+ New</button></div></div>';
+    const head='<div class="admin-head"><div><h2>'+state.type[0].toUpperCase()+state.type.slice(1)+'</h2><span class="admin-count">'+items.length+' items</span></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">'+(state.type==='contests'?'<button class="btn" onclick="cleanupImportedOlympiadCatalog()">Remove old IMO/BMO import</button>':'')+'<button class="btn primary" onclick="newItem()">+ New</button></div></div>';
     const newEditor=isNew?'<div id="admin-editor-anchor" class="admin-editor-inline admin-editor-new">'+formHtml(state.editing)+'</div>':'';
     const rows=items.map(x=>{
       const open=editingId&&String(editingId)===String(x.id);
@@ -259,37 +259,20 @@ async function render(){
     if(state.type==='videos')bindVideoThumbnailPicker();
   }catch(e){m.innerHTML='<div class="bigcard"><h3>Could not load content</h3><p>'+esc(e.message)+'</p></div>'}
 }
-async function importOlympiadCatalog(){
+async function cleanupImportedOlympiadCatalog(){
   if(state.type!=='contests')return;
-  if(!confirm('Import the IMO (1959–2026) and BMO (1984–2026) contest catalog into Admin → Contests? Existing contests will not be modified.'))return;
-  const btn=[...document.querySelectorAll('button')].find(x=>x.textContent.includes('Import IMO + BMO catalog'));
+  if(!confirm('Delete the old automatically imported IMO/BMO catalog records? This only removes records with catalogKey starting IMO- or BMO-.'))return;
+  const btn=[...document.querySelectorAll('button')].find(x=>x.textContent.includes('Remove old IMO/BMO import'));
   if(btn)btn.disabled=true;
   try{
     const {db}=await fb();
-    const {collection,getDocs,doc,setDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const {collection,getDocs,deleteDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
     const snap=await getDocs(collection(db,'contests'));
-    const existing=new Set(snap.docs.map(d=>String(d.data()?.catalogKey||d.id)));
-    const jobs=[];
-    for(let year=1959;year<=2026;year++){
-      const problems=[];
-      for(let i=1;i<=6;i++)problems.push({id:null,code:'P'+i,statementEn:'',statementAz:'',imageUrl:'',sourceUrl:'https://artofproblemsolving.com/wiki/index.php/'+year+'_IMO'});
-      jobs.push({catalogKey:'IMO-'+year,titleEn:'IMO '+year,titleAz:'IMO '+year,year:String(year),type:'IMO',descriptionEn:'International Mathematical Olympiad — '+year,descriptionAz:'Beynəlxalq Riyaziyyat Olimpiadası — '+year,status:'published',source:'AoPS',sourceUrl:'https://artofproblemsolving.com/wiki/index.php/'+year+'_IMO',problems});
-    }
-    for(let year=1984;year<=2026;year++){
-      const problems=[];
-      for(let i=1;i<=4;i++)problems.push({id:null,code:'P'+i,statementEn:'',statementAz:'',imageUrl:'',sourceUrl:'https://artofproblemsolving.com/community/search?query='+encodeURIComponent(year+' Balkan MO')});
-      jobs.push({catalogKey:'BMO-'+year,titleEn:'BMO '+year,titleAz:'BMO '+year,year:String(year),type:'BMO',descriptionEn:'Balkan Mathematical Olympiad — '+year,descriptionAz:'Balkan Riyaziyyat Olimpiadası — '+year,status:'published',source:'AoPS',sourceUrl:'https://artofproblemsolving.com/community/search?query='+encodeURIComponent(year+' Balkan MO'),problems});
-    }
-    let added=0;
-    for(const item of jobs){
-      if(existing.has(item.catalogKey))continue;
-      const ref=doc(collection(db,'contests'));
-      await setDoc(ref,{...item,id:ref.id,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
-      added++;
-    }
-    toast('Imported '+added+' new contest records. Problems are listed with source links for review; no existing contest was changed.');
-    state.editing=null; render();
-  }catch(e){console.error(e);toast(e.message||'Could not import the catalog.');}
+    const old=snap.docs.filter(d=>{const k=String(d.data()?.catalogKey||'');return k.startsWith('IMO-')||k.startsWith('BMO-')});
+    for(const d of old)await deleteDoc(d.ref);
+    toast('Removed '+old.length+' old imported IMO/BMO records.');
+    state.editing=null;render();
+  }catch(e){console.error(e);toast(e.message||'Could not remove the old import.');}
   finally{if(btn)btn.disabled=false;}
 }
 async function openAboutEditor(addBox=false){
