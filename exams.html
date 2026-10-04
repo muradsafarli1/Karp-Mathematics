@@ -22,14 +22,14 @@
     setKarpActivity({page:'Exams',label:'Exam list',detail:'Browsing available exams',question:null});
     const parseDate=e=>e.date?Date.parse(String(e.date).replace(' ','T')):NaN;
     function renderCard(e){
-      const dt=parseDate(e),finishedGlobally=e.status==='Finished'||(!Number.isNaN(dt)&&dt+Number(e.durationMinutes||60)*60000<now),activeGlobally=(!finishedGlobally)&&((String(e.status||'').toLowerCase()==='active')||(!Number.isNaN(dt)&&dt<=now));
+      const dt=parseDate(e),finishedGlobally=e.status==='Finished'||(!Number.isNaN(dt)&&dt+Number(e.durationMinutes||60)*60000<now),activeGlobally=(!finishedGlobally)&&(!Number.isNaN(dt)?dt<=now:String(e.status||'').toLowerCase()==='active');
       const past=completed.has(e.id)||finishedGlobally;
       const registered=!!e.registeredByCurrentUser;
       const title=localized(e,'title'),desc=localized(e,'description');
-      const action=activeGlobally
-        ?'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Start →</a>'
-        :(past
-          ?'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Open exam →</a>'
+      const action=past
+        ?'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Open exam →</a>'
+        :(activeGlobally
+          ?'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Start →</a>'
           :(registered
             ?'<button class="btn" type="button" disabled>Registered</button>'
             :'<button class="btn primary" data-register-id="'+escapeHtml(e.id)+'">Register →</button>'));
