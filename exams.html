@@ -24,10 +24,15 @@
     function renderCard(e){
       const dt=parseDate(e),finishedGlobally=e.status==='Finished'||(!Number.isNaN(dt)&&dt+Number(e.durationMinutes||60)*60000<now),activeGlobally=(!finishedGlobally)&&((String(e.status||'').toLowerCase()==='active')||(!Number.isNaN(dt)&&dt<=now));
       const past=completed.has(e.id)||finishedGlobally;
+      const registered=!!e.registeredByCurrentUser;
       const title=localized(e,'title'),desc=localized(e,'description');
-      const action=past
-        ?'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Open exam →</a>'
-        :'<button class="btn primary" data-register-id="'+escapeHtml(e.id)+'">Register →</button>';
+      const action=activeGlobally
+        ?'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Start →</a>'
+        :(past
+          ?'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Open exam →</a>'
+          :(registered
+            ?'<button class="btn" type="button" disabled>Registered</button>'
+            :'<button class="btn primary" data-register-id="'+escapeHtml(e.id)+'">Register →</button>'));
       const countText=activeGlobally
         ?Math.max(0,Number(e.entryCount||0))+(Number(e.entryCount||0)===1?' person entered':' people entered')
         :(!finishedGlobally?Math.max(0,Number(e.registrationCount||0))+(Number(e.registrationCount||0)===1?' person registered':' people registered'):'');
@@ -37,7 +42,7 @@
     document.querySelectorAll('[data-register-id]').forEach(b=>b.onclick=()=>registerAndOpen(b.dataset.registerId));
     window.registerAndOpen=async id=>{
       if(!(await ensureSignedIn('Register for this exam','Sign in or create an account before registering for or starting an exam.')))return;
-      try{await api('/api/exams/'+encodeURIComponent(id)+'/register',{method:'POST'});location.href='/exam.html?id='+encodeURIComponent(id)}
+      try{await api('/api/exams/'+encodeURIComponent(id)+'/register',{method:'POST'});location.href='/exams.html'}
       catch(e){toast(e.message)}
     };
   }catch(e){console.error(e);document.body.innerHTML='<div class="error-page"><h1>Unable to load exams</h1><p>'+escapeHtml(e.message)+'</p><a href="/">← Back to KARP</a></div>'}
