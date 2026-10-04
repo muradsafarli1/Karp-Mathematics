@@ -1018,4 +1018,4 @@ async function typesetMath(root,retries=40){
 }
 function formatDuration(m){m=Number(m||60);const h=Math.floor(m/60),mm=m%60;return `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`}
 
-startKarpPresence();
+if(location.pathname!=='/login.html' && location.pathname!=='/signup.html')startKarpPresence();
