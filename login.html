@@ -35,7 +35,7 @@
 </div></main>
 <script type="module">
 import {auth,db} from "/karp-firebase.js";
-import {signInWithEmailAndPassword,signInWithPopup,signInWithRedirect,getRedirectResult,GoogleAuthProvider,sendEmailVerification,sendPasswordResetEmail,signOut} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import {signInWithEmailAndPassword,signInWithPopup,signInWithRedirect,getRedirectResult,GoogleAuthProvider,sendEmailVerification,sendPasswordResetEmail,signOut,deleteUser} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {doc,getDoc,setDoc} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 const form=document.getElementById("form"),formWrap=document.getElementById("login-form-wrap"),notice=document.getElementById("notice"),emailBtn=document.getElementById("email-submit"),googleBtn=document.getElementById("google-login"),forgotPassword=document.getElementById("forgot-password"),resetMailNote=document.getElementById("reset-mail-note");
 const verificationState=document.getElementById("verification-state"),verificationEmail=document.getElementById("verification-email"),verificationCheck=document.getElementById("verification-check"),verificationResend=document.getElementById("verification-resend"),verificationNotice=document.getElementById("verification-notice"),verificationSignout=document.getElementById("verification-signout");
@@ -46,16 +46,57 @@ function showVerification(user,message){formWrap.style.display="none";verificati
 function startResendCooldown(seconds=30){clearInterval(resendTimer);let left=seconds;verificationResend.disabled=true;verificationResend.textContent="Resend email ("+left+"s)";resendTimer=setInterval(()=>{left--;if(left<=0){clearInterval(resendTimer);verificationResend.disabled=false;verificationResend.textContent="Resend email"}else verificationResend.textContent="Resend email ("+left+"s)"},1000)}
 async function sendVerification(){const user=auth.currentUser;if(!user){await signOut(auth);showVerification(null,"Please log in again to request a new verification email.");return}try{await sendEmailVerification(user,verificationSettings());setVerificationNotice("A new verification email has been sent.","success");startResendCooldown()}catch(err){setVerificationNotice(err.code==="auth/too-many-requests"?"Please wait a moment before requesting another email.":(err.message||"Could not send the verification email."),"error")}}
 async function finishLogin(cred){
-  const ref=doc(db,"users",cred.user.uid),snap=await getDoc(ref),profileData=snap.exists()?(snap.data()||{}):{};
-  const now=new Date().toISOString(),existingRole=profileData.role||"user";
-  if(!snap.exists())await setDoc(ref,{name:cred.user.displayName||cred.user.email?.split("@")[0]||"User",email:cred.user.email||"",role:"user",createdAt:now,photoURL:cred.user.photoURL||"",lastLoginAt:now,loginCount:1});
-  else await setDoc(ref,{lastLoginAt:now,loginCount:Number(profileData.loginCount||0)+1,email:cred.user.email||profileData.email||""},{merge:true});
-  await setDoc(doc(db,"publicProfiles",cred.user.uid),{uid:cred.user.uid,name:cred.user.displayName||cred.user.email?.split("@")[0]||"User",nameLower:String(cred.user.displayName||cred.user.email?.split("@")[0]||"User").trim().toLowerCase(),photoURL:cred.user.photoURL||"",isAdmin:existingRole==="admin",updatedAt:now},{merge:true});
-  const profile=(await getDoc(ref)).data()||{};notice.className="notice success";notice.textContent="Signed in. Opening KARP…";location.replace(profile.role==="admin"?"/admin.html":"/account.html");
+  const user=cred.user;
+  await user.reload();
+  const ref=doc(db,"users",user.uid);
+  const snap=await getDoc(ref);
+  if(!snap.exists()){
+    await signOut(auth).catch(()=>{});
+    const err=new Error("KARP account not found. Please create an account first.");
+    err.code="karp/account-not-found";
+    throw err;
+  }
+  const profileData=snap.data()||{};
+  if(profileData.requiresEmailVerification===true || user.emailVerified!==true){
+    showVerification(user,"Please verify your email before continuing.");
+    await sendVerification().catch(()=>{});
+    return false;
+  }
+  const now=new Date().toISOString();
+  const existingRole=profileData.role||"user";
+  await setDoc(ref,{lastLoginAt:now,loginCount:Number(profileData.loginCount||0)+1,email:user.email||profileData.email||""},{merge:true});
+  await setDoc(doc(db,"publicProfiles",user.uid),{uid:user.uid,name:user.displayName||user.email?.split("@")[0]||profileData.name||"User",nameLower:String(user.displayName||user.email?.split("@")[0]||profileData.name||"User").trim().toLowerCase(),photoURL:user.photoURL||profileData.photoURL||"",isAdmin:existingRole==="admin",updatedAt:now},{merge:true});
+  const profile=(await getDoc(ref)).data()||{};
+  notice.className="notice success";notice.textContent="Signed in. Opening KARP…";location.replace(profile.role==="admin"?"/admin.html":"/account.html");
+  return true;
 }
-async function googleLogin(){googleBtn.disabled=true;googleBtn.innerHTML='<span class="google-spinner"></span><span>Connecting to Google…</span>';const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:"select_account"});try{await finishLogin(await signInWithPopup(auth,provider))}catch(err){if(["auth/popup-blocked","auth/popup-closed-by-user","auth/cancelled-popup-request"].includes(err.code)){try{await signInWithRedirect(auth,provider);return}catch(redErr){err=redErr}}googleBtn.disabled=false;googleBtn.innerHTML=googleMarkup;notice.className="notice error";notice.textContent=err.code==="auth/unauthorized-domain"?"This domain is not authorized in Firebase Authentication.":err.code==="auth/operation-not-allowed"?"Enable Google in Firebase Authentication → Sign-in method.":err.message}}
-getRedirectResult(auth).then(result=>{if(result?.user)return finishLogin(result)}).catch(err=>{notice.className="notice error";notice.textContent=err.code==="auth/unauthorized-domain"?"This domain is not authorized in Firebase Authentication.":err.message});
-form.onsubmit=async e=>{e.preventDefault();emailBtn.disabled=true;emailBtn.textContent="Signing in…";const f=new FormData(e.target);try{await finishLogin(await signInWithEmailAndPassword(auth,String(f.get("email")).trim(),f.get("password")))}catch(err){emailBtn.disabled=false;emailBtn.textContent="Log in";notice.className="notice error";notice.textContent=err.code==="auth/invalid-credential"?"Email or password is incorrect.":err.message;if(err.code==="auth/invalid-credential"){forgotPassword.style.display="block"}}};
+async function handleGoogleResult(result){
+  const user=result?.user;if(!user)return false;
+  const ref=doc(db,"users",user.uid),snap=await getDoc(ref);
+  if(!snap.exists()){
+    try{await deleteUser(user)}catch{await signOut(auth).catch(()=>{})}
+    notice.className="notice error";
+    notice.textContent="Account not found. Please create a KARP account first.";
+    return false;
+  }
+  const data=snap.data()||{};
+  if(data.requiresEmailVerification===true){
+    await signOut(auth).catch(()=>{});
+    notice.className="notice error";
+    notice.textContent="Your KARP account is not verified yet. Please verify your email first.";
+    return false;
+  }
+  if(user.emailVerified!==true){
+    await signOut(auth).catch(()=>{});
+    notice.className="notice error";
+    notice.textContent="Google could not confirm the email address for this KARP account.";
+    return false;
+  }
+  return finishLogin(result);
+}
+async function googleLogin(){googleBtn.disabled=true;googleBtn.innerHTML='<span class="google-spinner"></span><span>Connecting to Google…</span>';const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:"select_account"});try{await handleGoogleResult(await signInWithPopup(auth,provider))}catch(err){if(["auth/popup-blocked","auth/popup-closed-by-user","auth/cancelled-popup-request"].includes(err.code)){try{await signInWithRedirect(auth,provider);return}catch(redErr){err=redErr}}googleBtn.disabled=false;googleBtn.innerHTML=googleMarkup;notice.className="notice error";notice.textContent=err.code==="karp/account-not-found"?"Account not found. Please create a KARP account first.":err.code==="auth/unauthorized-domain"?"This domain is not authorized in Firebase Authentication.":err.code==="auth/operation-not-allowed"?"Enable Google in Firebase Authentication → Sign-in method.":err.code==="auth/account-exists-with-different-credential"?"This email already has a KARP account. Please log in with email and password first.":err.message}}
+getRedirectResult(auth).then(result=>{if(result?.user)return handleGoogleResult(result)}).catch(err=>{googleBtn.disabled=false;googleBtn.innerHTML=googleMarkup;notice.className="notice error";notice.textContent=err.code==="karp/account-not-found"?"Account not found. Please create a KARP account first.":err.code==="auth/unauthorized-domain"?"This domain is not authorized in Firebase Authentication.":err.code==="auth/account-exists-with-different-credential"?"This email already has a KARP account. Please log in with email and password first.":err.message});
+form.onsubmit=async e=>{e.preventDefault();emailBtn.disabled=true;emailBtn.textContent="Signing in…";const f=new FormData(e.target);try{await finishLogin(await signInWithEmailAndPassword(auth,String(f.get("email")).trim(),f.get("password")))}catch(err){notice.className="notice error";notice.textContent=err.code==="auth/invalid-credential"?"Email or password is incorrect.":err.code==="karp/account-not-found"?"Account not found. Please create a KARP account first.":err.message;if(err.code==="auth/invalid-credential"){forgotPassword.style.display="block"}}finally{emailBtn.disabled=false;emailBtn.textContent="Log in"}};
 forgotPassword.onclick=async()=>{const email=String(new FormData(form).get("email")||"").trim();if(!email){notice.className="notice error";notice.textContent="Enter your email address first.";return}forgotPassword.disabled=true;try{await sendPasswordResetEmail(auth,email,{url:window.location.origin+"/login.html",handleCodeInApp:false});notice.className="notice success";notice.textContent="If an account exists for this email, a password reset email has been sent.";if(resetMailNote)resetMailNote.style.display="block"}catch(err){notice.className="notice error";notice.textContent=err.code==="auth/invalid-email"?"Enter a valid email address.":"Could not send the reset email. Please try again."}finally{forgotPassword.disabled=false}};
 verificationCheck.onclick=async()=>{const user=auth.currentUser;if(!user){await signOut(auth);location.reload();return}try{verificationCheck.disabled=true;verificationCheck.textContent="Checking…";await user.reload();await user.getIdToken(true);if(!user.emailVerified){setVerificationNotice("It hasn't been verified yet. Click the link in the email first.","error");return}await finishLogin({user})}catch(err){setVerificationNotice(err.message||"Could not confirm your verification yet.","error")}finally{verificationCheck.disabled=false;verificationCheck.textContent="I've verified my email"}};
 verificationResend.onclick=sendVerification;
