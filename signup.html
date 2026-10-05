@@ -12,9 +12,8 @@
       <div class="field"><label>Email</label><input class="input" name="email" type="email" required autocomplete="email"></div>
       <div class="field"><label>Password</label><input class="input" name="password" type="password" minlength="8" required autocomplete="new-password"><div class="small">At least 8 characters.</div></div>
       <button class="submit" id="email-submit">Create account</button>
-      <div class="auth-divider"><span></span><small>OR</small><span></span></div>
-      <button type="button" class="google-btn" id="google-signup"><svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.55-.22-2.27H12v4.3h6.45a5.51 5.51 0 0 1-2.39 3.62v3.01h3.87c2.27-2.09 3.56-5.17 3.56-8.66Z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.9l-3.87-3.01c-1.07.72-2.44 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.95H1.27v3.1A12 12 0 0 0 12 24Z"/><path fill="#FBBC05" d="M5.27 14.29A7.22 7.22 0 0 1 4.9 12c0-.79.14-1.57.37-2.29V6.61H1.27A12 12 0 0 0 0 12c0 1.94.47 3.78 1.27 5.39l4-3.1Z"/><path fill="#EA4335" d="M12 4.76c1.76 0 3.34.61 4.58 1.81l3.43-3.43C17.95 1.19 15.23 0 12 0A12 12 0 0 0 1.27 6.61l4 3.1C6.22 6.87 8.87 4.76 12 4.76Z"/></svg><span>Continue with Google</span></button>
-      <div class="notice" id="notice"></div>
+      <div class="small signup-verification-reminder">You will receive a verification email after creating your account. Check your inbox, and also check <strong>SPAM</strong> or <strong>JUNK</strong>.</div>
+<div class="notice" id="notice"></div>
     </form>
   </div>
   <div id="verification-state" style="display:none">
@@ -30,22 +29,51 @@
 </div></main>
 <script type="module">
 import {auth,db} from "/karp-firebase.js";
-import {createUserWithEmailAndPassword,updateProfile,sendEmailVerification,signInWithPopup,signInWithRedirect,getRedirectResult,GoogleAuthProvider,signOut} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import {createUserWithEmailAndPassword,updateProfile,sendEmailVerification,signOut} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {doc,getDoc,setDoc} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
-const form=document.getElementById("form"),formWrap=document.getElementById("signup-form-wrap"),notice=document.getElementById("notice"),emailBtn=document.getElementById("email-submit"),googleBtn=document.getElementById("google-signup");
+const form=document.getElementById("form"),formWrap=document.getElementById("signup-form-wrap"),notice=document.getElementById("notice"),emailBtn=document.getElementById("email-submit");
 const verificationState=document.getElementById("verification-state"),verificationEmail=document.getElementById("verification-email"),verificationCheck=document.getElementById("verification-check"),verificationResend=document.getElementById("verification-resend"),verificationNotice=document.getElementById("verification-notice"),verificationSignout=document.getElementById("verification-signout");
-const googleMarkup=googleBtn.innerHTML;let resendTimer=0;
+let resendTimer=0;
 function verificationSettings(){return {url:"https://karpmathematics.org/login.html?verified=1",handleCodeInApp:false}}
 function setVerificationNotice(message,type=""){verificationNotice.className="notice"+(type?" "+type:"");verificationNotice.textContent=message}
 function showVerification(user){formWrap.style.display="none";verificationState.style.display="block";verificationEmail.textContent=user?.email||"your email address";setVerificationNotice("Sending your verification email…")}
 function startResendCooldown(seconds=30){clearInterval(resendTimer);let left=seconds;verificationResend.disabled=true;verificationResend.textContent="Resend email ("+left+"s)";resendTimer=setInterval(()=>{left--;if(left<=0){clearInterval(resendTimer);verificationResend.disabled=false;verificationResend.textContent="Resend email"}else verificationResend.textContent="Resend email ("+left+"s)"},1000)}
 async function sendVerification(user=auth.currentUser){if(!user)return;try{await sendEmailVerification(user,verificationSettings());setVerificationNotice("Verification email sent. Please check your inbox.","success");startResendCooldown()}catch(err){setVerificationNotice(err.code==="auth/too-many-requests"?"Please wait a moment before requesting another email.":(err.message||"Could not send the verification email."),"error")}}
-async function finishVerifiedSignup(){const user=auth.currentUser;if(!user){location.href="/login.html";return}try{await user.reload();await user.getIdToken(true);if(!user.emailVerified){setVerificationNotice("Your email is not verified yet. Click the link in the email, then try again.","error");return}await setDoc(doc(db,"users",user.uid),{requiresEmailVerification:false,emailVerifiedAt:new Date().toISOString()},{merge:true});location.replace("/account.html")}catch(err){setVerificationNotice(err.message||"Could not confirm your verification yet.","error")}}
-async function finishGoogleSignup(cred){const ref=doc(db,"users",cred.user.uid),snap=await getDoc(ref),now=new Date().toISOString(),existingRole=snap.exists()?(snap.data()?.role||"user"):"user";if(!snap.exists())await setDoc(ref,{name:cred.user.displayName||cred.user.email?.split("@")[0]||"User",email:cred.user.email||"",role:"user",createdAt:now,photoURL:cred.user.photoURL||"",lastLoginAt:now,loginCount:1});else await setDoc(ref,{lastLoginAt:now,loginCount:Number((snap.data()||{}).loginCount||0)+1},{merge:true});await setDoc(doc(db,"publicProfiles",cred.user.uid),{uid:cred.user.uid,name:cred.user.displayName||cred.user.email?.split("@")[0]||"User",nameLower:String(cred.user.displayName||cred.user.email?.split("@")[0]||"User").trim().toLowerCase(),photoURL:cred.user.photoURL||"",isAdmin:existingRole==="admin",updatedAt:now},{merge:true});const profile=(await getDoc(ref)).data()||{};notice.className="notice success";notice.textContent="Account ready. Opening KARP…";location.replace(profile.role==="admin"?"/admin.html":"/account.html")}
-async function googleSignup(){googleBtn.disabled=true;googleBtn.innerHTML='<span class="google-spinner"></span><span>Connecting to Google…</span>';const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:"select_account"});try{await finishGoogleSignup(await signInWithPopup(auth,provider))}catch(err){if(["auth/popup-blocked","auth/popup-closed-by-user","auth/cancelled-popup-request"].includes(err.code)){try{await signInWithRedirect(auth,provider);return}catch(redErr){err=redErr}}googleBtn.disabled=false;googleBtn.innerHTML=googleMarkup;notice.className="notice error";notice.textContent=err.code==="auth/unauthorized-domain"?"This domain is not authorized in Firebase Authentication.":err.code==="auth/operation-not-allowed"?"Enable Google in Firebase Authentication → Sign-in method.":err.message}}
-getRedirectResult(auth).then(result=>{if(result?.user)return finishGoogleSignup(result)}).catch(err=>{notice.className="notice error";notice.textContent=err.code==="auth/unauthorized-domain"?"This domain is not authorized in Firebase Authentication.":err.message});
-form.onsubmit=async e=>{e.preventDefault();emailBtn.disabled=true;emailBtn.textContent="Creating…";const f=new FormData(e.target);try{const cred=await createUserWithEmailAndPassword(auth,String(f.get("email")).trim(),f.get("password"));await updateProfile(cred.user,{displayName:String(f.get("name")||"").trim()});const now=new Date().toISOString();await setDoc(doc(db,"users",cred.user.uid),{name:String(f.get("name")||"").trim(),email:cred.user.email,role:"user",createdAt:now,photoURL:cred.user.photoURL||"",loginCount:0,requiresEmailVerification:true});await setDoc(doc(db,"publicProfiles",cred.user.uid),{uid:cred.user.uid,name:String(f.get("name")||"").trim(),nameLower:String(f.get("name")||"").trim().toLowerCase(),photoURL:cred.user.photoURL||"",updatedAt:now},{merge:true});showVerification(cred.user);await sendVerification(cred.user);emailBtn.disabled=false;emailBtn.textContent="Create account"}catch(err){emailBtn.disabled=false;emailBtn.textContent="Create account";notice.className="notice error";notice.textContent=err.code==="auth/email-already-in-use"?"An account with this email already exists.":err.code==="auth/too-many-requests"?"Too many requests. Please try again in a moment.":err.message}};
-verificationCheck.onclick=finishVerifiedSignup;verificationResend.onclick=()=>sendVerification();verificationSignout.onclick=async()=>{await signOut(auth);clearInterval(resendTimer);verificationState.style.display="none";formWrap.style.display="block";form.reset();emailBtn.disabled=false;emailBtn.textContent="Create account"};
+async function finishVerifiedSignup(){
+  const user=auth.currentUser;
+  if(!user){location.href="/login.html";return}
+  try{
+    await user.reload();
+    await user.getIdToken(true);
+    if(!user.emailVerified){setVerificationNotice("Your email is not verified yet. Click the verification link in the email, then try again.","error");return}
+    const ref=doc(db,"users",user.uid),snap=await getDoc(ref);
+    if(!snap.exists()){setVerificationNotice("Your KARP signup could not be found. Please create your account again.","error");return}
+    const data=snap.data()||{},now=new Date().toISOString(),name=data.name||user.displayName||user.email?.split("@")[0]||"User";
+    await setDoc(ref,{name,email:user.email||data.email||"",requiresEmailVerification:false,emailVerifiedAt:now,updatedAt:now},{merge:true});
+    await setDoc(doc(db,"publicProfiles",user.uid),{uid:user.uid,name,nameLower:String(name).trim().toLowerCase(),photoURL:user.photoURL||data.photoURL||"",updatedAt:now},{merge:true});
+    location.replace("/account.html");
+  }catch(err){setVerificationNotice(err.message||"Could not confirm your verification yet.","error")}
+}
+form.onsubmit=async e=>{
+  e.preventDefault();
+  emailBtn.disabled=true;emailBtn.textContent="Creating…";
+  const f=new FormData(e.target);
+  try{
+    const name=String(f.get("name")||"").trim(),email=String(f.get("email")).trim(),password=f.get("password");
+    const cred=await createUserWithEmailAndPassword(auth,email,password);
+    await updateProfile(cred.user,{displayName:name});
+    const now=new Date().toISOString();
+    await setDoc(doc(db,"users",cred.user.uid),{name,email:cred.user.email||email,role:"user",createdAt:now,photoURL:cred.user.photoURL||"",loginCount:0,requiresEmailVerification:true});
+    showVerification(cred.user);
+    await sendVerification(cred.user);
+  }catch(err){
+    notice.className="notice error";
+    notice.textContent=err.code==="auth/email-already-in-use"?"An account with this email already exists.":err.code==="auth/too-many-requests"?"Too many requests. Please try again in a moment.":err.message;
+  }finally{emailBtn.disabled=false;emailBtn.textContent="Create account"}
+};
+verificationCheck.onclick=finishVerifiedSignup;
+verificationResend.onclick=()=>sendVerification();
+verificationSignout.onclick=async()=>{await signOut(auth);clearInterval(resendTimer);verificationState.style.display="none";formWrap.style.display="block";form.reset();emailBtn.disabled=false;emailBtn.textContent="Create account"};
 </script>
-<style>.auth-nav-actions{display:flex;align-items:center;gap:9px}.verify-note{margin:22px 0;padding:14px 15px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);font-size:12px;line-height:1.7;color:var(--muted)}.verify-note strong{color:var(--text)}.verify-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.verify-actions .submit{flex:1;min-width:190px}.verify-actions .btn{min-width:130px}.verify-switch{margin-top:17px;width:100%}.prominent-mail-note{margin:14px 0 4px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);font-size:12px;line-height:1.65;color:var(--muted)}.prominent-mail-note strong{color:var(--text)}</style>
+<style>.auth-nav-actions{display:flex;align-items:center;gap:9px}.verify-note{margin:22px 0;padding:14px 15px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);font-size:12px;line-height:1.7;color:var(--muted)}.verify-note strong{color:var(--text)}.verify-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.verify-actions .submit{flex:1;min-width:190px}.verify-actions .btn{min-width:130px}.verify-switch{margin-top:17px;width:100%}.signup-verification-reminder{margin:9px 0 2px;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);line-height:1.7;color:var(--muted)}.prominent-mail-note{margin:14px 0 4px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);font-size:12px;line-height:1.65;color:var(--muted)}.signup-verification-reminder strong,.prominent-mail-note strong{color:var(--text)}</style>
 </body></html>
