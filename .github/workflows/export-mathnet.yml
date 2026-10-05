@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - .github/workflows/export-mathnet.yml
+      - .github/scripts/export-mathnet.mjs
   workflow_dispatch:
 
 permissions:
