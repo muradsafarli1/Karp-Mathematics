@@ -423,10 +423,14 @@ async function api(path, opts = {}) {
         const meetings=[];
         for(const x of snap.docs){
           const rs=await getDocs(collection(db,'meetings',x.id,'registrations'));
+          const actualCount=rs.size;
+          if(Number(x.data()?.registrationCount||0)!==actualCount){
+            await updateDoc(x.ref,{registrationCount:actualCount});
+          }
           meetings.push({
             id:x.id,
             ...x.data(),
-            registrationCount:rs.size,
+            registrationCount:actualCount,
             registrations:rs.docs.map(r=>({id:r.id,...r.data()}))
               .sort((a,b)=>String(b.registeredAt||'').localeCompare(String(a.registeredAt||'')))
           });
