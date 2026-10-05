@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KARP — Meeting</title>
+<link rel="stylesheet" href="/style.css"><script src="/app.js"></script>
+<style>
+.meeting-detail-page{min-height:100vh}.meeting-detail-wrap{width:min(calc(100% - 42px),1050px);margin:0 auto;padding-bottom:80px}
+.meeting-detail{overflow:hidden;border:1px solid #d9dad8;border-radius:24px;background:#fff;box-shadow:0 18px 48px rgba(20,24,30,.07)}.meeting-detail-cover{height:min(430px,42vw);min-height:230px;background:#eceeea}.meeting-detail-cover img{width:100%;height:100%;display:block;object-fit:cover}.meeting-detail-content{padding:34px 38px 38px}.meeting-detail-kicker{font-size:9px;font-weight:900;letter-spacing:1.7px;text-transform:uppercase;color:#737a83}.meeting-detail h1{font:800 clamp(32px,5vw,60px)/1.02 'Space Grotesk';letter-spacing:-2.2px;margin:10px 0 13px;color:#17191c}.meeting-detail-topic{font-size:12px;color:#666b73;margin-bottom:17px}.meeting-detail-desc{font-size:13px;line-height:1.85;color:#606770;max-width:800px}.meeting-info-row{display:flex;flex-wrap:wrap;gap:9px;margin:24px 0 26px}.meeting-info-pill{padding:9px 12px;border:1px solid #d9dad8;border-radius:999px;font-size:10px;color:#5f6770;background:#fafaf8}.meeting-detail-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.meeting-countdown{font-size:11px;color:#727982;margin-left:4px}.meeting-note{margin-top:17px;font-size:10px;line-height:1.6;color:#7b828a}
+@media(max-width:620px){.meeting-detail-wrap{width:calc(100% - 28px)}.meeting-detail-content{padding:25px 21px 27px}.meeting-detail-cover{min-height:190px}}
+</style>
+</head>
+<body>
+<script>
+(async()=>{
+  const id=new URLSearchParams(location.search).get('id');
+  if(!id){location.href='/meetings.html';return}
+  try{
+    const d=await api('/api/meetings/'+encodeURIComponent(id)),m=d.meeting;
+    if(!m){location.href='/meetings.html';return}
+    const title=localized(m,'title')||m.titleEn||m.titleAz||m.title||'Meeting';
+    const topic=localized(m,'topic')||m.topicEn||m.topicAz||m.topic||'';
+    const desc=localized(m,'description')||m.descriptionEn||m.descriptionAz||m.description||'';
+    const start=Date.parse(String(m.startAt||m.date||'')),dur=Math.max(1,Number(m.durationMinutes||120)),end=start+dur*60000;
+    let registered=!!d.registered;
+    function state(){
+      if(Number.isNaN(start))return'upcoming';
+      if(Date.now()>=end)return'ended';
+      if(Date.now()>=start)return'live';
+      return'upcoming';
+    }
+    function countdown(){
+      const st=state();
+      if(st==='live')return'Meeting is live now.';
+      if(st==='ended')return'This meeting has ended.';
+      const diff=Math.max(0,start-Date.now()),total=Math.floor(diff/1000),days=Math.floor(total/86400),h=Math.floor((total%86400)/3600),mi=Math.floor((total%3600)/60);
+      return days?'Starts in '+days+'d '+h+'h '+mi+'m':'Starts in '+h+'h '+mi+'m';
+    }
+    function action(){
+      const st=state();
+      if(st==='ended')return'<button class="btn" disabled>Meeting ended</button>';
+      if(st==='live'&&registered)return'<a class="btn primary" href="'+escapeHtml(m.meetingUrl||'#')+'" target="_blank" rel="noopener noreferrer">Enter Meeting →</a>';
+      if(registered)return'<button class="btn" disabled>Registered</button>';
+      return'<button class="btn primary" id="register-meeting">Register →</button>';
+    }
+    const startText=Number.isNaN(start)?'Date TBA':new Date(start).toLocaleString([], {dateStyle:'full',timeStyle:'short'});
+    shell('Meetings','Meeting', '<main class="meeting-detail-page"><section class="pagehero"><div class="wrap"><h1>Meeting</h1></div></section><section class="section" style="padding-top:0"><div class="meeting-detail-wrap"><article class="meeting-detail">'+
+      '<div class="meeting-detail-cover">'+(m.coverImage?'<img src="'+escapeHtml(m.coverImage)+'" alt="">':'')+'</div>'+
+      '<div class="meeting-detail-content"><div class="meeting-detail-kicker">KARP · MEETING</div><h1>'+escapeHtml(title)+'</h1><div class="meeting-detail-topic">'+escapeHtml(topic)+'</div><p class="meeting-detail-desc">'+escapeHtml(desc)+'</p>'+
+      '<div class="meeting-info-row"><span class="meeting-info-pill">'+escapeHtml(startText)+'</span><span class="meeting-info-pill">'+escapeHtml(dur+' minutes')+'</span></div>'+
+      '<div class="meeting-detail-actions" id="meeting-actions">'+action()+'<span class="meeting-countdown" id="meeting-countdown">'+escapeHtml(countdown())+'</span></div>'+
+      '<div class="meeting-note">The meeting link is available only when the session is open. You must be registered with a verified KARP account to enter.</div></div></article></div></section></main>');
+    const refresh=()=>{
+      const a=document.getElementById('meeting-actions');if(a){
+        a.querySelectorAll('[id="register-meeting"]').forEach(b=>b.onclick=async()=>{
+          if(!(await ensureSignedIn('Register for this meeting','Sign in or create an account before registering for or entering a meeting.')))return;
+          try{await api('/api/meetings/'+encodeURIComponent(id)+'/register',{method:'POST'});registered=true;location.reload()}catch(e){toast(e.message)}
+        });
+      }
+      const c=document.getElementById('meeting-countdown');if(c)c.textContent=countdown();
+    };
+    refresh();setInterval(refresh,1000);
+    setKarpActivity({page:'Meeting',label:'Meeting details',detail:title,question:null});
+  }catch(e){document.body.innerHTML='<div class="error-page"><h1>Unable to load meeting</h1><p>'+escapeHtml(e.message||'')+'</p><a href="/meetings.html">← Back to Meetings</a></div>'}
+})();
+</script>
+</body>
+</html>
