@@ -21,7 +21,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: node .github/scripts/export-mathnet.mjs
+      - name: Export MathNet data
+        env:
+          CHECK_OTHER_NAMESPACE: '1'
+        run: node .github/scripts/export-mathnet.mjs
       - name: Commit generated KARP data
         run: |
           git config user.name "KARP MathNet Export"
@@ -29,4 +32,6 @@ jobs:
           git add data/mathnet
           git diff --cached --quiet && echo "No data changes." && exit 0
           git commit -m "Add static KARP MathNet archive data"
-          git push
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
