@@ -276,7 +276,12 @@ service cloud.firestore {
     }
     match /meetings/{id} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registrationCount'])
+          && request.resource.data.registrationCount == resource.data.registrationCount + 1
+          && getAfter(/databases/$(database)/documents/meetings/$(id)/registrations/$(request.auth.uid)).data.userId == request.auth.uid);
 
       match /registrations/{uid} {
         allow read: if isAdmin() || (verifiedAccount(request.auth.uid) && request.auth.uid == uid);
