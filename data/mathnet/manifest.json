@@ -1,0 +1,10 @@
+{
+  "generatedAt": "2026-10-05T18:26:53.893Z",
+  "activeNamespace": "v1",
+  "problemsCollection": "mathnetProblems",
+  "shardsCollection": "mathnetIndexShards",
+  "version": "firebase-2026-09-28-1790619634140-meta-1790622583533-meta-1790623248300-meta-1790624356306-meta-1790624587119",
+  "total": 5425,
+  "chunkSize": 100,
+  "source": "KARP Firebase archive export"
+}
