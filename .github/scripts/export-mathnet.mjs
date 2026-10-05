@@ -63,15 +63,22 @@ function byId(a,b){return String(a.id).localeCompare(String(b.id));}
 const state=decodeDoc(await fetchJson(`${BASE}/projects/${PROJECT_ID}/databases/(default)/documents/mathnetMeta/state?key=${API_KEY}`));
 const activeNamespace=state.activeNamespace==='v2'?'v2':'v1';
 const problemsCollection=activeNamespace==='v2'?'mathnetProblemsV2':'mathnetProblems';
-const shardsCollection=activeNamespace==='v2'?'mathnetIndexShardsV2':'mathnetIndexShardsV2';
+const shardsCollection=activeNamespace==='v2'?'mathnetIndexShardsV2':'mathnetIndexShards';
 const version=String(state.version||'');
 
 const [shards,fullDocs]=await Promise.all([
   listCollection(shardsCollection).catch(async()=>{
-    return listCollection(activeNamespace==='v2'?'mathnetIndexShards':'mathnetIndexShardsV2');
+    const fallback=activeNamespace==='v2'?'mathnetIndexShards':'mathnetIndexShardsV2';
+    return listCollection(fallback);
   }),
   listCollection(problemsCollection)
 ]);
+
+if(process.env.CHECK_OTHER_NAMESPACE==='1'){
+  const otherProblemsCollection=activeNamespace==='v2'?'mathnetProblems':'mathnetProblemsV2';
+  const otherDocs=await listCollection(otherProblemsCollection);
+  console.log(`Namespace check: ${problemsCollection}=${fullDocs.length}, ${otherProblemsCollection}=${otherDocs.length}, active=${activeNamespace}, version=${version||'(none)'}`);
+}
 
 const byProblemId=new Map(fullDocs.map(x=>[String(x.id),x]));
 const index=[];
@@ -134,4 +141,8 @@ await fs.writeFile(path.join(ROOT,'manifest.json'),JSON.stringify({
   source:'KARP Firebase archive export'
 },null,2));
 
+const uniqueIds=new Set(index.map(x=>String(x.id)));
+if(uniqueIds.size!==index.length) throw new Error(`Export validation failed: duplicate IDs (${index.length} rows, ${uniqueIds.size} unique).`);
+if(index.length!==fullDocs.length) throw new Error(`Export validation failed: index=${index.length}, fullDocs=${fullDocs.length}.`);
 console.log(`Exported ${index.length} MathNet problems from ${problemsCollection} into static KARP data.`);
+console.log(`Validation OK: ${uniqueIds.size} unique IDs, ${Math.ceil(index.length/CHUNK_SIZE)} chunks.`);
