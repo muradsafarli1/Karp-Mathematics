@@ -6,7 +6,7 @@
 <title>KARP — Problems</title>
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js"></script>
-<script src="/mathnet-v8.js?v=11"></script>
+<script src="/mathnet-v8.js?v=12"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
 <script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"},startup:{typeset:false}};</script>
@@ -106,7 +106,7 @@
     if(!q){
       allRows=[...mathnetAllRows,...allRows.filter(x=>x.sourceType==='custom')];
       applyFilters();
-      document.getElementById('status').textContent='Complete MathNet archive loaded · search is server-powered.';
+      document.getElementById('status').textContent='KARP internal MathNet archive loaded · search is local.';
       return;
     }
     searchTimer=setTimeout(async()=>{
@@ -115,7 +115,7 @@
         if(seq!==searchSeq)return;
         const custom=allRows.filter(x=>x.sourceType==='custom');
         allRows=[...results,...custom];applyFilters();
-        document.getElementById('status').textContent='Search results from the KARP MathNet index.';
+        document.getElementById('status').textContent='Search results from the KARP internal archive.';
       }catch(e){document.getElementById('status').textContent=e.message||'Search failed.';}
     },180);
   }
@@ -148,7 +148,7 @@
       mathnetAllRows=initialRows.slice();
       allRows=[...initialRows,...customRows];applyFilters();
       document.getElementById('progress').style.width='100%';
-      document.getElementById('status').textContent='Complete MathNet archive loaded · search is server-powered.';
+      document.getElementById('status').textContent='KARP internal MathNet archive loaded · search is local.';
     }catch(e){
       document.getElementById('status').textContent=e.warmingUp?'MathNet database is still being built on the server… please refresh shortly.':(e.message||'MathNet archive unavailable.');
     }
