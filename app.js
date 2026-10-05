@@ -269,11 +269,16 @@ async function api(path, opts = {}) {
       }));
       registeredIds=new Set(regs.filter(x=>x[1]).map(x=>x[0]));
     }
+    const counts=await Promise.all(meetings.map(async meeting=>{
+      const rs=await getDocs(collection(db,'meetings',meeting.id,'registrations'));
+      return [meeting.id,rs.size];
+    }));
+    const registrationCounts=new Map(counts);
     return {meetings:meetings.map(m=>{
       const registered=registeredIds.has(m.id);
       const start=Date.parse(String(m.startAt||m.date||'')),end=start+Number(m.durationMinutes||120)*60000;
       const live=!Number.isNaN(start)&&Date.now()>=start&&Date.now()<end;
-      const safe={...m,registeredByCurrentUser:registered};
+      const safe={...m,registeredByCurrentUser:registered,registrationCount:registrationCounts.get(m.id)||0};
       if(!(live&&registered)) delete safe.meetingUrl;
       return safe;
     })};
@@ -412,6 +417,20 @@ async function api(path, opts = {}) {
           exams.push({id:x.id,...x.data(),registrationsCount:regs.size,submissionsCount:subs.size});
         }
         return {exams};
+      }
+      if(type==='meetings'){
+        const meetings=[];
+        for(const x of snap.docs){
+          const rs=await getDocs(collection(db,'meetings',x.id,'registrations'));
+          meetings.push({
+            id:x.id,
+            ...x.data(),
+            registrationCount:rs.size,
+            registrations:rs.docs.map(r=>({id:r.id,...r.data()}))
+              .sort((a,b)=>String(b.registeredAt||'').localeCompare(String(a.registeredAt||'')))
+          });
+        }
+        return {meetings};
       }
       const items=snap.docs.map(x=>({id:x.id,...x.data()}));
       return {[type]:items};
