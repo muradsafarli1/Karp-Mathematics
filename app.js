@@ -296,6 +296,27 @@ async function api(path, opts = {}) {
   const mr=path.match(/^\/api\/meetings\/([^/]+)\/register$/);
   if(mr&&method==='POST'){
     if(!user) throw new Error('Authentication required');
+    // Email verification can update after the page has already been open.
+    // Refresh the Firebase ID token so Firestore rules see the latest
+    // email_verified claim before creating the registration.
+    try{
+      if(auth.currentUser) await auth.currentUser.getIdToken(true);
+    }catch{}
+    // Refresh the local user document as well in case the verification flag
+    // was updated just before the registration attempt.
+    try{
+      if(auth.currentUser){
+        const freshUserDoc=await getDoc(doc(db,'users',auth.currentUser.uid));
+        if(freshUserDoc.exists()){
+          const fresh=freshUserDoc.data()||{};
+          if(fresh.requiresEmailVerification===true) throw new Error('Please verify your email before registering for a meeting.');
+          user={id:auth.currentUser.uid,...fresh};
+          uid=auth.currentUser.uid;
+        }
+      }
+    }catch(e){
+      if(e?.message?.includes('Please verify your email')) throw e;
+    }
     const meetingRef=doc(db,'meetings',mr[1]),meetingSnap=await getDoc(meetingRef);
     if(!meetingSnap.exists() || meetingSnap.data()?.published===false) throw new Error('Meeting not found');
     const startAt=Date.parse(String(meetingSnap.data()?.startAt||''));
