@@ -137,7 +137,7 @@
     document.addEventListener('visibilitychange',async()=>{if(!document.hidden){await refreshUserState();applyFilters()}});
 
     let customRows=[];
-    const manualPromise=api('/api/content').then(d=>(d.problems||[]).map(normalizeCustom)).catch(()=>[]);
+    const manualPromise=api('/api/custom-problems').then(d=>(d.problems||[]).map(normalizeCustom)).catch(()=>[]);
     try{
       const initialRows=await mathnetLoadAllIndex(function(loaded,total){
         document.getElementById('progress').style.width='100%';
