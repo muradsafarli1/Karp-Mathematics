@@ -269,16 +269,11 @@ async function api(path, opts = {}) {
       }));
       registeredIds=new Set(regs.filter(x=>x[1]).map(x=>x[0]));
     }
-    const counts=await Promise.all(meetings.map(async meeting=>{
-      const rs=await getDocs(collection(db,'meetings',meeting.id,'registrations'));
-      return [meeting.id,rs.size];
-    }));
-    const registrationCounts=new Map(counts);
     return {meetings:meetings.map(m=>{
       const registered=registeredIds.has(m.id);
       const start=Date.parse(String(m.startAt||m.date||'')),end=start+Number(m.durationMinutes||120)*60000;
       const live=!Number.isNaN(start)&&Date.now()>=start&&Date.now()<end;
-      const safe={...m,registeredByCurrentUser:registered,registrationCount:registrationCounts.get(m.id)||0};
+      const safe={...m,registeredByCurrentUser:registered,registrationCount:Number(m.registrationCount||0)};
       if(!(live&&registered)) delete safe.meetingUrl;
       return safe;
     })};
@@ -322,16 +317,22 @@ async function api(path, opts = {}) {
     }catch(e){
       if(e?.message?.includes('Please verify your email')) throw e;
     }
-    const meetingRef=doc(db,'meetings',mr[1]),meetingSnap=await getDoc(meetingRef);
-    if(!meetingSnap.exists() || meetingSnap.data()?.published===false) throw new Error('Meeting not found');
-    const startAt=Date.parse(String(meetingSnap.data()?.startAt||''));
-    if(Number.isNaN(startAt)) throw new Error('This meeting has no valid start time.');
-    if(startAt + Number(meetingSnap.data()?.durationMinutes||120)*60000 <= Date.now()) throw new Error('This meeting has already ended.');
-    const regRef=doc(db,'meetings',mr[1],'registrations',uid);
-    const regSnap=await getDoc(regRef);
-    if(regSnap.exists()) return {ok:true,registered:true};
-    await setDoc(regRef,{userId:uid,userName:user.name||'',userEmail:user.email||'',registeredAt:new Date().toISOString()},{merge:true});
-    return {ok:true,registered:true};
+    const meetingRef=doc(db,'meetings',mr[1]),regRef=doc(db,'meetings',mr[1],'registrations',uid);
+    const result=await runTransaction(db,async tx=>{
+      const meetingSnap=await tx.get(meetingRef);
+      if(!meetingSnap.exists() || meetingSnap.data()?.published===false) throw new Error('Meeting not found');
+      const meetingData=meetingSnap.data()||{};
+      const startAt=Date.parse(String(meetingData.startAt||''));
+      if(Number.isNaN(startAt)) throw new Error('This meeting has no valid start time.');
+      if(startAt + Number(meetingData.durationMinutes||120)*60000 <= Date.now()) throw new Error('This meeting has already ended.');
+      const regSnap=await tx.get(regRef);
+      if(regSnap.exists()) return false;
+      const count=Number(meetingData.registrationCount||0);
+      tx.set(regRef,{userId:uid,userName:user.name||'',userEmail:user.email||'',registeredAt:new Date().toISOString()},{merge:true});
+      tx.update(meetingRef,{registrationCount:count+1});
+      return true;
+    });
+    return {ok:true,registered:true,alreadyRegistered:!result};
   }
   if(path==='/api/exams'){
     const snap=await getDocs(collection(db,'exams'));
