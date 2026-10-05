@@ -140,7 +140,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
 
   try{
     if(customId){
-      const content=await api('/api/content');
+      const content=await api('/api/custom-problems');
       const p=(content.problems||[]).find(x=>String(x.id)===String(customId));
       if(!p||!String(p.statementEn||p.statement||'').trim()){location.href='/problems.html';return;}
       const statement=p.statementEn||p.statement||'';
