@@ -8,6 +8,7 @@ const MATHNET_STATIC={
 };
 
 let __mathnetIndexPromise=null;
+let __mathnetIndexCache=null;
 const __mathnetChunkCache=new Map();
 let __mathnetManifestPromise=null;
 
@@ -51,6 +52,11 @@ function mathnetNormalizeIndex(rows){
 }
 
 async function mathnetLoadAllIndex(onProgress,onInitial){
+  if(Array.isArray(__mathnetIndexCache)){
+    if(onInitial)onInitial(__mathnetIndexCache);
+    if(onProgress)onProgress(__mathnetIndexCache.length,__mathnetIndexCache.length,true,__mathnetIndexCache.length);
+    return __mathnetIndexCache;
+  }
   if(__mathnetIndexPromise)return __mathnetIndexPromise;
   __mathnetIndexPromise=(async()=>{
     const manifest=await mathnetLoadManifest();
@@ -58,6 +64,7 @@ async function mathnetLoadAllIndex(onProgress,onInitial){
     const data=await mathnetFetchJson(MATHNET_STATIC.index+'?v='+encodeURIComponent(version));
     const rows=mathnetNormalizeIndex(data);
     if(!rows.length)throw new Error('The internal KARP MathNet archive is empty or unavailable.');
+    __mathnetIndexCache=rows;
     if(onInitial)onInitial(rows);
     if(onProgress)onProgress(rows.length,rows.length,true,rows.length);
     return rows;
