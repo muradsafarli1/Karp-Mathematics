@@ -1,28 +1,18 @@
-/* KARP MathNet — Firebase-only client
-   Runtime data source: Firestore.
-   Hugging Face is used only by the one-time Admin MathNet Sync tool.
+/* KARP MathNet — internal static archive runtime
+   Runtime archive source: KARP Firebase Hosting (/data/mathnet).
+   Firestore is NOT used for MathNet archive reads.
 */
-const MATHNET_FIRESTORE={
-  problems:'mathnetProblems',
-  shards:'mathnetIndexShards',
-  pools:'mathnetPools',
-  meta:'mathnetMeta',
-  state:'state',
-  problemsV2:'mathnetProblemsV2',
-  shardsV2:'mathnetIndexShardsV2'
+const MATHNET_STATIC={
+  index:'/data/mathnet/index.json',
+  manifest:'/data/mathnet/manifest.json'
 };
+
 let __mathnetIndexPromise=null;
-let __mathnetCachePromise=null;
+const __mathnetChunkCache=new Map();
+let __mathnetManifestPromise=null;
 
-function mathnetCategory(row){return ['A','C','G','N'].includes(row?.category)?row.category:'A';}
-
-async function mathnetRuntimeCollections(db,getDoc,doc){
-  const snap=await getDoc(doc(db,MATHNET_FIRESTORE.meta,MATHNET_FIRESTORE.state));
-  const state=snap.exists()?snap.data():{};
-  if(state.activeNamespace==='v2'){
-    return {problems:MATHNET_FIRESTORE.problemsV2,shards:MATHNET_FIRESTORE.shardsV2,state};
-  }
-  return {problems:MATHNET_FIRESTORE.problems,shards:MATHNET_FIRESTORE.shards,state};
+function mathnetCategory(row){
+  return ['A','C','G','N'].includes(row?.category)?row.category:'A';
 }
 
 function mathnetTitle(row){
@@ -35,77 +25,81 @@ function mathnetTitle(row){
   return parts.length?competition+' — '+parts.join(' · '):competition;
 }
 
-function mathnetMetaDb(){
-  return new Promise((resolve)=>{
-    if(!('indexedDB' in window)){resolve(null);return;}
-    const req=indexedDB.open('KARP_MATHNET_FIREBASE_CACHE',1);
-    req.onupgradeneeded=()=>{
-      const db=req.result;
-      if(!db.objectStoreNames.contains('meta'))db.createObjectStore('meta',{keyPath:'key'});
-    };
-    req.onsuccess=()=>resolve(req.result);
-    req.onerror=()=>resolve(null);
-  });
+async function mathnetFetchJson(url,options={}){
+  const res=await fetch(url,{cache:'force-cache',...options,headers:{Accept:'application/json',...(options.headers||{})}});
+  if(!res.ok)throw new Error('KARP MathNet archive request failed ('+res.status+').');
+  return res.json();
 }
 
-async function mathnetCacheGet(key){
-  const db=await mathnetMetaDb();if(!db)return null;
-  return new Promise(resolve=>{
-    const req=db.transaction('meta','readonly').objectStore('meta').get(key);
-    req.onsuccess=()=>resolve(req.result?.value??null);
-    req.onerror=()=>resolve(null);
-  });
+async function mathnetLoadManifest(){
+  if(!__mathnetManifestPromise){
+    __mathnetManifestPromise=mathnetFetchJson(MATHNET_STATIC.manifest,{cache:'no-cache'})
+      .catch(()=>({}));
+  }
+  return __mathnetManifestPromise;
 }
 
-async function mathnetCacheSet(key,value){
-  const db=await mathnetMetaDb();if(!db)return;
-  await new Promise(resolve=>{
-    const tx=db.transaction('meta','readwrite');
-    tx.objectStore('meta').put({key,value});
-    tx.oncomplete=resolve;tx.onerror=resolve;
-  });
+function mathnetNormalizeIndex(rows){
+  return (Array.isArray(rows)?rows:[]).map(x=>({
+    ...x,
+    id:String(x?.id||''),
+    sourceType:'mathnet',
+    category:mathnetCategory(x),
+    title:x?.title||mathnetTitle(x),
+    hasSolution:true
+  })).filter(x=>x.id);
 }
 
 async function mathnetLoadAllIndex(onProgress,onInitial){
   if(__mathnetIndexPromise)return __mathnetIndexPromise;
   __mathnetIndexPromise=(async()=>{
-    const {db}=await fb();
-    const {doc,getDoc,collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-    const runtime=await mathnetRuntimeCollections(db,getDoc,doc);
-    const state=runtime.state;
-    const version=String(state.version||'');
-    const cachedVersion=String(await mathnetCacheGet('version')||'');
-    const cached=version&&cachedVersion===version?await mathnetCacheGet('index'):null;
-    if(Array.isArray(cached)&&cached.length){
-      const normalized=cached.map(x=>({...x,sourceType:'mathnet',category:mathnetCategory(x),title:x.title||mathnetTitle(x),hasSolution:true}));
-      if(onInitial)onInitial(normalized);
-      if(onProgress)onProgress(normalized.length,normalized.length,true,normalized.length);
-      return normalized;
-    }
-    if(!state.ready)throw Object.assign(new Error('MathNet archive has not been synced to Firebase yet.'),{warmingUp:true});
-    const snaps=await getDocs(collection(db,runtime.shards));
-    const rows=[];
-    snaps.forEach(s=>{
-      const d=s.data();
-      if(version && d.version!==version)return;
-      (Array.isArray(d.items)?d.items:[]).forEach(x=>rows.push({...x,sourceType:'mathnet',category:mathnetCategory(x),title:x.title||mathnetTitle(x),hasSolution:true}));
-    });
-    rows.sort((a,b)=>{
-      const ay=Number(a.year||0),by=Number(b.year||0);
-      if(ay!==by)return by-ay;
-      const c=String(a.country||'').localeCompare(String(b.country||''));
-      if(c)return c;
-      const cp=String(a.competition||'').localeCompare(String(b.competition||''));
-      if(cp)return cp;
-      return Number(a.sourceIndex||0)-Number(b.sourceIndex||0);
-    });
-    await mathnetCacheSet('version',version);
-    await mathnetCacheSet('index',rows);
+    const manifest=await mathnetLoadManifest();
+    const version=String(manifest?.generatedAt||manifest?.version||'static');
+    const data=await mathnetFetchJson(MATHNET_STATIC.index+'?v='+encodeURIComponent(version));
+    const rows=mathnetNormalizeIndex(data);
+    if(!rows.length)throw new Error('The internal KARP MathNet archive is empty or unavailable.');
     if(onInitial)onInitial(rows);
     if(onProgress)onProgress(rows.length,rows.length,true,rows.length);
     return rows;
   })();
-  try{return await __mathnetIndexPromise}finally{__mathnetIndexPromise=null;}
+  try{return await __mathnetIndexPromise}
+  finally{__mathnetIndexPromise=null;}
+}
+
+async function mathnetLoadChunk(file){
+  const path=String(file||'').trim();
+  if(!path)return [];
+  if(__mathnetChunkCache.has(path))return __mathnetChunkCache.get(path);
+  const promise=mathnetFetchJson(path);
+  __mathnetChunkCache.set(path,promise);
+  try{
+    const data=await promise;
+    const rows=Array.isArray(data)?data:[];
+    return rows;
+  }catch(e){
+    __mathnetChunkCache.delete(path);
+    throw e;
+  }
+}
+
+async function mathnetProblemById(id){
+  const target=String(id||'').trim();
+  if(!target)return null;
+  const index=await mathnetLoadAllIndex();
+  const row=index.find(x=>String(x.id)===target);
+  if(!row)return null;
+  const chunk=await mathnetLoadChunk(row.dataFile);
+  const doc=chunk.find(x=>String(x?.id||'')===target);
+  if(!doc)return null;
+  return {
+    ...doc,
+    ...row,
+    id:target,
+    sourceType:'mathnet',
+    category:mathnetCategory(doc.category||row.category),
+    title:doc.title||row.title||mathnetTitle(doc),
+    hasSolution:true
+  };
 }
 
 async function mathnetSearch(query,options={}){
@@ -115,23 +109,13 @@ async function mathnetSearch(query,options={}){
   const difficulty=String(options.difficulty||'').trim().toLowerCase();
   return rows.filter(p=>{
     if(category&&p.category!==category)return false;
-    if(difficulty&&difficulty!=='any'&&p.difficulty!==difficulty)return false;
+    if(difficulty&&difficulty!=='any'&&String(p.difficulty||'').toLowerCase()!==difficulty)return false;
     if(!q)return true;
-    return [p.title,p.country,p.competition,p.year,p.problemNumber,p.section,p.sourceBooklet,p.bookletSource]
-      .join(' ').toLowerCase().includes(q);
+    return [
+      p.title,p.country,p.competition,p.year,p.problemNumber,p.section,
+      p.sourceBooklet,p.bookletSource,p.problemType,p.language
+    ].join(' ').toLowerCase().includes(q);
   }).slice(0,Math.min(1000,Math.max(1,Number(options.limit||200))));
-}
-
-async function mathnetProblemById(id){
-  const target=String(id||'').trim();
-  if(!target)return null;
-  const {db}=await fb();
-  const {doc,getDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const runtime=await mathnetRuntimeCollections(db,getDoc,doc);
-  const snap=await getDoc(doc(db,runtime.problems,target));
-  if(!snap.exists())return null;
-  const x=snap.data();
-  return {...x,id:snap.id,sourceType:'mathnet',category:mathnetCategory(x),title:x.title||mathnetTitle(x),hasSolution:true};
 }
 
 async function mathnetFind(options={}){
@@ -147,8 +131,6 @@ async function mathnetFind(options={}){
   const excludeIds=new Set(Array.isArray(options.excludeIds)?options.excludeIds.map(String):[]);
   const allowFallback=options.allowFallback!==false;
 
-  // Use the Firebase shard index for random selection. This avoids composite
-  // Firestore queries and keeps mock generation entirely on the Firebase runtime DB.
   const index=await mathnetLoadAllIndex();
   const used=new Set(excludeIds);
   const selected=[];
@@ -156,7 +138,7 @@ async function mathnetFind(options={}){
   function candidates(cat){
     return index.filter(p=>{
       if(p.category!==cat)return false;
-      if((difficulty==='easy'||difficulty==='hard')&&p.difficulty!==difficulty)return false;
+      if((difficulty==='easy'||difficulty==='hard')&&String(p.difficulty||'').toLowerCase()!==difficulty)return false;
       return !used.has(String(p.id));
     });
   }
@@ -169,10 +151,10 @@ async function mathnetFind(options={}){
 
   for(const cat of wanted){
     const chosen=pick(cat);
-    if(chosen){used.add(String(chosen.id));selected.push(chosen.id)}
+    if(chosen){used.add(String(chosen.id));selected.push(chosen.id);}
   }
 
-  if(allowFallback && selected.length<count){
+  if(allowFallback&&selected.length<count){
     for(const cat of categories){
       if(selected.length>=count)break;
       const docs=candidates(cat);
@@ -186,21 +168,44 @@ async function mathnetFind(options={}){
     }
   }
 
-  const {db}=await fb();
-  const {doc,getDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const runtime=await mathnetRuntimeCollections(db,getDoc,doc);
-  const questions=[];
+  const byFile=new Map();
   for(const id of selected){
-    const snap=await getDoc(doc(db,runtime.problems,id));
-    if(snap.exists()){
-      const q=snap.data();
-      questions.push({...q,id:snap.id,sourceType:'mathnet',category:mathnetCategory(q),title:q.title||mathnetTitle(q),hasSolution:true});
+    const row=index.find(x=>String(x.id)===String(id));
+    if(!row?.dataFile)continue;
+    if(!byFile.has(row.dataFile))byFile.set(row.dataFile,[]);
+    byFile.get(row.dataFile).push(row);
+  }
+
+  const resolved=new Map();
+  for(const [file,rows] of byFile){
+    const chunk=await mathnetLoadChunk(file);
+    const wantedIds=new Set(rows.map(x=>String(x.id)));
+    for(const doc of chunk){
+      if(wantedIds.has(String(doc?.id||'')))resolved.set(String(doc.id),doc);
     }
   }
-  return {questions,total:questions.length,source:'ShadenA/MathNet'};
+
+  const questions=[];
+  for(const id of selected){
+    const row=index.find(x=>String(x.id)===String(id));
+    const doc=resolved.get(String(id));
+    if(!row||!doc)continue;
+    questions.push({
+      ...doc,
+      ...row,
+      id:String(id),
+      sourceType:'mathnet',
+      category:mathnetCategory(doc.category||row.category),
+      title:doc.title||row.title||mathnetTitle(doc),
+      hasSolution:true
+    });
+  }
+
+  return {questions,total:questions.length,source:'KARP internal MathNet archive'};
 }
-function mathnetSaveMock(mock){window.__karpLastMock=mock;return mock}
-function mathnetLoadMock(){return window.__karpLastMock||null}
+
+function mathnetSaveMock(mock){window.__karpLastMock=mock;return mock;}
+function mathnetLoadMock(){return window.__karpLastMock||null;}
 
 window.mathnetLoadAllIndex=mathnetLoadAllIndex;
 window.mathnetSearch=mathnetSearch;
