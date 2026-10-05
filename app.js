@@ -269,7 +269,14 @@ async function api(path, opts = {}) {
       }));
       registeredIds=new Set(regs.filter(x=>x[1]).map(x=>x[0]));
     }
-    return {meetings:meetings.map(m=>({...m,registeredByCurrentUser:registeredIds.has(m.id)}))};
+    return {meetings:meetings.map(m=>{
+      const registered=registeredIds.has(m.id);
+      const start=Date.parse(String(m.startAt||m.date||'')),end=start+Number(m.durationMinutes||120)*60000;
+      const live=!Number.isNaN(start)&&Date.now()>=start&&Date.now()<end;
+      const safe={...m,registeredByCurrentUser:registered};
+      if(!(live&&registered)) delete safe.meetingUrl;
+      return safe;
+    })};
   }
   const mm=path.match(/^\/api\/meetings\/([^/]+)$/);
   if(mm&&method==='GET'){
@@ -281,6 +288,9 @@ async function api(path, opts = {}) {
       const reg=await getDoc(doc(db,'meetings',mm[1],'registrations',uid));
       registered=reg.exists();
     }
+    const start=Date.parse(String(meeting.startAt||meeting.date||'')),end=start+Number(meeting.durationMinutes||120)*60000;
+    const live=!Number.isNaN(start)&&Date.now()>=start&&Date.now()<end;
+    if(!(live&&registered)) delete meeting.meetingUrl;
     return {meeting,registered};
   }
   const mr=path.match(/^\/api\/meetings\/([^/]+)\/register$/);
