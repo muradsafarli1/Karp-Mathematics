@@ -659,19 +659,11 @@ async function logout(){
 async function requireUser(){
   const u=await me();
   if(!u){location.href='/login.html';return null}
-  if(u.emailVerified!==true){
-    location.href='/login.html?verify=1';
-    return null;
-  }
   return u;
 }
 async function requireAdmin(){
   const u=await me();
   if(!u||u.role!=='admin'){location.href='/login.html';return null}
-  if(u.emailVerified!==true){
-    location.href='/login.html?verify=1';
-    return null;
-  }
   return u;
 }
 function escapeHtml(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
