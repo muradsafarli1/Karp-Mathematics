@@ -4,11 +4,9 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function verifiedAccount(uid) {
       return signedIn()
-        && (
-          !exists(/databases/$(database)/documents/users/$(uid))
-          || get(/databases/$(database)/documents/users/$(uid)).data.requiresEmailVerification != true
-          || request.auth.token.email_verified == true
-        );
+        && exists(/databases/$(database)/documents/users/$(uid))
+        && get(/databases/$(database)/documents/users/$(uid)).data.requiresEmailVerification != true
+        && request.auth.token.email_verified == true;
     }
     function isAdminUid(uid) {
       return exists(/databases/$(database)/documents/users/$(uid))
@@ -34,7 +32,14 @@ service cloud.firestore {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow create: if signedIn()
         && request.auth.uid == uid
-        && request.resource.data.role == 'user';
+        && request.resource.data.role == 'user'
+        && (
+          (request.auth.token.email_verified == true
+            && request.resource.data.requiresEmailVerification == false)
+          ||
+          (request.auth.token.email_verified != true
+            && request.resource.data.requiresEmailVerification == true)
+        );
       allow update: if isAdmin()
         || (signedIn()
           && request.auth.uid == uid
@@ -49,7 +54,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /solved/{problemId} {
-        allow read, create, update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow read, create, update, delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
       }
       match /saved/{problemId} {
         allow read, create, update, delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
@@ -58,12 +63,12 @@ service cloud.firestore {
         allow read, create, update, delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
       }
       match /privateState/{stateId} {
-        allow read, create, update: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow read, create, update: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
       }
       match /readMarks/{markId} {
-        allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
-        allow create: if signedIn() && request.auth.uid == uid;
-        allow update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow read: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
+        allow create: if verifiedAccount(uid) && request.auth.uid == uid;
+        allow update, delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
       }
       match /examEntries/{examId} {
         allow read: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
@@ -88,20 +93,20 @@ service cloud.firestore {
     }
 
     match /publicProfiles/{uid} {
-      allow read: if signedIn();
-      allow create, update: if isAdmin() || (signedIn() && request.auth.uid == uid);
-      allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow read: if isAdmin() || verifiedAccount(request.auth.uid);
+      allow create, update: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
+      allow delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
     }
 
     match /friendRequests/{requestId} {
-      allow read: if isAdmin() || signedIn();
-      allow create: if signedIn()
+      allow read: if isAdmin() || verifiedAccount(request.auth.uid);
+      allow create: if verifiedAccount(request.auth.uid)
         && request.resource.data.fromUid == request.auth.uid
         && request.resource.data.toUid != request.auth.uid
         && request.resource.data.status == 'pending'
         && exists(/databases/$(database)/documents/publicProfiles/$(request.resource.data.toUid));
       allow update: if isAdmin()
-        || (signedIn() && (
+        || (verifiedAccount(request.auth.uid) && (
           (request.auth.uid == resource.data.toUid
             && resource.data.status == 'pending'
             && request.resource.data.fromUid == resource.data.fromUid
@@ -124,9 +129,9 @@ service cloud.firestore {
     }
 
     match /friendships/{friendshipId} {
-      allow read: if isAdmin() || (signedIn() && resource.data.members is list && request.auth.uid in resource.data.members);
+      allow read: if isAdmin() || (verifiedAccount(request.auth.uid) && resource.data.members is list && request.auth.uid in resource.data.members);
       allow create: if isAdmin()
-        || (signedIn()
+        || (verifiedAccount(request.auth.uid)
           && request.resource.data.status == 'accepted'
           && request.resource.data.members is list
           && request.auth.uid in request.resource.data.members
@@ -138,9 +143,9 @@ service cloud.firestore {
     }
 
     match /conversations/{conversationId} {
-      allow read: if isAdmin() || (signedIn() && resource.data.members is list && request.auth.uid in resource.data.members);
+      allow read: if isAdmin() || (verifiedAccount(request.auth.uid) && resource.data.members is list && request.auth.uid in resource.data.members);
       allow create: if isAdmin()
-        || (signedIn()
+        || (verifiedAccount(request.auth.uid)
           && request.resource.data.status == 'accepted'
           && request.resource.data.members is list
           && request.resource.data.members.size() >= 2
@@ -185,8 +190,8 @@ service cloud.firestore {
 
     match /presence/{uid} {
       allow read: if isAdmin();
-      allow create, update: if signedIn() && request.auth.uid == uid;
-      allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create, update: if verifiedAccount(uid) && request.auth.uid == uid;
+      allow delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
     }
 
     match /problems/{id} {
