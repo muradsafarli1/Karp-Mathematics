@@ -89,6 +89,14 @@
       {
         "source": "/journal",
         "destination": "/journal.html"
+      },
+      {
+        "source": "/meetings",
+        "destination": "/meetings.html"
+      },
+      {
+        "source": "/meeting",
+        "destination": "/meeting.html"
       }
     ],
     "redirects": [
