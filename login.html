@@ -62,16 +62,22 @@ async function finishLogin(cred){
     await sendVerification().catch(()=>{});
     return false;
   }
-  if(profileData.requiresEmailVerification===true){
-    profileData.requiresEmailVerification=false;
-    await setDoc(ref,{requiresEmailVerification:false,emailVerifiedAt:profileData.emailVerifiedAt||new Date().toISOString(),updatedAt:new Date().toISOString()},{merge:true});
-  }
   const now=new Date().toISOString();
   const existingRole=profileData.role||"user";
-  await setDoc(ref,{lastLoginAt:now,loginCount:Number(profileData.loginCount||0)+1,email:user.email||profileData.email||""},{merge:true});
-  await setDoc(doc(db,"publicProfiles",user.uid),{uid:user.uid,name:user.displayName||user.email?.split("@")[0]||profileData.name||"User",nameLower:String(user.displayName||user.email?.split("@")[0]||profileData.name||"User").trim().toLowerCase(),photoURL:user.photoURL||profileData.photoURL||"",isAdmin:existingRole==="admin",updatedAt:now},{merge:true});
-  const profile=(await getDoc(ref)).data()||{};
-  notice.className="notice success";notice.textContent="Signed in. Opening KARP…";location.replace(profile.role==="admin"?"/admin.html":"/account.html");
+  // These are profile/activity syncs, not authentication itself. Never let a
+  // secondary Firestore permission issue prevent a valid user from logging in.
+  try{
+    if(profileData.requiresEmailVerification===true){
+      await setDoc(ref,{requiresEmailVerification:false,emailVerifiedAt:profileData.emailVerifiedAt||now,updatedAt:now},{merge:true});
+    }
+  }catch(err){console.warn("KARP login verification-state sync skipped:",err)}
+  try{
+    await setDoc(ref,{lastLoginAt:now,loginCount:Number(profileData.loginCount||0)+1,email:user.email||profileData.email||""},{merge:true});
+  }catch(err){console.warn("KARP login activity sync skipped:",err)}
+  try{
+    await setDoc(doc(db,"publicProfiles",user.uid),{uid:user.uid,name:user.displayName||user.email?.split("@")[0]||profileData.name||"User",nameLower:String(user.displayName||user.email?.split("@")[0]||profileData.name||"User").trim().toLowerCase(),photoURL:user.photoURL||profileData.photoURL||"",isAdmin:existingRole==="admin",updatedAt:now},{merge:true});
+  }catch(err){console.warn("KARP public profile sync skipped:",err)}
+  notice.className="notice success";notice.textContent="Signed in. Opening KARP…";location.replace(existingRole==="admin"?"/admin.html":"/account.html");
   return true;
 }
 async function handleGoogleResult(result){
