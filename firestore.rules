@@ -282,8 +282,6 @@ service cloud.firestore {
       match /registrations/{uid} {
         allow read: if isAdmin() || (verifiedAccount(request.auth.uid) && request.auth.uid == uid);
         allow create: if signedIn()
-          && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.requiresEmailVerification != true
           && request.auth.uid == uid
           && request.resource.data.userId == request.auth.uid;
         allow update, delete: if isAdmin();
