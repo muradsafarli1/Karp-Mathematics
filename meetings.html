@@ -59,7 +59,7 @@
     }
     function card(x){
       const st=statusOf(x),href='/meeting.html?id='+encodeURIComponent(x.id);
-      return '<article class="meeting-card" tabindex="0" data-href="'+escapeHtml(href)+'">'+
+      return '<article class="meeting-card" tabindex="0" data-href="'+escapeHtml(href)+'" data-meeting-id="'+escapeHtml(x.id)+'">'+
         '<div class="meeting-cover">'+(x.coverImage?'<img src="'+escapeHtml(x.coverImage)+'" alt="">':'')+'<span class="meeting-status">'+st+'</span></div>'+
         '<div class="meeting-body"><div class="meeting-topic">'+escapeHtml(topicOf(x)||'KARP Meeting')+'</div><h2>'+escapeHtml(titleOf(x))+'</h2><p>'+escapeHtml(descOf(x))+'</p>'+
         '<div class="meeting-meta"><span><strong>'+escapeHtml(timeText(x))+'</strong></span><span>'+escapeHtml(duration(x)+' min')+'</span></div>'+
@@ -79,9 +79,28 @@
       if(!(await ensureSignedIn('Register for this meeting','Sign in or create an account before registering for or entering a meeting.')))return;
       try{await api('/api/meetings/'+encodeURIComponent(id)+'/register',{method:'POST'});location.reload()}catch(e){toast(e.message)}
     };
-    document.querySelectorAll('[data-register-id]').forEach(b=>b.onclick=()=>register(b.dataset.registerId));
+    function bindRegisterButtons(){
+      document.querySelectorAll('[data-register-id]').forEach(b=>b.onclick=()=>register(b.dataset.registerId));
+    }
+    function refreshCards(){
+      meetings.forEach(x=>{
+        const card=document.querySelector('[data-meeting-id="'+CSS.escape(String(x.id))+'"]');
+        if(!card)return;
+        const st=card.querySelector('.meeting-status'),actions=card.querySelector('.meeting-actions'),note=card.querySelector('.meeting-open-note');
+        if(st)st.textContent=statusOf(x);
+        if(actions){
+          actions.querySelectorAll('[data-register-id]').forEach(b=>{b.onclick=()=>register(b.dataset.registerId)});
+          const fresh=action(x),tmp=document.createElement('div');tmp.innerHTML=fresh;
+          actions.innerHTML='';
+          while(tmp.firstChild)actions.appendChild(tmp.firstChild);
+          actions.querySelectorAll('[data-register-id]').forEach(b=>b.onclick=()=>register(b.dataset.registerId));
+        }
+        if(note)note.textContent=countdown(x);
+      });
+    }
+    bindRegisterButtons();
     bindLanguageSwitch(()=>location.reload());
-    setInterval(()=>{document.querySelectorAll('.meeting-card').forEach(()=>{});},30000);
+    setInterval(refreshCards,15000);
   }catch(e){console.error(e);document.body.innerHTML='<div class="error-page"><h1>Unable to load meetings</h1><p>'+escapeHtml(e.message||'')+'</p><a href="/">← Back to KARP</a></div>'}
 })();
 </script>
