@@ -59,7 +59,8 @@
     }
     function card(x){
       const st=statusOf(x),href='/meeting.html?id='+encodeURIComponent(x.id);
-      return '<article class="meeting-card" tabindex="0" data-href="'+escapeHtml(href)+'" data-meeting-id="'+escapeHtml(x.id)+'">'+
+      const direct=statusOf(x)==='LIVE NOW'&&x.registeredByCurrentUser&&x.meetingUrl?x.meetingUrl:'';
+      return '<article class="meeting-card" tabindex="0" data-href="'+escapeHtml(href)+'" data-direct-url="'+escapeHtml(direct)+'" data-meeting-id="'+escapeHtml(x.id)+'">'+
         '<div class="meeting-cover">'+(x.coverImage?'<img src="'+escapeHtml(x.coverImage)+'" alt="">':'')+'<span class="meeting-status">'+st+'</span></div>'+
         '<div class="meeting-body"><div class="meeting-topic">'+escapeHtml(topicOf(x)||'KARP Meeting')+'</div><h2>'+escapeHtml(titleOf(x))+'</h2><p>'+escapeHtml(descOf(x))+'</p>'+
         '<div class="meeting-meta"><span><strong>'+escapeHtml(timeText(x))+'</strong></span><span>'+escapeHtml(duration(x)+' min')+'</span></div>'+
@@ -72,7 +73,7 @@
       (past.length?'<div class="meeting-section"><div class="meeting-section-head"><h3>Past meetings</h3><span>'+past.length+' ended</span></div><div class="meeting-grid">'+past.slice(0,6).map(card).join('')+'</div></div>':'')+
       '</div></section></main>');
     document.querySelectorAll('[data-href]').forEach(card=>{
-      card.onclick=e=>{if(e.target.closest('button,a'))return;location.href=card.dataset.href};
+      card.onclick=e=>{if(e.target.closest('button,a'))return;location.href=card.dataset.directUrl||card.dataset.href};
       card.onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button,a')){e.preventDefault();location.href=card.dataset.href}};
     });
     const register=async id=>{
