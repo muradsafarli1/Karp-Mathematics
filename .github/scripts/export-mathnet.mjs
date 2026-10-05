@@ -129,7 +129,13 @@ for(let i=0;i<index.length;i+=CHUNK_SIZE){
   for(const row of index.slice(i,i+CHUNK_SIZE)) row.dataFile='/data/mathnet/'+file;
   await fs.writeFile(path.join(ROOT,file),JSON.stringify(chunk));
 }
-await fs.writeFile(path.join(ROOT,'index.json'),JSON.stringify(index));
+const INDEX_FIELDS=['id','title','country','competition','year','problemNumber','section','difficulty','language','problemType','category','sourceIndex','sourceShard','sourceConfig','sourceId','sourceBooklet','bookletSource'];
+const staticIndex=index.map(row=>{
+  const out={};
+  for(const key of INDEX_FIELDS) if(row[key]!==undefined && row[key]!==null && row[key]!=='') out[key]=row[key];
+  return out;
+});
+await fs.writeFile(path.join(ROOT,'index.json'),JSON.stringify(staticIndex));
 await fs.writeFile(path.join(ROOT,'manifest.json'),JSON.stringify({
   generatedAt:new Date().toISOString(),
   activeNamespace,
