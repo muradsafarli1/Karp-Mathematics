@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KARP — Account</title>
 <link rel="stylesheet" href="/style.css">
-<script src="/app.js?v=20260929c"></script>
+<script src="/app.js?v=20261006"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
 <script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"},startup:{typeset:false}};</script>
@@ -48,7 +48,7 @@
     await setDoc(doc(db,'publicProfiles',u.id),{uid:u.id,name:u.name||'KARP Member',nameLower:String(u.name||'KARP Member').trim().toLowerCase(),photoURL:u.photoURL||'',updatedAt:now},{merge:true});
   }catch(e){console.warn('Could not sync public profile',e)}
   await karpMigrateLocalState();
-  const cloudState=await karpUserState();
+  const cloudState=await karpUserState().catch(e=>{console.warn('KARP account cloud state unavailable:',e);return {solved:{},saved:{},mocks:[],activeMock:null};});
   const solved=Object.values(cloudState.solved||{});
   const saved=Object.values(cloudState.saved||{});
   const mocks=Array.isArray(cloudState.mocks)?cloudState.mocks:[];
