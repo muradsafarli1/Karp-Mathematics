@@ -64,6 +64,11 @@ async function mathnetLoadAllIndex(onProgress,onInitial){
     const data=await mathnetFetchJson(MATHNET_STATIC.index+'?v='+encodeURIComponent(version));
     const rows=mathnetNormalizeIndex(data);
     if(!rows.length)throw new Error('The internal KARP MathNet archive is empty or unavailable.');
+    // Older generated indexes may predate the dataFile field. The exporter
+    // writes chunks in this exact 100-row order, so safely reconstruct it.
+    rows.forEach((row,i)=>{
+      if(!row.dataFile) row.dataFile='/data/mathnet/chunks/'+String(Math.floor(i/100)+1).padStart(4,'0')+'.json';
+    });
     __mathnetIndexCache=rows;
     if(onInitial)onInitial(rows);
     if(onProgress)onProgress(rows.length,rows.length,true,rows.length);
