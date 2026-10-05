@@ -57,10 +57,14 @@ async function finishLogin(cred){
     throw err;
   }
   const profileData=snap.data()||{};
-  if(profileData.requiresEmailVerification===true || user.emailVerified!==true){
+  if(user.emailVerified!==true){
     showVerification(user,"Please verify your email before continuing.");
     await sendVerification().catch(()=>{});
     return false;
+  }
+  if(profileData.requiresEmailVerification===true){
+    profileData.requiresEmailVerification=false;
+    await setDoc(ref,{requiresEmailVerification:false,emailVerifiedAt:profileData.emailVerifiedAt||new Date().toISOString(),updatedAt:new Date().toISOString()},{merge:true});
   }
   const now=new Date().toISOString();
   const existingRole=profileData.role||"user";
