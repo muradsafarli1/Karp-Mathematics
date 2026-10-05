@@ -51,11 +51,14 @@
       '<div class="meeting-detail-actions" id="meeting-actions">'+action()+'<span class="meeting-countdown" id="meeting-countdown">'+escapeHtml(countdown())+'</span></div>'+
       '<div class="meeting-note">The meeting link is available only when the session is open. You must be registered with a verified KARP account to enter.</div></div></article></div></section></main>');
     const refresh=()=>{
-      const a=document.getElementById('meeting-actions');if(a){
-        a.querySelectorAll('[id="register-meeting"]').forEach(b=>b.onclick=async()=>{
+      const a=document.getElementById('meeting-actions');
+      if(a){
+        a.innerHTML=action();
+        const b=document.getElementById('register-meeting');
+        if(b)b.onclick=async()=>{
           if(!(await ensureSignedIn('Register for this meeting','Sign in or create an account before registering for or entering a meeting.')))return;
-          try{await api('/api/meetings/'+encodeURIComponent(id)+'/register',{method:'POST'});registered=true;location.reload()}catch(e){toast(e.message)}
-        });
+          try{await api('/api/meetings/'+encodeURIComponent(id)+'/register',{method:'POST'});registered=true;refresh()}catch(e){toast(e.message)}
+        };
       }
       const c=document.getElementById('meeting-countdown');if(c)c.textContent=countdown();
     };
