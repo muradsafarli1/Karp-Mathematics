@@ -50,7 +50,10 @@ async function finishVerifiedSignup(){
     if(!snap.exists()){setVerificationNotice("Your KARP signup could not be found. Please create your account again.","error");return}
     const data=snap.data()||{},now=new Date().toISOString(),name=data.name||user.displayName||user.email?.split("@")[0]||"User";
     await setDoc(ref,{name,email:user.email||data.email||"",requiresEmailVerification:false,emailVerifiedAt:now,updatedAt:now},{merge:true});
-    await setDoc(doc(db,"publicProfiles",user.uid),{uid:user.uid,name,nameLower:String(name).trim().toLowerCase(),photoURL:user.photoURL||data.photoURL||"",updatedAt:now},{merge:true});
+    // Public profile creation is auxiliary; never block a verified account from entering KARP.
+    try{
+      await setDoc(doc(db,"publicProfiles",user.uid),{uid:user.uid,name,nameLower:String(name).trim().toLowerCase(),photoURL:user.photoURL||data.photoURL||"",updatedAt:now},{merge:true});
+    }catch(err){console.warn("KARP signup public profile sync skipped:",err)}
     location.replace("/account.html");
   }catch(err){setVerificationNotice(err.message||"Could not confirm your verification yet.","error")}
 }
