@@ -210,19 +210,23 @@ async function api(path, opts = {}) {
   const method=(opts.method||'GET').toUpperCase();
   let body={};
   try{body=opts.body?JSON.parse(opts.body):{}}catch{}
-  const uid=auth.currentUser?.uid||null;
-  let user=null;
-  if(path==='/api/me'){
-    if(uid){
-      const userDoc=await getDoc(doc(db,'users',uid));
-      if(userDoc.exists()) user={id:uid,...userDoc.data()};
+  const authUid=auth.currentUser?.uid||null;
+  let uid=null,user=null,userDoc=null;
+  if(authUid){
+    userDoc=await getDoc(doc(db,'users',authUid));
+    const data=userDoc.exists()?userDoc.data()||{}:{};
+    const active=auth.currentUser?.emailVerified===true && data.requiresEmailVerification!==true;
+    if(userDoc.exists() && active){
+      uid=authUid;
+      user={id:authUid,...data};
     }
+  }
+  if(path==='/api/me'){
     return {user:user?{id:user.id,name:user.name,email:user.email,role:user.role||'user',createdAt:user.createdAt,photoURL:user.photoURL||'',requiresEmailVerification:user.requiresEmailVerification===true,emailVerified:!!auth.currentUser?.emailVerified}:null};
   }
   if(path==='/api/logout'){await (await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js')).signOut(auth);return {ok:true};}
   if(uid && (path.startsWith('/api/exams/history') || path.match(/^\/api\/exams\/[^/]+\/(register|submit)$/) || path.startsWith('/api/admin/'))){
-    const userDoc=await getDoc(doc(db,'users',uid));
-    if(userDoc.exists()) user={id:uid,...userDoc.data()};
+    if(userDoc?.exists()) user={id:uid,...userDoc.data()};
   }
   if(path==='/api/content'){
     // Public content is stored in Firestore and these collections are readable
@@ -633,6 +637,11 @@ async function startKarpPresence(){
     await authReady();
     if(!auth.currentUser)return;
     if(auth.currentUser.emailVerified!==true){
+      return;
+    }
+    const {getDoc,doc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const profileSnap=await getDoc(doc(db,'users',auth.currentUser.uid));
+    if(!profileSnap.exists() || profileSnap.data()?.requiresEmailVerification===true){
       return;
     }
     const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
