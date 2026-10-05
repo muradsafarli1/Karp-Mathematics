@@ -1,0 +1,32 @@
+name: Export MathNet archive once
+
+on:
+  push:
+    paths:
+      - .github/workflows/export-mathnet.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Export Firestore MathNet data
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node .github/scripts/export-mathnet.mjs
+      - name: Commit generated KARP data
+        run: |
+          git config user.name "KARP MathNet Export"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/mathnet
+          git diff --cached --quiet && echo "No data changes." && exit 0
+          git commit -m "Add static KARP MathNet archive data"
+          git push
