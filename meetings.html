@@ -6,7 +6,6 @@
 <link rel="stylesheet" href="/style.css"><script src="/app.js"></script>
 <style>
 .meetings-page{min-height:100vh}.meetings-wrap{width:min(calc(100% - 42px),1220px);margin:0 auto}
-.meeting-intro{max-width:760px;margin:0 auto 34px;text-align:center}.meeting-intro h2{font:800 clamp(28px,4vw,46px)/1.03 'Space Grotesk';letter-spacing:-1.8px;margin:0 0 12px;color:#17191c}.meeting-intro p{margin:0;color:#666b73;font-size:13px;line-height:1.8}
 .meeting-section{margin-top:34px}.meeting-section-head{display:flex;align-items:end;justify-content:space-between;gap:15px;margin-bottom:13px}.meeting-section-head h3{font:800 19px/1.1 'Space Grotesk';margin:0;letter-spacing:-.6px}.meeting-section-head span{font-size:10px;color:#777e86}
 .meeting-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .meeting-card{position:relative;overflow:hidden;border:1px solid #d9dad8;border-radius:20px;background:#fff;box-shadow:0 10px 28px rgba(20,24,30,.055);cursor:pointer;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;min-height:365px;display:flex;flex-direction:column}
@@ -49,8 +48,8 @@
     function action(x){
       const st=statusOf(x),registered=!!x.registeredByCurrentUser;
       if(st==='LIVE NOW'){
-        return registered
-          ?'<a class="btn primary" href="/meeting.html?id='+encodeURIComponent(x.id)+'">Enter Meeting →</a>'
+        return registered&&x.meetingUrl
+          ?'<a class="btn primary" href="'+escapeHtml(x.meetingUrl)+'" target="_blank" rel="noopener noreferrer">Enter Meeting →</a>'
           :'<button class="btn primary" data-register-id="'+escapeHtml(x.id)+'">Register →</button>';
       }
       if(st==='ENDED')return'<button class="btn" type="button" disabled>Meeting ended</button>';
@@ -58,9 +57,8 @@
       return'<button class="btn primary" data-register-id="'+escapeHtml(x.id)+'">Register →</button>';
     }
     function card(x){
-      const st=statusOf(x),href='/meeting.html?id='+encodeURIComponent(x.id);
-      const direct=statusOf(x)==='LIVE NOW'&&x.registeredByCurrentUser&&x.meetingUrl?x.meetingUrl:'';
-      return '<article class="meeting-card" tabindex="0" data-href="'+escapeHtml(href)+'" data-direct-url="'+escapeHtml(direct)+'" data-meeting-id="'+escapeHtml(x.id)+'">'+
+      const st=statusOf(x);
+      return '<article class="meeting-card" data-meeting-id="'+escapeHtml(x.id)+'">'+
         '<div class="meeting-cover">'+(x.coverImage?'<img src="'+escapeHtml(x.coverImage)+'" alt="">':'')+'<span class="meeting-status">'+st+'</span></div>'+
         '<div class="meeting-body"><div class="meeting-topic">'+escapeHtml(topicOf(x)||'KARP Meeting')+'</div><h2>'+escapeHtml(titleOf(x))+'</h2><p>'+escapeHtml(descOf(x))+'</p>'+
         '<div class="meeting-meta"><span><strong>'+escapeHtml(timeText(x))+'</strong></span><span>'+escapeHtml(duration(x)+' min')+'</span></div>'+
@@ -68,14 +66,10 @@
     }
     const upcoming=meetings.filter(x=>statusOf(x)!=='ENDED');
     const past=meetings.filter(x=>statusOf(x)==='ENDED').reverse();
-    shell('Meetings','Meetings','<main class="meetings-page"><section class="pagehero"><div class="wrap"><h1>Meetings</h1></div></section><section class="section"><div class="meetings-wrap"><div class="meeting-intro"><h2>Ideas are better when they are shared.</h2><p>Join upcoming KARP sessions, discussions and problem-solving meetings. Register once and the meeting link will become available when the session opens.</p></div>'+
+    shell('Meetings','Meetings','<main class="meetings-page"><section class="pagehero"><div class="wrap"><h1>Meetings</h1></div></section><section class="section"><div class="meetings-wrap">'+
       '<div class="meeting-section"><div class="meeting-section-head"><h3>Upcoming</h3><span>'+upcoming.length+' scheduled</span></div><div class="meeting-grid">'+(upcoming.length?upcoming.map(card).join(''):'<div class="meeting-empty" style="grid-column:1/-1">No meetings are scheduled yet.</div>')+'</div></div>'+
       (past.length?'<div class="meeting-section"><div class="meeting-section-head"><h3>Past meetings</h3><span>'+past.length+' ended</span></div><div class="meeting-grid">'+past.slice(0,6).map(card).join('')+'</div></div>':'')+
       '</div></section></main>');
-    document.querySelectorAll('[data-href]').forEach(card=>{
-      card.onclick=e=>{if(e.target.closest('button,a'))return;location.href=card.dataset.directUrl||card.dataset.href};
-      card.onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('button,a')){e.preventDefault();location.href=card.dataset.href}};
-    });
     const register=async id=>{
       if(!(await ensureSignedIn('Register for this meeting','Sign in or create an account before registering for or entering a meeting.')))return;
       try{await api('/api/meetings/'+encodeURIComponent(id)+'/register',{method:'POST'});location.reload()}catch(e){toast(e.message)}
