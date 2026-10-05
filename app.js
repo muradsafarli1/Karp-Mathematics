@@ -229,20 +229,28 @@ async function api(path, opts = {}) {
     // by everyone according to firestore.rules. The previous implementation
     // returned empty arrays here, so items saved successfully in Admin could
     // never appear on the public site.
-    const [problemsSnap,articlesSnap,contestsSnap,videosSnap,aboutSnap]=await Promise.all([
-      getDocs(collection(db,'problems')),
+    const [articlesSnap,contestsSnap,videosSnap,aboutSnap]=await Promise.all([
       getDocs(collection(db,'articles')),
       getDocs(collection(db,'contests')),
       getDocs(collection(db,'videos')),
       getDoc(doc(db,'about','global'))
     ]);
     return {
-      problems: problemsSnap.docs.map(x=>({id:x.id,...x.data()})),
+      problems: [],
       articles: articlesSnap.docs.map(x=>({id:x.id,...x.data()})),
       contests: contestsSnap.docs.map(x=>({id:x.id,...x.data()})),
       videos: videosSnap.docs.map(x=>({id:x.id,...x.data()})),
       about:aboutSnap.exists()?{id:aboutSnap.id,...aboutSnap.data()}:{}
     };
+  }
+  if(path==='/api/custom-problems'){
+    // Never download the entire legacy problems collection on every Problems page.
+    // MathNet is served from its own shard index; this endpoint is only for
+    // KARP/admin-added problems. Keep the public read bounded.
+    const snap=await getDocs(collection(db,'problems'), { limit: 300 });
+    const items=snap.docs.map(x=>({id:x.id,...x.data()}));
+    items.sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+    return {problems:items};
   }
   if(path==='/api/exams'){
     const snap=await getDocs(collection(db,'exams'));
