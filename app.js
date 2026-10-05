@@ -256,6 +256,47 @@ async function api(path, opts = {}) {
     items.sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
     return {problems:items};
   }
+  if(path==='/api/meetings'){
+    const snap=await getDocs(collection(db,'meetings'));
+    const meetings=snap.docs.map(x=>({id:x.id,...x.data()}))
+      .filter(x=>x.published!==false)
+      .sort((a,b)=>Date.parse(String(a.startAt||a.date||0))-Date.parse(String(b.startAt||b.date||0)));
+    let registeredIds=new Set();
+    if(uid){
+      const regs=await Promise.all(meetings.map(async meeting=>{
+        const reg=await getDoc(doc(db,'meetings',meeting.id,'registrations',uid));
+        return [meeting.id,reg.exists()];
+      }));
+      registeredIds=new Set(regs.filter(x=>x[1]).map(x=>x[0]));
+    }
+    return {meetings:meetings.map(m=>({...m,registeredByCurrentUser:registeredIds.has(m.id)}))};
+  }
+  const mm=path.match(/^\/api\/meetings\/([^/]+)$/);
+  if(mm&&method==='GET'){
+    const snap=await getDoc(doc(db,'meetings',mm[1]));
+    if(!snap.exists() || snap.data()?.published===false) throw new Error('Meeting not found');
+    const meeting={id:snap.id,...snap.data()};
+    let registered=false;
+    if(uid){
+      const reg=await getDoc(doc(db,'meetings',mm[1],'registrations',uid));
+      registered=reg.exists();
+    }
+    return {meeting,registered};
+  }
+  const mr=path.match(/^\/api\/meetings\/([^/]+)\/register$/);
+  if(mr&&method==='POST'){
+    if(!user) throw new Error('Authentication required');
+    const meetingRef=doc(db,'meetings',mr[1]),meetingSnap=await getDoc(meetingRef);
+    if(!meetingSnap.exists() || meetingSnap.data()?.published===false) throw new Error('Meeting not found');
+    const startAt=Date.parse(String(meetingSnap.data()?.startAt||''));
+    if(Number.isNaN(startAt)) throw new Error('This meeting has no valid start time.');
+    if(startAt + Number(meetingSnap.data()?.durationMinutes||120)*60000 <= Date.now()) throw new Error('This meeting has already ended.');
+    const regRef=doc(db,'meetings',mr[1],'registrations',uid);
+    const regSnap=await getDoc(regRef);
+    if(regSnap.exists()) return {ok:true,registered:true};
+    await setDoc(regRef,{userId:uid,userName:user.name||'',userEmail:user.email||'',registeredAt:new Date().toISOString()},{merge:true});
+    return {ok:true,registered:true};
+  }
   if(path==='/api/exams'){
     const snap=await getDocs(collection(db,'exams'));
     const exams=snap.docs.map(x=>({id:x.id,...x.data()}));
@@ -319,7 +360,7 @@ async function api(path, opts = {}) {
     await setDoc(subRef,{userId:uid,userName:user.name,answers:body.answers||{},startedAt:body.startedAt||null,submittedAt:new Date().toISOString(),reason:body.reason||'manual'});
     return {ok:true};
   }
-  const am=path.match(/^\/api\/admin\/(problems|articles|contests|videos|exams|about)(?:\/([^/]+))?$/);
+  const am=path.match(/^\/api\/admin\/(problems|articles|contests|videos|exams|meetings|about)(?:\/([^/]+))?$/);
   if(am){
     if(!user||user.role!=='admin') throw new Error('Admin access required');
     const type=am[1],id=am[2],aboutType=type==='about',aboutId='global',ref=doc(db,type,aboutType?(id||aboutId):(id||crypto.randomUUID()));
@@ -993,10 +1034,10 @@ function richMarkdown(value=''){
   return escapeHtml(source).replace(/\n/g,'<br>');
 }
 
-function nav(active){const links=[['Problems','/problems.html'],['Contests','/contests.html'],['Articles','/articles.html'],['Exams','/exams.html'],['Mocks','/mock.html'],['Videos','/videos.html'],['Journal','/journal.html']];const toolsMenu='<div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a></div></div>';return `<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks">${links.map(x=>`<a class="${active===x[0]?'active':''}" href="${x[1]}">${x[0]}</a>`).join('')}${toolsMenu}<a class="${active==='About'?'active':''}" href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header>`}
+function nav(active){const links=[['Problems','/problems.html'],['Contests','/contests.html'],['Articles','/articles.html'],['Exams','/exams.html'],['Mocks','/mock.html'],['Videos','/videos.html'],['Journal','/journal.html'],['Meetings','/meetings.html']];const toolsMenu='<div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a></div></div>';return `<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks">${links.map(x=>`<a class="${active===x[0]?'active':''}" href="${x[1]}">${x[0]}</a>`).join('')}${toolsMenu}<a class="${active==='About'?'active':''}" href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header>`}
 async function updateNavUser(){const box=document.getElementById('nav-actions');if(!box)return;const u=await me();if(!u)return;const avatar=u.photoURL?`<img src="${escapeHtml(u.photoURL)}" alt="" class="nav-profile-img">`:`<span class="nav-profile-initial">${escapeHtml((u.name||'K').charAt(0).toUpperCase())}</span>`;box.innerHTML=`<a class="nav-profile" href="/account.html" aria-label="Account" title="Account">${avatar}</a>${u.role==='admin'?'<a class="btn nav-admin" href="/admin.html">Admin</a>':''}<button class="nav-logout" onclick="logout()">Log out</button>`}
 function shell(active,title,body){document.title=`KARP — ${title}`;document.body.innerHTML=nav(active)+body+footer();updateNavUser()}
-function footer(){return `<footer class="footer"><div class="wrap footgrid"><div><div class="brand">KARP</div><div class="small">Olympiad mathematics for serious problem solvers.</div></div><div class="footlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/articles.html">Articles</a><a href="/exams.html">Exams</a><a href="/mock.html">Mocks</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/about.html">About Us</a></div></div></footer>`}
+function footer(){return `<footer class="footer"><div class="wrap footgrid"><div><div class="brand">KARP</div><div class="small">Olympiad mathematics for serious problem solvers.</div></div><div class="footlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/articles.html">Articles</a><a href="/exams.html">Exams</a><a href="/mock.html">Mocks</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a href="/about.html">About Us</a></div></div></footer>`}
 function currentLanguage(){return localStorage.getItem('able_lang')==='az'?'az':'en'}
 function setLanguage(lang){localStorage.setItem('able_lang',lang);return lang}
 function localized(item,field,lang=currentLanguage()){const az=item?.[`${field}Az`],en=item?.[`${field}En`],old=item?.[field];return lang==='az'?(az||en||old||''):(en||az||old||'')}
