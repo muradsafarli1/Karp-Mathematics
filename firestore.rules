@@ -53,26 +53,26 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /solved/{problemId} {
-        allow read, create, update, delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
+        allow read, create, update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
       }
       match /saved/{problemId} {
-        allow read, create, update, delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
+        allow read, create, update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
       }
       match /mockHistory/{mockId} {
-        allow read, create, update, delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
+        allow read, create, update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
       }
       match /privateState/{stateId} {
         allow read, create, update: if isAdmin() || (signedIn() && request.auth.uid == uid);
       }
       match /readMarks/{markId} {
-        allow read: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
-        allow create: if verifiedAccount(uid) && request.auth.uid == uid;
-        allow update, delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
+        allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow create: if signedIn() && request.auth.uid == uid;
+        allow update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
       }
       match /examEntries/{examId} {
-        allow read: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
-        allow create: if verifiedAccount(uid) && request.auth.uid == uid;
-        allow update, delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
+        allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        allow create: if signedIn() && request.auth.uid == uid;
+        allow update, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
       }
     }
 
@@ -189,8 +189,8 @@ service cloud.firestore {
 
     match /presence/{uid} {
       allow read: if isAdmin();
-      allow create, update: if verifiedAccount(uid) && request.auth.uid == uid;
-      allow delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
     }
 
     match /problems/{id} {
@@ -280,7 +280,10 @@ service cloud.firestore {
       allow update: if isAdmin()
         || (signedIn()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registrationCount'])
-          && request.resource.data.registrationCount == resource.data.registrationCount + 1
+          && (
+            (!resource.data.keys().hasAny(['registrationCount']) && request.resource.data.registrationCount == 1)
+            || (resource.data.keys().hasAny(['registrationCount']) && request.resource.data.registrationCount == resource.data.registrationCount + 1)
+          )
           && getAfter(/databases/$(database)/documents/meetings/$(id)/registrations/$(request.auth.uid)).data.userId == request.auth.uid);
 
       match /registrations/{uid} {
