@@ -62,7 +62,7 @@ service cloud.firestore {
         allow read, create, update, delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
       }
       match /privateState/{stateId} {
-        allow read, create, update: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
+        allow read, create, update: if isAdmin() || (signedIn() && request.auth.uid == uid);
       }
       match /readMarks/{markId} {
         allow read: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
