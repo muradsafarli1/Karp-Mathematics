@@ -287,7 +287,7 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/meetings/$(id)/registrations/$(request.auth.uid)).data.userId == request.auth.uid);
 
       match /registrations/{uid} {
-        allow read: if isAdmin() || (verifiedAccount(request.auth.uid) && request.auth.uid == uid);
+        allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
         allow create: if signedIn()
           && request.auth.uid == uid
           && request.resource.data.userId == request.auth.uid;
