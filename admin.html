@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KARP — Admin</title><link rel="stylesheet" href="/style.css"><script src="/app.js?v=20260929"></script><style>
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KARP — Admin</title><link rel="stylesheet" href="/style.css"><script src="/app.js?v=20261006"></script><style>
 .meeting-admin-registrations{margin:0 0 12px;padding:14px 16px;border:1px solid #d9dad8;border-radius:14px;background:#f7f7f5}
 .meeting-admin-reg-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px;font-size:11px}
 .meeting-admin-reg-head span{color:#737a83;font-size:10px}
@@ -8,9 +8,6 @@
 .meeting-admin-reg-empty{font-size:10px;color:#737a83}
 @media(max-width:650px){.meeting-admin-reg{display:grid}.meeting-admin-reg time{white-space:normal}}
 </style>
-.admin-mock-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.admin-mock-card{background:#f7f7f5;border:1px solid #e3e7ea;border-radius:18px;padding:17px;box-shadow:0 7px 24px rgba(20,27,34,.04)}.admin-mock-top{display:flex;justify-content:space-between;align-items:center;gap:10px}.admin-mock-card h3{font:800 17px/1.25 'Space Grotesk';margin:13px 0 5px}.admin-mock-owner,.admin-mock-meta{font-size:9px;color:#78828b;margin:0 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admin-mock-card details{margin-top:12px;border-top:1px solid #d9dad8;padding-top:10px}.admin-mock-card summary{cursor:pointer;font-size:9px;font-weight:800;color:#59636c}.admin-mock-questions{display:grid;gap:8px;margin-top:9px}.admin-mock-questions section{background:#f7f7f5;border-radius:11px;padding:9px}.admin-mock-questions strong{font-size:9px}.admin-mock-questions div{margin-top:4px;font-size:9px;line-height:1.6;white-space:pre-wrap}.admin-mock-questions small{display:block;margin-top:5px;color:#8b949c;font-size:7px}.more-row{display:flex;justify-content:center;margin:14px 0}.more-btn{border:0;background:#f7f7f5;border-radius:10px;padding:9px 13px;font-size:9px;font-weight:800;color:#58616a;cursor:pointer}@media(max-width:850px){.admin-mock-grid{grid-template-columns:1fr}}
-
-.live-presence{width:min(calc(100% - 42px),1400px);margin:18px auto 0;padding:14px 16px;border:1px solid #d9dad8;border-radius:18px;background:#f7f7f5;box-shadow:0 8px 28px rgba(20,24,30,.05)}.live-presence-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.live-presence-head strong{font:800 15px/1 'Space Grotesk'}.live-presence-count{font-size:9px;color:#6f7880;font-weight:800}.live-presence-grid{display:flex;gap:8px;overflow:auto}.live-person{min-width:190px;padding:10px 12px;border:1px solid #d9dad8;border-radius:13px;background:#f7f7f5}.live-person-top{display:flex;align-items:center;gap:8px}.live-dot{width:8px;height:8px;border-radius:50%;background:#20a35b;box-shadow:0 0 0 3px rgba(32,163,91,.1);flex:0 0 8px}.live-name{font-size:10px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.live-activity{font-size:8px;line-height:1.5;color:#69727b;margin-top:6px}.live-empty{font-size:9px;color:#89929a}
 </style><style>
 /* Advanced admin visual skin */
 .admin,.live-presence,.admin-main,.admin-side{background:#f7f7f5!important;box-shadow:none!important}
@@ -46,7 +43,28 @@
 </style></head><body><div id="root"></div><script>
 let state={type:'problems',editing:null},liveDocs=[],liveUnsub=null,liveTimer=null,pendingVideoThumbnail='',pendingFounderImage='',pendingMeetingImage='';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-async function init(){const u=await requireAdmin();if(!u)return;let db;try{({db}=await fb());const {doc,setDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');const now=new Date().toISOString();await setDoc(doc(db,'publicProfiles',u.id),{uid:u.id,name:u.name||'KARP Admin',nameLower:String(u.name||'KARP Admin').trim().toLowerCase(),photoURL:u.photoURL||'',isAdmin:true,updatedAt:now},{merge:true})}catch(e){console.warn('Could not sync admin public profile',e)}document.getElementById('root').innerHTML=`<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><div class="actions"><span style="color:#aeb7c8">${esc(u.name)}</span><a class="btn" href="/">View site</a><button class="btn" onclick="logout()">Log out</button></div></div></header><section class="live-presence" id="live-presence"><div class="live-presence-head"><strong>Live now</strong><span class="live-presence-count">Loading…</span></div><div class="live-presence-grid"><span class="live-empty">Loading live activity…</span></div></section><main class="admin"><div class="wrap"><div class="admin-grid"><aside class="admin-side"><button class="active" data-type="problems">Problems</button><button data-type="contests">Contests</button><button data-type="articles">Articles</button><button data-type="exams">Exams</button><button data-type="videos">Videos</button><button data-type="journals">Journals</button><button data-type="meetings">Meetings</button><button type="button" onclick="location.href='/mathnet-sync.html'">MathNet Sync</button><button data-type="mocks">Mocks</button><button data-type="users">Users</button><button data-type="about">About Us</button></aside><section class="admin-main" id="main"></section></div></div></main>`;initLivePresence(db);document.querySelectorAll('.admin-side button').forEach(b=>b.onclick=()=>{syncCurrent();document.querySelectorAll('.admin-side button').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.type=b.dataset.type;state.editing=null;render()});render()}
+async function startAdminPresence(db,u){
+  try{
+    const {doc,setDoc,Timestamp}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const write=()=>setDoc(doc(db,'presence',u.id),{
+      uid:u.id,
+      name:u.name||'KARP Admin',
+      photoURL:u.photoURL||'',
+      online:true,
+      visible:!document.hidden,
+      lastSeen:Timestamp.now(),
+      expiresAt:Timestamp.fromMillis(Date.now()+70000),
+      activity:{page:'Admin',label:'Admin panel',detail:state.type==='users'?'Users':'Admin'}
+    },{merge:true}).catch(e=>console.warn('KARP admin presence update failed:',e));
+    await write();
+    window.__adminPresenceTimer=setInterval(write,30000);
+    document.addEventListener('visibilitychange',write);
+    window.addEventListener('beforeunload',()=>setDoc(doc(db,'presence',u.id),{
+      online:false,visible:false,lastSeen:Timestamp.now(),expiresAt:Timestamp.fromMillis(0)
+    },{merge:true}).catch(()=>{}));
+  }catch(e){console.warn('KARP admin presence could not start:',e)}
+}
+async function init(){const u=await requireAdmin();if(!u)return;let db;try{({db}=await fb());const {doc,setDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');const now=new Date().toISOString();await setDoc(doc(db,'publicProfiles',u.id),{uid:u.id,name:u.name||'KARP Admin',nameLower:String(u.name||'KARP Admin').trim().toLowerCase(),photoURL:u.photoURL||'',isAdmin:true,updatedAt:now},{merge:true})}catch(e){console.warn('Could not sync admin public profile',e)}document.getElementById('root').innerHTML=`<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><div class="actions"><span style="color:#aeb7c8">${esc(u.name)}</span><a class="btn" href="/">View site</a><button class="btn" onclick="logout()">Log out</button></div></div></header><section class="live-presence" id="live-presence"><div class="live-presence-head"><strong>Live now</strong><span class="live-presence-count">Loading…</span></div><div class="live-presence-grid"><span class="live-empty">Loading live activity…</span></div></section><main class="admin"><div class="wrap"><div class="admin-grid"><aside class="admin-side"><button class="active" data-type="problems">Problems</button><button data-type="contests">Contests</button><button data-type="articles">Articles</button><button data-type="exams">Exams</button><button data-type="videos">Videos</button><button data-type="journals">Journals</button><button data-type="meetings">Meetings</button><button type="button" onclick="location.href='/mathnet-sync.html'">MathNet Sync</button><button data-type="mocks">Mocks</button><button data-type="users">Users</button><button data-type="about">About Us</button></aside><section class="admin-main" id="main"></section></div></div></main>`;startAdminPresence(db,u);initLivePresence(db);document.querySelectorAll('.admin-side button').forEach(b=>b.onclick=()=>{syncCurrent();document.querySelectorAll('.admin-side button').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.type=b.dataset.type;state.editing=null;render()});render()}
 document.addEventListener('DOMContentLoaded',init);
 function examList(d){return Array.isArray(d)?d:(d?.exams||[])}
 function presenceMillis(v){return v?.toMillis?v.toMillis():Number(v)||0}
