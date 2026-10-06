@@ -512,15 +512,23 @@ async function karpUserState(){
   const uid=auth.currentUser?.uid;
   if(!uid)return {solved:{},saved:{},mocks:[],activeMock:null};
   const {collection,getDocs,doc,getDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const safeGetDocs=async(ref,label)=>{
+    try{return await getDocs(ref)}
+    catch(err){console.warn('KARP account '+label+' unavailable:',err);return {docs:[]}}
+  };
+  const safeGetDoc=async(ref,label)=>{
+    try{return await getDoc(ref)}
+    catch(err){console.warn('KARP account '+label+' unavailable:',err);return {exists:()=>false,data:()=>({})}}
+  };
   const [solvedSnap,savedSnap,mockSnap,activeSnap]=await Promise.all([
-    getDocs(collection(db,'users',uid,'solved')),
-    getDocs(collection(db,'users',uid,'saved')),
-    getDocs(collection(db,'users',uid,'mockHistory')),
-    getDoc(doc(db,'users',uid,'privateState','state'))
+    safeGetDocs(collection(db,'users',uid,'solved'),'solved'),
+    safeGetDocs(collection(db,'users',uid,'saved'),'saved'),
+    safeGetDocs(collection(db,'users',uid,'mockHistory'),'mock history'),
+    safeGetDoc(doc(db,'users',uid,'privateState','state'),'private state')
   ]);
   const solved={},saved={};
-  solvedSnap.forEach(s=>solved[s.id]={id:s.id,...s.data()});
-  savedSnap.forEach(s=>saved[s.id]={id:s.id,...s.data()});
+  solvedSnap.docs.forEach(s=>solved[s.id]={id:s.id,...s.data()});
+  savedSnap.docs.forEach(s=>saved[s.id]={id:s.id,...s.data()});
   const mocks=mockSnap.docs.map(s=>({id:s.id,...s.data()})).sort((a,b)=>new Date(b.completedAt||b.createdAt||0)-new Date(a.completedAt||a.createdAt||0));
   const privateState=activeSnap.exists()?activeSnap.data():{};
   return {solved,saved,mocks,activeMock:privateState.activeMock||null};
