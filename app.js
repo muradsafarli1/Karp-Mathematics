@@ -264,8 +264,13 @@ async function api(path, opts = {}) {
     let registeredIds=new Set();
     if(uid){
       const regs=await Promise.all(meetings.map(async meeting=>{
-        const reg=await getDoc(doc(db,'meetings',meeting.id,'registrations',uid));
-        return [meeting.id,reg.exists()];
+        try{
+          const reg=await getDoc(doc(db,'meetings',meeting.id,'registrations',uid));
+          return [meeting.id,reg.exists()];
+        }catch(err){
+          console.warn('Meeting registration status unavailable:',meeting.id,err);
+          return [meeting.id,false];
+        }
       }));
       registeredIds=new Set(regs.filter(x=>x[1]).map(x=>x[0]));
     }
@@ -285,8 +290,13 @@ async function api(path, opts = {}) {
     const meeting={id:snap.id,...snap.data()};
     let registered=false;
     if(uid){
-      const reg=await getDoc(doc(db,'meetings',mm[1],'registrations',uid));
-      registered=reg.exists();
+      try{
+        const reg=await getDoc(doc(db,'meetings',mm[1],'registrations',uid));
+        registered=reg.exists();
+      }catch(err){
+        console.warn('Meeting registration status unavailable:',mm[1],err);
+        registered=false;
+      }
     }
     const start=Date.parse(String(meeting.startAt||meeting.date||'')),end=start+Number(meeting.durationMinutes||120)*60000;
     const live=!Number.isNaN(start)&&Date.now()>=start&&Date.now()<end;
