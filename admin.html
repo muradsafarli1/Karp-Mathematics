@@ -171,14 +171,21 @@ async function render(){
       const d=await api('/api/admin/users');
       const users=d.users||[];
       const presenceLabel=u=>{
-        const a=u.activity||{};
-        return a.page?((a.label||a.page)+(a.detail?' · '+a.detail:'')+(a.question?' · Problem '+a.question:'')):'Not active';
+        const x=u.activity||{};
+        return x.page?((x.label||x.page)+(x.detail?' · '+x.detail:'')+(x.question?' · Problem '+x.question:'')):'Not active';
       };
       const fmtLast=u=>u.online?'Online now':(u.lastSeen?new Date(u.lastSeen).toLocaleString():'Never');
+      const fmtActive=sec=>{
+        const n=Math.max(0,Math.floor(Number(sec||0)));
+        if(!n)return'0m';
+        const h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=n%60;
+        return h?(`${h}h ${m}m`):(m?(`${m}m ${s}s`):(`${s}s`));
+      };
+      const totalActive=users.reduce((sum,u)=>sum+Math.max(0,Number(u.totalActiveSeconds||0)),0);
       m.innerHTML='<div class="admin-head"><div><h2>Users</h2><span class="admin-count">'+users.length+' users</span></div></div>'+
-        '<div class="bigcard admin-user-summary"><strong>'+users.filter(u=>u.online).length+'</strong> online · <strong>'+users.filter(u=>!u.online).length+'</strong> offline · last-seen and current activity are shown below.</div>'+
-        '<div class="bigcard" style="overflow-x:auto"><table class="table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Role</th><th>Account created</th><th>Last login</th><th>Last seen</th><th>Last logout</th><th>Current activity</th><th>Logins</th></tr></thead><tbody>'+
-        users.slice().sort((x,y)=>Number(y.online)-Number(x.online)||new Date(y.lastLoginAt||0)-new Date(x.lastLoginAt||0)).map(u=>'<tr><td><span class="'+(u.online?'admin-online-dot':'admin-offline-dot')+'"></span>'+ (u.online?'Online':'Offline') +'</td><td>'+esc(u.name||'—')+'</td><td>'+esc(u.email||'—')+'</td><td>'+esc(u.role||'user')+'</td><td>'+(u.createdAt?new Date(u.createdAt).toLocaleString():'—')+'</td><td>'+(u.lastLoginAt?new Date(u.lastLoginAt).toLocaleString():'Never')+'</td><td>'+fmtLast(u)+'</td><td>'+(u.lastLogoutAt?new Date(u.lastLogoutAt).toLocaleString():'—')+'</td><td>'+esc(presenceLabel(u))+'</td><td>'+Number(u.loginCount||0)+'</td></tr>').join('')+
+        '<div class="bigcard admin-user-summary"><strong>'+users.filter(u=>u.online).length+'</strong> online · <strong>'+users.filter(u=>!u.online).length+'</strong> offline · <strong>'+fmtActive(totalActive)+'</strong> tracked active time · activity is measured while the KARP tab is visible and focused.</div>'+
+        '<div class="bigcard" style="overflow-x:auto"><table class="table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Role</th><th>Account created</th><th>Last login</th><th>Last seen</th><th>Last logout</th><th>Current activity</th><th>Active time</th><th>Logins</th></tr></thead><tbody>'+
+        users.slice().sort((x,y)=>Number(y.online)-Number(x.online)||Number(y.totalActiveSeconds||0)-Number(x.totalActiveSeconds||0)||new Date(y.lastLoginAt||0)-new Date(x.lastLoginAt||0)).map(u=>'<tr><td><span class="'+(u.online?'admin-online-dot':'admin-offline-dot')+'"></span>'+ (u.online?'Online':'Offline') +'</td><td>'+esc(u.name||'—')+'</td><td>'+esc(u.email||'—')+'</td><td>'+esc(u.role||'user')+'</td><td>'+(u.createdAt?new Date(u.createdAt).toLocaleString():'—')+'</td><td>'+(u.lastLoginAt?new Date(u.lastLoginAt).toLocaleString():'Never')+'</td><td>'+fmtLast(u)+'</td><td>'+(u.lastLogoutAt?new Date(u.lastLogoutAt).toLocaleString():'—')+'</td><td>'+esc(presenceLabel(u))+'</td><td><strong>'+fmtActive(u.totalActiveSeconds)+'</strong>'+(u.online?' <span style="color:#6f757c">• active now</span>':'')+'</td><td>'+Number(u.loginCount||0)+'</td></tr>').join('')+
         '</tbody></table></div>';
     }catch(e){m.innerHTML='<div class="bigcard"><h3>Could not load users</h3><p>'+esc(e.message)+'</p></div>'}
     return;
