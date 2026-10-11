@@ -579,3 +579,70 @@ body,.top,.footer,.hero,.pagehero,.section,.contest-page,.article-page,.account-
   .hero:after{width:650px!important;height:650px!important;right:-270px!important;bottom:-380px!important}
   .hero .orb{width:420px!important;height:420px!important;right:-18%!important;top:13%!important}
 }
+
+
+/* Homepage-only geometric accents: decorative and non-interactive. */
+.hero-shapes{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  overflow:hidden;
+  pointer-events:none;
+}
+.hero-shape-art{
+  display:block;
+  width:100%;
+  height:100%;
+  opacity:.84;
+  overflow:visible;
+}
+.hero-shape-art .geo{
+  fill:none;
+  stroke-width:2;
+  vector-effect:non-scaling-stroke;
+}
+.hero-shape-art .blue{stroke:#3867e8}
+.hero-shape-art .violet{stroke:#7c4dff}
+.hero-shape-art .pink{stroke:#d946ef}
+.hero-shape-art .cyan{stroke:#1796d2}
+.hero-shape-art .green{stroke:#10b981}
+.hero-shape-art .gold{stroke:#f59e0b}
+.hero-shape-art .dashed{stroke-dasharray:5 7}
+.hero-shape-art .fill-blue{fill:rgba(56,103,232,.12);stroke:rgba(56,103,232,.66);stroke-width:1.5}
+.hero-shape-art .fill-violet{fill:rgba(124,77,255,.11);stroke:rgba(124,77,255,.58);stroke-width:1.5}
+.hero-shape-art .fill-pink{fill:rgba(217,70,239,.15);stroke:rgba(217,70,239,.66);stroke-width:1.4}
+.hero-shape-art .fill-cyan{fill:rgba(23,150,210,.15);stroke:rgba(23,150,210,.65);stroke-width:1.4}
+.hero-shape-art .fill-green{fill:rgba(16,185,129,.16);stroke:rgba(16,185,129,.65);stroke-width:1.4}
+.hero-shape-art .fill-gold{fill:rgba(245,158,11,.18);stroke:rgba(245,158,11,.72);stroke-width:1.4}
+.hero-shape-art .drift-a,
+.hero-shape-art .drift-b,
+.hero-shape-art .drift-c,
+.hero-shape-art .drift-d{
+  transform-box:fill-box;
+  transform-origin:center;
+  animation:karpGeometryFloat 10s ease-in-out infinite;
+}
+.hero-shape-art .drift-b{animation-duration:12s;animation-delay:-3s}
+.hero-shape-art .drift-c{animation-duration:9s;animation-delay:-5s}
+.hero-shape-art .drift-d{animation-duration:14s;animation-delay:-7s}
+.hero-shape-art .dashed{animation:karpGeometryDash 8s linear infinite}
+@keyframes karpGeometryFloat{
+  0%,100%{transform:translateY(0) rotate(0deg)}
+  50%{transform:translateY(-10px) rotate(3deg)}
+}
+@keyframes karpGeometryDash{to{stroke-dashoffset:-48}}
+@media(max-width:900px){
+  .hero-shape-art{opacity:.7}
+}
+@media(max-width:620px){
+  .hero-shape-art{opacity:.5}
+  .hero-shape-art .drift-a,
+  .hero-shape-art .drift-b{opacity:.8}
+}
+@media(prefers-reduced-motion:reduce){
+  .hero-shape-art .drift-a,
+  .hero-shape-art .drift-b,
+  .hero-shape-art .drift-c,
+  .hero-shape-art .drift-d,
+  .hero-shape-art .dashed{animation:none!important}
+}
