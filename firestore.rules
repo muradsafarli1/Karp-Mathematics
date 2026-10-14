@@ -329,13 +329,7 @@ service cloud.firestore {
         allow create: if signedIn()
           && request.auth.uid == uid
           && request.resource.data.userId == request.auth.uid;
-        allow update: if isAdmin()
-          || (signedIn()
-            && request.auth.uid == uid
-            && request.resource.data.userId == request.auth.uid
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-              'userName','answers','startedAt','endedAt','submittedAt','attemptId','durationSeconds','reason'
-            ]));
+        allow update: if isAdmin();
         allow delete: if isAdmin();
       }
     }
