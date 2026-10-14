@@ -63,20 +63,21 @@ function parseExamInstant(value,offset=4){
     function timeLabel(dt,offset=4){
       if(Number.isNaN(dt))return 'To be announced';
       const shifted=new Date(dt+Number(offset??4)*3600000);
-      return shifted.toLocaleTimeString('en-US',{timeZone:'UTC',hour:'numeric',minute:'2-digit',hour12:true})+' · '+timezoneLabel(offset);
+      return shifted.toLocaleTimeString('en-US',{timeZone:'UTC',hour:'numeric',minute:'2-digit',hour12:true})+' (UTC'+(Number(offset??4)>=0?'+':'')+Number(offset??4)+')';
     }
     function renderCard(e,isUpcoming){
-      const state=stateOf(e),registered=!!e.registeredByCurrentUser;
+      const state=stateOf(e);
       const title=localized(e,'title')||'Exam',desc=localized(e,'description')||'';
       const duration=formatDuration(Number(e.durationMinutes||60));
       const questionCount=Array.isArray(e.questions)?e.questions.length:0;
+      const completed=!!e.completedByCurrentUser;
       const action=isUpcoming
-        ?(registered?'<button class="btn" type="button" disabled>Registered</button>':'<button class="btn primary" type="button" data-register-id="'+escapeHtml(e.id)+'">Register →</button>')
-        :'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Open →</a>';
-      const count=isUpcoming?Math.max(0,Number(e.registrationCount||0)):Math.max(0,Number(e.participatedCount||0));
-      const countText=isUpcoming
-        ?count+(count===1?' person registered':' people registered')
-        :count+(count===1?' person participated':' people participated');
+        ?'<span class="exam-upcoming-label">Upcoming</span>'
+        :(completed?'<button class="btn" type="button" disabled>Completed</button>':'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Open →</a>');
+      const count=Math.max(0,Number(e.participatedCount||0));
+      const countText=!isUpcoming
+        ?count+(count===1?' person participated':' people participated')
+        :'';
       return '<article class="exam-card"><div class="exam-card-head"><h2>'+escapeHtml(title)+'</h2>'+(desc?'<p>'+escapeHtml(desc)+'</p>':'')+'</div><div class="exam-meta"><div class="exam-meta-item"><span>Date</span><strong>'+escapeHtml(dateLabel(e,state.dt))+'</strong></div><div class="exam-meta-item"><span>Start time</span><strong>'+escapeHtml(timeLabel(state.dt,e.timezoneOffset??4))+'</strong></div><div class="exam-meta-item"><span>Duration</span><strong>'+escapeHtml(duration)+'</strong></div><div class="exam-meta-item"><span>Questions</span><strong>'+questionCount+'</strong></div></div><div class="exam-card-footer">'+(countText?'<span class="exam-participation-count">'+escapeHtml(countText)+'</span>':'')+'<div class="exam-card-actions">'+action+'</div></div></article>';
     }
     function renderSection(label,exams,isUpcoming){
@@ -99,12 +100,6 @@ function parseExamInstant(value,offset=4){
     });
 
     shell('Exams','Exams','<main><section class="pagehero"><div class="wrap"><h1>Exams</h1></div></section><section class="section" style="padding-top:0!important"><div class="exams-wrap">'+renderSection('Upcoming',upcoming,true)+renderSection('Available',available,false)+'</div></section></main>');
-    window.registerAndOpen=async id=>{
-      if(!(await ensureSignedIn('Register for this exam','Sign in or create an account before registering for an exam.')))return;
-      try{await api('/api/exams/'+encodeURIComponent(id)+'/register',{method:'POST'});location.href='/exams.html'}
-      catch(e){toast(e.message)}
-    };
-    document.querySelectorAll('[data-register-id]').forEach(b=>b.onclick=()=>registerAndOpen(b.dataset.registerId));
   }catch(e){console.error(e);document.body.innerHTML='<div class="error-page"><h1>Unable to load exams</h1><p>'+escapeHtml(e.message)+'</p><a href="/">← Back to KARP</a></div>'}
 })();
 </script>
