@@ -188,7 +188,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       return;
     }
     if(!user){
-      document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>Sign in required</h1><p>This exam is available now. Sign in to begin; registration is not required.</p><div class="exam-enter-actions"><a class="btn primary" href="/login.html">Sign in</a><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';
+      document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>Sign in required</h1><p>Sign in to begin this exam.</p><div class="exam-enter-actions"><a class="btn primary" href="/login.html">Sign in</a><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';
       return;
     }
 
@@ -237,7 +237,15 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
         localStorage.setItem(storageKey,JSON.stringify({startedAt:started,end,submitted:true,attemptId:currentAttemptId}));
         setKarpActivity({page:'Exam',label:'Exam finished',detail:title,question:null});
         renderFinishedOnly();
-      }catch(e){finished=false;toast(e.message||'Could not submit the exam.')}}
+      }catch(e){
+        if(/already completed/i.test(e.message||'')){
+          try{const pending=JSON.parse(localStorage.getItem(storageKey)||'{}');localStorage.setItem(storageKey,JSON.stringify({...pending,submitted:true}))}catch{}
+          renderFinishedOnly();return;
+        }
+        finished=false;
+        if(end>Date.now())startExamTimer();
+        toast(e.message||'Could not submit the exam.');
+      }}
     async function enterExamFullscreen(){
       const el=document.documentElement;
       if(document.fullscreenElement===el)return true;
