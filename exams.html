@@ -73,7 +73,7 @@ function parseExamInstant(value,offset=4){
       const completed=!!e.completedByCurrentUser;
       const action=isUpcoming
         ?''
-        :(completed?'<button class="btn" type="button" disabled>Completed</button>':'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Open →</a>');
+        :(completed?'<a class="btn" href="/exam.html?id='+encodeURIComponent(e.id)+'&review=1">Completed</a>':'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Open →</a>');
       const count=Math.max(0,Number(e.participatedCount||0));
       const countText=!isUpcoming
         ?count+(count===1?' person participated':' people participated')
