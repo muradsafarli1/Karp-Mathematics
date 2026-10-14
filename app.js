@@ -387,8 +387,6 @@ async function api(path, opts = {}) {
     const examRef=doc(db,'exams',er[1]),examSnap=await getDoc(examRef);
     if(!examSnap.exists()) throw new Error('Exam not found');
     if(er[2]==='register'){
-      const subRef=doc(db,'exams',er[1],'submissions',uid),sub=await getDoc(subRef);
-      if(sub.exists())throw new Error('This exam has already been completed.');
       await runTransaction(db,async tx=>{
         const examRef=doc(db,'exams',er[1]);
         const regRef=doc(db,'exams',er[1],'registrations',uid);
@@ -402,9 +400,18 @@ async function api(path, opts = {}) {
       });
       return {ok:true};
     }
-    const subRef=doc(db,'exams',er[1],'submissions',uid),existingSub=await getDoc(subRef);
-    if(existingSub.exists())throw new Error('This exam has already been completed.');
-    await setDoc(subRef,{userId:uid,userName:user.name,answers:body.answers||{},startedAt:body.startedAt||null,submittedAt:new Date().toISOString(),reason:body.reason||'manual'});
+    const subRef=doc(db,'exams',er[1],'submissions',uid);
+    await setDoc(subRef,{
+      userId:uid,
+      userName:user.name,
+      answers:body.answers||{},
+      startedAt:body.startedAt||null,
+      endedAt:body.endedAt||new Date().toISOString(),
+      submittedAt:body.submittedAt||new Date().toISOString(),
+      attemptId:body.attemptId||null,
+      durationSeconds:Math.max(0,Number(body.durationSeconds||0)),
+      reason:body.reason||'manual'
+    },{merge:true});
     return {ok:true};
   }
   const am=path.match(/^\/api\/admin\/(problems|articles|contests|videos|exams|meetings|about)(?:\/([^/]+))?$/);
@@ -702,17 +709,25 @@ async function markKarpExamEntry(examId){
   const {doc,runTransaction}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
   const examRef=doc(db,'exams',String(examId));
   const markerRef=doc(db,'users',uid,'examEntries',String(examId));
+  const legacySessionRef=doc(db,'examSessions',String(examId)+'_'+String(uid));
   try{
     return await runTransaction(db,async tx=>{
       const exam=await tx.get(examRef);
       const marker=await tx.get(markerRef);
-      if(!exam.exists()||marker.exists())return false;
-      const count=Number(exam.data()?.entryCount||0);
-      tx.set(markerRef,{examId:String(examId),enteredAt:new Date().toISOString()},{merge:true});
-      tx.update(examRef,{entryCount:count+1});
+      const legacySession=await tx.get(legacySessionRef);
+      if(!exam.exists())return false;
+      const markerData=marker.exists()?marker.data()||{}:{};
+      if(markerData.participated===true)return false;
+      const legacyData=legacySession.exists()?legacySession.data()||{}:{};
+      const hadHistoricalAttempt=!!legacyData.startedAt&&String(legacyData.status||'')!=='archive-view';
+      const now=new Date().toISOString();
+      tx.set(markerRef,{examId:String(examId),participated:true,firstParticipatedAt:markerData.firstParticipatedAt||now,lastParticipatedAt:now},{merge:true});
+      if(hadHistoricalAttempt)return false;
+      const count=Number(exam.data()?.participatedCount||0);
+      tx.update(examRef,{participatedCount:count+1});
       return true;
     });
-  }catch(e){console.warn('KARP exam entry tracking failed:',e);return false}
+  }catch(e){console.warn('KARP exam participation tracking failed:',e);return false}
 }
 let __karpPresence=null;
 function __karpIsActiveNow(){try{return document.visibilityState==='visible'&&document.hasFocus()}catch{return document.visibilityState!=='hidden'}}

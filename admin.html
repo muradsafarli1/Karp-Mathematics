@@ -20,7 +20,7 @@
 .admin-exam-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
 .admin-exam-head h3{font:800 20px/1.2 'Space Grotesk';margin:8px 0}
 .admin-exam-head p{margin:0;color:#6f665d;font-size:11px}
-.admin-exam-counts{display:flex;flex-direction:column;align-items:flex-end}
+.admin-exam-counts{display:grid;grid-template-columns:repeat(2,minmax(105px,1fr));gap:10px;align-items:stretch}.admin-exam-counts>div{text-align:right}.admin-exam-counts span{max-width:120px}
 .admin-exam-counts strong{font:800 26px/1 'Space Grotesk'}
 .admin-exam-counts span{color:#6f665d;font-size:9px;margin-top:4px}
 .admin-participants{margin-top:15px;overflow:auto;border:1px solid #d9dad8;border-radius:12px;padding:4px}
@@ -194,7 +194,7 @@ async function render(){
   if(state.type==='exams'){
     try{
       const {db}=await fb();
-      const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+      const {collection,getDocs,doc,updateDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
       const [examSnap,userSnap,presenceSnap,sessionSnap]=await Promise.all([
         getDocs(collection(db,'exams')),
         getDocs(collection(db,'users')),
@@ -204,8 +204,9 @@ async function render(){
       const usersById=new Map(userSnap.docs.map(x=>[x.id,x.data()]));
       const presenceByUid=new Map(presenceSnap.docs.map(x=>{const d=x.data()||{},exp=d.expiresAt?.toMillis?d.expiresAt.toMillis():Number(d.expiresAt||0);return[x.id,{...d,online:!!d.online&&exp>Date.now()}]}));
       const sessions=sessionSnap.docs.map(x=>({id:x.id,...x.data()}));
-      const fmtTime=v=>v?new Date(v).toLocaleString():'—';
-      const fmtDuration=sec=>{const n=Math.max(0,Number(sec||0));if(!n)return'—';const h=Math.floor(n/3600),m=Math.floor((n%3600)/60),ss=n%60;return h?(h+'h '+m+'m'):(m+'m '+ss+'s')};
+      const fmtTime=v=>{if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':d.toLocaleString('en-GB',{timeZone:'Asia/Baku',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})+' (UTC+4)'};
+      const fmtDuration=sec=>{const n=Math.max(0,Number(sec||0));if(!n)return'0s';const h=Math.floor(n/3600),m=Math.floor((n%3600)/60),ss=n%60;return h?(h+'h '+m+'m '+ss+'s'):(m?(m+'m '+ss+'s'):(ss+'s'))};
+      function parseAdminExamInstant(value,offset=4){const raw=String(value||'').trim();if(!raw)return NaN;if(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw))return Date.parse(raw);const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);if(m)return Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]),Number(m[4]||0),Number(m[5]||0),Number(m[6]||0))-Number(offset??4)*3600000;return Date.parse(raw)}
       const examBase=await Promise.all(examSnap.docs.map(async x=>{
         const [regSnap,subSnap]=await Promise.all([
           getDocs(collection(db,'exams',x.id,'registrations')),
@@ -213,6 +214,20 @@ async function render(){
         ]);
         return {id:x.id,...x.data(),regs:regSnap.docs.map(d=>({id:d.id,...d.data()})),subs:subSnap.docs.map(d=>({id:d.id,...d.data()}))};
       }));
+      const historicalParticipantIds=new Map();
+      sessions.forEach(s=>{
+        if(!s.examId||!s.uid||!(s.startedAt||s.attemptId)||String(s.status||'')==='archive-view')return;
+        if(!historicalParticipantIds.has(String(s.examId)))historicalParticipantIds.set(String(s.examId),new Set());
+        historicalParticipantIds.get(String(s.examId)).add(String(s.uid));
+      });
+      for(const ex of examBase){
+        const current=Number(ex.participatedCount||0),derived=historicalParticipantIds.get(String(ex.id))?.size||0;
+        const migratedCount=Math.max(current,derived);
+        if(typeof ex.participatedCount!=='number'||migratedCount>current){
+          await updateDoc(doc(db,'exams',ex.id),{participatedCount:migratedCount});
+          ex.participatedCount=migratedCount;
+        }
+      }
       const exams=examBase.sort((a,b)=>new Date(String(b.date||b.createdAt||0))-new Date(String(a.date||a.createdAt||0)));
       m.innerHTML='<div class="admin-head"><div><h2>Exams</h2><span class="admin-count">'+exams.length+' exams · participant/session analytics</span></div><button class="btn primary" onclick="newItem()">+ New</button></div>'+
         '<div class="admin-exam-list">'+(exams.length?exams.map(ex=>{
@@ -222,15 +237,44 @@ async function render(){
           const esessions=sessions.filter(z=>String(z.examId)===String(ex.id));
           const ids=[...new Set(regIds.concat(subIds,esessions.map(z=>String(z.uid||'')).filter(Boolean)))];
           const people=ids.map(uid=>{
-            const u=usersById.get(uid)||{},p=presenceByUid.get(uid)||{},ses=esessions.find(z=>String(z.uid)===uid)||{},reg=regs.find(z=>String(z.userId||z.uid||z.id)===uid)||{};
+            const u=usersById.get(uid)||{},p=presenceByUid.get(uid)||{},reg=regs.find(z=>String(z.userId||z.uid||z.id)===uid)||{};
             const sub=submissions.find(z=>String(z.userId||z.uid||z.id)===uid)||{};
-            const startedAt=ses.startedAt||ses.entryAt||sub.startedAt||null;
-            const endedAt=ses.endedAt||ses.exitAt||sub.submittedAt||null;
-            const durationSeconds=Number(ses.durationSeconds||0)||((startedAt&&endedAt)?Math.max(0,Math.round((Date.parse(endedAt)-Date.parse(startedAt))/1000)):(startedAt&&p.online?Math.max(0,Math.round((Date.now()-Date.parse(startedAt))/1000)):0));
-            return {uid,name:u.name||p.name||'KARP Member',email:u.email||'—',online:!!p.online,lastSeen:p.lastSeen?.toDate?p.lastSeen.toDate().toLocaleString():(p.lastSeen?String(p.lastSeen):'—'),activity:p.activity||{},registeredAt:reg.registeredAt||null,startedAt,endedAt,exitObservedAt:ses.exitObservedAt||null,durationSeconds,status:ses.status||((sub.submittedAt)?'completed':'registered'),reason:ses.exitReason||sub.reason||''};
+            const userSessions=esessions.filter(z=>String(z.uid)===uid);
+            const attempts=userSessions
+              .filter(s=>!!(s.startedAt||s.attemptId||['active','completed'].includes(String(s.status||'').toLowerCase()))&&String(s.status||'')!=='archive-view')
+              .slice()
+              .sort((a,b)=>Date.parse(a.startedAt||a.entryAt||0)-Date.parse(b.startedAt||b.entryAt||0))
+              .map((ses,index)=>{
+                const startedAt=ses.startedAt||ses.entryAt||sub.startedAt||null;
+                const endedAt=ses.endedAt||ses.exitAt||sub.endedAt||sub.submittedAt||null;
+                const durationSeconds=ses.durationSeconds!=null?Math.max(0,Number(ses.durationSeconds)||0):((startedAt&&endedAt)?Math.max(0,Math.round((Date.parse(endedAt)-Date.parse(startedAt))/1000)):0);
+                const rawStatus=String(ses.status||'');
+                const status=rawStatus==='active'?(ses.exitObservedAt?'Left page · resumable':(p.online?'In progress':'In progress · offline')):(rawStatus||'started');
+                return {id:ses.attemptId||ses.id,number:index+1,startedAt,entryAt:ses.entryAt||startedAt,lastActivityAt:ses.lastActivityAt||ses.submittedAt||null,endedAt,submittedAt:ses.submittedAt||sub.submittedAt||null,exitObservedAt:ses.exitObservedAt||null,durationSeconds,status,currentQuestion:Number(ses.currentQuestion||0),reason:ses.exitReason||ses.reason||sub.reason||'',remainingMs:ses.lastKnownRemainingMs};
+              });
+            return {uid,name:u.name||p.name||'KARP Member',email:u.email||'—',online:!!p.online,lastSeen:p.lastSeen?.toDate?p.lastSeen.toDate().toLocaleString():(p.lastSeen?String(p.lastSeen):'—'),activity:p.activity||{},registeredAt:reg.registeredAt||null,attempts,hasSubmission:!!sub.submittedAt,legacyStartedAt:sub.startedAt||null,legacyEndedAt:sub.endedAt||sub.submittedAt||null,legacyReason:sub.reason||''};
           });
-          return '<article class="admin-exam-card"><div class="admin-exam-head"><div><span class="tag">'+escapeHtml(ex.status||'Upcoming')+'</span><h3>'+escapeHtml(ex.titleEn||ex.title||'Untitled exam')+'</h3><p>'+escapeHtml((ex.date||'Date TBA')+' · '+(ex.questions||[]).length+' questions · '+(ex.durationMinutes||60)+' min')+'</p></div><div class="admin-exam-counts"><strong>'+people.length+'</strong><span>tracked participants</span></div></div><div class="admin-exam-actions" style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end"><button class="btn" type="button" onclick="editItem(&quot;'+escapeHtml(ex.id)+'&quot;)">Edit</button><button class="btn danger" type="button" onclick="removeItem(&quot;'+escapeHtml(ex.id)+'&quot;)">Delete</button></div><details><summary>Participants & session timeline</summary><div class="admin-participants"><table class="table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Registered</th><th>Entered</th><th>Exited</th><th>Time stayed</th><th>Last seen</th><th>Activity</th></tr></thead><tbody>'+
-          (people.length?people.map(p=>'<tr><td><span class="'+(p.online?'admin-online-dot':'admin-offline-dot')+'"></span>'+escapeHtml(p.online?'Online':p.status)+'</td><td>'+escapeHtml(p.name)+'</td><td>'+escapeHtml(p.email)+'</td><td>'+fmtTime(p.registeredAt)+'</td><td>'+fmtTime(p.startedAt)+'</td><td>'+fmtTime(p.endedAt||p.exitObservedAt)+'</td><td>'+fmtDuration(p.durationSeconds)+'</td><td>'+escapeHtml(p.online?'Now':p.lastSeen)+'</td><td>'+escapeHtml(p.activity?.label||p.activity?.page||'—')+(p.activity?.question?' · Q'+p.activity.question:'')+'</td></tr>').join(''):'<tr><td colspan="9">No participant session data yet.</td></tr>')+
+          const logParticipantIds=new Set(esessions.filter(s=>s.uid&&(s.startedAt||s.attemptId)&&String(s.status||'')!=='archive-view').map(s=>String(s.uid)));
+          const uniqueParticipants=Math.max(Number(ex.participatedCount||0),logParticipantIds.size);
+          const totalAttempts=people.reduce((sum,p)=>sum+p.attempts.length,0);
+          const timelineRows=people.flatMap(person=>{
+            if(person.attempts.length)return person.attempts.map(attempt=>({person,attempt}));
+            if(person.hasSubmission)return [{person,attempt:{number:'—',status:'Completed · legacy record',startedAt:person.legacyStartedAt,entryAt:person.legacyStartedAt,endedAt:person.legacyEndedAt,lastActivityAt:null,submittedAt:person.legacyEndedAt,durationSeconds:0,currentQuestion:0,reason:person.legacyReason}}];
+            return [{person,attempt:null}];
+          }).sort((a,b)=>Date.parse(b.attempt?.startedAt||b.attempt?.entryAt||0)-Date.parse(a.attempt?.startedAt||a.attempt?.entryAt||0));
+          const formatScheduled=(value,offset=4)=>{
+            const ms=parseAdminExamInstant(value,offset);
+            if(Number.isNaN(ms))return '—';
+            const shift=new Date(ms+Number(offset)*3600000);
+            return shift.toLocaleString('en-GB',{timeZone:'UTC',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})+' (UTC'+(Number(offset)>=0?'+':'')+Number(offset)+')';
+          };
+          const releaseValue=ex.availableAt||ex.date;
+          const releaseMs=parseAdminExamInstant(releaseValue,ex.availableTimezoneOffset??ex.timezoneOffset??4);
+          const stage=!Number.isNaN(releaseMs)?(releaseMs<=Date.now()?'Available':'Upcoming'):(['open','active','finished'].includes(String(ex.status||'').toLowerCase())?'Available':'Upcoming');
+          const schedule=ex.date?formatScheduled(ex.date,ex.timezoneOffset??4):'Start time not set';
+          const availableSchedule=ex.availableAt?formatScheduled(ex.availableAt,ex.availableTimezoneOffset??ex.timezoneOffset??4):'Same as start time';
+          return '<article class="admin-exam-card"><div class="admin-exam-head"><div><span class="tag">'+escapeHtml(stage)+'</span><h3>'+escapeHtml(ex.titleEn||ex.title||'Untitled exam')+'</h3><p>'+escapeHtml('Start: '+schedule+' · Available from: '+availableSchedule+' · '+(ex.questions||[]).length+' questions · '+(ex.durationMinutes||60)+' min per attempt')+'</p></div><div class="admin-exam-counts"><div><strong>'+uniqueParticipants+'</strong><span>unique participants</span></div><div><strong>'+totalAttempts+'</strong><span>timed attempts</span></div></div></div><div class="admin-exam-actions" style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end"><button class="btn" type="button" onclick="editItem(&quot;'+escapeHtml(ex.id)+'&quot;)">Edit</button><button class="btn danger" type="button" onclick="removeItem(&quot;'+escapeHtml(ex.id)+'&quot;)">Delete</button></div><details><summary>Participant and attempt timeline</summary><div class="admin-participants"><table class="table"><thead><tr><th>Attempt</th><th>Status</th><th>Name</th><th>Email</th><th>Registered</th><th>Entered / started</th><th>Last activity</th><th>Ended</th><th>Time spent</th><th>Last question</th><th>Exit reason</th></tr></thead><tbody>'+
+          (timelineRows.length?timelineRows.map(row=>{const p=row.person,a=row.attempt;return '<tr><td>'+escapeHtml(a?(String(a.number)+' / '+String(p.attempts.length||1)):'—')+'</td><td>'+escapeHtml(a?.status||(p.online?'Online · not started':'Registered · not started'))+'</td><td>'+escapeHtml(p.name)+'</td><td>'+escapeHtml(p.email)+'</td><td>'+fmtTime(p.registeredAt)+'</td><td>'+fmtTime(a?.entryAt||a?.startedAt)+'</td><td>'+fmtTime(a?.lastActivityAt)+'</td><td>'+fmtTime(a?.endedAt||a?.submittedAt||a?.exitObservedAt)+'</td><td>'+(a?fmtDuration(a.durationSeconds):'—')+'</td><td>'+((Number(a?.currentQuestion||0)>0)?'Q'+Number(a.currentQuestion):'—')+'</td><td>'+escapeHtml(a?.reason||'—')+'</td></tr>'}).join(''):'<tr><td colspan="11">No participant activity yet.</td></tr>')+
           '</tbody></table></div></details></article>';
         }).join(''):'<div class="empty">No exams available.</div>')+'</div>'+
         (state.editing?formHtml(state.editing):'');

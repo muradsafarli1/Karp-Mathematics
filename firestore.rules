@@ -310,6 +310,12 @@ service cloud.firestore {
           && (
             (!resource.data.keys().hasAny(['entryCount']) && request.resource.data.entryCount == 1)
             || (resource.data.keys().hasAny(['entryCount']) && request.resource.data.entryCount == resource.data.entryCount + 1)
+          ))
+        || (signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participatedCount'])
+          && (
+            (!resource.data.keys().hasAny(['participatedCount']) && request.resource.data.participatedCount == 1)
+            || (resource.data.keys().hasAny(['participatedCount']) && request.resource.data.participatedCount == resource.data.participatedCount + 1)
           ));
 
       match /registrations/{uid} {
@@ -322,8 +328,14 @@ service cloud.firestore {
         allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
         allow create: if signedIn()
           && request.auth.uid == uid
-          && !exists(/databases/$(database)/documents/exams/$(examId)/submissions/$(uid));
-        allow update: if isAdmin();
+          && request.resource.data.userId == request.auth.uid;
+        allow update: if isAdmin()
+          || (signedIn()
+            && request.auth.uid == uid
+            && request.resource.data.userId == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'userName','answers','startedAt','endedAt','submittedAt','attemptId','durationSeconds','reason'
+            ]));
         allow delete: if isAdmin();
       }
     }

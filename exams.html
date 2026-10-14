@@ -34,28 +34,24 @@
 <script>
 (async()=>{
   try{
-    const u=await me();
     const d=await api('/api/exams');
-    const history=u?(await api('/api/exams/history').catch(()=>({history:[]}))).history||[]:[];
-    const completed=new Set(history.map(h=>h.examId)),now=Date.now();
+    const now=Date.now();
     setKarpActivity({page:'Exams',label:'Exam list',detail:'Browsing available exams',question:null});
 
-    function parseDate(e){
-      const raw=String(e.date||'').trim();
-      return raw?Date.parse(raw.replace(' ','T')):NaN;
-    }
+function parseExamInstant(value,offset=4){
+  const raw=String(value||'').trim();
+  if(!raw)return NaN;
+  if(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw))return Date.parse(raw);
+  const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if(m)return Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]),Number(m[4]||0),Number(m[5]||0),Number(m[6]||0))-Number(offset??4)*3600000;
+  return Date.parse(raw);
+}
+    function parseDate(e){return parseExamInstant(e.date,e.timezoneOffset??4)}
     function stateOf(e){
-      const dt=parseDate(e),status=String(e.status||'').toLowerCase();
-      const releaseRaw=String(e.availableAt||e.date||'').trim();
-      const releaseAt=releaseRaw?Date.parse(releaseRaw.replace(' ','T')):NaN;
-      const duration=Number(e.durationMinutes||60)*60000;
-      const finished=status==='finished'||(!Number.isNaN(dt)&&dt+duration<=now);
+      const status=String(e.status||'').toLowerCase();
+      const releaseAt=parseExamInstant(e.availableAt||e.date,e.availableTimezoneOffset??e.timezoneOffset??4);
       const released=!Number.isNaN(releaseAt)?releaseAt<=now:['open','active','finished'].includes(status);
-      return {dt,finished,active:!finished&&!Number.isNaN(dt)&&dt<=now,upcoming:!finished&&!released};
-    }
-    function timezoneLabel(offset){
-      const n=Number(offset??4);
-      return 'UTC'+(n>=0?'+':'')+n;
+      return {dt:parseDate(e),active:released,upcoming:!released};
     }
     function dateLabel(e,dt){
       if(!Number.isNaN(dt)){
@@ -74,12 +70,10 @@
       const title=localized(e,'title')||'Exam',desc=localized(e,'description')||'';
       const duration=formatDuration(Number(e.durationMinutes||60));
       const questionCount=Array.isArray(e.questions)?e.questions.length:0;
-      const action=completed.has(e.id)
-        ?'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Review →</a>'
-        :(isUpcoming
-          ?(registered?'<button class="btn" type="button" disabled>Registered</button>':'<button class="btn primary" type="button" data-register-id="'+escapeHtml(e.id)+'">Register →</button>')
-          :'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Open →</a>');
-      const count=isUpcoming?Math.max(0,Number(e.registrationCount||0)):Math.max(0,Number(e.entryCount||0));
+      const action=isUpcoming
+        ?(registered?'<button class="btn" type="button" disabled>Registered</button>':'<button class="btn primary" type="button" data-register-id="'+escapeHtml(e.id)+'">Register →</button>')
+        :'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Open →</a>';
+      const count=isUpcoming?Math.max(0,Number(e.registrationCount||0)):Math.max(0,Number(e.participatedCount||0));
       const countText=isUpcoming
         ?count+(count===1?' person registered':' people registered')
         :count+(count===1?' person participated':' people participated');
@@ -91,8 +85,8 @@
     }
 
     const allExams=d.exams||[];
-    const upcoming=allExams.filter(e=>!completed.has(e.id)&&stateOf(e).upcoming);
-    const available=allExams.filter(e=>completed.has(e.id)||!stateOf(e).upcoming);
+    const upcoming=allExams.filter(e=>stateOf(e).upcoming);
+    const available=allExams.filter(e=>!stateOf(e).upcoming);
     upcoming.sort((a,b)=>{
       const da=parseDate(a),db=parseDate(b);
       return (Number.isNaN(da)?Infinity:da)-(Number.isNaN(db)?Infinity:db);
