@@ -367,20 +367,33 @@ html,body{overflow:auto!important;height:auto!important}
 </style>
 <style>
 .exam-review-top{
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)!important;
+  position:sticky!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  min-height:104px!important;padding:18px 180px!important;
 }
-.exam-review-spacer{grid-column:1!important;grid-row:1!important}
+.exam-review-spacer{display:none!important}
 .exam-review-top h1{
-  grid-column:2!important;grid-row:1!important;justify-self:center!important;
-  align-self:center!important;text-align:center!important;
-  font:800 clamp(30px,5vw,58px)/1.1 'Space Grotesk'!important;
-  letter-spacing:-1.8px!important;margin:0!important;max-width:100%!important;
+  flex:0 1 auto!important;width:max-content!important;
+  max-width:calc(100vw - 340px)!important;
+  text-align:center!important;
+  font:800 clamp(40px,5.8vw,74px)/1.04 'Space Grotesk'!important;
+  letter-spacing:-2.2px!important;margin:0!important;
+  overflow-wrap:anywhere!important;
 }
-.exam-review-lang{grid-column:3!important;grid-row:1!important;justify-self:end!important;align-self:center!important}
-.exam-review-lang .language-switch{margin-bottom:0!important}
+.exam-review-lang{
+  position:absolute!important;right:clamp(24px,3.5vw,52px)!important;
+  top:50%!important;transform:translateY(-50%)!important;
+  margin:0!important;justify-self:auto!important;
+}
+.exam-review-lang .language-switch{margin:0!important;white-space:nowrap!important}
 @media(max-width:800px){
-  .exam-review-top{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)!important;gap:8px!important;padding:12px 14px!important}
-  .exam-review-top h1{font-size:clamp(22px,5.5vw,36px)!important;letter-spacing:-.8px!important}
+  .exam-review-top{min-height:78px!important;padding:12px 100px 12px 12px!important}
+  .exam-review-top h1{
+    max-width:calc(100vw - 132px)!important;
+    font-size:clamp(24px,5.5vw,40px)!important;
+    letter-spacing:-.9px!important;line-height:1.05!important;
+  }
+  .exam-review-lang{right:12px!important}
   .exam-review-lang .language-switch button{padding:6px 7px!important;font-size:10px!important}
 }
 </style>
