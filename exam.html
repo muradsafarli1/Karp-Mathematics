@@ -32,8 +32,8 @@ window.MathJax={
 .exam-review,.exam-paper{background:var(--panel);border-radius:22px;padding:34px 54px}
 .exam-review-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:10px}
 .exam-review-kicker,.exam-active-kicker{font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:800;color:var(--muted)}
-.exam-question{width:100%;max-width:none;box-sizing:border-box;padding:34px 0;border-top:1px solid var(--line)}
-.exam-question:first-child{border-top:0}
+.exam-question{width:100%;max-width:none;box-sizing:border-box;padding:34px 0;border:0!important}
+.exam-question:first-child{border-top:0!important}
 .problem-number{font-family:'Space Grotesk';font-size:15px;font-weight:800;letter-spacing:.2px;margin-bottom:15px}
 .question-text{width:100%;max-width:none;min-width:0;font-size:20px;line-height:1.9;white-space:normal;overflow-wrap:normal;word-break:normal}
 .question-text p{width:100%;max-width:none;margin:0 0 18px}
@@ -101,7 +101,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     const exam=data.exam;
     if(!exam){location.href='/exams.html';return}
     const history=reviewMode&&user?(await api('/api/exams/history').catch(()=>({history:[]}))).history||[]:[];
-    const previous=history.find(x=>x.examId===id);
+    let previous=history.find(x=>x.examId===id)||null;
     const title=localized(exam,'title')||'Exam';
     const questions=Array.isArray(exam.questions)?exam.questions:[];
     const durationMinutes=Number(exam.durationMinutes||60);
@@ -156,7 +156,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     }
     function questionHtml(q,i,withSolution){
       const sol=solution(q);
-      return '<section class="exam-question" data-question="'+(i+1)+'"><div class="problem-number">Problem '+(i+1)+(q.code?' · '+escapeHtml(q.code):'')+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+escapeHtml(q.imageUrl)+'" alt="Problem '+(i+1)+'">':'')+'<div class="question-text">'+md(statement(q))+'</div>'+(withSolution?'<div class="exam-solution"><button class="btn">Show solution</button><div class="exam-solution-body">'+(sol?md(sol):'<div style="color:var(--muted)">No supplied solution.</div>')+'</div></div>':'')+'</section>';
+      return '<section class="exam-question" data-question="'+(i+1)+'"><div class="problem-number">Problem '+(i+1)+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+escapeHtml(q.imageUrl)+'" alt="Problem '+(i+1)+'">':'')+'<div class="question-text">'+md(statement(q))+'</div>'+(withSolution?'<div class="exam-solution"><button class="btn">Show solution</button><div class="exam-solution-body">'+(sol?md(sol):'<div style="color:var(--muted)">No supplied solution.</div>')+'</div></div>':'')+'</section>';
     }
     function bindSolutions(host){host.querySelectorAll('.exam-solution').forEach(box=>{const b=box.querySelector('button'),body=box.querySelector('.exam-solution-body');if(!b||!body)return;b.onclick=()=>{const open=body.classList.toggle('open');b.textContent=open?'Hide solution':'Show solution';if(open)typesetMath(body)}})}
     function clearTrackers(){activityCleanup?.();fullscreenCleanup=null;activityCleanup=null;examGuardCleanup=null;}
@@ -178,11 +178,15 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       bindLanguageSwitch(()=>renderReview());
       typesetMath(host);
     }
+    async function openReview(){
+      const result=await api('/api/exams/history').catch(()=>({history:[]}));
+      previous=(result.history||[]).find(x=>x.examId===id)||previous;
+      if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
+      renderReview();
+    }
     function renderFinishedOnly(){
       clearInterval(timer);clearTrackers();sessionCleanup?.();sessionCleanup=null;
-      const finishedTitle=localized(exam,'title')||'Exam';
-      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top exam-finished-only-top"><div></div><h1>'+escapeHtml(finishedTitle)+'</h1><div></div></header></main>';
-      if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+      openReview();
     }
     function renderPreview(){
       clearInterval(timer);clearTrackers();sessionCleanup?.();sessionCleanup=null;
@@ -201,7 +205,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       if(!user){renderKarpSignInGate('Sign in','Sign in or create a KARP account to review this exam.','/exams.html');return}
       renderReview();return;
     }
-    if(data.completedByCurrentUser){renderFinishedOnly();return}
+    if(data.completedByCurrentUser){await openReview();return}
     if(!availabilityReached){
       const closedTitle='Exam not available yet';
       const closedText=examStartText();
@@ -212,7 +216,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
 
     const storageKey='able_exam_'+id;
     let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{}
-    if(saved.submitted){renderFinishedOnly();return}
+    if(saved.submitted){await openReview();return}
     let end=Number(saved.end)||0;
     currentAttemptId=saved.attemptId||null;
     const hasStarted=!!saved.startedAt&&!saved.submitted&&end>Date.now();
@@ -253,12 +257,12 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
         await api('/api/exams/'+encodeURIComponent(id)+'/submit',{method:'POST',body:JSON.stringify({answers:{},startedAt:started,endedAt,submittedAt,attemptId:currentAttemptId,durationSeconds,reason})});
         await writeExamSession({status:'completed',attemptId:currentAttemptId,startedAt:started,entryAt:started,endedAt,exitAt:endedAt,exitObservedAt:null,durationSeconds,lastActivityAt:submittedAt,submittedAt,exitReason:reason,lastKnownRemainingMs:0});
         localStorage.setItem(storageKey,JSON.stringify({startedAt:started,end,submitted:true,attemptId:currentAttemptId}));
-        setKarpActivity({page:'Exam',label:'Exam finished',detail:title,question:null});
-        renderFinishedOnly();
+        setKarpActivity({page:'Exam Review',label:'Exam review',detail:localized(exam,'title')||'Exam',question:null});
+        await openReview();
       }catch(e){
         if(/already completed/i.test(e.message||'')){
           try{const pending=JSON.parse(localStorage.getItem(storageKey)||'{}');localStorage.setItem(storageKey,JSON.stringify({...pending,submitted:true}))}catch{}
-          renderFinishedOnly();return;
+          await openReview();return;
         }
         finished=false;
         if(end>Date.now())startExamTimer();
@@ -376,19 +380,19 @@ html,body{overflow:auto!important;height:auto!important}
 }
 </style>
 <style>
-.exam-review-top{position:sticky!important;display:block!important;min-height:122px!important;padding:22px 0!important;box-sizing:border-box!important}
+.exam-review-top{position:sticky!important;display:block!important;min-height:136px!important;padding:24px 0!important;box-sizing:border-box!important}
 .exam-review-spacer{display:none!important}
 .exam-review-top h1{
   position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;
-  width:max-content!important;max-width:calc(100vw - 460px)!important;text-align:center!important;
-  font:800 clamp(44px,5.5vw,78px)/1.04 'Space Grotesk'!important;letter-spacing:-2.5px!important;
+  width:max-content!important;max-width:calc(100vw - 560px)!important;text-align:center!important;
+  font:800 clamp(46px,5.8vw,82px)/1.03 'Space Grotesk'!important;letter-spacing:-2.8px!important;
   margin:0!important;overflow-wrap:anywhere!important;
 }
-.exam-review-lang{position:absolute!important;right:clamp(30px,4vw,64px)!important;top:50%!important;transform:translateY(-50%)!important;margin:0!important}
+.exam-review-lang{position:absolute!important;right:clamp(34px,5vw,86px)!important;top:50%!important;transform:translateY(-50%)!important;margin:0!important}
 .exam-review-lang .language-switch{margin:0!important;white-space:nowrap!important}
 @media(max-width:800px){
-  .exam-review-top{min-height:82px!important;padding:12px 0!important}
-  .exam-review-top h1{max-width:calc(100vw - 238px)!important;font-size:clamp(25px,5.8vw,41px)!important;letter-spacing:-.9px!important;line-height:1.05!important}
+  .exam-review-top{min-height:92px!important;padding:12px 0!important}
+  .exam-review-top h1{max-width:calc(100vw - 245px)!important;font-size:clamp(25px,5.8vw,41px)!important;letter-spacing:-.9px!important;line-height:1.05!important}
   .exam-review-lang{right:12px!important}
   .exam-review-lang .language-switch button{padding:6px 7px!important;font-size:10px!important}
 }
