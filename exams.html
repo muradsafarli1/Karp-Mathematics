@@ -5,7 +5,7 @@
 <title>KARP — Exams</title>
 <link rel="stylesheet" href="/style.css"><script src="/app.js"></script>
 <style>
-.exams-wrap{width:min(calc(100% - 42px),1180px);margin:0 auto;padding-bottom:34px}
+.exams-wrap{width:min(calc(100% - 42px),1180px);margin:0 auto;padding-top:66px;padding-bottom:34px}
 .exam-group+.exam-group{margin-top:42px}
 .exam-section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 18px;padding:0 0 12px;border-bottom:1px solid #dedfdc}
 .exam-section-heading h2{font-family:'Space Grotesk';font-size:22px;line-height:1.2;letter-spacing:-.55px;font-weight:700;margin:0;color:#17191c}
@@ -46,17 +46,28 @@
     }
     function stateOf(e){
       const dt=parseDate(e),status=String(e.status||'').toLowerCase();
+      const releaseRaw=String(e.availableAt||e.date||'').trim();
+      const releaseAt=releaseRaw?Date.parse(releaseRaw.replace(' ','T')):NaN;
       const duration=Number(e.durationMinutes||60)*60000;
       const finished=status==='finished'||(!Number.isNaN(dt)&&dt+duration<=now);
-      const active=!finished&&(!Number.isNaN(dt)?dt<=now:status==='active');
-      return {dt,finished,active,upcoming:!finished&&!active};
+      const released=!Number.isNaN(releaseAt)?releaseAt<=now:['open','active','finished'].includes(status);
+      return {dt,finished,active:!finished&&!Number.isNaN(dt)&&dt<=now,upcoming:!finished&&!released};
+    }
+    function timezoneLabel(offset){
+      const n=Number(offset??4);
+      return 'UTC'+(n>=0?'+':'')+n;
     }
     function dateLabel(e,dt){
-      if(!Number.isNaN(dt))return new Date(dt).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
-      return e.date?String(e.date):'To be announced';
+      if(!Number.isNaN(dt)){
+        const shifted=new Date(dt+Number(e.timezoneOffset??4)*3600000);
+        return shifted.toLocaleDateString('en-GB',{timeZone:'UTC',day:'numeric',month:'short',year:'numeric'});
+      }
+      return 'To be announced';
     }
-    function timeLabel(dt){
-      return !Number.isNaN(dt)?new Date(dt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'To be announced';
+    function timeLabel(dt,offset=4){
+      if(Number.isNaN(dt))return 'To be announced';
+      const shifted=new Date(dt+Number(offset??4)*3600000);
+      return shifted.toLocaleTimeString('en-US',{timeZone:'UTC',hour:'numeric',minute:'2-digit',hour12:true})+' · '+timezoneLabel(offset);
     }
     function renderCard(e,isUpcoming){
       const state=stateOf(e),registered=!!e.registeredByCurrentUser;
@@ -68,10 +79,11 @@
         :(isUpcoming
           ?(registered?'<button class="btn" type="button" disabled>Registered</button>':'<button class="btn primary" type="button" data-register-id="'+escapeHtml(e.id)+'">Register →</button>')
           :'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Open →</a>');
-      const countText=state.active
-        ?Math.max(0,Number(e.entryCount||0))+(Number(e.entryCount||0)===1?' person entered':' people entered')
-        :(!state.finished?Math.max(0,Number(e.registrationCount||0))+(Number(e.registrationCount||0)===1?' person registered':' people registered'):'');
-      return '<article class="exam-card"><div class="exam-card-head"><h2>'+escapeHtml(title)+'</h2>'+(desc?'<p>'+escapeHtml(desc)+'</p>':'')+'</div><div class="exam-meta"><div class="exam-meta-item"><span>Date</span><strong>'+escapeHtml(dateLabel(e,state.dt))+'</strong></div><div class="exam-meta-item"><span>Start time</span><strong>'+escapeHtml(timeLabel(state.dt))+'</strong></div><div class="exam-meta-item"><span>Duration</span><strong>'+escapeHtml(duration)+'</strong></div><div class="exam-meta-item"><span>Questions</span><strong>'+questionCount+'</strong></div></div><div class="exam-card-footer">'+(countText?'<span class="exam-participation-count">'+escapeHtml(countText)+'</span>':'')+'<div class="exam-card-actions">'+action+'</div></div></article>';
+      const count=isUpcoming?Math.max(0,Number(e.registrationCount||0)):Math.max(0,Number(e.entryCount||0));
+      const countText=isUpcoming
+        ?count+(count===1?' person registered':' people registered')
+        :count+(count===1?' person participated':' people participated');
+      return '<article class="exam-card"><div class="exam-card-head"><h2>'+escapeHtml(title)+'</h2>'+(desc?'<p>'+escapeHtml(desc)+'</p>':'')+'</div><div class="exam-meta"><div class="exam-meta-item"><span>Date</span><strong>'+escapeHtml(dateLabel(e,state.dt))+'</strong></div><div class="exam-meta-item"><span>Start time</span><strong>'+escapeHtml(timeLabel(state.dt,e.timezoneOffset??4))+'</strong></div><div class="exam-meta-item"><span>Duration</span><strong>'+escapeHtml(duration)+'</strong></div><div class="exam-meta-item"><span>Questions</span><strong>'+questionCount+'</strong></div></div><div class="exam-card-footer">'+(countText?'<span class="exam-participation-count">'+escapeHtml(countText)+'</span>':'')+'<div class="exam-card-actions">'+action+'</div></div></article>';
     }
     function renderSection(label,exams,isUpcoming){
       const emptyText=isUpcoming?'No upcoming exams.':'No available exams yet.';

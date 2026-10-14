@@ -99,11 +99,19 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     const questions=Array.isArray(exam.questions)?exam.questions:[];
     const durationMinutes=Number(exam.durationMinutes||60);
     const examDateMs=exam.date?Date.parse(String(exam.date).replace(' ','T')):NaN;
-    const examFinished=String(exam.status||'').toLowerCase()==='finished'||(!Number.isNaN(examDateMs)&&examDateMs+durationMinutes*60000<=Date.now());
-    const examActive=!examFinished&&(!Number.isNaN(examDateMs)?examDateMs<=Date.now():String(exam.status||'').toLowerCase()==='active');
+    const availableAtMs=exam.availableAt?Date.parse(String(exam.availableAt).replace(' ','T')):examDateMs;
+    const timezoneOffset=Number(exam.timezoneOffset??4);
+    const examStatus=String(exam.status||'').toLowerCase();
+    const examFinished=examStatus==='finished'||(!Number.isNaN(examDateMs)&&examDateMs+durationMinutes*60000<=Date.now());
+    const examActive=!examFinished&&(!Number.isNaN(examDateMs)?examDateMs<=Date.now():examStatus==='active'||examStatus==='open');
+    const availabilityReached=examFinished||(!Number.isNaN(availableAtMs)?availableAtMs<=Date.now():['open','active','finished'].includes(examStatus));
     function examStartText(){
-      if(Number.isNaN(examDateMs))return 'This exam is not open yet.';
-      return 'This exam will open on '+new Date(examDateMs).toLocaleString()+' .';
+      if(Number.isNaN(availableAtMs))return 'This exam is not available yet.';
+      const off=Number(exam.availableTimezoneOffset??timezoneOffset);
+      const adjusted=new Date(availableAtMs+off*3600000);
+      const day=adjusted.toLocaleString('en-GB',{timeZone:'UTC',dateStyle:'medium'});
+      const clock=adjusted.toLocaleTimeString('en-US',{timeZone:'UTC',hour:'numeric',minute:'2-digit',hour12:true});
+      return 'This exam will become available on '+day+' at '+clock+' (UTC'+(off>=0?'+':'')+off+').';
     }
 
     async function writeExamSession(patch={}){
@@ -129,7 +137,16 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     function md(x){return richMarkdown(String(x||''))}
     function statement(q){return localized(q,'statement')||q.statementEn||q.statement||q.statementAz||q.text||''}
     function solution(q){return q.solution||q.solutionEn||q.solutionAz||''}
-    function metaText(){const bits=[questions.length+' questions',formatDuration(durationMinutes)+' time'];if(exam.date)bits.push(String(exam.date));return bits.join(' · ')}
+    function metaText(){
+      const bits=[questions.length+' questions',formatDuration(durationMinutes)+' time'];
+      if(!Number.isNaN(examDateMs)){
+        const adjusted=new Date(examDateMs+timezoneOffset*3600000);
+        const day=adjusted.toLocaleDateString('en-GB',{timeZone:'UTC',day:'numeric',month:'short',year:'numeric'});
+        const clock=adjusted.toLocaleTimeString('en-US',{timeZone:'UTC',hour:'numeric',minute:'2-digit',hour12:true});
+        bits.push(day+' · '+clock+' (UTC'+(timezoneOffset>=0?'+':'')+timezoneOffset+')');
+      }
+      return bits.join(' · ');
+    }
     function questionHtml(q,i,withSolution){
       const sol=solution(q);
       return '<section class="exam-question" data-question="'+(i+1)+'"><div class="problem-number">Problem '+(i+1)+(q.code?' · '+escapeHtml(q.code):'')+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+escapeHtml(q.imageUrl)+'" alt="Problem '+(i+1)+'">':'')+'<div class="question-text">'+md(statement(q))+'</div>'+(withSolution?'<div class="exam-solution"><button class="btn">Show solution</button><div class="exam-solution-body">'+(sol?md(sol):'<div style="color:var(--muted)">No supplied solution.</div>')+'</div></div>':'')+'</section>';
@@ -150,6 +167,16 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       document.getElementById('review-back').onclick=()=>location.href='/exams.html';
       const host=document.getElementById('review-questions');bindSolutions(host);typesetMath(host);
     }
+    async function trackAvailableEntry(){
+      if(!user||!availabilityReached)return;
+      await markKarpExamEntry(id);
+      const enteredAt=new Date().toISOString();
+      if(examFinished&&!completed&&!reviewMode){
+        await writeExamSession({status:'archive-view',startedAt:enteredAt,entryAt:enteredAt,endedAt:enteredAt,exitAt:enteredAt,durationSeconds:0,exitObservedAt:enteredAt,exitReason:'archive-view',lastActivityAt:enteredAt});
+      }else if(!completed&&!reviewMode){
+        await writeExamSession({status:'entered',enteredAt,entryAt:enteredAt,lastActivityAt:enteredAt});
+      }
+    }
     function renderArchive(){
       clearTrackers();
       setKarpActivity({page:'Exam Archive',label:'Viewing past exam',detail:title,question:null});
@@ -157,6 +184,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       const host=document.getElementById('archive-questions');
       if(host)typesetMath(host);
     }
+    await trackAvailableEntry();
     if(completed||reviewMode){
       if(!user){document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM REVIEW</div><h1>Sign in required</h1><p>Sign in to review your completed exam.</p><div class="exam-enter-actions"><a class="btn primary" href="/login.html">Sign in</a><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';return}
       renderReview();return;
@@ -165,15 +193,15 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       renderArchive();
       return;
     }
-    if(!registered && !examActive){
+    if(!registered && !availabilityReached){
       document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>Register to enter</h1><p>'+ (examActive?'Register for this exam first.':'Register now to reserve your place. You can start only when the exam opens.') +'</p><div class="exam-enter-actions"><button class="btn primary" id="register-now">Register</button><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';
       document.getElementById('register-now').onclick=async()=>{if(!(await ensureSignedIn('Register for this exam','Sign in to register for this exam.')))return;try{await api('/api/exams/'+encodeURIComponent(id)+'/register',{method:'POST'});location.reload()}catch(e){toast(e.message)}};
       return;
     }
 
-    if(!examActive){
-      const closedTitle=examFinished?'Exam closed':'Exam not open yet';
-      const closedText=examFinished?'This exam is no longer accepting entries.':examStartText();
+    if(!availabilityReached){
+      const closedTitle='Exam not available yet';
+      const closedText=examStartText();
       document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>'+closedTitle+'</h1><p>'+escapeHtml(closedText)+'</p><div class="exam-enter-actions"><a class="btn primary" href="/exams.html">Back to Exams</a></div></section></main>';
       return;
     }
