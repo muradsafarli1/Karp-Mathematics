@@ -72,7 +72,7 @@ function parseExamInstant(value,offset=4){
       const questionCount=Array.isArray(e.questions)?e.questions.length:0;
       const completed=!!e.completedByCurrentUser;
       const action=isUpcoming
-        ?'<span class="exam-upcoming-label">Upcoming</span>'
+        ?''
         :(completed?'<button class="btn" type="button" disabled>Completed</button>':'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Open →</a>');
       const count=Math.max(0,Number(e.participatedCount||0));
       const countText=!isUpcoming
