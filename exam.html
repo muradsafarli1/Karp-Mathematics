@@ -150,11 +150,22 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       document.getElementById('review-back').onclick=()=>location.href='/exams.html';
       const host=document.getElementById('review-questions');bindSolutions(host);typesetMath(host);
     }
+    function renderArchive(){
+      clearTrackers();
+      setKarpActivity({page:'Exam Archive',label:'Viewing past exam',detail:title,question:null});
+      document.body.innerHTML='<main class="exam-page"><section class="exam-hero"><div class="exam-hero-inner"><div class="eyebrow">KARP · EXAM ARCHIVE</div><h1>'+escapeHtml(title)+'</h1><div class="exam-hero-meta">'+escapeHtml(metaText()+' · Past exam')+'</div></div></section><section class="exam-review-wrap"><section class="exam-review"><div class="exam-review-head"><div class="exam-review-kicker">PAST EXAM</div><a class="btn" href="/exams.html">← Back to Exams</a></div><div id="archive-questions">'+questions.map((q,i)=>questionHtml(q,i,false)).join('')+'</div></section></section></main>';
+      const host=document.getElementById('archive-questions');
+      if(host)typesetMath(host);
+    }
     if(completed||reviewMode){
       if(!user){document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM REVIEW</div><h1>Sign in required</h1><p>Sign in to review your completed exam.</p><div class="exam-enter-actions"><a class="btn primary" href="/login.html">Sign in</a><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';return}
       renderReview();return;
     }
-    if(!registered){
+    if(examFinished){
+      renderArchive();
+      return;
+    }
+    if(!registered && !examActive){
       document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>Register to enter</h1><p>'+ (examActive?'Register for this exam first.':'Register now to reserve your place. You can start only when the exam opens.') +'</p><div class="exam-enter-actions"><button class="btn primary" id="register-now">Register</button><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';
       document.getElementById('register-now').onclick=async()=>{if(!(await ensureSignedIn('Register for this exam','Sign in to register for this exam.')))return;try{await api('/api/exams/'+encodeURIComponent(id)+'/register',{method:'POST'});location.reload()}catch(e){toast(e.message)}};
       return;
@@ -164,6 +175,10 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       const closedTitle=examFinished?'Exam closed':'Exam not open yet';
       const closedText=examFinished?'This exam is no longer accepting entries.':examStartText();
       document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>'+closedTitle+'</h1><p>'+escapeHtml(closedText)+'</p><div class="exam-enter-actions"><a class="btn primary" href="/exams.html">Back to Exams</a></div></section></main>';
+      return;
+    }
+    if(!user){
+      document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>Sign in required</h1><p>This exam is available now. Sign in to begin; registration is not required.</p><div class="exam-enter-actions"><a class="btn primary" href="/login.html">Sign in</a><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';
       return;
     }
 
