@@ -504,8 +504,8 @@ function karpEnsureAuthUIStyles(){
   const style=document.createElement('style');style.id='karp-auth-ui-styles';
   style.textContent=`
     .karp-auth-gate{min-height:100vh;display:grid;place-items:center;box-sizing:border-box;padding:28px;background:#f7f7f5!important;color:#17191c!important}
-    .karp-auth-card{width:min(480px,100%);box-sizing:border-box;padding:38px 34px 32px;border:1px solid #d9dad8;border-radius:22px;background:#f7f7f5!important;color:#17191c!important;text-align:center;box-shadow:0 16px 48px rgba(20,24,30,.055)}
-    .karp-auth-card .karp-math-avatar{width:94px;height:94px;margin:0 auto 17px}
+    .karp-auth-card{width:min(520px,100%);box-sizing:border-box;padding:40px 36px 34px;border:1px solid #d9dad8;border-radius:24px;background:#f7f7f5!important;color:#17191c!important;text-align:center;box-shadow:0 16px 48px rgba(20,24,30,.055)}
+    .karp-auth-card .karp-math-avatar{width:124px;height:124px;margin:0 auto 20px}
     .karp-auth-kicker{font-size:10px;letter-spacing:2.2px;font-weight:800;color:#777d83;margin:0 0 13px}
     .karp-auth-card h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(30px,4vw,40px);line-height:1.08;letter-spacing:-1.3px;margin:0 0 13px;color:#17191c}
     .karp-auth-card p{font-size:13px;line-height:1.7;color:#666b73;margin:0 auto;max-width:38ch}
@@ -513,7 +513,7 @@ function karpEnsureAuthUIStyles(){
     .karp-auth-actions .btn{min-width:130px;justify-content:center}
     .karp-auth-card .karp-auth-back{display:inline-block;margin-top:20px;font-size:11px;color:#666b73;text-decoration:none}
     .auth-action-card .karp-math-avatar{width:68px;height:68px;margin:0 auto 14px}
-    @media(max-width:520px){.karp-auth-card{padding:30px 22px 26px}.karp-auth-card .karp-math-avatar{width:82px;height:82px}}
+    @media(max-width:520px){.karp-auth-card{padding:30px 22px 26px}.karp-auth-card .karp-math-avatar{width:108px;height:108px}}
   `;
   document.head.appendChild(style);
 }
@@ -522,19 +522,8 @@ function renderKarpSignInGate(title='Sign in',message='Sign in or create a KARP 
   document.body.innerHTML='<main class="karp-auth-gate"><section class="karp-auth-card">'+karpMathAvatarMarkup()+'<div class="karp-auth-kicker">KARP MATHEMATICS</div><h1>'+escapeHtml(title)+'</h1><p>'+escapeHtml(message)+'</p><div class="karp-auth-actions"><a class="btn primary" href="/login.html">Sign in</a><a class="btn" href="/signup.html">Create account</a></div><a class="karp-auth-back" href="'+escapeHtml(backUrl)+'">Back</a></section></main>';
 }
 function showAuthPrompt(title='Sign in to continue',message='Create an account or sign in to use this feature.'){
-  karpEnsureAuthUIStyles();
-  let box=document.getElementById('auth-action-modal');
-  if(!box){
-    box=document.createElement('div');box.id='auth-action-modal';
-    box.innerHTML='<div class="auth-action-backdrop"></div><div class="auth-action-card"><button class="auth-action-close" aria-label="Close">×</button>'+karpMathAvatarMarkup()+'<div class="eyebrow">KARP MATHEMATICS</div><h2></h2><p></p><div class="auth-action-buttons"><a class="btn primary" href="/login.html">Sign in</a><a class="btn" href="/signup.html">Create account</a></div></div>';
-    document.body.appendChild(box);
-    const close=()=>box.classList.remove('open');
-    box.querySelector('.auth-action-backdrop').onclick=close;
-    box.querySelector('.auth-action-close').onclick=close;
-  }
-  box.querySelector('h2').textContent=title;
-  box.querySelector('p').textContent=message;
-  box.classList.add('open');
+  const returnTo=location.pathname+location.search+location.hash;
+  renderKarpSignInGate('Sign in',message||'Sign in or create a KARP account to continue.',returnTo);
 }
 async function ensureSignedIn(title,message){
   const u=await me();
