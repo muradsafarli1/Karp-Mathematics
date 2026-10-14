@@ -397,10 +397,17 @@ function aboutEditorCard(card,i){return '<div class="question-editor-row about-e
 function aboutFormHtml(x){const cards=Array.isArray(x.cards)&&x.cards.length?x.cards:aboutDefaultCards();return '<div class="editor-card"><div class="tag">EDIT ABOUT US</div><div class="editor-section"><div class="editor-section-head"><div><h3>Founder section</h3><p>One wide box above the four About Us boxes. Upload the image directly from your computer.</p></div></div><div class="about-founder-admin-preview"><div class="about-founder-file-wrap"><img id="founder-image-preview" src="'+esc(x.founderImage||'')+'" alt="Founder preview" style="'+(x.founderImage?'display:block':'display:none')+'"><div id="founder-image-placeholder" class="about-founder-placeholder" style="'+(x.founderImage?'display:none':'display:grid')+'">Founder image preview</div></div><div class="field"><label>Founder image file</label><input class="input" id="f-founderImage-file" type="file" accept="image/*"><span id="founder-image-status" class="admin-upload-status">'+(x.founderImage?'Current image saved. Choose a new file to replace it.':'Choose an image file from your computer.')+'</span></div></div><div class="formgrid"><div class="field"><label>Founder name</label><input class="input" id="f-founderName" value="'+esc(x.founderName||'')+'" placeholder="Murad Safarli"></div><div class="field"><label>Large heading</label><input class="input" id="f-founderTitle" value="'+esc(x.founderTitle||'')+'" placeholder="About KARP"></div></div><div class="field"><label>Text under the large heading</label><textarea class="textarea" id="f-founderText" rows="7" placeholder="Write the About KARP text here...">'+esc(x.founderText||'')+'</textarea></div><input type="hidden" id="f-founderImage" value="'+esc(x.founderImage||'')+'"></div><div class="editor-section"><div class="editor-section-head"><div><h3>About boxes</h3><p>Edit the four boxes below or add more if needed.</p></div><button class="btn" type="button" onclick="addAboutBox()">+ Add Box</button></div><div id="about-box-editor">'+cards.map(aboutEditorCard).join('')+'</div></div><button class="btn primary" onclick="saveItem()">Save About</button> <button class="btn" onclick="syncCurrent();state.editing=null;render()">Cancel</button></div>'}
 
 function examScheduleParts(value,offset=4){
-  const parsed=Date.parse(String(value||'').replace(' ','T'));
+  const raw=String(value||'').trim(),pad=n=>String(n).padStart(2,'0');
+  if(!raw)return {date:'',hour:'10',minute:'00',period:'AM'};
+  const wall=raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if(wall){
+    const h24=Number(wall[4]||0),h=h24%12||12;
+    return {date:wall[1]+'-'+wall[2]+'-'+wall[3],hour:String(h),minute:pad(Number(wall[5]||0)),period:h24>=12?'PM':'AM'};
+  }
+  const parsed=Date.parse(raw);
   if(Number.isNaN(parsed))return {date:'',hour:'10',minute:'00',period:'AM'};
   const shifted=new Date(parsed+Number(offset??4)*3600000);
-  const h24=shifted.getUTCHours(),h=h24%12||12,pad=n=>String(n).padStart(2,'0');
+  const h24=shifted.getUTCHours(),h=h24%12||12;
   return {date:shifted.toISOString().slice(0,10),hour:String(h),minute:pad(shifted.getUTCMinutes()),period:h24>=12?'PM':'AM'};
 }
 function timezoneOptions(selected=4){
@@ -479,7 +486,25 @@ function syncAbout(){
 }
 function addAboutBox(){syncAbout();state.editing.cards.push({tag:'',title:'',text:'',imageUrl:'',showImage:false});render()}
 function removeAboutBox(i){syncAbout();state.editing.cards.splice(i,1);if(!state.editing.cards.length)state.editing.cards.push({tag:'',title:'',text:'',imageUrl:'',showImage:false});render()}
-function syncCurrent(){if(!state.editing)return;if(state.type==='about'){syncAbout();return}document.querySelectorAll('[id^="f-"]').forEach(e=>{state.editing[e.id.slice(2)]=e.type==='number'?Number(e.value):e.value});if(state.type==='exams')state.editing.questions=collectQuestions('exam');if(state.type==='contests')state.editing.problems=collectQuestions('contest')}
+function syncCurrent(){
+  if(!state.editing)return;
+  if(state.type==='about'){syncAbout();return}
+  document.querySelectorAll('[id^="f-"]').forEach(e=>{state.editing[e.id.slice(2)]=e.type==='number'?Number(e.value):e.value});
+  if(state.type==='exams'){
+    const startDate=document.getElementById('f-startDate')?.value||'';
+    const startOffset=Number(document.getElementById('f-startTimezoneOffset')?.value??state.editing.timezoneOffset??4);
+    const startISO=examScheduleISO('start',startOffset);
+    state.editing.date=startDate&&startISO?startISO:'';
+    state.editing.timezoneOffset=startOffset;
+    const availableDate=document.getElementById('f-availableDate')?.value||'';
+    const availableOffset=Number(document.getElementById('f-availableTimezoneOffset')?.value??state.editing.availableTimezoneOffset??startOffset);
+    const availableISO=examScheduleISO('available',availableOffset);
+    state.editing.availableAt=availableDate&&availableISO?availableISO:state.editing.date;
+    state.editing.availableTimezoneOffset=availableOffset;
+    state.editing.questions=collectQuestions('exam');
+  }
+  if(state.type==='contests')state.editing.problems=collectQuestions('contest');
+}
 function addQuestion(){syncCurrent();state.editing.questions??=[];state.editing.questions.push({id:null,code:'',statementEn:'',statementAz:'',imageUrl:'',solution:''});render();setTimeout(()=>document.getElementById('question-editor')?.lastElementChild?.scrollIntoView({behavior:'smooth'}),50)}
 function addContestProblem(){const y=window.scrollY;syncCurrent();state.editing.problems??=[];const n=state.editing.problems.length;state.editing.problems.push({id:null,code:'P'+(n+1),statementEn:'',statementAz:'',imageUrl:''});render();requestAnimationFrame(()=>window.scrollTo(0,y))}
 function setContestProblemCount(value){const target=Math.max(0,Math.floor(Number(value)||0));const y=window.scrollY;syncCurrent();state.editing.problems??=[];while(state.editing.problems.length<target){const n=state.editing.problems.length;state.editing.problems.push({id:null,code:(n<6?'A':'N')+(n+1),statementEn:'',statementAz:'',imageUrl:''})}if(state.editing.problems.length>target)state.editing.problems.length=target;render();requestAnimationFrame(()=>window.scrollTo(0,y))}
