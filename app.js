@@ -348,12 +348,12 @@ async function api(path, opts = {}) {
     const snap=await getDocs(collection(db,'exams'));
     const exams=snap.docs.map(x=>({id:x.id,...x.data()}));
     if(uid){
-      const regEntries=await Promise.all(exams.map(async exam=>{
-        const reg=await getDoc(doc(db,'exams',exam.id,'registrations',uid));
-        return [exam.id,reg.exists()];
+      const statusEntries=await Promise.all(exams.map(async exam=>{
+        const submission=await getDoc(doc(db,'exams',exam.id,'submissions',uid));
+        return [exam.id,submission.exists()];
       }));
-      const registeredById=new Map(regEntries);
-      return {exams:exams.map(exam=>({...publicExam(exam),registeredByCurrentUser:registeredById.get(exam.id)===true}))};
+      const completedById=new Map(statusEntries);
+      return {exams:exams.map(exam=>({...publicExam(exam),completedByCurrentUser:completedById.get(exam.id)===true}))};
     }
     return {exams:exams.map(publicExam)};
   }
@@ -374,12 +374,12 @@ async function api(path, opts = {}) {
     const s=await getDoc(doc(db,'exams',em[1]));
     if(!s.exists())throw new Error('Exam not found');
     const exam=publicExam({id:s.id,...s.data()});
-    let registered=false;
+    let completedByCurrentUser=false;
     if(uid){
-      const reg=await getDoc(doc(db,'exams',em[1],'registrations',uid));
-      registered=reg.exists();
+      const submission=await getDoc(doc(db,'exams',em[1],'submissions',uid));
+      completedByCurrentUser=submission.exists();
     }
-    return {exam,registered};
+    return {exam,completedByCurrentUser};
   }
   const er=path.match(/^\/api\/exams\/([^/]+)\/(register|submit)$/);
   if(er&&method==='POST'){
@@ -401,17 +401,21 @@ async function api(path, opts = {}) {
       return {ok:true};
     }
     const subRef=doc(db,'exams',er[1],'submissions',uid);
-    await setDoc(subRef,{
-      userId:uid,
-      userName:user.name,
-      answers:body.answers||{},
-      startedAt:body.startedAt||null,
-      endedAt:body.endedAt||new Date().toISOString(),
-      submittedAt:body.submittedAt||new Date().toISOString(),
-      attemptId:body.attemptId||null,
-      durationSeconds:Math.max(0,Number(body.durationSeconds||0)),
-      reason:body.reason||'manual'
-    },{merge:true});
+    await runTransaction(db,async tx=>{
+      const existing=await tx.get(subRef);
+      if(existing.exists())throw new Error('You have already completed this exam.');
+      tx.set(subRef,{
+        userId:uid,
+        userName:user.name,
+        answers:body.answers||{},
+        startedAt:body.startedAt||null,
+        endedAt:body.endedAt||new Date().toISOString(),
+        submittedAt:body.submittedAt||new Date().toISOString(),
+        attemptId:body.attemptId||null,
+        durationSeconds:Math.max(0,Number(body.durationSeconds||0)),
+        reason:body.reason||'manual'
+      });
+    });
     return {ok:true};
   }
   const am=path.match(/^\/api\/admin\/(problems|articles|contests|videos|exams|meetings|about)(?:\/([^/]+))?$/);
