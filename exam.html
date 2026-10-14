@@ -100,7 +100,6 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     const data=await api('/api/exams/'+encodeURIComponent(id));
     const exam=data.exam;
     if(!exam){location.href='/exams.html';return}
-    const registered=!!data.registered;
     const history=reviewMode&&user?(await api('/api/exams/history').catch(()=>({history:[]}))).history||[]:[];
     const previous=history.find(x=>x.examId===id);
     const title=localized(exam,'title')||'Exam';
@@ -175,16 +174,13 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       document.getElementById('review-back').onclick=()=>location.href='/exams.html';
       const host=document.getElementById('review-questions');bindSolutions(host);typesetMath(host);
     }
-    if(reviewMode){
-      if(!user){document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM REVIEW</div><h1>Sign in required</h1><p>Sign in to review your completed exam.</p><div class="exam-enter-actions"><a class="btn primary" href="/login.html">Sign in</a><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';return}
-      renderReview();return;
+    function renderFinishedOnly(){
+      clearInterval(timer);clearTrackers();sessionCleanup?.();sessionCleanup=null;
+      const finishedTitle=localized(exam,'title')||'Exam';
+      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top exam-finished-only-top"><div></div><h1>'+escapeHtml(finishedTitle)+'</h1><div></div></header></main>';
+      if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
     }
-    if(!registered && !availabilityReached){
-      document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>Register to enter</h1><p>Register now to reserve your place. You can start when the exam becomes available.</p><div class="exam-enter-actions"><button class="btn primary" id="register-now">Register</button><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';
-      document.getElementById('register-now').onclick=async()=>{if(!(await ensureSignedIn('Register for this exam','Sign in to register for this exam.')))return;try{await api('/api/exams/'+encodeURIComponent(id)+'/register',{method:'POST'});location.reload()}catch(e){toast(e.message)}};
-      return;
-    }
-
+    if(reviewMode||data.completedByCurrentUser){renderFinishedOnly();return}
     if(!availabilityReached){
       const closedTitle='Exam not available yet';
       const closedText=examStartText();
@@ -198,7 +194,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
 
     const storageKey='able_exam_'+id;
     let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{}
-    if(saved.submitted){localStorage.removeItem(storageKey);saved={}}
+    if(saved.submitted){renderFinishedOnly();return}
     let end=Number(saved.end)||0;
     currentAttemptId=saved.attemptId||null;
     const hasStarted=!!saved.startedAt&&!saved.submitted&&end>Date.now();
@@ -240,8 +236,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
         await writeExamSession({status:'completed',attemptId:currentAttemptId,startedAt:started,entryAt:started,endedAt,exitAt:endedAt,exitObservedAt:null,durationSeconds,lastActivityAt:submittedAt,submittedAt,exitReason:reason,lastKnownRemainingMs:0});
         localStorage.setItem(storageKey,JSON.stringify({startedAt:started,end,submitted:true,attemptId:currentAttemptId}));
         setKarpActivity({page:'Exam',label:'Exam finished',detail:title,question:null});
-        if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
-        location.href='/exam.html?id='+encodeURIComponent(id)+'&review=1';
+        renderFinishedOnly();
       }catch(e){finished=false;toast(e.message||'Could not submit the exam.')}}
     async function enterExamFullscreen(){
       const el=document.documentElement;
@@ -261,10 +256,10 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       clearTrackers();
       sessionCleanup?.();
       sessionCleanup=startExamSessionTracking();
-      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top"><div class="exam-active-lang">'+languageSwitch()+'</div><div class="exam-active-title"><div class="exam-active-kicker">KARP · EXAM</div><h1>'+escapeHtml(title)+'</h1></div><div class="exam-active-timer" id="exam-timer">'+timerText(end-Date.now())+'</div></header><div class="exam-active-body"><section class="exam-active-paper"><div id="active-questions">'+questions.map((q,i)=>questionHtml(q,i,false)).join('')+'</div><div class="exam-active-actions"><button class="btn primary" id="finish-exam">Finish Exam</button></div></section></div></main>';
+      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top"><div class="exam-active-title"><h1>'+escapeHtml(localized(exam,'title')||'Exam')+'</h1></div><div class="exam-active-timer" id="exam-timer">'+timerText(end-Date.now())+'</div><div class="exam-active-lang">'+languageSwitch()+'</div></header><div class="exam-active-body"><section class="exam-active-paper"><div id="active-questions">'+questions.map((q,i)=>questionHtml(q,i,false)).join('')+'</div><div class="exam-active-actions"><button class="btn primary" id="finish-exam">Finish Exam</button></div></section></div></main>';
       document.getElementById('finish-exam').onclick=()=>{if(confirm('Finish this exam now?'))finishExam('manual')};
       bindLanguageSwitch(()=>renderActive());
-      setKarpActivity({page:'Exam',label:'Taking exam',detail:title,question:1});
+      setKarpActivity({page:'Exam',label:'Taking exam',detail:localized(exam,'title')||'Exam',question:1});
       typesetMath(document.getElementById('active-questions'));installActivity();
     }
     function timerText(ms){const s=Math.max(0,Math.ceil(ms/1000)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
@@ -334,18 +329,23 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
 /* Fullscreen exam with normal page scrolling. */
 html,body{overflow:auto!important;height:auto!important}
 .exam-active-shell{min-height:100vh!important;background:#f7f7f5!important;color:#17191c!important;overflow:visible!important}
-.exam-active-top{position:sticky!important;top:0!important;z-index:20!important;display:grid!important;grid-template-columns:auto 1fr auto!important;align-items:center!important;gap:18px!important;width:100%!important;padding:16px 24px!important;background:#f7f7f5!important;border-bottom:1px solid #d9dad8!important}
-.exam-active-lang{justify-self:start!important;grid-column:1!important;grid-row:1!important}
-.exam-active-title{grid-column:2!important;grid-row:1!important}
-.exam-active-timer{grid-column:3!important;grid-row:1!important;color:#17191c!important}
+.exam-active-top{position:sticky!important;top:0!important;z-index:20!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;align-items:center!important;gap:18px!important;width:100%!important;padding:16px 24px!important;background:#f7f7f5!important;border-bottom:1px solid #d9dad8!important}
+.exam-active-title{grid-column:1!important;grid-row:1!important;justify-self:start!important;min-width:0!important}
+.exam-active-title h1{font-size:23px!important;line-height:1.15!important;letter-spacing:-.6px!important;margin:0!important}
+.exam-active-timer{grid-column:2!important;grid-row:1!important;justify-self:center!important;color:#17191c!important}
+.exam-active-lang{justify-self:end!important;grid-column:3!important;grid-row:1!important}
+.exam-finished-only-top{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)!important}
+.exam-finished-only-top h1{grid-column:2!important;grid-row:1!important;justify-self:center!important;text-align:center!important;font:800 clamp(30px,5vw,58px)/1.1 'Space Grotesk'!important;letter-spacing:-1.8px!important;margin:0!important;max-width:100%!important}
+
 .exam-fullscreen-lock{display:none!important}
 .exam-active-body{background:#f7f7f5!important}
 .exam-active-paper{background:#f7f7f5!important;border:0!important;box-shadow:none!important;border-radius:0!important}
 @media(max-width:800px){
-  .exam-active-top{grid-template-columns:auto 1fr auto!important;gap:10px!important;padding:12px 14px!important}
-  .exam-active-title h1{font-size:18px!important}
+  .exam-active-top{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;gap:8px!important;padding:12px 14px!important}
+  .exam-active-title h1{font-size:16px!important;letter-spacing:-.3px!important}
   .exam-active-timer{font-size:28px!important}
   .exam-active-lang .language-switch{margin-bottom:0!important}
   .exam-active-lang .language-switch button{padding:6px 8px!important;font-size:10px!important}
+  .exam-finished-only-top h1{font-size:clamp(25px,7vw,38px)!important}
 }
 </style>
