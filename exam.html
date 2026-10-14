@@ -83,7 +83,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
 <body>
 <script>
 (async()=>{
-  const id=new URLSearchParams(location.search).get('id'),reviewMode=new URLSearchParams(location.search).get('review')==='1';
+  const params=new URLSearchParams(location.search),id=params.get('id'),reviewMode=params.get('review')==='1',previewMode=params.get('preview')==='1';
   if(!id){location.href='/exams.html';return}
   let timer=null,finished=false,fullscreenCleanup=null,activityCleanup=null,sessionCleanup=null,sessionStartedAt=null,examGuardCleanup=null,focusLost=false,currentAttemptId=null,lastTrackedQuestion=0;
 
@@ -184,8 +184,21 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top exam-finished-only-top"><div></div><h1>'+escapeHtml(finishedTitle)+'</h1><div></div></header></main>';
       if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
     }
+    function renderPreview(){
+      clearInterval(timer);clearTrackers();sessionCleanup?.();sessionCleanup=null;
+      const previewTitle=localized(exam,'title')||'Exam';
+      setKarpActivity({page:'Exam Preview',label:'Previewing exam',detail:previewTitle,question:null});
+      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top exam-review-top"><div class="exam-review-spacer"></div><h1>'+escapeHtml(previewTitle)+'</h1><div class="exam-review-lang">'+languageSwitch()+'</div></header><div class="exam-active-body"><section class="exam-active-paper"><div id="preview-questions">'+questions.map((q,i)=>questionHtml(q,i,false)).join('')+'</div></section></div></main>';
+      const host=document.getElementById('preview-questions');
+      bindLanguageSwitch(()=>renderPreview());
+      typesetMath(host);
+    }
+    if(previewMode){
+      if(!user||user.role!=='admin'){renderKarpSignInGate('Admin preview','Sign in with an admin account to preview this exam.','/exams.html');return}
+      renderPreview();return;
+    }
     if(reviewMode){
-      if(!user){document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><h1>Sign in required</h1><p>Sign in to review this exam.</p><div class="exam-enter-actions"><a class="btn primary" href="/login.html">Sign in</a></div></section></main>';return}
+      if(!user){renderKarpSignInGate('Sign in','Sign in or create a KARP account to review this exam.','/exams.html');return}
       renderReview();return;
     }
     if(data.completedByCurrentUser){renderFinishedOnly();return}
@@ -195,10 +208,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>'+closedTitle+'</h1><p>'+escapeHtml(closedText)+'</p><div class="exam-enter-actions"><a class="btn primary" href="/exams.html">Back to Exams</a></div></section></main>';
       return;
     }
-    if(!user){
-      document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><div class="eyebrow">KARP · EXAM</div><h1>Sign in required</h1><p>Sign in to begin this exam.</p><div class="exam-enter-actions"><a class="btn primary" href="/login.html">Sign in</a><a class="btn" href="/exams.html">Back to Exams</a></div></section></main>';
-      return;
-    }
+    if(!user){renderKarpSignInGate('Sign in','Sign in or create a KARP account to enter this exam.','/exams.html');return;}
 
     const storageKey='able_exam_'+id;
     let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{}
@@ -366,33 +376,19 @@ html,body{overflow:auto!important;height:auto!important}
 }
 </style>
 <style>
-.exam-review-top{
-  position:sticky!important;
-  display:flex!important;align-items:center!important;justify-content:center!important;
-  min-height:104px!important;padding:18px 180px!important;
-}
+.exam-review-top{position:sticky!important;display:block!important;min-height:122px!important;padding:22px 0!important;box-sizing:border-box!important}
 .exam-review-spacer{display:none!important}
 .exam-review-top h1{
-  flex:0 1 auto!important;width:max-content!important;
-  max-width:calc(100vw - 340px)!important;
-  text-align:center!important;
-  font:800 clamp(40px,5.8vw,74px)/1.04 'Space Grotesk'!important;
-  letter-spacing:-2.2px!important;margin:0!important;
-  overflow-wrap:anywhere!important;
+  position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;
+  width:max-content!important;max-width:calc(100vw - 460px)!important;text-align:center!important;
+  font:800 clamp(44px,5.5vw,78px)/1.04 'Space Grotesk'!important;letter-spacing:-2.5px!important;
+  margin:0!important;overflow-wrap:anywhere!important;
 }
-.exam-review-lang{
-  position:absolute!important;right:clamp(24px,3.5vw,52px)!important;
-  top:50%!important;transform:translateY(-50%)!important;
-  margin:0!important;justify-self:auto!important;
-}
+.exam-review-lang{position:absolute!important;right:clamp(30px,4vw,64px)!important;top:50%!important;transform:translateY(-50%)!important;margin:0!important}
 .exam-review-lang .language-switch{margin:0!important;white-space:nowrap!important}
 @media(max-width:800px){
-  .exam-review-top{min-height:78px!important;padding:12px 100px 12px 12px!important}
-  .exam-review-top h1{
-    max-width:calc(100vw - 132px)!important;
-    font-size:clamp(24px,5.5vw,40px)!important;
-    letter-spacing:-.9px!important;line-height:1.05!important;
-  }
+  .exam-review-top{min-height:82px!important;padding:12px 0!important}
+  .exam-review-top h1{max-width:calc(100vw - 238px)!important;font-size:clamp(25px,5.8vw,41px)!important;letter-spacing:-.9px!important;line-height:1.05!important}
   .exam-review-lang{right:12px!important}
   .exam-review-lang .language-switch button{padding:6px 7px!important;font-size:10px!important}
 }
