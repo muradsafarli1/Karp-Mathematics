@@ -143,7 +143,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
 
     function md(x){return richMarkdown(String(x||''))}
     function statement(q){return localized(q,'statement')||q.statementEn||q.statement||q.statementAz||q.text||''}
-    function solution(q){return q.solution||q.solutionEn||q.solutionAz||''}
+    function solution(q){return localized(q,'solution')||q.solution||q.solutionEn||q.solutionAz||''}
     function metaText(){
       const bits=[questions.length+' questions',formatDuration(durationMinutes)+' time'];
       if(!Number.isNaN(examDateMs)){
@@ -168,11 +168,15 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       activityCleanup=()=>window.removeEventListener('scroll',handler);
     }
     function renderReview(){
-      clearTrackers();setKarpActivity({page:'Exam Review',label:'Exam review',detail:title,question:null});
-      const completedAt=previous?.submittedAt?new Date(previous.submittedAt).toLocaleString():'Completed exam';
-      document.body.innerHTML='<main class="exam-page"><section class="exam-hero"><div class="exam-hero-inner"><div class="eyebrow">KARP · EXAM REVIEW</div><h1>'+escapeHtml(title)+'</h1><div class="exam-hero-meta">'+escapeHtml(metaText()+' · '+completedAt)+'</div></div></section><section class="exam-review-wrap"><section class="exam-review"><div class="exam-review-head"><div class="exam-review-kicker">COMPLETED EXAM</div><button class="btn" id="review-back">← Back to Exams</button></div><div id="review-questions">'+questions.map((q,i)=>questionHtml(q,i,true)).join('')+'</div></section></section></main>';
-      document.getElementById('review-back').onclick=()=>location.href='/exams.html';
-      const host=document.getElementById('review-questions');bindSolutions(host);typesetMath(host);
+      clearInterval(timer);clearTrackers();sessionCleanup?.();sessionCleanup=null;
+      const reviewTitle=localized(exam,'title')||'Exam';
+      const reviewQuestions=Array.isArray(previous?.questions)?previous.questions:questions;
+      setKarpActivity({page:'Exam Review',label:'Exam review',detail:reviewTitle,question:null});
+      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top exam-review-top"><div class="exam-review-spacer"></div><h1>'+escapeHtml(reviewTitle)+'</h1><div class="exam-review-lang">'+languageSwitch()+'</div></header><div class="exam-active-body"><section class="exam-active-paper"><div id="review-questions">'+reviewQuestions.map((q,i)=>questionHtml(q,i,true)).join('')+'</div></section></div></main>';
+      const host=document.getElementById('review-questions');
+      bindSolutions(host);
+      bindLanguageSwitch(()=>renderReview());
+      typesetMath(host);
     }
     function renderFinishedOnly(){
       clearInterval(timer);clearTrackers();sessionCleanup?.();sessionCleanup=null;
@@ -180,7 +184,11 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top exam-finished-only-top"><div></div><h1>'+escapeHtml(finishedTitle)+'</h1><div></div></header></main>';
       if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
     }
-    if(reviewMode||data.completedByCurrentUser){renderFinishedOnly();return}
+    if(reviewMode){
+      if(!user){document.body.innerHTML='<main class="exam-enter"><section class="exam-enter-card"><h1>Sign in required</h1><p>Sign in to review this exam.</p><div class="exam-enter-actions"><a class="btn primary" href="/login.html">Sign in</a></div></section></main>';return}
+      renderReview();return;
+    }
+    if(data.completedByCurrentUser){renderFinishedOnly();return}
     if(!availabilityReached){
       const closedTitle='Exam not available yet';
       const closedText=examStartText();
@@ -355,5 +363,24 @@ html,body{overflow:auto!important;height:auto!important}
   .exam-active-lang .language-switch{margin-bottom:0!important}
   .exam-active-lang .language-switch button{padding:6px 8px!important;font-size:10px!important}
   .exam-finished-only-top h1{font-size:clamp(25px,7vw,38px)!important}
+}
+</style>
+<style>
+.exam-review-top{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)!important;
+}
+.exam-review-spacer{grid-column:1!important;grid-row:1!important}
+.exam-review-top h1{
+  grid-column:2!important;grid-row:1!important;justify-self:center!important;
+  align-self:center!important;text-align:center!important;
+  font:800 clamp(30px,5vw,58px)/1.1 'Space Grotesk'!important;
+  letter-spacing:-1.8px!important;margin:0!important;max-width:100%!important;
+}
+.exam-review-lang{grid-column:3!important;grid-row:1!important;justify-self:end!important;align-self:center!important}
+.exam-review-lang .language-switch{margin-bottom:0!important}
+@media(max-width:800px){
+  .exam-review-top{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)!important;gap:8px!important;padding:12px 14px!important}
+  .exam-review-top h1{font-size:clamp(22px,5.5vw,36px)!important;letter-spacing:-.8px!important}
+  .exam-review-lang .language-switch button{padding:6px 7px!important;font-size:10px!important}
 }
 </style>
