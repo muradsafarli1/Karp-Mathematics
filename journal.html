@@ -62,7 +62,7 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
     let activeSession=null,activeBookId=current.id,sessionStarting=false;
 
     function makeId(){return crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2)}
-    const visitorId=(()=>{if(authUser?.uid)return authUser.uid;let id='';try{id=localStorage.getItem('karp_book_viewer_id')||''}catch{}if(!id){id=makeId();try{localStorage.setItem('karp_book_viewer_id',id)}catch{}}return 'guest_'+id})();
+    const visitorId=(()=>{if(authUser?.uid)return authUser.uid;let id='';try{id=localStorage.getItem('karp_journal_viewer_id')||''}catch{}if(!id){id=makeId();try{localStorage.setItem('karp_journal_viewer_id',id)}catch{}}return 'guest_'+id})();
     const visitor={uid:authUser?.uid||null,displayName:authUser?.displayName||'',email:authUser?.email||'',userType:authUser?.uid?'account':'guest',viewerId:visitorId};
 
     function esc(x){return escapeHtml(String(x??''))}
@@ -70,7 +70,7 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
       const b=document.createElement('button');
       b.className='karp-pdf-tab';b.dataset.id=journal.id;
       b.innerHTML='<span class="tab-title">'+esc(journal.title||journal.fileName||'Journal')+'</span><span class="tab-close" aria-label="Close">×</span>';
-      b.onclick=()=>openBook(journal.id);
+      b.onclick=()=>openJournal(journal.id);
       b.querySelector('.tab-close').onclick=e=>{e.stopPropagation();closeTab(journal.id)};
       return b;
     }
@@ -123,15 +123,15 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
     }
 
     async function countViewOnce(journal){
-      const bookRef=doc(db,'journalIssues',journal.id),viewRef=doc(db,'journalIssues',journal.id,'views',visitor.viewerId);
+      const journalRef=doc(db,'journalIssues',journal.id),viewRef=doc(db,'journalIssues',journal.id,'views',visitor.viewerId);
       await runTransaction(db,async tx=>{
         const existing=await tx.get(viewRef);
         if(existing.exists())return false;
-        const bookSnap=await tx.get(bookRef);
+        const bookSnap=await tx.get(journalRef);
         if(!bookSnap.exists())throw new Error('This journal is no longer available.');
         const data=bookSnap.data()||{};
         tx.set(viewRef,{viewerId:visitor.viewerId,uid:visitor.uid,displayName:visitor.displayName,email:visitor.email,createdAt:new Date().toISOString()});
-        tx.update(bookRef,{viewCount:Math.max(0,Number(data.viewCount||0))+1});
+        tx.update(journalRef,{viewCount:Math.max(0,Number(data.viewCount||0))+1});
         return true;
       });
     }
@@ -141,8 +141,8 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
       try{
         const id=makeId(),startedMs=Date.now(),startedAt=new Date(startedMs).toISOString();
         const ref=doc(db,'journalIssues',journal.id,'viewSessions',id);
-        await setDoc(ref,{sessionId:id,bookId:journal.id,viewerId:visitor.viewerId,uid:visitor.uid,displayName:visitor.displayName,email:visitor.email,userType:visitor.userType,startedAt,endedAt:null,durationSeconds:0,status:'active'},{merge:false});
-        activeSession={id,ref,bookId:journal.id,startedMs};
+        await setDoc(ref,{sessionId:id,journalId:journal.id,viewerId:visitor.viewerId,uid:visitor.uid,displayName:visitor.displayName,email:visitor.email,userType:visitor.userType,startedAt,endedAt:null,durationSeconds:0,status:'active'},{merge:false});
+        activeSession={id,ref,journalId:journal.id,startedMs};
         if(document.hidden||activeBookId!==journal.id)await stopViewSession();
       }catch(e){console.warn('Journal view session could not be recorded:',e)}
       finally{sessionStarting=false}
@@ -155,13 +155,13 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
       catch(e){console.warn('Journal view session end could not be recorded:',e)}
     }
     async function recordDownload(journal){
-      const id=makeId(),bookRef=doc(db,'journalIssues',journal.id),downloadRef=doc(db,'journalIssues',journal.id,'downloads',id);
+      const id=makeId(),journalRef=doc(db,'journalIssues',journal.id),downloadRef=doc(db,'journalIssues',journal.id,'downloads',id);
       await runTransaction(db,async tx=>{
-        const snap=await tx.get(bookRef);
+        const snap=await tx.get(journalRef);
         if(!snap.exists())throw new Error('This journal is no longer available.');
         const data=snap.data()||{};
-        tx.set(downloadRef,{downloadId:id,bookId:journal.id,viewerId:visitor.viewerId,uid:visitor.uid,displayName:visitor.displayName,email:visitor.email,userType:visitor.userType,fileName:journal.fileName||((journal.title||'KARP Journal')+'.pdf'),createdAt:new Date().toISOString()});
-        tx.update(bookRef,{downloadCount:Math.max(0,Number(data.downloadCount||0))+1});
+        tx.set(downloadRef,{downloadId:id,journalId:journal.id,viewerId:visitor.viewerId,uid:visitor.uid,displayName:visitor.displayName,email:visitor.email,userType:visitor.userType,fileName:journal.fileName||((journal.title||'KARP Journal')+'.pdf'),createdAt:new Date().toISOString()});
+        tx.update(journalRef,{downloadCount:Math.max(0,Number(data.downloadCount||0))+1});
       });
     }
     async function downloadBook(journal){
@@ -175,8 +175,8 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
       }catch(e){console.error(e);alert('Could not download this PDF. Please try again.')}
       finally{if(button)button.disabled=false}
     }
-    async function openBook(bookId){
-      const journal=journals.find(x=>x.id===bookId)||current;
+    async function openJournal(journalId){
+      const journal=journals.find(x=>x.id===journalId)||current;
       await stopViewSession();
       activeBookId=journal.id;
       addTab(journal);
@@ -213,7 +213,7 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
       tabs.querySelector('[data-id="'+CSS.escape(id)+'"]')?.remove();
       if(!wasActive)return;
       const next=[...tabStates.keys()].at(-1);
-      if(next)openBook(next);else location.replace('/journal.html');
+      if(next)openJournal(next);else location.replace('/journal.html');
     }
     function renderPicker(){
       const q=String(pickerSearch.value||'').trim().toLowerCase();
@@ -222,7 +222,7 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
         (x.coverImage?'<img src="'+esc(x.coverImage)+'" alt="">':'<div style="aspect-ratio:.707;background:#eee;display:grid;place-items:center">PDF</div>')+
         '<strong>'+esc(x.title||x.fileName||'Journal')+'</strong></button>').join('')||
         '<div style="grid-column:1/-1;padding:25px 0;color:#73777c;font-size:13px">No journals match your search.</div>';
-      pickerGrid.querySelectorAll('[data-pick]').forEach(x=>x.onclick=()=>openBook(x.dataset.pick));
+      pickerGrid.querySelectorAll('[data-pick]').forEach(x=>x.onclick=()=>openJournal(x.dataset.pick));
     }
     document.getElementById('pdf-new').onclick=()=>{
       picker.style.display='block';pickerSearch.value='';renderPicker();pickerSearch.focus();
@@ -240,7 +240,7 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
 
     const snapBooks=await getDocs(collection(db,'journalIssues'));
     journals=snapBooks.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
-    await openBook(current.id);
+    await openJournal(current.id);
   }catch(e){
     document.body.innerHTML='<div style="font:14px system-ui;padding:40px;text-align:center"><h2>Unable to open this journal</h2><p>'+escapeHtml(e.message||'Something went wrong.')+'</p><a href="/journal.html">← Back to Journals</a></div>';
   }
