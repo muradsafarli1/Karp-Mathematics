@@ -74,7 +74,7 @@ function parseExamInstant(value,offset=4){
       return shifted.toLocaleTimeString('en-US',{timeZone:'UTC',hour:'numeric',minute:'2-digit',hour12:true})+' (UTC'+(Number(offset??4)>=0?'+':'')+Number(offset??4)+')';
     }
     function renderCard(e,isUpcoming){
-      const state=stateOf(e);
+      const state=stateOf(e),registered=!!e.registeredByCurrentUser;
       const title=localized(e,'title')||'Exam',desc=localized(e,'description')||'';
       const durationMinutes=Number(e.durationMinutes||60);
       const durationLabel=durationMinutes>=60?(Math.floor(durationMinutes/60)+(durationMinutes%60?'h '+(durationMinutes%60)+'m':'h')):(durationMinutes+' min');
@@ -82,16 +82,19 @@ function parseExamInstant(value,offset=4){
       const completed=!!e.completedByCurrentUser;
       const previewAction=isAdmin?'<a class="btn exam-preview-btn" target="_blank" rel="noopener" href="/exam.html?id='+encodeURIComponent(e.id)+'&preview=1">Preview</a>':'';
       const action=isUpcoming
-        ?previewAction
+        ?(previewAction+(registered?'<button class="btn" type="button" disabled>Registered</button>':'<button class="btn primary" type="button" data-register-id="'+escapeHtml(e.id)+'">Register →</button>'))
         :(previewAction+(completed?'<a class="btn" href="/exam.html?id='+encodeURIComponent(e.id)+'&review=1">Completed</a>':'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Open →</a>'));
-      const count=Math.max(0,Number(e.participatedCount||0));
-      const countText=!isUpcoming&&count>0?count+(count===1?' person participated':' people participated'):'';
+      const count=isUpcoming?Math.max(0,Number(e.registrationCount||0)):Math.max(0,Number(e.participatedCount||0));
+      const countText=count>0
+        ?count+(count===1?(isUpcoming?' person registered':' person participated'):(isUpcoming?' people registered':' people participated'))
+        :'';
       const meta=isUpcoming
         ?'<div class="exam-meta"><div class="exam-meta-item"><span>Date</span><strong>'+escapeHtml(dateLabel(e,state.dt))+'</strong></div><div class="exam-meta-item"><span>Start time</span><strong>'+escapeHtml(timeLabel(state.dt,e.timezoneOffset??4))+'</strong></div><div class="exam-meta-item"><span>Duration</span><strong>'+escapeHtml(durationLabel)+'</strong></div><div class="exam-meta-item"><span>Questions</span><strong>'+questionCount+'</strong></div></div>'
         :'<div class="exam-meta prominent"><div class="exam-meta-item"><span>Duration</span><strong>'+escapeHtml(durationLabel)+'</strong></div><div class="exam-meta-item"><span>Questions</span><strong>'+questionCount+'</strong></div></div>';
       const startedText=dateLabel(e,state.dt)+' · '+timeLabel(state.dt,e.timezoneOffset??4);
-      return '<article class="exam-card"><div class="exam-card-head"><h2>'+escapeHtml(title)+'</h2>'+(desc?'<p>'+escapeHtml(desc)+'</p>':'')+'</div>'+meta+'<div class="exam-card-footer"><div class="exam-card-footnote">'+(!isUpcoming?'<span>Started:</span><strong>'+escapeHtml(startedText)+'</strong>':'')+(countText?'<span>'+escapeHtml(countText)+'</span>':'')+'</div><div class="exam-card-actions">'+action+'</div></div></article>';
+      return '<article class="exam-card"><div class="exam-card-head"><h2>'+escapeHtml(title)+'</h2>'+(desc?'<p>'+escapeHtml(desc)+'</p>':'')+'</div>'+meta+'<div class="exam-card-footer"><div class="exam-card-footnote">'+(!isUpcoming?'<span>Started:</span><strong>'+escapeHtml(startedText)+'</strong>':'')+(countText?'<span class="exam-participation-count">'+escapeHtml(countText)+'</span>':'')+'</div><div class="exam-card-actions">'+action+'</div></div></article>';
     }
+
     function renderSection(label,exams,isUpcoming){
       const emptyText=isUpcoming?'No upcoming exams.':'No available exams yet.';
       return '<section class="exam-group"><div class="exam-section-heading"><h2>'+label+'</h2><span class="exam-section-count">'+exams.length+(exams.length===1?' exam':' exams')+'</span></div>'+(exams.length?'<div class="exam-grid">'+exams.map(e=>renderCard(e,isUpcoming)).join('')+'</div>':'<p class="exam-empty">'+emptyText+'</p>')+'</section>';
@@ -112,6 +115,14 @@ function parseExamInstant(value,offset=4){
     });
 
     shell('Exams','Exams','<main><section class="pagehero"><div class="wrap"><h1>Exams</h1></div></section><section class="section" style="padding-top:0!important"><div class="exams-wrap">'+renderSection('Upcoming',upcoming,true)+renderSection('Available',available,false)+'</div></section></main>');
+    window.registerAndOpen=async id=>{
+      if(!(await ensureSignedIn('Register for this exam','Sign in or create an account before registering for an exam.')))return;
+      try{
+        await api('/api/exams/'+encodeURIComponent(id)+'/register',{method:'POST'});
+        location.href='/exams.html';
+      }catch(e){toast(e.message)}
+    };
+    document.querySelectorAll('[data-register-id]').forEach(b=>b.onclick=()=>registerAndOpen(b.dataset.registerId));
   }catch(e){console.error(e);document.body.innerHTML='<div class="error-page"><h1>Unable to load exams</h1><p>'+escapeHtml(e.message)+'</p><a href="/">← Back to KARP</a></div>'}
 })();
 </script>
