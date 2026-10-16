@@ -673,3 +673,55 @@ body,.top,.footer,.hero,.pagehero,.section,.contest-page,.article-page,.account-
   background:#f7f7f5!important;
   border-top:0!important;
 }
+
+
+/* KARP — requested centered archive headings/search + tighter spacing */
+.problem-page .pagehero,
+.contest-page .pagehero,
+.articles-page .pagehero,
+.exams-page .pagehero,
+.videos-page .pagehero,
+.meetings-page .pagehero,
+.about-page .pagehero,
+.journal-page .journal-hero{
+  text-align:center!important;
+}
+.problem-page .pagehero .wrap,
+.contest-page .pagehero .wrap,
+.articles-page .pagehero .wrap,
+.exams-page .pagehero .wrap,
+.videos-page .videos-wrap,
+.meetings-page .meetings-wrap,
+.about-page .pagehero .wrap,
+.journal-page .journal-hero .wrap{
+  text-align:center!important;
+}
+.problem-page .problem-tools,
+.problem-page .toolbar,
+.articles-page .toolbar,
+.exams-page .toolbar,
+.videos-page .video-search,
+.meetings-page .toolbar{
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+.videos-page .video-search{
+  max-width:650px!important;
+}
+.problem-page .problem-tools{
+  justify-items:center!important;
+}
+.articles-page .cards,
+.exams-page .exam-grid,
+.videos-page .videos-grid,
+.meetings-page .meeting-grid{
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+.problem-page .pagehero{padding-bottom:18px!important}
+.articles-page .pagehero{padding-bottom:18px!important}
+.exams-wrap{padding-top:28px!important}
+.videos-wrap{padding-top:28px!important}
+.meetings-wrap{padding-top:28px!important}
+.about-page .pagehero{padding-bottom:18px!important}
+.journal-page .journal-hero{padding:34px 0 18px!important}
