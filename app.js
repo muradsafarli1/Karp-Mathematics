@@ -523,13 +523,13 @@ function karpEnsureAuthUIStyles(){
   `;
   document.head.appendChild(style);
 }
-function renderKarpSignInGate(title='Sign in',message='Sign in or create a KARP account to continue.',backUrl='/'){
+function renderKarpSignInGate(title='Sign in',message='Sign in or create an account to continue.',backUrl='/'){
   karpEnsureAuthUIStyles();
   document.body.innerHTML='<main class="karp-auth-gate"><section class="karp-auth-card">'+karpMathAvatarMarkup()+'<div class="karp-auth-kicker">KARP MATHEMATICS</div><h1>'+escapeHtml(title)+'</h1><p>'+escapeHtml(message)+'</p><div class="karp-auth-actions"><a class="btn primary" href="/login.html">Sign in</a><a class="btn" href="/signup.html">Create account</a></div><a class="karp-auth-back" href="'+escapeHtml(backUrl)+'">Back</a></section></main>';
 }
 function showAuthPrompt(title='Sign in to continue',message='Create an account or sign in to use this feature.'){
   const returnTo=location.pathname+location.search+location.hash;
-  renderKarpSignInGate('Sign in',message||'Sign in or create a KARP account to continue.',returnTo);
+  renderKarpSignInGate('Sign in',message||'Sign in or create an account to continue.',returnTo);
 }
 async function ensureSignedIn(title,message){
   const u=await me();
@@ -546,11 +546,11 @@ async function karpUserState(){
   const {collection,getDocs,doc,getDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
   const safeGetDocs=async(ref,label)=>{
     try{return await getDocs(ref)}
-    catch(err){console.warn('KARP account '+label+' unavailable:',err);return {docs:[]}}
+    catch(err){console.warn('Account '+label+' unavailable:',err);return {docs:[]}}
   };
   const safeGetDoc=async(ref,label)=>{
     try{return await getDoc(ref)}
-    catch(err){console.warn('KARP account '+label+' unavailable:',err);return {exists:()=>false,data:()=>({})}}
+    catch(err){console.warn('Account '+label+' unavailable:',err);return {exists:()=>false,data:()=>({})}}
   };
   const [solvedSnap,savedSnap,mockSnap,activeSnap]=await Promise.all([
     safeGetDocs(collection(db,'users',uid,'solved'),'solved'),
