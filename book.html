@@ -22,9 +22,12 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
 .karp-pdf-bar #pdf-download{margin-left:auto;white-space:nowrap;border:1px solid #d5d7da;background:#f7f8f9;font-weight:600;color:#34383d}
 .karp-pdf-bar #pdf-download:disabled{opacity:.55;cursor:wait}
 .karp-pdf-stage{position:relative;flex:1;min-height:0;background:#525659;overflow:hidden}
-.karp-pdf-frame{display:block;width:100%;height:100%;border:0;background:#525659}
-.karp-pdf-loading{position:absolute;z-index:2;inset:0;display:grid;place-items:center;background:#525659;color:#fff;font-size:13px;pointer-events:none}
-.karp-book-picker{position:fixed;z-index:20;inset:88px 8% 8%;background:#fff;border:1px solid #c8cbd0;border-radius:10px;box-shadow:0 20px 60px #0004;display:none;overflow:auto;padding:28px}
+.karp-pdf-doc{position:absolute;inset:0;overflow:auto;padding:26px 18px 60px;box-sizing:border-box;outline:0}
+.karp-pdf-page{position:relative;width:max-content;min-width:320px;min-height:520px;margin:0 auto 24px;background:#fff;box-shadow:0 2px 18px rgba(0,0,0,.22);display:flex;justify-content:center;align-items:flex-start}
+.karp-pdf-page-number{position:absolute;right:10px;top:7px;font:10px Arial,sans-serif;color:#9aa0a6;pointer-events:none}
+.karp-pdf-canvas{display:block;background:#fff}
+.karp-pdf-loading{position:absolute;z-index:30;inset:0;display:grid;place-items:center;background:#525659;color:#fff;font-size:13px;pointer-events:none}
+.karp-book-picker{position:fixed;z-index:50;inset:88px 8% 8%;background:#fff;border:1px solid #c8cbd0;border-radius:10px;box-shadow:0 20px 60px #0004;display:none;overflow:auto;padding:28px}
 .karp-book-picker h2{margin:0 0 14px;font-size:22px}
 .karp-book-picker-search{display:block;width:min(520px,100%);box-sizing:border-box;padding:11px 13px;margin:0 0 20px;border:1px solid #d5d7da;border-radius:8px;background:#f7f8f9;color:#202124;font-size:13px;outline:none}
 .karp-book-picker-search:focus{border-color:#9aa0a6;box-shadow:0 0 0 2px #2021240b}
@@ -32,10 +35,11 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
 .karp-picker-card{border:1px solid #d5d7da;border-radius:8px;padding:10px;background:#fff;cursor:pointer;text-align:left}
 .karp-picker-card img{width:100%;aspect-ratio:.707;object-fit:cover;display:block}
 .karp-picker-card strong{display:block;font-size:11px;margin-top:8px}
-@media(max-width:700px){.karp-pdf-tab{min-width:130px}.karp-book-picker{inset:70px 3% 3%}}
+@media(max-width:700px){.karp-pdf-tab{min-width:130px}.karp-book-picker{inset:70px 3% 3%}.karp-pdf-doc{padding:16px 8px 40px}.karp-pdf-page{min-width:280px}}
 </style>
 </head>
 <body>
+
 <script>
 (async()=>{
   const params=new URLSearchParams(location.search),initialId=params.get('id');
@@ -51,21 +55,28 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
     document.body.innerHTML='<div class="karp-pdf-browser">'+
       '<div class="karp-pdf-tabs" id="pdf-tabs"><button class="karp-pdf-new" id="pdf-new" title="New tab">+</button></div>'+
       '<div class="karp-pdf-bar"><button id="pdf-back" title="Back">←</button><button id="pdf-home" title="Books">⌂</button><span class="pdf-title" id="pdf-title"></span><button id="pdf-download" type="button" title="Download this PDF">Download PDF</button></div>'+
-      '<div class="karp-pdf-stage"><div id="pdf-frames" style="position:absolute;inset:0;overflow:hidden;background:#525659"></div><div class="karp-pdf-loading" id="pdf-loading">Opening PDF…</div></div>'+
+      '<div class="karp-pdf-stage" id="pdf-stage"></div>'+
+      '<div class="karp-pdf-loading" id="pdf-loading">Opening PDF…</div>'+
       '<div class="karp-book-picker" id="book-picker"><h2>Books</h2><input id="book-picker-search" class="karp-book-picker-search" type="search" placeholder="Search books by title…" autocomplete="off"><div class="karp-book-picker-grid" id="book-picker-grid"></div></div>'+
     '</div>';
 
-    const tabs=document.getElementById('pdf-tabs'),frameHost=document.getElementById('pdf-frames'),titleEl=document.getElementById('pdf-title');
+    const tabs=document.getElementById('pdf-tabs'),stage=document.getElementById('pdf-stage'),titleEl=document.getElementById('pdf-title');
     const loading=document.getElementById('pdf-loading'),picker=document.getElementById('book-picker'),pickerGrid=document.getElementById('book-picker-grid'),pickerSearch=document.getElementById('book-picker-search');
     let books=[];
     const tabStates=new Map();
-    let activeSession=null,activeBookId=current.id,sessionStarting=false;
+    let activeSession=null,activeBookId=current.id,sessionStarting=false,pdfjsPromise=null;
 
     function makeId(){return crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2)}
     const visitorId=(()=>{if(authUser?.uid)return authUser.uid;let id='';try{id=localStorage.getItem('karp_book_viewer_id')||''}catch{}if(!id){id=makeId();try{localStorage.setItem('karp_book_viewer_id',id)}catch{}}return 'guest_'+id})();
     const visitor={uid:authUser?.uid||null,displayName:authUser?.displayName||'',email:authUser?.email||'',userType:authUser?.uid?'account':'guest',viewerId:visitorId};
-
     function esc(x){return escapeHtml(String(x??''))}
+    async function getPdfJs(){
+      if(!pdfjsPromise)pdfjsPromise=import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs').then(pdfjs=>{
+        pdfjs.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+        return pdfjs;
+      });
+      return pdfjsPromise;
+    }
     function tabButton(book){
       const b=document.createElement('button');
       b.className='karp-pdf-tab';b.dataset.id=book.id;
@@ -76,64 +87,103 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
     }
     function addTab(book){
       if(tabStates.has(book.id))return;
-      const b=tabButton(book);
-      tabs.insertBefore(b,document.getElementById('pdf-new'));
-      tabStates.set(book.id,{book,url:null,frame:null});
+      const tab=tabButton(book);
+      tabs.insertBefore(tab,document.getElementById('pdf-new'));
+      const holder=document.createElement('div');
+      holder.className='karp-pdf-doc';
+      holder.dataset.id=book.id;
+      holder.style.display='none';
+      stage.appendChild(holder);
+      const st={book,holder,pdf:null,bytes:null,loaded:false,rendered:new Map(),observer:null,scrollTop:0,scale:1,loading:false};
+      tabStates.set(book.id,st);
+    }
+    async function getPdfBytes(book){
+      const st=tabStates.get(book.id);
+      if(st?.bytes)return st.bytes;
+      const snap=await getDocs(collection(db,'books',book.id,'chunks'));
+      const parts=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>Number(a.index??a.id)-Number(b.index??b.id));
+      if(!parts.length)throw new Error('PDF data is missing.');
+      const total=parts.reduce((n,p)=>n+atob(p.data).length,0);
+      const bytes=new Uint8Array(total);let off=0;
+      for(const p of parts){const bin=atob(p.data),chunk=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)chunk[i]=bin.charCodeAt(i);bytes.set(chunk,off);off+=chunk.length}
+      st.bytes=bytes;return bytes;
+    }
+    async function renderPage(st,pageNumber){
+      if(st.rendered.has(pageNumber)||!st.pdf)return;
+      st.rendered.set(pageNumber,'loading');
+      try{
+        const page=await st.pdf.getPage(pageNumber);
+        const wrap=st.holder.querySelector('[data-page="'+pageNumber+'"]');
+        if(!wrap)return;
+        const base=page.getViewport({scale:1}),available=Math.max(320,st.holder.clientWidth-40);
+        const scale=Math.max(.65,Math.min(1.5,available/base.width))*st.scale;
+        const viewport=page.getViewport({scale});
+        const canvas=document.createElement('canvas');
+        canvas.className='karp-pdf-canvas';
+        canvas.width=Math.ceil(viewport.width*window.devicePixelRatio);
+        canvas.height=Math.ceil(viewport.height*window.devicePixelRatio);
+        canvas.style.width=Math.ceil(viewport.width)+'px';
+        canvas.style.height=Math.ceil(viewport.height)+'px';
+        const ctx=canvas.getContext('2d',{alpha:false});
+        ctx.setTransform(window.devicePixelRatio,0,0,window.devicePixelRatio,0,0);
+        await page.render({canvasContext:ctx,viewport}).promise;
+        wrap.style.minHeight='0';wrap.innerHTML='';wrap.appendChild(canvas);
+        st.rendered.set(pageNumber,canvas);
+      }catch(e){
+        st.rendered.delete(pageNumber);
+        console.warn('KARP PDF page render failed:',pageNumber,e);
+      }
+    }
+    function observePages(st){
+      st.observer?.disconnect();
+      st.observer=new IntersectionObserver(entries=>{
+        for(const entry of entries)if(entry.isIntersecting)renderPage(st,Number(entry.target.dataset.page));
+      },{root:st.holder,rootMargin:'900px 0px',threshold:.01});
+      st.holder.querySelectorAll('[data-page]').forEach(x=>st.observer.observe(x));
+      for(let i=1;i<=Math.min(3,st.pdf.numPages);i++)renderPage(st,i);
+    }
+    async function loadPdf(st){
+      if(st.loaded)return;
+      st.loading=true;loading.style.display='grid';loading.textContent='Opening PDF…';
+      try{
+        const pdfjs=await getPdfJs(),bytes=await getPdfBytes(st.book);
+        st.pdf=await pdfjs.getDocument({data:bytes}).promise;
+        const frag=document.createDocumentFragment();
+        for(let i=1;i<=st.pdf.numPages;i++){
+          const page=document.createElement('div');page.className='karp-pdf-page';page.dataset.page=i;
+          page.innerHTML='<div class="karp-pdf-page-number">'+i+'</div>';
+          frag.appendChild(page);
+        }
+        st.holder.appendChild(frag);
+        st.loaded=true;
+        observePages(st);
+        st.holder.addEventListener('scroll',()=>{st.scrollTop=st.holder.scrollTop},{passive:true});
+      }finally{
+        st.loading=false;loading.style.display='none';
+      }
     }
     function activateTab(id){
       tabs.querySelectorAll('.karp-pdf-tab').forEach(x=>x.classList.toggle('active',x.dataset.id===id));
       tabStates.forEach((st,key)=>{
-        if(!st.frame)return;
-        const active=key===id;
-        st.frame.style.visibility=active?'visible':'hidden';
-        st.frame.style.opacity=active?'1':'0';
-        st.frame.style.pointerEvents=active?'auto':'none';
-        st.frame.style.zIndex=active?'1':'0';
+        st.holder.style.display=key===id?'block':'none';
       });
+      const st=tabStates.get(id);
+      requestAnimationFrame(()=>{if(st){st.holder.scrollTop=st.scrollTop;st.holder.focus({preventScroll:true})}});
     }
-    function ensureFrame(book){
-      const st=tabStates.get(book.id);
-      if(!st)throw new Error('PDF tab state is missing.');
-      if(st.frame)return st.frame;
-      const frame=document.createElement('iframe');
-      frame.className='karp-pdf-frame';
-      frame.title='KARP PDF viewer — '+(book.title||book.fileName||'Book');
-      frame.setAttribute('allow','fullscreen');
-      frame.style.cssText='position:absolute;inset:0;display:block;width:100%;height:100%;border:0;background:#525659;visibility:hidden;opacity:0;pointer-events:none;z-index:0';
-      frameHost.appendChild(frame);
-      st.frame=frame;
-      return frame;
-    }
-    async function getPdfUrl(book){
-      const st=tabStates.get(book.id);
-      if(st?.url)return st.url;
-      const snap=await getDocs(collection(db,'books',book.id,'chunks'));
-      const parts=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>Number(a.index??a.id)-Number(b.index??b.id));
-      if(!parts.length)throw new Error('PDF data is missing.');
-      const bytesParts=parts.map(p=>{
-        const bin=atob(p.data),out=new Uint8Array(bin.length);
-        for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);
-        return out;
-      });
-      const total=bytesParts.reduce((n,x)=>n+x.length,0),bytes=new Uint8Array(total);
-      let off=0;for(const p of bytesParts){bytes.set(p,off);off+=p.length}
-      const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
-      const st2=tabStates.get(book.id);if(st2)st2.url=url;
-      return url;
-    }
-
     async function countViewOnce(book){
       const bookRef=doc(db,'books',book.id),viewRef=doc(db,'books',book.id,'views',visitor.viewerId);
-      await runTransaction(db,async tx=>{
-        const existing=await tx.get(viewRef);
-        if(existing.exists())return false;
-        const bookSnap=await tx.get(bookRef);
-        if(!bookSnap.exists())throw new Error('This book is no longer available.');
-        const data=bookSnap.data()||{};
-        tx.set(viewRef,{viewerId:visitor.viewerId,uid:visitor.uid,displayName:visitor.displayName,email:visitor.email,createdAt:new Date().toISOString()});
-        tx.update(bookRef,{viewCount:Math.max(0,Number(data.viewCount||0))+1});
-        return true;
-      });
+      try{
+        await runTransaction(db,async tx=>{
+          const existing=await tx.get(viewRef);
+          if(existing.exists())return false;
+          const bookSnap=await tx.get(bookRef);
+          if(!bookSnap.exists())throw new Error('This book is no longer available.');
+          const data=bookSnap.data()||{};
+          tx.set(viewRef,{viewerId:visitor.viewerId,uid:visitor.uid,displayName:visitor.displayName,email:visitor.email,createdAt:new Date().toISOString()});
+          tx.update(bookRef,{viewCount:Math.max(0,Number(data.viewCount||0))+1});
+          return true;
+        });
+      }catch(e){console.warn('Book unique view count failed:',e)}
     }
     async function startViewSession(book){
       if(document.hidden||activeSession||sessionStarting||!book)return;
@@ -151,93 +201,57 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
       const s=activeSession;if(!s)return;
       activeSession=null;
       const endedMs=Date.now(),durationSeconds=Math.max(0,Math.round((endedMs-s.startedMs)/1000));
-      try{await updateDoc(s.ref,{endedAt:new Date(endedMs).toISOString(),durationSeconds,status:'ended'})}
-      catch(e){console.warn('Book view session end could not be recorded:',e)}
+      try{await updateDoc(s.ref,{endedAt:new Date(endedMs).toISOString(),durationSeconds,status:'ended'})}catch(e){console.warn('Book view session end could not be recorded:',e)}
     }
     async function recordDownload(book){
       const id=makeId(),bookRef=doc(db,'books',book.id),downloadRef=doc(db,'books',book.id,'downloads',id);
-      await runTransaction(db,async tx=>{
-        const snap=await tx.get(bookRef);
-        if(!snap.exists())throw new Error('This book is no longer available.');
-        const data=snap.data()||{};
-        tx.set(downloadRef,{downloadId:id,bookId:book.id,viewerId:visitor.viewerId,uid:visitor.uid,displayName:visitor.displayName,email:visitor.email,userType:visitor.userType,fileName:book.fileName||((book.title||'KARP Book')+'.pdf'),createdAt:new Date().toISOString()});
-        tx.update(bookRef,{downloadCount:Math.max(0,Number(data.downloadCount||0))+1});
-      });
+      try{
+        await runTransaction(db,async tx=>{
+          const snap=await tx.get(bookRef);
+          if(!snap.exists())throw new Error('This book is no longer available.');
+          const data=snap.data()||{};
+          tx.set(downloadRef,{downloadId:id,bookId:book.id,viewerId:visitor.viewerId,uid:visitor.uid,displayName:visitor.displayName,email:visitor.email,userType:visitor.userType,fileName:book.fileName||((book.title||'KARP Book')+'.pdf'),createdAt:new Date().toISOString()});
+          tx.update(bookRef,{downloadCount:Math.max(0,Number(data.downloadCount||0))+1});
+        });
+      }catch(e){console.warn('Book download analytics failed:',e)}
     }
     async function downloadBook(book){
       const button=document.getElementById('pdf-download');if(button)button.disabled=true;
       try{
-        const url=await getPdfUrl(book),a=document.createElement('a');
-        const desired=String(book.fileName||((book.title||'KARP Book')+'.pdf')).split('/').join('-').replace(/[\\:*?"<>|]+/g,'-');
-        a.href=url;a.download=/\.pdf$/i.test(desired)?desired:(desired+'.pdf');
-        document.body.appendChild(a);a.click();a.remove();
-        try{await recordDownload(book)}catch(e){console.warn('Book download event could not be saved:',e)}
+        const bytes=await getPdfBytes(book),url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+        const desired=String(book.fileName||((book.title||'KARP Book')+'.pdf')).replace(/[\\:*?"<>|]+/g,'-');
+        const a=document.createElement('a');a.href=url;a.download=/\.pdf$/i.test(desired)?desired:(desired+'.pdf');document.body.appendChild(a);a.click();a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),1500);recordDownload(book);
       }catch(e){console.error(e);alert('Could not download this PDF. Please try again.')}
       finally{if(button)button.disabled=false}
     }
     async function openBook(bookId){
       const book=books.find(x=>x.id===bookId)||current;
-      await stopViewSession();
-      activeBookId=book.id;
-      addTab(book);
+      await stopViewSession();activeBookId=book.id;addTab(book);
+      titleEl.textContent=book.title||book.fileName||'Book';document.title='KARP — '+(book.title||book.fileName||'Book');
+      activateTab(book.id);picker.style.display='none';
       const st=tabStates.get(book.id);
-      const firstOpen=!st.frame;
-      titleEl.textContent=book.title||book.fileName||'Book';
-      document.title='KARP — '+(book.title||book.fileName||'Book');
-      activateTab(book.id);
-      picker.style.display='none';
-      if(firstOpen){
-        loading.style.display='grid';
-        loading.textContent='Opening PDF…';
-        try{
-          const frame=ensureFrame(book);
-          frame.src=await getPdfUrl(book);
-          await new Promise(resolve=>setTimeout(resolve,120));
-          try{await countViewOnce(book)}catch(e){console.warn('Book unique view count failed:',e)}
-          if(!document.hidden)await startViewSession(book);
-        }catch(e){console.error(e);loading.textContent='Unable to open PDF'}
-        finally{loading.style.display='none'}
-      }else{
-        try{await countViewOnce(book)}catch(e){console.warn('Book unique view count failed:',e)}
-        if(!document.hidden)await startViewSession(book);
-      }
+      try{await loadPdf(st);countViewOnce(book);startViewSession(book)}catch(e){console.error(e);loading.textContent='Unable to open PDF';loading.style.display='grid'}
       history.replaceState({},'',location.pathname+'?id='+encodeURIComponent(book.id));
     }
     function closeTab(id){
-      const st=tabStates.get(id);
-      if(!st)return;
-      const wasActive=id===activeBookId;
-      if(st.url)URL.revokeObjectURL(st.url);
-      st.frame?.remove();
-      tabStates.delete(id);
-      tabs.querySelector('[data-id="'+CSS.escape(id)+'"]')?.remove();
+      const st=tabStates.get(id);if(!st)return;
+      const wasActive=id===activeBookId;if(st.observer)st.observer.disconnect();tabs.querySelector('[data-id="'+CSS.escape(id)+'"]')?.remove();st.holder.remove();tabStates.delete(id);
       if(!wasActive)return;
-      const next=[...tabStates.keys()].at(-1);
-      if(next)openBook(next);else location.replace('/books.html');
+      const next=[...tabStates.keys()].at(-1);if(next)openBook(next);else location.replace('/books.html');
     }
     function renderPicker(){
-      const q=String(pickerSearch.value||'').trim().toLowerCase();
-      const filtered=books.filter(x=>String(x.title||x.fileName||'Book').toLowerCase().includes(q));
-      pickerGrid.innerHTML=filtered.map(x=>'<button class="karp-picker-card" data-pick="'+esc(x.id)+'">'+
-        (x.coverImage?'<img src="'+esc(x.coverImage)+'" alt="">':'<div style="aspect-ratio:.707;background:#eee;display:grid;place-items:center">PDF</div>')+
-        '<strong>'+esc(x.title||x.fileName||'Book')+'</strong></button>').join('')||
-        '<div style="grid-column:1/-1;padding:25px 0;color:#73777c;font-size:13px">No books match your search.</div>';
+      const q=String(pickerSearch.value||'').trim().toLowerCase(),filtered=books.filter(x=>String(x.title||x.fileName||'Book').toLowerCase().includes(q));
+      pickerGrid.innerHTML=filtered.map(x=>'<button class="karp-picker-card" data-pick="'+esc(x.id)+'">'+(x.coverImage?'<img src="'+esc(x.coverImage)+'" alt="">':'<div style="aspect-ratio:.707;background:#eee;display:grid;place-items:center">PDF</div>')+'<strong>'+esc(x.title||x.fileName||'Book')+'</strong></button>').join('')||'<div style="grid-column:1/-1;padding:25px 0;color:#73777c;font-size:13px">No books match your search.</div>';
       pickerGrid.querySelectorAll('[data-pick]').forEach(x=>x.onclick=()=>openBook(x.dataset.pick));
     }
-    document.getElementById('pdf-new').onclick=()=>{
-      picker.style.display='block';pickerSearch.value='';renderPicker();pickerSearch.focus();
-    };
+    document.getElementById('pdf-new').onclick=()=>{picker.style.display='block';pickerSearch.value='';renderPicker();pickerSearch.focus()};
     pickerSearch.addEventListener('input',renderPicker);
     document.getElementById('pdf-download').onclick=()=>downloadBook(books.find(x=>x.id===activeBookId)||current);
-    document.addEventListener('visibilitychange',()=>{
-      if(document.hidden)stopViewSession();
-      else startViewSession(books.find(x=>x.id===activeBookId)||current);
-    });
-    window.addEventListener('pagehide',()=>{stopViewSession()});
-    window.addEventListener('beforeunload',()=>{stopViewSession()});
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)stopViewSession();else startViewSession(books.find(x=>x.id===activeBookId)||current)});
+    window.addEventListener('pagehide',stopViewSession);window.addEventListener('beforeunload',stopViewSession);
     document.getElementById('pdf-back').onclick=()=>history.back();
     document.getElementById('pdf-home').onclick=()=>location.replace('/books.html');
-
     const snapBooks=await getDocs(collection(db,'books'));
     books=snapBooks.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
     await openBook(current.id);
