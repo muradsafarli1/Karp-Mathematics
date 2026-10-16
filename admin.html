@@ -180,18 +180,41 @@ async function saveBookAdmin(){
   const {db}=await fb();
   const {doc,setDoc,collection,getDocs,deleteDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
   const chunkBytes=512000;
-  const totalChunks=Math.max(1,Math.ceil(file.size/chunkBytes));
+  const bytes=new Uint8Array(await file.arrayBuffer());
+  const totalChunks=Math.max(1,Math.ceil(bytes.length/chunkBytes));
   button.disabled=true;
   try{
+    if(status)status.textContent='Preparing cover…';
+    let coverImage='';
+    try{
+      const pdfjsLib=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+      const pdf=await pdfjsLib.getDocument({data:bytes}).promise;
+      const first=await pdf.getPage(1);
+      const base=first.getViewport({scale:1});
+      const scale=Math.min(620/base.width,820/base.height);
+      const viewport=first.getViewport({scale});
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,Math.round(viewport.width));
+      canvas.height=Math.max(1,Math.round(viewport.height));
+      const ctx=canvas.getContext('2d',{alpha:false});
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+      await first.render({canvasContext:ctx,viewport}).promise;
+      let q=.76;
+      coverImage=canvas.toDataURL('image/jpeg',q);
+      while(coverImage.length>650000&&q>.45){q-=.06;coverImage=canvas.toDataURL('image/jpeg',q)}
+      if(coverImage.length>700000)coverImage='';
+      canvas.width=1;canvas.height=1;
+    }catch(e){console.warn('Could not generate PDF cover preview:',e)}
     for(let index=0;index<totalChunks;index++){
-      const part=await file.slice(index*chunkBytes,Math.min(file.size,(index+1)*chunkBytes)).arrayBuffer();
+      const part=bytes.slice(index*chunkBytes,Math.min(bytes.length,(index+1)*chunkBytes));
       const data=arrayBufferToBase64(part);
       await setDoc(doc(db,'books',id,'chunks',String(index).padStart(7,'0')),{index,data},{merge:false});
       if(status)status.textContent='Uploading '+(index+1)+' / '+totalChunks+' · '+Math.round(((index+1)/totalChunks)*100)+'%';
     }
     await setDoc(doc(db,'books',id),{
       id,title,fileName:file.name,size:file.size,contentType:'application/pdf',
-      chunkCount:totalChunks,viewCount:0,downloadCount:0,createdAt:new Date().toISOString()
+      chunkCount:totalChunks,coverImage,viewCount:0,downloadCount:0,createdAt:new Date().toISOString()
     });
     pendingBookFile=null;state.editing=null;toast('Book uploaded successfully.');render();
   }catch(e){
