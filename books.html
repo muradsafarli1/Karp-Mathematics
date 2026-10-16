@@ -8,9 +8,9 @@
 <script src="/app.js"></script>
 <style>
 .books-page{min-height:100vh;background:#f7f7f5;color:#17191c}
-.books-hero{padding:74px 24px 28px;text-align:center}
+.books-hero{padding:38px 24px 12px;text-align:center}
 .books-hero h1{font-family:'Space Grotesk';font-size:clamp(46px,6vw,76px);line-height:1;letter-spacing:-3px;margin:0}
-.books-search-wrap{width:min(560px,calc(100% - 28px));margin:8px auto 48px}
+.books-search-wrap{width:min(560px,calc(100% - 28px));margin:4px auto 30px}
 .books-search{width:100%;box-sizing:border-box;padding:13px 17px;border:1px solid #d9dad8;border-radius:12px;background:#eeeeeb;color:#17191c;font:500 13px 'Inter',sans-serif;outline:none}
 .books-search:focus{border-color:#b8bbb8;box-shadow:0 0 0 3px rgba(47,120,183,.08)}
 .books-grid{width:min(1220px,calc(100% - 42px));margin:0 auto;padding:0 0 80px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:28px 20px}
@@ -55,7 +55,7 @@
       const filtered=books.filter(b=>String(b.title||b.fileName||'').toLowerCase().includes(q));
       grid.innerHTML=filtered.length?filtered.map(b=>{
         const title=b.title||b.fileName||'Untitled Book';
-        return '<a class="book-card" href="/book.html?id='+encodeURIComponent(b.id)+'" aria-label="Open '+esc(title)+'">'+
+        return '<a class="book-card" href="/book.html?id='+encodeURIComponent(b.id)+'" target="_blank" rel="noopener" aria-label="Open '+esc(title)+'">'+
           '<div class="book-cover">'+(b.coverImage?'<img src="'+esc(b.coverImage)+'" alt="">':'<div class="book-cover-fallback"><small>KARP · OLYMPIAD MATHEMATICS</small><h2>'+esc(title)+'</h2><small>PDF BOOKLET</small></div>')+'</div>'+
           '<div class="book-card-meta"><span class="book-card-title">'+esc(title)+'</span><span class="book-views">'+eye+esc(fmt(b.viewCount))+'</span></div>'+
         '</a>';
