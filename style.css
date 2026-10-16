@@ -646,3 +646,30 @@ body,.top,.footer,.hero,.pagehero,.section,.contest-page,.article-page,.account-
   .hero-shape-art .drift-d,
   .hero-shape-art .dashed{animation:none!important}
 }
+
+/* KARP section-heading alignment: centered titles with one continuous surface. */
+.problem-page .pagehero,
+.contest-page .pagehero,
+.articles-page .pagehero{
+  background:#f7f7f5!important;
+  background-image:none!important;
+  border-bottom:0!important;
+}
+.problem-page .pagehero .wrap,
+.contest-page .pagehero .wrap,
+.articles-page .pagehero .wrap{
+  text-align:center!important;
+}
+.problem-page .pagehero h1,
+.contest-page .pagehero h1,
+.articles-page .pagehero h1{
+  text-align:center!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+.problem-page .section,
+.contest-page .section,
+.articles-page .section{
+  background:#f7f7f5!important;
+  border-top:0!important;
+}
