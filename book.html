@@ -59,7 +59,7 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
 .karp-notebook-hint{padding:8px 12px;border-top:1px solid #e5e7e9;color:#858a90;font:10px Arial,sans-serif}
 @media(max-width:700px){.karp-pdf-bar{gap:3px!important;padding:0 5px!important}.karp-pdf-bar button{padding:6px 5px;font-size:12px}.karp-pdf-bar .pdf-title{font-size:11px}.karp-pdf-bar #pdf-zoom-out,.karp-pdf-bar #pdf-zoom-in,.karp-pdf-bar #pdf-fit{min-width:25px;padding:5px 4px}#pdf-zoom-label{min-width:30px;font-size:10px}.karp-pdf-bar #pdf-download{font-size:10px;padding:6px 5px}.karp-pdf-tools{padding:5px 8px;gap:6px}.karp-pdf-tool-status{font-size:10px}.karp-pdf-tool{width:43px;height:43px}}
 </style><style>
-.karp-pdf-tools{display:none!important}.karp-pdf-stage{flex:1 1 auto!important;min-height:0!important;overscroll-behavior:contain}.karp-pdf-doc{-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scroll-behavior:auto;overflow-anchor:none}.karp-pdf-page{overflow:hidden;min-height:0}.karp-pdf-page-number{z-index:3}.karp-pdf-ink{position:absolute;left:0;top:0;z-index:2;display:block;pointer-events:none;touch-action:pan-y}
+.karp-pdf-tools{display:none!important}.karp-pdf-stage{flex:1 1 auto!important;min-height:0!important;overscroll-behavior:contain}.karp-pdf-doc{-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scroll-behavior:auto;overflow-anchor:none}.karp-pdf-page{overflow:hidden;min-height:0;min-width:0!important}.karp-pdf-page-number{z-index:3}.karp-pdf-ink{position:absolute;left:0;top:0;z-index:2;display:block;pointer-events:none;touch-action:pan-y}
 .karp-pdf-floating-tools{position:fixed;right:16px;bottom:16px;z-index:46;display:flex;gap:8px}.karp-pdf-tool{width:48px;height:48px;box-sizing:border-box;border:1px solid #cfd2d6;border-radius:8px;background:#fff;color:#3b4046;box-shadow:0 3px 14px #0002;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:3px;cursor:pointer}.karp-pdf-tool span{font:21px/23px Arial,sans-serif}.karp-pdf-tool small{font:10px/12px Arial,sans-serif}.karp-pdf-tool:hover{background:#f5f6f7}.karp-pdf-tool.active{background:#e9edf1;border-color:#66717c}
 .karp-pen-options{position:fixed;right:16px;bottom:74px;z-index:45;display:none;align-items:center;gap:7px;flex-wrap:wrap;max-width:min(390px,calc(100vw - 24px));padding:9px;background:#fff;border:1px solid #d6d9dc;border-radius:9px;box-shadow:0 8px 28px #0002;color:#363b40;font:11px Arial,sans-serif}.karp-pen-mode{border:1px solid #d9dcdf;border-radius:6px;background:#fff;color:#3e4349;padding:7px 9px;font:11px Arial,sans-serif;cursor:pointer}.karp-pen-mode.active{background:#e9edf1;border-color:#7d8791}.karp-pen-size-wrap{display:flex;align-items:center;gap:6px;padding:0 2px;white-space:nowrap}#pdf-pen-size{width:75px;accent-color:#505a64}#pdf-pen-size-label{min-width:22px;text-align:right;color:#71777e}
 .karp-notebook-panel{position:fixed;z-index:44;right:16px;bottom:76px;width:min(370px,calc(100vw - 24px));height:min(350px,55vh);box-sizing:border-box;background:#fff;border:1px solid #d5d8dc;border-radius:9px;box-shadow:0 12px 36px #0003;display:none;flex-direction:column;overflow:hidden}.karp-notebook-head{height:42px;flex:0 0 42px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 12px;border-bottom:1px solid #e5e7e9;color:#30343a;font:600 12px Arial,sans-serif;cursor:move;user-select:none;touch-action:none}.karp-notebook-head button{border:0;background:transparent;border-radius:5px;padding:4px 7px;font-size:20px;color:#60666c;cursor:pointer}#pdf-notes{width:100%;height:100%;min-height:0;flex:1;box-sizing:border-box;resize:none;border:0;outline:0;padding:13px 14px;background:#fff;color:#25292e;font:13px/1.65 Arial,sans-serif}.karp-notebook-hint{padding:8px 12px;border-top:1px solid #e5e7e9;color:#858a90;font:10px Arial,sans-serif}
@@ -97,44 +97,28 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
     const visitorId=(()=>{if(authUser?.uid)return authUser.uid;let id='';try{id=localStorage.getItem('karp_book_viewer_id')||''}catch{}if(!id){id=makeId();try{localStorage.setItem('karp_book_viewer_id',id)}catch{}}return 'guest_'+id})();
     const visitor={uid:authUser?.uid||null,displayName:authUser?.displayName||'',email:authUser?.email||'',userType:authUser?.uid?'account':'guest',viewerId:visitorId};
     function esc(x){return escapeHtml(String(x??''))}
- function toolStorageKey(st){const item=st.book||st.journal;return 'karp_pdf_tools_v1_books_'+item.id+'_'+visitor.viewerId}
- function savePdfTools(st){try{localStorage.setItem(toolStorageKey(st),JSON.stringify({notes:st.notes||'',annotations:st.annotations||{},notePosition:st.notePosition||null}))}catch(e){console.warn('KARP PDF notes could not be saved locally:',e)}}
- function clampNotesPosition(st,left,top,save=true){const p=document.getElementById('pdf-notebook-panel'),w=p?.offsetWidth||350,h=p?.offsetHeight||320,x=Math.max(0,Math.min(Math.max(0,innerWidth-w),left)),y=Math.max(0,Math.min(Math.max(0,innerHeight-h),top));st.notePosition={left:x,top:y};p.style.left=x+'px';p.style.top=y+'px';p.style.right='auto';p.style.bottom='auto';if(save)savePdfTools(st)}
- function refreshPdfTools(){const st=tabStates.get(activeBookId),pen=document.getElementById('pdf-pen'),nb=document.getElementById('pdf-notebook'),panel=document.getElementById('pdf-notebook-panel'),notes=document.getElementById('pdf-notes'),options=document.getElementById('pdf-pen-options');
-  if(pen){pen.classList.toggle('active',drawingEnabled);pen.setAttribute('aria-pressed',String(drawingEnabled))}if(nb){nb.classList.toggle('active',notesOpen);nb.setAttribute('aria-pressed',String(notesOpen))}
-  if(panel)panel.style.display=notesOpen?'flex':'none';if(options)options.style.display=drawingEnabled?'flex':'none';
-  ['pen','highlight','eraser'].forEach(m=>{const q=document.getElementById('pdf-mode-'+m);if(q)q.classList.toggle('active',activePenMode===m)});
-  const id=st?String((st.book||st.journal).id):'';if(notes&&notes.dataset.documentId!==id){notes.value=st?.notes||'';notes.dataset.documentId=id}
-  const size=document.getElementById('pdf-pen-size'),label=document.getElementById('pdf-pen-size-label');if(size&&Number(size.value)!==penSize)size.value=String(penSize);if(label)label.textContent=String(penSize);
-  if(panel){if(st?.notePosition){panel.style.left=st.notePosition.left+'px';panel.style.top=st.notePosition.top+'px';panel.style.right='auto';panel.style.bottom='auto'}else{panel.style.left='auto';panel.style.top='auto';panel.style.right='16px';panel.style.bottom='76px'}}
-  if(stage)stage.querySelectorAll('.karp-pdf-ink').forEach(ink=>{const on=!!st&&ink.closest('.karp-pdf-doc')===st.holder;ink.style.pointerEvents=drawingEnabled&&on?'auto':'none';ink.style.cursor=drawingEnabled&&on?(activePenMode==='eraser'?'cell':'crosshair'):'default';ink.style.touchAction=drawingEnabled&&on?'none':'pan-y'});
- }
- function activeToolState(){return tabStates.get(activeBookId)}
- function eraseInkAt(st,n,p,ink){const all=st.annotations[String(n)]||[],r=Math.max(.004,penSize*2.4/Math.max(1,ink.clientWidth)),remaining=all.filter(z=>!(z.points||[]).some(q=>Math.hypot(q.x-p.x,q.y-p.y)<=r+(Number(z.width)||0)/2));if(remaining.length!==all.length){st.annotations[String(n)]=remaining;drawSavedInk(st,n,ink);return true}return false}
- function startNotesDrag(e){if(e.button!==0||e.target.closest('button'))return;const st=activeToolState(),p=document.getElementById('pdf-notebook-panel');if(!st||!p)return;const r=p.getBoundingClientRect();notesDrag={pointerId:e.pointerId,st,x:e.clientX,y:e.clientY,left:r.left,top:r.top};e.preventDefault();e.currentTarget.setPointerCapture?.(e.pointerId)}
- function moveNotesDrag(e){if(!notesDrag||e.pointerId!==notesDrag.pointerId)return;clampNotesPosition(notesDrag.st,notesDrag.left+e.clientX-notesDrag.x,notesDrag.top+e.clientY-notesDrag.y,false)}
- function finishNotesDrag(e){if(notesDrag&&e.pointerId===notesDrag.pointerId){savePdfTools(notesDrag.st);notesDrag=null}}
-
     function toolStorageKey(st){const item=st.book||st.journal;return 'karp_pdf_tools_v1_books_'+item.id+'_'+visitor.viewerId}
-    function savePdfTools(st){
-      try{localStorage.setItem(toolStorageKey(st),JSON.stringify({notes:st.notes||'',annotations:st.annotations||{}}));const status=document.getElementById('pdf-tool-status');if(status&&st===tabStates.get(activeBookId))status.textContent='Avtomatik yadda saxlanıldı ✓'}
-      catch(e){console.warn('KARP PDF notes could not be saved locally:',e)}
-    }
+    function savePdfTools(st){try{localStorage.setItem(toolStorageKey(st),JSON.stringify({notes:st.notes||'',annotations:st.annotations||{},notePosition:st.notePosition||null}))}catch(e){console.warn('KARP PDF notes could not be saved locally:',e)}}
+    function clampNotesPosition(st,left,top,save=true){const p=document.getElementById('pdf-notebook-panel'),w=p?.offsetWidth||350,h=p?.offsetHeight||320,x=Math.max(0,Math.min(Math.max(0,innerWidth-w),left)),y=Math.max(0,Math.min(Math.max(0,innerHeight-h),top));st.notePosition={left:x,top:y};p.style.left=x+'px';p.style.top=y+'px';p.style.right='auto';p.style.bottom='auto';if(save)savePdfTools(st)}
     function refreshPdfTools(){
-      const st=tabStates.get(activeBookId),pen=document.getElementById('pdf-pen'),notebook=document.getElementById('pdf-notebook');
-      const panel=document.getElementById('pdf-notebook-panel'),notes=document.getElementById('pdf-notes'),status=document.getElementById('pdf-tool-status'),zoomLabel=document.getElementById('pdf-zoom-label');
+      const st=tabStates.get(activeBookId),pen=document.getElementById('pdf-pen'),nb=document.getElementById('pdf-notebook'),panel=document.getElementById('pdf-notebook-panel'),notes=document.getElementById('pdf-notes'),options=document.getElementById('pdf-pen-options'),zoomLabel=document.getElementById('pdf-zoom-label');
       if(pen){pen.classList.toggle('active',drawingEnabled);pen.setAttribute('aria-pressed',String(drawingEnabled))}
-      if(notebook){notebook.classList.toggle('active',notesOpen);notebook.setAttribute('aria-pressed',String(notesOpen))}
-      if(panel)panel.style.display=notesOpen?'flex':'none';
-      const docId=st?String((st.book||st.journal).id):'';
-      if(notes&&notes.dataset.documentId!==docId){notes.value=st?.notes||'';notes.dataset.documentId=docId}
+      if(nb){nb.classList.toggle('active',notesOpen);nb.setAttribute('aria-pressed',String(notesOpen))}
+      if(panel)panel.style.display=notesOpen?'flex':'none';if(options)options.style.display=drawingEnabled?'flex':'none';
+      ['pen','highlight','eraser'].forEach(m=>{const q=document.getElementById('pdf-mode-'+m);if(q)q.classList.toggle('active',activePenMode===m)});
+      const id=st?String((st.book||st.journal).id):'';if(notes&&notes.dataset.documentId!==id){notes.value=st?.notes||'';notes.dataset.documentId=id}
+      const size=document.getElementById('pdf-pen-size'),label=document.getElementById('pdf-pen-size-label');if(size&&Number(size.value)!==penSize)size.value=String(penSize);if(label)label.textContent=String(penSize);
       if(zoomLabel)zoomLabel.textContent=Math.round((st?.zoom||1)*100)+'%';
-      if(status)status.textContent=drawingEnabled?'Qələm aktivdir — PDF üzərində çək; avtomatik saxlanılır.':'Qeydlər və çəkdiklərin bu PDF üçün avtomatik saxlanılır.';
-      if(stage)stage.querySelectorAll('.karp-pdf-ink').forEach(ink=>{const active=!!st&&ink.closest('.karp-pdf-doc')===st.holder;ink.style.pointerEvents=drawingEnabled&&active?'auto':'none';ink.style.cursor=drawingEnabled&&active?'crosshair':'default'});
+      if(panel){if(st?.notePosition){panel.style.left=st.notePosition.left+'px';panel.style.top=st.notePosition.top+'px';panel.style.right='auto';panel.style.bottom='auto'}else{panel.style.left='auto';panel.style.top='auto';panel.style.right='16px';panel.style.bottom='76px'}}
+      if(stage)stage.querySelectorAll('.karp-pdf-ink').forEach(ink=>{const on=!!st&&ink.closest('.karp-pdf-doc')===st.holder;ink.style.pointerEvents=drawingEnabled&&on?'auto':'none';ink.style.cursor=drawingEnabled&&on?(activePenMode==='eraser'?'cell':'crosshair'):'default';ink.style.touchAction=drawingEnabled&&on?'none':'pan-y'});
     }
     function activeToolState(){return tabStates.get(activeBookId)}
-
-    async function getPdfJs(){
+    function eraseInkAt(st,n,p,ink){const all=st.annotations[String(n)]||[],r=Math.max(.004,penSize*2.4/Math.max(1,ink.clientWidth)),remaining=all.filter(z=>!(z.points||[]).some(q=>Math.hypot(q.x-p.x,q.y-p.y)<=r+(Number(z.width)||0)/2));if(remaining.length!==all.length){st.annotations[String(n)]=remaining;drawSavedInk(st,n,ink);return true}return false}
+    function startNotesDrag(e){if(e.button!==0||e.target.closest('button'))return;const st=activeToolState(),p=document.getElementById('pdf-notebook-panel');if(!st||!p)return;const r=p.getBoundingClientRect();notesDrag={pointerId:e.pointerId,st,x:e.clientX,y:e.clientY,left:r.left,top:r.top};e.preventDefault();e.currentTarget.setPointerCapture?.(e.pointerId)}
+    function moveNotesDrag(e){if(!notesDrag||e.pointerId!==notesDrag.pointerId)return;clampNotesPosition(notesDrag.st,notesDrag.left+e.clientX-notesDrag.x,notesDrag.top+e.clientY-notesDrag.y,false)}
+    function finishNotesDrag(e){if(notesDrag&&e.pointerId===notesDrag.pointerId){savePdfTools(notesDrag.st);notesDrag=null}}
+    
+ async function getPdfJs(){
       if(!pdfjsPromise)pdfjsPromise=import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs').then(pdfjs=>{
         pdfjs.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
         return pdfjs;
