@@ -418,22 +418,91 @@ service cloud.firestore {
     match /journals/{uid}/entries/{entryId} {
       allow read, create, update, delete: if signedIn() && request.auth.uid == uid;
     }
-    match /journalIssues/{journalId} {
+    match /journalIssues/{id} {
       allow read: if true;
       allow create, delete: if isAdmin();
       allow update: if isAdmin()
-        || (signedIn()
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['downloadCount'])
-          && (
-            (!resource.data.keys().hasAny(['downloadCount']) && request.resource.data.downloadCount == 1)
-            || (resource.data.keys().hasAny(['downloadCount']) && request.resource.data.downloadCount == resource.data.downloadCount + 1)
-          ))
-        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readCount'])
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
+          && request.resource.data.viewCount == (resource.data.viewCount is number ? resource.data.viewCount : 0) + 1
+        )
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['downloadCount'])
+          && request.resource.data.downloadCount == (resource.data.downloadCount is number ? resource.data.downloadCount : 0) + 1
+        )
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readCount'])
           && (
             (!resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == 1)
             || (resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == resource.data.readCount + 1)
-          ));
+          )
+        );
     }
+
+    match /journalIssues/{journalId}/views/{viewerId} {
+      allow get: if isAdmin()
+        || (request.auth != null && request.auth.uid == viewerId)
+        || viewerId.matches('guest_[A-Za-z0-9_-]+');
+      allow list: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['viewerId','uid','displayName','email','createdAt','journalId'])
+        && request.resource.data.keys().hasAll(['viewerId','uid','displayName','email','createdAt','journalId'])
+        && request.resource.data.viewerId == viewerId
+        && request.resource.data.journalId == journalId
+        && request.resource.data.displayName is string
+        && request.resource.data.email is string
+        && request.resource.data.createdAt is string
+        && ((request.auth == null && request.resource.data.uid == null)
+          || (request.auth != null && request.resource.data.uid == request.auth.uid));
+      allow update, delete: if isAdmin();
+    }
+
+    match /journalIssues/{journalId}/viewSessions/{sessionId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['sessionId','journalId','viewerId','uid','displayName','email','userType','startedAt','endedAt','durationSeconds','status'])
+        && request.resource.data.keys().hasAll(['sessionId','journalId','viewerId','uid','displayName','email','userType','startedAt','endedAt','durationSeconds','status'])
+        && request.resource.data.sessionId == sessionId
+        && request.resource.data.journalId == journalId
+        && request.resource.data.viewerId is string
+        && request.resource.data.displayName is string
+        && request.resource.data.email is string
+        && request.resource.data.userType in ['account','guest']
+        && request.resource.data.startedAt is string
+        && request.resource.data.endedAt == null
+        && request.resource.data.durationSeconds == 0
+        && request.resource.data.status == 'active'
+        && ((request.auth == null && request.resource.data.uid == null && request.resource.data.userType == 'guest')
+          || (request.auth != null && request.resource.data.uid == request.auth.uid && request.resource.data.userType == 'account'));
+      allow update: if isAdmin()
+        || (resource.data.status == 'active'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['endedAt','durationSeconds','status'])
+          && request.resource.data.status == 'ended'
+          && request.resource.data.endedAt is string
+          && request.resource.data.durationSeconds is number
+          && request.resource.data.durationSeconds >= resource.data.durationSeconds
+          && request.resource.data.viewerId == resource.data.viewerId
+          && request.resource.data.journalId == resource.data.journalId
+          && ((request.auth == null && resource.data.uid == null)
+            || (request.auth != null && resource.data.uid == request.auth.uid)));
+      allow delete: if isAdmin();
+    }
+
+    match /journalIssues/{journalId}/downloads/{downloadId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['downloadId','journalId','viewerId','uid','displayName','email','userType','fileName','createdAt'])
+        && request.resource.data.keys().hasAll(['downloadId','journalId','viewerId','uid','displayName','email','userType','fileName','createdAt'])
+        && request.resource.data.downloadId == downloadId
+        && request.resource.data.journalId == journalId
+        && request.resource.data.viewerId is string
+        && request.resource.data.displayName is string
+        && request.resource.data.email is string
+        && request.resource.data.userType in ['account','guest']
+        && request.resource.data.fileName is string
+        && request.resource.data.createdAt is string
+        && ((request.auth == null && request.resource.data.uid == null && request.resource.data.userType == 'guest')
+          || (request.auth != null && request.resource.data.uid == request.auth.uid && request.resource.data.userType == 'account'));
+      allow update, delete: if isAdmin();
+    }
+
     match /journalIssues/{journalId}/chunks/{chunkId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();

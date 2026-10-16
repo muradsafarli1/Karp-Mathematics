@@ -68,7 +68,7 @@
 .about-founder-placeholder{width:100%;height:100%;display:grid;place-items:center;text-align:center;padding:16px;color:#858b93;font-size:11px}
 @media(max-width:760px){.about-founder-admin-preview{grid-template-columns:1fr}.about-founder-file-wrap{width:150px}}
 </style></head><body><div id="root"></div><script>
-let state={type:'problems',editing:null},liveDocs=[],liveUnsub=null,liveTimer=null,pendingVideoThumbnail='',pendingFounderImage='',pendingMeetingImage='',pendingBookFile=null,booksAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};
+let state={type:'problems',editing:null},liveDocs=[],liveUnsub=null,liveTimer=null,pendingVideoThumbnail='',pendingFounderImage='',pendingMeetingImage='',pendingBookFile=null,pendingJournalFile=null,booksAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''},journalsAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function startAdminPresence(db,u){
   try{
@@ -130,49 +130,159 @@ function arrayBufferToBase64(buffer){
   for(let i=0;i<bytes.length;i+=step)binary+=String.fromCharCode(...bytes.subarray(i,Math.min(i+step,bytes.length)));
   return btoa(binary);
 }
-async function uploadJournalIssue(){
-  const title=document.getElementById('journal-upload-title')?.value.trim(),description=document.getElementById('journal-upload-description')?.value.trim();
-  const input=document.getElementById('journal-upload-file'),file=input?.files?.[0],status=document.getElementById('journal-upload-status'),button=document.getElementById('journal-upload-btn');
+
+async function saveJournalAdmin(){
+  const editing=state.editing||{},title=document.getElementById('journal-admin-title')?.value.trim(),description=document.getElementById('journal-admin-description')?.value.trim()||'';
+  const file=pendingJournalFile,coverFile=document.getElementById('journal-admin-cover')?.files?.[0],status=document.getElementById('journal-admin-progress'),button=document.getElementById('journal-admin-save');
   if(!title){toast('Enter a journal title.');return}
-  if(!file){toast('Choose a PDF file.');return}
-  if(file.type!=='application/pdf'&&!/\.pdf$/i.test(file.name)){toast('Please choose a PDF file.');return}
-  if(file.size>15*1024*1024){toast('PDF is too large. Maximum size is 15 MB without Firebase Storage.');return}
+  const isEdit=!!editing.id;
+  if(!isEdit&&!file){toast('Choose a PDF file.');return}
+  if(file&&(file.type!=='application/pdf'&&!/\.pdf$/i.test(file.name))){toast('Please choose a PDF file.');return}
+  if(file&&file.size>15*1024*1024){toast('PDF is too large. Maximum size is 15 MB without Firebase Storage.');return}
   const {db}=await fb();
-  const {doc,setDoc,collection,updateDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const issueId=crypto.randomUUID(),issueRef=doc(db,'journalIssues',issueId),fileBytes=new Uint8Array(await file.arrayBuffer()),base64=arrayBufferToBase64(fileBytes),chunkSize=700000,chunkCount=Math.ceil(base64.length/chunkSize);
-  let coverImage='';
+  const {doc,setDoc,getDocs,collection,deleteDoc,updateDoc,writeBatch}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const id=editing.id||crypto.randomUUID();
+  if(button)button.disabled=true;
   try{
-    const pdfjsLib=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
-    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
-    const pdf=await pdfjsLib.getDocument({data:fileBytes}).promise;
-    const first=await pdf.getPage(1),base=first.getViewport({scale:1}),scale=Math.min(620/base.width,820/base.height),viewport=first.getViewport({scale});
-    const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(viewport.width));canvas.height=Math.max(1,Math.round(viewport.height));
-    const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);await first.render({canvasContext:ctx,viewport}).promise;
-    let q=.76;coverImage=canvas.toDataURL('image/jpeg',q);while(coverImage.length>650000&&q>.45){q-=.06;coverImage=canvas.toDataURL('image/jpeg',q)}if(coverImage.length>700000)coverImage='';canvas.width=1;canvas.height=1;
-  }catch(e){console.warn('Could not generate Journal cover preview:',e)}
-  button.disabled=true;status.textContent='Uploading 0 / '+chunkCount+'…';
-  try{
-    await setDoc(issueRef,{id:issueId,title,description,fileName:file.name,size:file.size,contentType:'application/pdf',chunkCount,published:false,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),coverImage});
-    for(let i=0;i<chunkCount;i++){
-      await setDoc(doc(issueRef,'chunks',String(i).padStart(6,'0')),{index:i,data:base64.slice(i*chunkSize,(i+1)*chunkSize)});
-      status.textContent='Uploading '+(i+1)+' / '+chunkCount+'…';
+    let coverImage=editing.coverImage||'';
+    if(coverFile)coverImage=await compressAdminImage(coverFile,{maxSide:1200,maxChars:650000});
+    if(!coverImage&&file){
+      try{
+        const bytesForCover=new Uint8Array(await file.arrayBuffer());
+        const pdfjsLib=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
+        pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+        const pdf=await pdfjsLib.getDocument({data:bytesForCover}).promise,first=await pdf.getPage(1),base=first.getViewport({scale:1});
+        const viewport=first.getViewport({scale:Math.min(620/base.width,820/base.height)});
+        const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(viewport.width));canvas.height=Math.max(1,Math.round(viewport.height));
+        const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+        await first.render({canvasContext:ctx,viewport}).promise;
+        let q=.76;coverImage=canvas.toDataURL('image/jpeg',q);
+        while(coverImage.length>650000&&q>.45){q-=.06;coverImage=canvas.toDataURL('image/jpeg',q)}
+        if(coverImage.length>700000)coverImage='';
+      }catch(e){console.warn('Could not generate PDF cover preview:',e)}
     }
-    await updateDoc(issueRef,{published:true,updatedAt:new Date().toISOString()});
-    document.getElementById('journal-upload-title').value='';document.getElementById('journal-upload-description').value='';input.value='';status.textContent='Uploaded successfully.';
-    toast('Journal published.');render();
-  }catch(e){try{await updateDoc(issueRef,{published:false,failed:true,updatedAt:new Date().toISOString()})}catch{}status.textContent=e.message||'Could not upload journal.';toast(status.textContent)}
-  finally{button.disabled=false}
+    if(isEdit&&!file){
+      await updateDoc(doc(db,'journalIssues',id),{title,description,coverImage,updatedAt:new Date().toISOString()});
+      state.editing=null;pendingJournalFile=null;toast('Journal updated.');render();return;
+    }
+    const bytes=new Uint8Array(await file.arrayBuffer()),base64=arrayBufferToBase64(bytes),chunkSize=700000,totalChunks=Math.max(1,Math.ceil(base64.length/chunkSize));
+    if(status)status.textContent='Saving PDF 0 / '+totalChunks+'…';
+    if(isEdit){
+      const oldChunks=await getDocs(collection(db,'journalIssues',id,'chunks'));
+      for(let i=0;i<oldChunks.docs.length;i+=400){
+        const batch=writeBatch(db);oldChunks.docs.slice(i,i+400).forEach(x=>batch.delete(x.ref));await batch.commit();
+      }
+    }
+    for(let index=0;index<totalChunks;index++){
+      await setDoc(doc(db,'journalIssues',id,'chunks',String(index).padStart(6,'0')),{index,data:base64.slice(index*chunkSize,(index+1)*chunkSize)},{merge:false});
+      if(status)status.textContent='Saving PDF '+(index+1)+' / '+totalChunks+' · '+Math.round(((index+1)/totalChunks)*100)+'%';
+    }
+    await setDoc(doc(db,'journalIssues',id),{
+      id,title,description,fileName:file.name,size:file.size,contentType:'application/pdf',
+      chunkCount:totalChunks,coverImage,published:true,viewCount:isEdit?Number(editing.viewCount||0):0,
+      downloadCount:isEdit?Number(editing.downloadCount||0):0,createdAt:editing.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()
+    },{merge:true});
+    state.editing=null;pendingJournalFile=null;toast(isEdit?'Journal updated.':'Journal published successfully.');render();
+  }catch(e){toast(e.message||'Could not save the journal.');if(status)status.textContent='Save failed.'}
+  finally{if(button)button.disabled=false}
 }
-async function deleteJournalIssue(id){
-  if(!confirm('Delete this journal permanently?'))return;
+async function uploadJournalIssue(){return saveJournalAdmin()}
+async function removeJournalAdmin(id,title,button){
+  if(!confirm('Permanently delete "'+title+'" and its PDF data and analytics? This cannot be undone.'))return;
+  if(button){button.disabled=true;button.textContent='Deleting…'}
   try{
     const {db}=await fb();
-    const {doc,collection,getDocs,deleteDoc,updateDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-    const ref=doc(db,'journalIssues',id);await updateDoc(ref,{published:false,updatedAt:new Date().toISOString()}).catch(()=>{});
-    const chunks=await getDocs(collection(ref,'chunks'));for(const chunk of chunks.docs)await deleteDoc(chunk.ref);
-    await deleteDoc(ref);toast('Journal deleted.');render();
-  }catch(e){toast(e.message||'Could not delete journal.')}
+    const {collection,getDocs,writeBatch,doc,deleteDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    for(const subcollection of ['chunks','views','viewSessions','downloads']){
+      const snap=await getDocs(collection(db,'journalIssues',id,subcollection));
+      for(let i=0;i<snap.docs.length;i+=400){
+        const batch=writeBatch(db);snap.docs.slice(i,i+400).forEach(x=>batch.delete(x.ref));await batch.commit();
+      }
+    }
+    await deleteDoc(doc(db,'journalIssues',id));
+    if(state.editing?.id===id){state.editing=null;pendingJournalFile=null}
+    if(journalsAdminDetails.id===id)journalsAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};
+    toast('Journal, PDF chunks, and analytics deleted.');await renderJournalsAdmin();
+  }catch(e){toast(e.message||'Could not delete the journal. Check Firestore permissions.');if(button){button.disabled=false;button.textContent='Delete'}}
 }
+function renderJournalDetailsPanel(issue){
+  const d=journalsAdminDetails,tab=d.tab==='downloads'?'downloads':'views';
+  const unique=Math.max(0,Number(issue.viewCount||0)),downloadTotal=Math.max(0,Number(issue.downloadCount||0));
+  let body='';
+  if(d.loading)body='<div class="books-admin-detail-empty">Loading activity…</div>';
+  else if(d.error)body='<div class="books-admin-detail-empty">'+esc(d.error)+'</div>';
+  else if(tab==='downloads'){
+    const rows=(d.downloads||[]).slice().sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+    body=rows.length?'<div class="books-admin-detail-table-wrap"><table class="books-admin-detail-table"><thead><tr><th>Who</th><th>Downloaded at</th><th>PDF filename</th></tr></thead><tbody>'+rows.map(x=>'<tr><td><strong>'+esc(x.displayName||x.email||(x.uid?'Signed-in account':'Guest / private window'))+'</strong>'+(x.email?'<br>'+esc(x.email):'')+(x.uid?'<br><span style="color:#737a80">Account</span>':'<br><span style="color:#737a80">Anonymous visitor</span>')+'</td><td>'+esc(bookAdminDate(x.createdAt))+'</td><td>'+esc(x.fileName||issue.fileName||issue.title||'PDF')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="books-admin-detail-empty">No detailed downloads have been recorded yet.</div>';
+    body+='<div class="books-admin-detail-note">Total Downloads counter: '+downloadTotal+'. Detailed records are created when the KARP Download PDF button is used.</div>';
+  }else{
+    const sessions=(d.sessions||[]).slice().sort((a,b)=>new Date(b.startedAt||0)-new Date(a.startedAt||0));
+    if(sessions.length){
+      body='<div class="books-admin-detail-table-wrap"><table class="books-admin-detail-table"><thead><tr><th>Who</th><th>Entered</th><th>Left / hidden</th><th>Active time</th></tr></thead><tbody>'+sessions.map(x=>{
+        const who=x.displayName||x.email||(x.uid?'Signed-in account':'Guest / private window');
+        const elapsed=x.endedAt?Number(x.durationSeconds||0):Math.max(0,Math.round((Date.now()-new Date(x.startedAt||Date.now()).getTime())/1000));
+        return '<tr><td><strong>'+esc(who)+'</strong>'+(x.email?'<br>'+esc(x.email):'')+(x.uid?'<br><span style="color:#737a80">Account</span>':'<br><span style="color:#737a80">Anonymous visitor</span>')+'</td><td>'+esc(bookAdminDate(x.startedAt))+'</td><td>'+(x.endedAt?esc(bookAdminDate(x.endedAt)):'<span style="color:#737a80">Exit not received yet</span>')+'</td><td>'+esc(bookAdminDuration(elapsed))+'</td></tr>';
+      }).join('')+'</tbody></table></div>';
+    }else{
+      const legacy=(d.views||[]).slice().sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+      body=legacy.length?'<div class="books-admin-detail-table-wrap"><table class="books-admin-detail-table"><thead><tr><th>Visitor</th><th>First recorded view</th><th>Session details</th></tr></thead><tbody>'+legacy.map(x=>'<tr><td>'+esc(x.displayName||x.email||(x.uid?'Signed-in account':'Guest / private window'))+(x.email?'<br>'+esc(x.email):'')+'</td><td>'+esc(bookAdminDate(x.createdAt))+'</td><td>Unique-view record</td></tr>').join('')+'</tbody></table></div>':'<div class="books-admin-detail-empty">No view activity is recorded yet.</div>';
+    }
+  }
+  body='<div class="books-admin-detail-summary">Unique viewers: '+unique+' · Recorded sessions: '+(d.sessions||[]).length+'</div>'+body+
+    '<div class="books-admin-detail-note">A view is counted once per signed-in account, or once per browser-local guest ID. Session time counts only while this PDF tab is visible. Anonymous/private-window visitors cannot be identified by name or email unless they sign in.</div>';
+  return '<section class="books-admin-details"><div class="books-admin-detail-head"><div><strong>'+esc(issue.title||issue.fileName||'Journal')+' · Details</strong><div class="books-admin-detail-summary">Activity history for this PDF</div></div><div class="books-admin-actions"><button class="btn" data-refresh-journal-details>Refresh</button> <button class="btn" data-close-journal-details>Close</button></div></div><div class="books-admin-detail-tabs"><button class="books-admin-detail-tab '+(tab==='views'?'active':'')+'" data-journal-details-tab="views">Views & sessions</button><button class="books-admin-detail-tab '+(tab==='downloads'?'active':'')+'" data-journal-details-tab="downloads">Downloads ('+downloadTotal+')</button></div>'+body+'</section>';
+}
+async function loadJournalDetails(id,tab='views',refresh=false){
+  if(journalsAdminDetails.id===id&&journalsAdminDetails.loaded&&!refresh){journalsAdminDetails.tab=tab;await renderJournalsAdmin();return}
+  journalsAdminDetails={id,tab,loading:true,loaded:false,views:[],sessions:[],downloads:[],error:''};await renderJournalsAdmin();
+  try{
+    const {db}=await fb();
+    const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const [viewSnap,sessionSnap,downloadSnap]=await Promise.all([
+      getDocs(collection(db,'journalIssues',id,'views')),
+      getDocs(collection(db,'journalIssues',id,'viewSessions')),
+      getDocs(collection(db,'journalIssues',id,'downloads'))
+    ]);
+    if(journalsAdminDetails.id!==id)return;
+    journalsAdminDetails={id,tab,loading:false,loaded:true,views:viewSnap.docs.map(x=>({id:x.id,...x.data()})),sessions:sessionSnap.docs.map(x=>({id:x.id,...x.data()})),downloads:downloadSnap.docs.map(x=>({id:x.id,...x.data()})),error:''};
+  }catch(e){if(journalsAdminDetails.id===id)journalsAdminDetails={...journalsAdminDetails,loading:false,loaded:true,error:e.message||'Unable to load this journal\'s activity.'}}
+  await renderJournalsAdmin();
+}
+async function renderJournalsAdmin(){
+  const m=document.getElementById('main');if(!m)return;
+  try{
+    const {db}=await fb();
+    const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const snap=await getDocs(collection(db,'journalIssues'));
+    const issues=snap.docs.map(x=>({id:x.id,...x.data()})).filter(x=>x.published!==false).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+    const e=state.editing,isEdit=!!(e&&e.id);
+    const editor=e?'<div class="bigcard books-admin-editor"><div class="admin-head" style="margin-bottom:8px"><div><h2>'+(isEdit?'Edit Journal':'Add Journal')+'</h2><span class="admin-count">'+(isEdit?'Change title, description, cover, or replace the PDF.':'PDF upload · stored in Firestore chunks')+'</span></div></div><div class="books-admin-form">'+
+      '<div class="books-admin-field"><label for="journal-admin-title">Journal title</label><input id="journal-admin-title" type="text" value="'+esc(e.title||'')+'" placeholder="e.g. KARP Journal — September 2026"></div>'+
+      '<div class="books-admin-field"><label for="journal-admin-description">Description</label><textarea id="journal-admin-description" rows="3" style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #d9dad8;border-radius:10px;background:#fff;color:#17191c;font:500 12px Inter,sans-serif;resize:vertical">'+esc(e.description||'')+'</textarea></div>'+
+      '<div class="books-admin-field"><label for="journal-admin-file">'+(isEdit?'Replace PDF (optional)':'PDF file')+'</label><input id="journal-admin-file" type="file" accept="application/pdf,.pdf"><div class="books-admin-note">'+(isEdit?'Leave empty to keep the current PDF.':'Maximum PDF size: 15 MB without Firebase Storage.')+'</div><div class="books-admin-progress" id="journal-admin-progress">'+(pendingJournalFile?esc(pendingJournalFile.name):(isEdit?'Current PDF kept.':'No file selected.'))+'</div></div>'+
+      '<div class="books-admin-field"><label for="journal-admin-cover">Journal cover image</label><input id="journal-admin-cover" type="file" accept="image/*"><div class="books-admin-note">'+(e.coverImage?'Current cover is shown below. Choose another image to replace it, or remove it.':'Upload the exact cover. If empty, the first PDF page is used when possible.')+'</div>'+
+      '<div id="journal-admin-cover-preview" style="display:flex;gap:10px;align-items:center;margin-top:6px">'+(e.coverImage?'<img src="'+esc(e.coverImage)+'" alt="" style="width:76px;height:108px;object-fit:cover;border:1px solid #d9dad8;border-radius:6px"><button type="button" class="btn danger" id="journal-admin-remove-cover">Remove cover</button>':'')+'</div></div>'+
+      '<div><button class="btn primary" id="journal-admin-save">'+(isEdit?'Save Changes':'Publish Journal')+'</button> <button class="btn" id="journal-admin-cancel">Cancel</button></div></div></div>':'';
+    const rows=issues.map(x=>{
+      const title=x.title||x.fileName||'Untitled Journal',details=journalsAdminDetails.id===x.id?renderJournalDetailsPanel(x):'';
+      return '<div class="books-admin-item"><div class="row books-admin-row"><div><h3>'+esc(title)+'</h3><p>'+esc(x.fileName||'PDF')+' · '+(Number(x.size||0)/1024/1024).toFixed(2)+' MB</p><div class="books-admin-stats"><span>Views <strong>'+Math.max(0,Number(x.viewCount||0))+'</strong></span><span>Downloads <strong>'+Math.max(0,Number(x.downloadCount||0))+'</strong></span><span>Added <strong>'+esc(x.createdAt?new Date(x.createdAt).toLocaleString():'—')+'</strong></span></div></div><div class="right books-admin-actions"><a class="btn" href="/journal.html?id='+encodeURIComponent(x.id)+'">Open</a> <button class="btn" data-journal-details="'+esc(x.id)+'">Details</button> <button class="btn" data-edit-journal="'+esc(x.id)+'">Edit</button> <button class="btn danger" data-delete-journal="'+esc(x.id)+'">Delete</button></div></div>'+details+'</div>';
+    }).join('');
+    m.innerHTML='<div class="admin-head"><div><h2>Journals</h2><span class="admin-count">'+issues.length+' published issues</span></div><div><button class="btn primary" id="journals-admin-new">+ New Journal</button></div></div>'+editor+'<div class="bigcard admin-kpi-bar"><div><strong>'+issues.length+'</strong><span>Published issues</span></div><div><strong>'+issues.reduce((sum,x)=>sum+Number(x.viewCount||0),0)+'</strong><span>Total unique views</span></div><div><strong>'+issues.reduce((sum,x)=>sum+Number(x.downloadCount||0),0)+'</strong><span>Total downloads</span></div></div><div class="rows">'+(rows||'<div class="empty">No journals have been published yet.</div>')+'</div>';
+    document.getElementById('journals-admin-new')?.addEventListener('click',()=>{pendingJournalFile=null;state.editing={id:null,title:'',description:'',coverImage:''};renderJournalsAdmin()});
+    document.getElementById('journals-admin-cancel')?.addEventListener('click',()=>{pendingJournalFile=null;state.editing=null;renderJournalsAdmin()});
+    const input=document.getElementById('journal-admin-file');
+    input?.addEventListener('change',()=>{pendingJournalFile=input.files?.[0]||null;const st=document.getElementById('journal-admin-progress');if(st)st.textContent=pendingJournalFile?pendingJournalFile.name:(state.editing?.id?'Current PDF kept.':'No file selected.')});
+    document.getElementById('journal-admin-save')?.addEventListener('click',saveJournalAdmin);
+    document.getElementById('journal-admin-remove-cover')?.addEventListener('click',()=>{if(state.editing){state.editing.coverImage='';renderJournalsAdmin()}});
+    document.querySelectorAll('[data-edit-journal]').forEach(btn=>btn.onclick=()=>{const issue=issues.find(x=>x.id===btn.dataset.editJournal);if(!issue)return;pendingJournalFile=null;state.editing={...issue};renderJournalsAdmin()});
+    document.querySelectorAll('[data-delete-journal]').forEach(btn=>btn.onclick=()=>removeJournalAdmin(btn.dataset.deleteJournal,btn.closest('.books-admin-item')?.querySelector('h3')?.textContent||'this journal',btn));
+    document.querySelectorAll('[data-journal-details]').forEach(btn=>btn.onclick=()=>{const id=btn.dataset.journalDetails;if(journalsAdminDetails.id===id){journalsAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};renderJournalsAdmin()}else loadJournalDetails(id,'views',true)});
+    document.querySelectorAll('[data-journal-details-tab]').forEach(btn=>btn.onclick=()=>{journalsAdminDetails.tab=btn.dataset.journalDetailsTab;renderJournalsAdmin()});
+    document.querySelectorAll('[data-refresh-journal-details]').forEach(btn=>btn.onclick=()=>loadJournalDetails(journalsAdminDetails.id,journalsAdminDetails.tab,true));
+    document.querySelectorAll('[data-close-journal-details]').forEach(btn=>btn.onclick=()=>{journalsAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};renderJournalsAdmin()});
+  }catch(e){m.innerHTML='<div class="bigcard"><h3>Could not load Journals</h3><p>'+esc(e.message||'Check Firestore permissions.')+'</p></div>'}
+}
+
 function renderLivePresence(){const el=document.getElementById('live-presence');if(!el)return;const now=Date.now(),rows=liveDocs.filter(p=>p.online&&presenceMillis(p.expiresAt)>now).sort((a,b)=>presenceMillis(b.lastSeen)-presenceMillis(a.lastSeen));const people=rows.map(p=>{const a=p.activity||{},where=a.page==='Exam'?'Exam':a.page==='Mock'?'Mock':a.page||'KARP',detail=a.detail||a.label||'Browsing',q=a.question?(' · Problem '+a.question):'';return '<div class="live-person"><div class="live-person-top"><span class="live-dot"></span><span class="live-name">'+escapeHtml(p.name||'KARP Member')+'</span></div><div class="live-activity">'+escapeHtml(where+' · '+detail+q)+'</div></div>'}).join('');el.innerHTML='<div class="live-presence-head"><strong>Live now</strong><span class="live-presence-count">'+rows.length+' online</span></div><div class="live-presence-grid">'+(people||'<span class="live-empty">No active users right now.</span>')+'</div>'}
 function initLivePresence(db){}
 async function renderBooksAdmin(){
@@ -479,25 +589,7 @@ async function render(){
   }
 
   if(state.type==='journals'){
-    try{
-      const {db}=await fb();
-      const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-      const snap=await getDocs(collection(db,'journalIssues'));
-      const issues=snap.docs.map(x=>({id:x.id,...x.data()})).filter(x=>x.published!==false).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
-      const totalDownloads=issues.reduce((sum,x)=>sum+Number(x.downloadCount||0),0);
-      const totalReads=issues.reduce((sum,x)=>sum+Number(x.readCount||0),0);
-      m.innerHTML='<div class="admin-head"><div><h2>Journals</h2><span class="admin-count">'+issues.length+' published issues · '+totalReads+' total page-turn reads · '+totalDownloads+' total downloads</span></div></div>'+
-        '<div class="bigcard admin-kpi-bar"><div><strong>'+issues.length+'</strong><span>Published issues</span></div><div><strong>'+totalReads+'</strong><span>Total page-turn reads</span></div><div><strong>'+totalDownloads+'</strong><span>Total downloads</span></div></div>'+
-        '<div class="editor-card"><div class="tag">UPLOAD JOURNAL PDF</div>'+
-        '<div class="editor-card"><div class="tag">UPLOAD JOURNAL PDF</div>'+
-        '<div class="field"><label>Journal title</label><input class="input" id="journal-upload-title" maxlength="180" placeholder="e.g. KARP Journal — September 2026"></div>'+
-        '<div class="field"><label>Description (optional)</label><textarea class="textarea" id="journal-upload-description" rows="3" placeholder="Short description..."></textarea></div>'+
-        '<div class="field"><label>PDF file</label><input class="input" id="journal-upload-file" type="file" accept="application/pdf,.pdf"></div>'+
-        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px"><button class="btn primary" id="journal-upload-btn" type="button" onclick="uploadJournalIssue()">Upload & publish</button><span id="journal-upload-status" class="admin-upload-status"></span></div>'+
-        '<p style="font-size:10px;color:#666b73;margin:12px 0 0">Storage is not used. PDFs are split into Firestore chunks; maximum PDF size is 15 MB.</p></div>'+
-        '<div class="rows">'+(issues.length?issues.map(x=>'<div class="row"><div><h3>'+esc(x.title||x.fileName||'Untitled Journal')+'</h3><p>'+esc(x.description||x.fileName||'')+' · '+(Number(x.size||0)/1024/1024).toFixed(2)+' MB</p></div><div><strong>'+Number(x.readCount||0)+'</strong> reads<br><span style="font-size:10px;color:#666b73">'+Number(x.downloadCount||0)+' downloads</span></div><div class="right"><button class="btn danger" data-delete-journal="'+esc(x.id)+'">Delete</button></div></div>').join(''):'<div class="empty">No journals published yet.</div>')+'</div>';
-      m.querySelectorAll('[data-delete-journal]').forEach(b=>b.onclick=()=>deleteJournalIssue(b.dataset.deleteJournal));
-    }catch(e){m.innerHTML='<div class="bigcard"><h3>Could not load journals</h3><p>'+esc(e.message||'Check Firestore permissions.')+'</p></div>'}
+    await renderJournalsAdmin();
     return;
   }
 
