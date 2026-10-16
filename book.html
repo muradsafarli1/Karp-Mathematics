@@ -51,15 +51,16 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
     document.body.innerHTML='<div class="karp-pdf-browser">'+
       '<div class="karp-pdf-tabs" id="pdf-tabs"><button class="karp-pdf-new" id="pdf-new" title="New tab">+</button></div>'+
       '<div class="karp-pdf-bar"><button id="pdf-back" title="Back">←</button><button id="pdf-home" title="Books">⌂</button><span class="pdf-title" id="pdf-title"></span><button id="pdf-download" type="button" title="Download this PDF">Download PDF</button></div>'+
-      '<div class="karp-pdf-stage"><div class="karp-pdf-loading" id="pdf-loading">Opening PDF…</div><iframe id="pdf-frame" class="karp-pdf-frame" title="KARP PDF viewer"></iframe></div>'+
+      '<div class="karp-pdf-stage"><div id="pdf-frames" style="position:absolute;inset:0;overflow:hidden;background:#525659"></div><div class="karp-pdf-loading" id="pdf-loading">Opening PDF…</div></div>'+
       '<div class="karp-book-picker" id="book-picker"><h2>Books</h2><input id="book-picker-search" class="karp-book-picker-search" type="search" placeholder="Search books by title…" autocomplete="off"><div class="karp-book-picker-grid" id="book-picker-grid"></div></div>'+
     '</div>';
 
-    const tabs=document.getElementById('pdf-tabs'),frame=document.getElementById('pdf-frame'),titleEl=document.getElementById('pdf-title');
+    const tabs=document.getElementById('pdf-tabs'),frameHost=document.getElementById('pdf-frames'),titleEl=document.getElementById('pdf-title');
     const loading=document.getElementById('pdf-loading'),picker=document.getElementById('book-picker'),pickerGrid=document.getElementById('book-picker-grid'),pickerSearch=document.getElementById('book-picker-search');
     let books=[];
     const tabStates=new Map();
     let activeSession=null,activeBookId=current.id,sessionStarting=false;
+
     function makeId(){return crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2)}
     const visitorId=(()=>{if(authUser?.uid)return authUser.uid;let id='';try{id=localStorage.getItem('karp_book_viewer_id')||''}catch{}if(!id){id=makeId();try{localStorage.setItem('karp_book_viewer_id',id)}catch{}}return 'guest_'+id})();
     const visitor={uid:authUser?.uid||null,displayName:authUser?.displayName||'',email:authUser?.email||'',userType:authUser?.uid?'account':'guest',viewerId:visitorId};
@@ -67,7 +68,7 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
     function esc(x){return escapeHtml(String(x??''))}
     function tabButton(book){
       const b=document.createElement('button');
-      b.className='karp-pdf-tab'; b.dataset.id=book.id;
+      b.className='karp-pdf-tab';b.dataset.id=book.id;
       b.innerHTML='<span class="tab-title">'+esc(book.title||book.fileName||'Book')+'</span><span class="tab-close" aria-label="Close">×</span>';
       b.onclick=()=>openBook(book.id);
       b.querySelector('.tab-close').onclick=e=>{e.stopPropagation();closeTab(book.id)};
@@ -77,10 +78,31 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
       if(tabStates.has(book.id))return;
       const b=tabButton(book);
       tabs.insertBefore(b,document.getElementById('pdf-new'));
-      tabStates.set(book.id,{book,url:null});
+      tabStates.set(book.id,{book,url:null,frame:null});
     }
     function activateTab(id){
       tabs.querySelectorAll('.karp-pdf-tab').forEach(x=>x.classList.toggle('active',x.dataset.id===id));
+      tabStates.forEach((st,key)=>{
+        if(!st.frame)return;
+        const active=key===id;
+        st.frame.style.visibility=active?'visible':'hidden';
+        st.frame.style.opacity=active?'1':'0';
+        st.frame.style.pointerEvents=active?'auto':'none';
+        st.frame.style.zIndex=active?'1':'0';
+      });
+    }
+    function ensureFrame(book){
+      const st=tabStates.get(book.id);
+      if(!st)throw new Error('PDF tab state is missing.');
+      if(st.frame)return st.frame;
+      const frame=document.createElement('iframe');
+      frame.className='karp-pdf-frame';
+      frame.title='KARP PDF viewer — '+(book.title||book.fileName||'Book');
+      frame.setAttribute('allow','fullscreen');
+      frame.style.cssText='position:absolute;inset:0;display:block;width:100%;height:100%;border:0;background:#525659;visibility:hidden;opacity:0;pointer-events:none;z-index:0';
+      frameHost.appendChild(frame);
+      st.frame=frame;
+      return frame;
     }
     async function getPdfUrl(book){
       const st=tabStates.get(book.id);
@@ -94,13 +116,12 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
         return out;
       });
       const total=bytesParts.reduce((n,x)=>n+x.length,0),bytes=new Uint8Array(total);
-      let off=0; for(const p of bytesParts){bytes.set(p,off);off+=p.length}
-      st.url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
-      return st.url;
+      let off=0;for(const p of bytesParts){bytes.set(p,off);off+=p.length}
+      const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+      const st2=tabStates.get(book.id);if(st2)st2.url=url;
+      return url;
     }
 
-    // Unique Views count accounts or browser-local guest IDs, while sessions log each
-    // foreground visit separately so switching away does not inflate active time.
     async function countViewOnce(book){
       const bookRef=doc(db,'books',book.id),viewRef=doc(db,'books',book.id,'views',visitor.viewerId);
       await runTransaction(db,async tx=>{
@@ -159,26 +180,40 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
       await stopViewSession();
       activeBookId=book.id;
       addTab(book);
-      activateTab(book.id);
+      const st=tabStates.get(book.id);
+      const firstOpen=!st.frame;
       titleEl.textContent=book.title||book.fileName||'Book';
       document.title='KARP — '+(book.title||book.fileName||'Book');
-      loading.style.display='grid';
-      try{
-        frame.src=await getPdfUrl(book);
-        try{await countViewOnce(book)}catch(e){console.warn('Book unique view count failed:',e)}
-        history.replaceState({},'',location.pathname+'?id='+encodeURIComponent(book.id));
-        if(!document.hidden)await startViewSession(book);
-      }catch(e){console.error(e);loading.textContent='Unable to open PDF'}
-      finally{loading.style.display='none'}
+      activateTab(book.id);
       picker.style.display='none';
+      if(firstOpen){
+        loading.style.display='grid';
+        loading.textContent='Opening PDF…';
+        try{
+          const frame=ensureFrame(book);
+          frame.src=await getPdfUrl(book);
+          await new Promise(resolve=>setTimeout(resolve,120));
+          try{await countViewOnce(book)}catch(e){console.warn('Book unique view count failed:',e)}
+          if(!document.hidden)await startViewSession(book);
+        }catch(e){console.error(e);loading.textContent='Unable to open PDF'}
+        finally{loading.style.display='none'}
+      }else{
+        try{await countViewOnce(book)}catch(e){console.warn('Book unique view count failed:',e)}
+        if(!document.hidden)await startViewSession(book);
+      }
+      history.replaceState({},'',location.pathname+'?id='+encodeURIComponent(book.id));
     }
     function closeTab(id){
       const st=tabStates.get(id);
-      if(st?.url)URL.revokeObjectURL(st.url);
+      if(!st)return;
+      const wasActive=id===activeBookId;
+      if(st.url)URL.revokeObjectURL(st.url);
+      st.frame?.remove();
       tabStates.delete(id);
       tabs.querySelector('[data-id="'+CSS.escape(id)+'"]')?.remove();
+      if(!wasActive)return;
       const next=[...tabStates.keys()].at(-1);
-      if(next)openBook(next); else location.replace('/books.html');
+      if(next)openBook(next);else location.replace('/books.html');
     }
     function renderPicker(){
       const q=String(pickerSearch.value||'').trim().toLowerCase();
