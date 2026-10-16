@@ -166,7 +166,7 @@ async function renderBooksAdmin(){
     const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
     const snap=await getDocs(collection(db,'books'));
     const books=snap.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
-    const editor=state.editing?'<div class="bigcard books-admin-editor"><div class="admin-head" style="margin-bottom:8px"><div><h2>Add Book</h2><span class="admin-count">PDF upload · no app-level file-size cap</span></div></div><div class="books-admin-form"><div class="books-admin-field"><label for="books-admin-title">Book title</label><input id="books-admin-title" type="text" value="'+esc(state.editing.title||'')+'" placeholder="e.g. IMO 2024 SL"></div><div class="books-admin-field"><label for="books-admin-file">PDF file</label><input id="books-admin-file" type="file" accept="application/pdf,.pdf"><div class="books-admin-note">Large files are uploaded as Firestore chunks, so this form does not impose a fixed PDF size limit.</div><div class="books-admin-progress" id="books-admin-progress">'+(pendingBookFile?esc(pendingBookFile.name):'No file selected.')+'</div></div><div><button class="btn primary" id="books-admin-upload">Upload Book</button> <button class="btn" id="books-admin-cancel">Cancel</button></div></div></div>':'';
+    const editor=state.editing?'<div class="bigcard books-admin-editor"><div class="admin-head" style="margin-bottom:8px"><div><h2>Add Book</h2><span class="admin-count">PDF upload · no app-level file-size cap</span></div></div><div class="books-admin-form"><div class="books-admin-field"><label for="books-admin-title">Book title</label><input id="books-admin-title" type="text" value="'+esc(state.editing.title||'')+'" placeholder="e.g. IMO 2024 SL"></div><div class="books-admin-field"><label for="books-admin-file">PDF file</label><input id="books-admin-file" type="file" accept="application/pdf,.pdf"><div class="books-admin-note">Large files are uploaded as Firestore chunks, so this form does not impose a fixed PDF size limit.</div><div class="books-admin-progress" id="books-admin-progress">'+(pendingBookFile?esc(pendingBookFile.name):'No file selected.')+'</div></div><div class="books-admin-field"><label for="books-admin-cover">Book cover image</label><input id="books-admin-cover" type="file" accept="image/*"><div class="books-admin-note">Upload the exact cover you want shown in Books. If empty, the first PDF page will be used automatically when possible.</div></div><div><button class="btn primary" id="books-admin-upload">Upload Book</button> <button class="btn" id="books-admin-cancel">Cancel</button></div></div></div>':'';
     const rows=books.map(b=>'<div class="row books-admin-row"><div><h3>'+esc(b.title||b.fileName||'Untitled Book')+'</h3><p>'+esc(b.fileName||'PDF')+' · '+(Number(b.size||0)/1024/1024).toFixed(2)+' MB</p><div class="books-admin-stats"><span>Views <strong>'+Math.max(0,Number(b.viewCount||0))+'</strong></span><span>Downloads <strong>'+Math.max(0,Number(b.downloadCount||0))+'</strong></span><span>Added <strong>'+esc(b.createdAt?new Date(b.createdAt).toLocaleString():'—')+'</strong></span></div></div><div class="right books-admin-actions"><a class="btn" href="/book.html?id='+encodeURIComponent(b.id)+'" target="_blank" rel="noopener">Open</a> <button class="btn danger" data-delete-book="'+esc(b.id)+'">Delete</button></div></div>').join('');
     m.innerHTML='<div class="admin-head"><div><h2>Books</h2><span class="admin-count">'+books.length+' books</span></div><div><button class="btn primary" id="books-admin-new">+ New Book</button></div></div>'+editor+'<div class="rows">'+(rows||'<div class="empty">No books have been added yet.</div>')+'</div>';
     document.getElementById('books-admin-new')?.addEventListener('click',()=>{pendingBookFile=null;state.editing={id:null,title:''};render()});
@@ -182,6 +182,7 @@ async function renderBooksAdmin(){
 async function saveBookAdmin(){
   const title=document.getElementById('books-admin-title')?.value.trim();
   const file=pendingBookFile;
+  const coverFile=document.getElementById('books-admin-cover')?.files?.[0];
   const status=document.getElementById('books-admin-progress'),button=document.getElementById('books-admin-upload');
   if(!title){toast('Enter a book title.');return}
   if(!file){toast('Choose a PDF file.');return}
@@ -196,7 +197,8 @@ async function saveBookAdmin(){
   try{
     if(status)status.textContent='Preparing cover…';
     let coverImage='';
-    try{
+    if(coverFile){try{coverImage=await compressAdminImage(coverFile,{maxSide:1200,maxChars:650000})}catch(e){toast(e.message||'Could not process cover image.');button.disabled=false;return}}
+    if(!coverImage)try{
       const pdfjsLib=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
       pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
       const pdf=await pdfjsLib.getDocument({data:bytes}).promise;
