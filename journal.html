@@ -1,7 +1,15 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KARP — Journal</title><link rel="stylesheet" href="/style.css"><script src="/app.js"></script><style>
 .journal-page{min-height:100vh;background:#f7f7f5;color:#17191c}.journal-hero{padding:38px 24px 26px;text-align:center}.journal-hero h1{font-family:'Space Grotesk';font-size:clamp(46px,6vw,76px);line-height:1;letter-spacing:-3px;margin:0}.journal-search-wrap{width:min(560px,calc(100% - 28px));margin:14px auto 44px}.journal-search{width:100%;box-sizing:border-box;padding:13px 17px;border:1px solid #d9dad8;border-radius:12px;background:#eeeeeb;color:#17191c;font:500 13px 'Inter',sans-serif;outline:none}.journal-grid{width:min(1220px,calc(100% - 42px));margin:0 auto;padding:0 0 80px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:30px 24px}.journal-card{display:block;min-width:0;text-decoration:none;color:inherit}.journal-cover{position:relative;aspect-ratio:.7071;overflow:hidden;border:1px solid #cfd2ce;border-radius:0;background:#fff;box-shadow:0 9px 22px rgba(30,34,38,.08);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.journal-cover img{display:block;width:100%;height:100%;object-fit:cover;background:#fff}.journal-cover-fallback{position:absolute;inset:0;padding:24px 18px;display:flex;flex-direction:column;justify-content:space-between;background:#eeeeeb}.journal-cover-fallback h2{font-family:'Space Grotesk';font-size:21px;line-height:1.08;letter-spacing:-.7px;margin:0;color:#17191c;overflow-wrap:anywhere}.journal-cover-fallback small{font-size:8px;font-weight:800;letter-spacing:1.7px;text-transform:uppercase;color:#686d73}.journal-card:hover .journal-cover{transform:translateY(-4px);border-color:#aeb3af;box-shadow:0 13px 28px rgba(30,34,38,.13)}.journal-card-meta{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:12px 4px 0}.journal-card-title{display:block;width:100%;font-size:14px;font-weight:700;line-height:1.38;overflow-wrap:anywhere;color:#2a2d31}.journal-views{display:inline-flex;align-items:center;justify-content:center;gap:5px;color:#666b73;font-size:10px}.journal-views svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8}.journal-empty{grid-column:1/-1;text-align:center;padding:70px 20px;color:#737a80;font-size:13px}@media(max-width:1120px){.journal-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:26px 20px}}@media(max-width:900px){.journal-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:24px 16px}}@media(max-width:680px){.journal-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 13px}.journal-card-title{font-size:12px}}@media(max-width:480px){.journal-grid{width:calc(100% - 28px)}.journal-search-wrap{margin-bottom:34px}}
 .karp-pdf-browser{position:fixed;inset:0;display:flex;flex-direction:column;background:#fff;color:#202124;font-family:Arial,sans-serif}.karp-pdf-tabs{height:42px;display:flex;align-items:flex-end;background:#e9eaec;border-bottom:1px solid #c8cbd0;padding:0 8px;gap:3px}.karp-pdf-tab{height:36px;min-width:180px;max-width:260px;padding:0 12px;display:flex;align-items:center;gap:8px;background:#dfe1e5;border:1px solid #c9cbd0;border-bottom:0;border-radius:9px 9px 0 0;cursor:pointer;color:#3c4043;font-size:12px}.karp-pdf-tab.active{background:#fff;color:#202124}.karp-pdf-tab .tab-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.karp-pdf-tab .tab-close{font-size:16px;color:#666}.karp-pdf-new{height:32px;width:32px;border:0;background:transparent;font-size:23px;color:#4b4f53;cursor:pointer;margin-bottom:2px}.karp-pdf-bar{height:46px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#fff;border-bottom:1px solid #d7d9dc}.karp-pdf-bar button{border:0;background:transparent;border-radius:6px;padding:7px 9px;color:#444;cursor:pointer;font-size:13px}.karp-pdf-bar button:hover{background:#f0f1f2}.pdf-title{font-size:13px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.karp-pdf-stage{position:relative;flex:1;min-height:0;background:#525659;overflow:auto;display:flex;justify-content:center;padding:24px}.karp-pdf-frame{width:min(100%,1100px);height:100%;min-height:700px;border:0;background:#525659}.karp-pdf-loading{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:13px}.karp-pdf-picker{position:fixed;z-index:20;inset:88px 8% 8%;background:#fff;border:1px solid #c8cbd0;border-radius:10px;box-shadow:0 20px 60px #0004;display:none;overflow:auto;padding:28px}.karp-pdf-picker h2{margin:0 0 18px;font-size:22px}.karp-pdf-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:20px}.karp-picker-card{border:1px solid #d5d7da;border-radius:8px;padding:10px;background:#fff;cursor:pointer;text-align:left}.karp-picker-card img{width:100%;aspect-ratio:.707;object-fit:cover;display:block}.karp-picker-card strong{display:block;font-size:11px;margin-top:8px}
-.karp-pdf-picker-search{display:block;width:min(520px,100%);box-sizing:border-box;padding:11px 13px;margin:0 0 20px;border:1px solid #d5d7da;border-radius:8px;background:#f7f8f9;color:#202124;font-size:13px;outline:none}.karp-pdf-picker-search:focus{border-color:#9aa0a6;box-shadow:0 0 0 2px #2021240b}.karp-pdf-stage{padding:0!important;overflow:hidden!important;display:block!important}.karp-pdf-frame{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-height:0!important}</style></head><body><script>
+.karp-pdf-picker-search{display:block;width:min(520px,100%);box-sizing:border-box;padding:11px 13px;margin:0 0 20px;border:1px solid #d5d7da;border-radius:8px;background:#f7f8f9;color:#202124;font-size:13px;outline:none}.karp-pdf-picker-search:focus{border-color:#9aa0a6;box-shadow:0 0 0 2px #2021240b}.karp-pdf-stage{padding:0!important;overflow:hidden!important;display:block!important}.karp-pdf-frame{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-height:0!important}</style><style>
+.karp-pdf-stage{position:relative!important;flex:1!important;min-height:0!important;background:#525659!important;overflow:hidden!important;display:block!important;padding:0!important}
+.karp-pdf-doc{position:absolute;inset:0;overflow:auto;padding:26px 18px 60px;box-sizing:border-box;outline:0}
+.karp-pdf-page{position:relative;width:max-content;min-width:320px;min-height:520px;margin:0 auto 24px;background:#fff;box-shadow:0 2px 18px rgba(0,0,0,.22);display:flex;justify-content:center;align-items:flex-start}
+.karp-pdf-page-number{position:absolute;right:10px;top:7px;font:10px Arial,sans-serif;color:#9aa0a6;pointer-events:none}
+.karp-pdf-canvas{display:block;background:#fff}
+.karp-pdf-loading{position:absolute!important;z-index:30!important;inset:0;display:grid;place-items:center;background:#525659;color:#fff;font-size:13px;pointer-events:none}
+@media(max-width:700px){.karp-pdf-doc{padding:16px 8px 40px}.karp-pdf-page{min-width:280px}}
+</style></head><body><script>
 if(new URLSearchParams(location.search).get('id')){
 
 (async()=>{
@@ -18,23 +26,30 @@ if(new URLSearchParams(location.search).get('id')){
     document.body.innerHTML='<div class="karp-pdf-browser">'+
       '<div class="karp-pdf-tabs" id="pdf-tabs"><button class="karp-pdf-new" id="pdf-new" title="New tab">+</button></div>'+
       '<div class="karp-pdf-bar"><button id="pdf-back" title="Back">←</button><button id="pdf-home" title="Journals">⌂</button><span class="pdf-title" id="pdf-title"></span><button id="pdf-download" type="button" title="Download this PDF">Download PDF</button></div>'+
-      '<div class="karp-pdf-stage"><div id="pdf-frames" style="position:absolute;inset:0;overflow:hidden;background:#525659"></div><div class="karp-pdf-loading" id="pdf-loading">Opening PDF…</div></div>'+
-      '<div class="karp-pdf-picker" id="journal-picker"><h2>Journals</h2><input id="journal-picker-search" class="karp-pdf-picker-search" type="search" placeholder="Search journals by title…" autocomplete="off"><div class="karp-pdf-picker-grid" id="journal-picker-grid"></div></div>'+
+      '<div class="karp-pdf-stage" id="pdf-stage"></div>'+
+      '<div class="karp-pdf-loading" id="pdf-loading">Opening PDF…</div>'+
+      '<div class="karp-journal-picker" id="journal-picker"><h2>Journals</h2><input id="journal-picker-search" class="karp-journal-picker-search" type="search" placeholder="Search journals by title…" autocomplete="off"><div class="karp-journal-picker-grid" id="journal-picker-grid"></div></div>'+
     '</div>';
 
-    const tabs=document.getElementById('pdf-tabs'),frameHost=document.getElementById('pdf-frames'),titleEl=document.getElementById('pdf-title');
+    const tabs=document.getElementById('pdf-tabs'),stage=document.getElementById('pdf-stage'),titleEl=document.getElementById('pdf-title');
     const loading=document.getElementById('pdf-loading'),picker=document.getElementById('journal-picker'),pickerGrid=document.getElementById('journal-picker-grid'),pickerSearch=document.getElementById('journal-picker-search');
     let journals=[];
+    const journalLegacySeed=data=>{const n=Number(data?.readCount);return n===416?83:n===110?34:0};
+    const journalUniqueCount=data=>{const n=Number(data?.viewCount);return Number.isFinite(n)&&n>=0?Math.floor(n):journalLegacySeed(data)};
     const tabStates=new Map();
-    let activeSession=null,activeJournalId=current.id,sessionStarting=false;
+    let activeSession=null,activeJournalId=current.id,sessionStarting=false,pdfjsPromise=null;
 
     function makeId(){return crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2)}
     const visitorId=(()=>{if(authUser?.uid)return authUser.uid;let id='';try{id=localStorage.getItem('karp_journal_viewer_id')||''}catch{}if(!id){id=makeId();try{localStorage.setItem('karp_journal_viewer_id',id)}catch{}}return 'guest_'+id})();
     const visitor={uid:authUser?.uid||null,displayName:authUser?.displayName||'',email:authUser?.email||'',userType:authUser?.uid?'account':'guest',viewerId:visitorId};
-
     function esc(x){return escapeHtml(String(x??''))}
-    function journalLegacySeed(data){const n=Number(data?.readCount);return n===416?83:n===110?34:0}
-    function journalUniqueCount(data){const n=Number(data?.viewCount);return Number.isFinite(n)&&n>=0?Math.floor(n):journalLegacySeed(data)}
+    async function getPdfJs(){
+      if(!pdfjsPromise)pdfjsPromise=import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs').then(pdfjs=>{
+        pdfjs.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+        return pdfjs;
+      });
+      return pdfjsPromise;
+    }
     function tabButton(journal){
       const b=document.createElement('button');
       b.className='karp-pdf-tab';b.dataset.id=journal.id;
@@ -45,64 +60,103 @@ if(new URLSearchParams(location.search).get('id')){
     }
     function addTab(journal){
       if(tabStates.has(journal.id))return;
-      const b=tabButton(journal);
-      tabs.insertBefore(b,document.getElementById('pdf-new'));
-      tabStates.set(journal.id,{journal,url:null,frame:null});
+      const tab=tabButton(journal);
+      tabs.insertBefore(tab,document.getElementById('pdf-new'));
+      const holder=document.createElement('div');
+      holder.className='karp-pdf-doc';
+      holder.dataset.id=journal.id;
+      holder.style.display='none';
+      stage.appendChild(holder);
+      const st={journal,holder,pdf:null,bytes:null,loaded:false,rendered:new Map(),observer:null,scrollTop:0,scale:1,loading:false};
+      tabStates.set(journal.id,st);
+    }
+    async function getPdfBytes(journal){
+      const st=tabStates.get(journal.id);
+      if(st?.bytes)return st.bytes;
+      const snap=await getDocs(collection(db,'journalIssues',journal.id,'chunks'));
+      const parts=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>Number(a.index??a.id)-Number(b.index??b.id));
+      if(!parts.length)throw new Error('PDF data is missing.');
+      const total=parts.reduce((n,p)=>n+atob(p.data).length,0);
+      const bytes=new Uint8Array(total);let off=0;
+      for(const p of parts){const bin=atob(p.data),chunk=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)chunk[i]=bin.charCodeAt(i);bytes.set(chunk,off);off+=chunk.length}
+      st.bytes=bytes;return bytes;
+    }
+    async function renderPage(st,pageNumber){
+      if(st.rendered.has(pageNumber)||!st.pdf)return;
+      st.rendered.set(pageNumber,'loading');
+      try{
+        const page=await st.pdf.getPage(pageNumber);
+        const wrap=st.holder.querySelector('[data-page="'+pageNumber+'"]');
+        if(!wrap)return;
+        const base=page.getViewport({scale:1}),available=Math.max(320,st.holder.clientWidth-40);
+        const scale=Math.max(.65,Math.min(1.5,available/base.width))*st.scale;
+        const viewport=page.getViewport({scale});
+        const canvas=document.createElement('canvas');
+        canvas.className='karp-pdf-canvas';
+        canvas.width=Math.ceil(viewport.width*window.devicePixelRatio);
+        canvas.height=Math.ceil(viewport.height*window.devicePixelRatio);
+        canvas.style.width=Math.ceil(viewport.width)+'px';
+        canvas.style.height=Math.ceil(viewport.height)+'px';
+        const ctx=canvas.getContext('2d',{alpha:false});
+        ctx.setTransform(window.devicePixelRatio,0,0,window.devicePixelRatio,0,0);
+        await page.render({canvasContext:ctx,viewport}).promise;
+        wrap.style.minHeight='0';wrap.innerHTML='';wrap.appendChild(canvas);
+        st.rendered.set(pageNumber,canvas);
+      }catch(e){
+        st.rendered.delete(pageNumber);
+        console.warn('KARP PDF page render failed:',pageNumber,e);
+      }
+    }
+    function observePages(st){
+      st.observer?.disconnect();
+      st.observer=new IntersectionObserver(entries=>{
+        for(const entry of entries)if(entry.isIntersecting)renderPage(st,Number(entry.target.dataset.page));
+      },{root:st.holder,rootMargin:'900px 0px',threshold:.01});
+      st.holder.querySelectorAll('[data-page]').forEach(x=>st.observer.observe(x));
+      for(let i=1;i<=Math.min(3,st.pdf.numPages);i++)renderPage(st,i);
+    }
+    async function loadPdf(st){
+      if(st.loaded)return;
+      st.loading=true;loading.style.display='grid';loading.textContent='Opening PDF…';
+      try{
+        const pdfjs=await getPdfJs(),bytes=await getPdfBytes(st.journal);
+        st.pdf=await pdfjs.getDocument({data:bytes}).promise;
+        const frag=document.createDocumentFragment();
+        for(let i=1;i<=st.pdf.numPages;i++){
+          const page=document.createElement('div');page.className='karp-pdf-page';page.dataset.page=i;
+          page.innerHTML='<div class="karp-pdf-page-number">'+i+'</div>';
+          frag.appendChild(page);
+        }
+        st.holder.appendChild(frag);
+        st.loaded=true;
+        observePages(st);
+        st.holder.addEventListener('scroll',()=>{st.scrollTop=st.holder.scrollTop},{passive:true});
+      }finally{
+        st.loading=false;loading.style.display='none';
+      }
     }
     function activateTab(id){
       tabs.querySelectorAll('.karp-pdf-tab').forEach(x=>x.classList.toggle('active',x.dataset.id===id));
       tabStates.forEach((st,key)=>{
-        if(!st.frame)return;
-        const active=key===id;
-        st.frame.style.visibility=active?'visible':'hidden';
-        st.frame.style.opacity=active?'1':'0';
-        st.frame.style.pointerEvents=active?'auto':'none';
-        st.frame.style.zIndex=active?'1':'0';
+        st.holder.style.display=key===id?'block':'none';
       });
+      const st=tabStates.get(id);
+      requestAnimationFrame(()=>{if(st){st.holder.scrollTop=st.scrollTop;st.holder.focus({preventScroll:true})}});
     }
-    function ensureFrame(journal){
-      const st=tabStates.get(journal.id);
-      if(!st)throw new Error('PDF tab state is missing.');
-      if(st.frame)return st.frame;
-      const frame=document.createElement('iframe');
-      frame.className='karp-pdf-frame';
-      frame.title='KARP PDF viewer — '+(journal.title||journal.fileName||'Journal');
-      frame.setAttribute('allow','fullscreen');
-      frame.style.cssText='position:absolute;inset:0;display:block;width:100%;height:100%;border:0;background:#525659;visibility:hidden;opacity:0;pointer-events:none;z-index:0';
-      frameHost.appendChild(frame);
-      st.frame=frame;
-      return frame;
-    }
-    async function getPdfUrl(journal){
-      const st=tabStates.get(journal.id);
-      if(st?.url)return st.url;
-      const snap=await getDocs(collection(db,'journalIssues',journal.id,'chunks'));
-      const parts=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>Number(a.index??a.id)-Number(b.index??b.id));
-      if(!parts.length)throw new Error('PDF data is missing.');
-      const bytesParts=parts.map(p=>{
-        const bin=atob(p.data),out=new Uint8Array(bin.length);
-        for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);
-        return out;
-      });
-      const total=bytesParts.reduce((n,x)=>n+x.length,0),bytes=new Uint8Array(total);
-      let off=0;for(const p of bytesParts){bytes.set(p,off);off+=p.length}
-      const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
-      const st2=tabStates.get(journal.id);if(st2)st2.url=url;
-      return url;
-    }
-
     async function countViewOnce(journal){
       const journalRef=doc(db,'journalIssues',journal.id),viewRef=doc(db,'journalIssues',journal.id,'views',visitor.viewerId);
-      await runTransaction(db,async tx=>{
-        const existing=await tx.get(viewRef);
-        if(existing.exists())return false;
-        const journalSnap=await tx.get(journalRef);
-        if(!journalSnap.exists())throw new Error('This journal is no longer available.');
-        const data=journalSnap.data()||{};
-        tx.set(viewRef,{viewerId:visitor.viewerId,uid:visitor.uid,displayName:visitor.displayName,email:visitor.email,journalId:journal.id,createdAt:new Date().toISOString()});
-        tx.update(journalRef,{viewCount:journalUniqueCount(data)+1});
-        return true;
-      });
+      try{
+        await runTransaction(db,async tx=>{
+          const existing=await tx.get(viewRef);
+          if(existing.exists())return false;
+          const journalSnap=await tx.get(journalRef);
+          if(!journalSnap.exists())throw new Error('This journal is no longer available.');
+          const data=journalSnap.data()||{};
+          tx.set(viewRef,{viewerId:visitor.viewerId,uid:visitor.uid,displayName:visitor.displayName,email:visitor.email,journalId:journal.id,createdAt:new Date().toISOString()});
+          tx.update(journalRef,{viewCount:journalUniqueCount(data)+1});
+          return true;
+        });
+      }catch(e){console.warn('Journal unique view count failed:',e)}
     }
     async function startViewSession(journal){
       if(document.hidden||activeSession||sessionStarting||!journal)return;
@@ -120,53 +174,67 @@ if(new URLSearchParams(location.search).get('id')){
       const s=activeSession;if(!s)return;
       activeSession=null;
       const endedMs=Date.now(),durationSeconds=Math.max(0,Math.round((endedMs-s.startedMs)/1000));
-      try{await updateDoc(s.ref,{endedAt:new Date(endedMs).toISOString(),durationSeconds,status:'ended'})}
-      catch(e){console.warn('Journal view session end could not be recorded:',e)}
+      try{await updateDoc(s.ref,{endedAt:new Date(endedMs).toISOString(),durationSeconds,status:'ended'})}catch(e){console.warn('Journal view session end could not be recorded:',e)}
     }
     async function recordDownload(journal){
       const id=makeId(),journalRef=doc(db,'journalIssues',journal.id),downloadRef=doc(db,'journalIssues',journal.id,'downloads',id);
-      await runTransaction(db,async tx=>{
-        const snap=await tx.get(journalRef);
-        if(!snap.exists())throw new Error('This journal is no longer available.');
-        const data=snap.data()||{};
-        tx.set(downloadRef,{downloadId:id,journalId:journal.id,viewerId:visitor.viewerId,uid:visitor.uid,displayName:visitor.displayName,email:visitor.email,userType:visitor.userType,fileName:journal.fileName||((journal.title||'KARP Journal')+'.pdf'),createdAt:new Date().toISOString()});
-        tx.update(journalRef,{downloadCount:Math.max(0,Number(data.downloadCount||0))+1});
-      });
+      try{
+        await runTransaction(db,async tx=>{
+          const snap=await tx.get(journalRef);
+          if(!snap.exists())throw new Error('This journal is no longer available.');
+          const data=snap.data()||{};
+          tx.set(downloadRef,{downloadId:id,journalId:journal.id,viewerId:visitor.viewerId,uid:visitor.uid,displayName:visitor.displayName,email:visitor.email,userType:visitor.userType,fileName:journal.fileName||((journal.title||'KARP Journal')+'.pdf'),createdAt:new Date().toISOString()});
+          tx.update(journalRef,{downloadCount:Math.max(0,Number(data.downloadCount||0))+1});
+        });
+      }catch(e){console.warn('Journal download analytics failed:',e)}
     }
     async function downloadJournal(journal){
       const button=document.getElementById('pdf-download');if(button)button.disabled=true;
       try{
-        const url=await getPdfUrl(journal),a=document.createElement('a');
-        const desired=String(journal.fileName||((journal.title||'KARP Journal')+'.pdf')).split('/').join('-').replace(/[\\:*?"<>|]+/g,'-');
-        a.href=url;a.download=/\.pdf$/i.test(desired)?desired:(desired+'.pdf');
-        document.body.appendChild(a);a.click();a.remove();
-        try{await recordDownload(journal)}catch(e){console.warn('Journal download event could not be saved:',e)}
+        const bytes=await getPdfBytes(journal),url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+        const desired=String(journal.fileName||((journal.title||'KARP Journal')+'.pdf')).replace(/[\\:*?"<>|]+/g,'-');
+        const a=document.createElement('a');a.href=url;a.download=/\.pdf$/i.test(desired)?desired:(desired+'.pdf');document.body.appendChild(a);a.click();a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),1500);recordDownload(journal);
       }catch(e){console.error(e);alert('Could not download this PDF. Please try again.')}
       finally{if(button)button.disabled=false}
     }
     async function openJournal(journalId){
       const journal=journals.find(x=>x.id===journalId)||current;
-      await stopViewSession();
-      activeJournalId=journal.id;
-      addTab(journal);
+      await stopViewSession();activeJournalId=journal.id;addTab(journal);
+      titleEl.textContent=journal.title||journal.fileName||'Journal';document.title='KARP — '+(journal.title||journal.fileName||'Journal');
+      activateTab(journal.id);picker.style.display='none';
       const st=tabStates.get(journal.id);
-      const firstOpen=!st.frame;
-      titleEl.textContent=journal.title||journal.fileName||'Journal';
-      document.title='KARP — '+(journal.title||journal.fileName||'Journal');
-      activateTab(journal.id);
-      picker.style.display='none';
-      if(firstOpen){
-        loading.style.display='grid';
-        loading.textContent='Opening PDF…';
-        try{
-          const frame=ensureFrame(journal);
-          frame.src=await getPdfUrl(journal);
-          await new Promise(resolve=>setTimeout(resolve,120));
-          countViewOnce(journal).catch(e=>console.warn('Journal unique view count failed:',e));
-          startViewSession(journal).catch(e=>console.warn('Journal view session failed:',e));
-        }catch(e){console.error(e);loading.textContent='Unable to open PDF'}
-        finally{loading.style.display='none'}
-      }else{
+      try{await loadPdf(st);countViewOnce(journal);startViewSession(journal)}catch(e){console.error(e);loading.textContent='Unable to open PDF';loading.style.display='grid'}
+      history.replaceState({},'',location.pathname+'?id='+encodeURIComponent(journal.id));
+    }
+    function closeTab(id){
+      const st=tabStates.get(id);if(!st)return;
+      const wasActive=id===activeJournalId;if(st.observer)st.observer.disconnect();tabs.querySelector('[data-id="'+CSS.escape(id)+'"]')?.remove();st.holder.remove();tabStates.delete(id);
+      if(!wasActive)return;
+      const next=[...tabStates.keys()].at(-1);if(next)openJournal(next);else location.replace('/journal.html');
+    }
+    function renderPicker(){
+      const q=String(pickerSearch.value||'').trim().toLowerCase(),filtered=journals.filter(x=>String(x.title||x.fileName||'Journal').toLowerCase().includes(q));
+      pickerGrid.innerHTML=filtered.map(x=>'<button class="karp-picker-card" data-pick="'+esc(x.id)+'">'+(x.coverImage?'<img src="'+esc(x.coverImage)+'" alt="">':'<div style="aspect-ratio:.707;background:#eee;display:grid;place-items:center">PDF</div>')+'<strong>'+esc(x.title||x.fileName||'Journal')+'</strong></button>').join('')||'<div style="grid-column:1/-1;padding:25px 0;color:#73777c;font-size:13px">No journals match your search.</div>';
+      pickerGrid.querySelectorAll('[data-pick]').forEach(x=>x.onclick=()=>openJournal(x.dataset.pick));
+    }
+    document.getElementById('pdf-new').onclick=()=>{picker.style.display='block';pickerSearch.value='';renderPicker();pickerSearch.focus()};
+    pickerSearch.addEventListener('input',renderPicker);
+    document.getElementById('pdf-download').onclick=()=>downloadJournal(journals.find(x=>x.id===activeJournalId)||current);
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)stopViewSession();else startViewSession(journals.find(x=>x.id===activeJournalId)||current)});
+    window.addEventListener('pagehide',stopViewSession);window.addEventListener('beforeunload',stopViewSession);
+    document.getElementById('pdf-back').onclick=()=>history.back();
+    document.getElementById('pdf-home').onclick=()=>location.replace('/journal.html');
+    const snapJournals=await getDocs(collection(db,'journalIssues'));
+    journals=snapJournals.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+    await openJournal(current.id);
+  }catch(e){
+    document.body.innerHTML='<div style="font:14px system-ui;padding:40px;text-align:center"><h2>Unable to open this journal</h2><p>'+escapeHtml(e.message||'Something went wrong.')+'</p><a href="/journal.html">← Back to Journals</a></div>';
+  }
+})();
+
+}else{
+
         countViewOnce(journal).catch(e=>console.warn('Journal unique view count failed:',e));
         startViewSession(journal).catch(e=>console.warn('Journal view session failed:',e));
       }
@@ -217,5 +285,7 @@ if(new URLSearchParams(location.search).get('id')){
 
 }else{
 (async()=>{try{const {db}=await fb();const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');shell('Journal','Journal','<main class="journal-page"><section class="journal-hero"><div class="wrap"><h1>Journal</h1></div></section><div class="journal-search-wrap"><input id="journal-search" class="journal-search" type="search" placeholder="Search journals..." autocomplete="off"></div><section id="journal-grid" class="journal-grid"><div class="journal-empty">Loading journals…</div></section></main>');const grid=document.getElementById('journal-grid'),search=document.getElementById('journal-search');let issues=[];const esc=x=>escapeHtml(String(x??''));const journalLegacySeed=data=>{const n=Number(data?.readCount);return n===416?83:n===110?34:0};const journalUniqueCount=data=>{const n=Number(data?.viewCount);return Number.isFinite(n)&&n>=0?Math.floor(n):journalLegacySeed(data)};const eye='<svg viewBox="0 0 24 24"><path d="M2.4 12s3.6-5.2 9.6-5.2S21.6 12 21.6 12 18 17.2 12 17.2 2.4 12 2.4 12Z"></path><circle cx="12" cy="12" r="2.7"></circle></svg>';const fmt=n=>{n=Math.max(0,Number(n||0));return n>=1000000?(n/1000000).toFixed(1).replace(/\.0$/,'')+'M':n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'K':String(n)};function render(){const q=String(search.value||'').trim().toLowerCase();const filtered=issues.filter(x=>String(x.title||x.fileName||'').toLowerCase().includes(q));grid.innerHTML=filtered.length?filtered.map(x=>{const title=x.title||x.fileName||'Untitled Journal';return '<a class="journal-card" href="/journal.html?id='+encodeURIComponent(x.id)+'"><div class="journal-cover">'+(x.coverImage?'<img src="'+esc(x.coverImage)+'" alt="">':'<div class="journal-cover-fallback"><small>KARP · OLYMPIAD MATHEMATICS</small><h2>'+esc(title)+'</h2><small>JOURNAL ISSUE</small></div>')+'</div><div class="journal-card-meta"><span class="journal-card-title">'+esc(title)+'</span><span class="journal-views">'+eye+esc(fmt(journalUniqueCount(x)))+'</span></div></a>'}).join(''):'<div class="journal-empty">'+(q?'No journals match your search.':'No journal issues have been published yet.')+'</div>'}search.addEventListener('input',render);const snap=await getDocs(collection(db,'journalIssues'));issues=snap.docs.map(x=>({id:x.id,...x.data()})).filter(x=>x.published!==false).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));render()}catch(e){document.body.innerHTML='<div class="error-page"><h1>Unable to load Journal</h1><p>'+escapeHtml(e.message||'Something went wrong.')+'</p><a href="/">← Back to KARP</a></div>'}})()
+}
+
 }
 </script></body></html>
