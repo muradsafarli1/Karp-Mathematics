@@ -166,95 +166,86 @@ async function renderBooksAdmin(){
     const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
     const snap=await getDocs(collection(db,'books'));
     const books=snap.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
-    const editor=state.editing?'<div class="bigcard books-admin-editor"><div class="admin-head" style="margin-bottom:8px"><div><h2>Add Book</h2><span class="admin-count">PDF upload · no app-level file-size cap</span></div></div><div class="books-admin-form"><div class="books-admin-field"><label for="books-admin-title">Book title</label><input id="books-admin-title" type="text" value="'+esc(state.editing.title||'')+'" placeholder="e.g. IMO 2024 SL"></div><div class="books-admin-field"><label for="books-admin-file">PDF file</label><input id="books-admin-file" type="file" accept="application/pdf,.pdf"><div class="books-admin-note">Large files are uploaded as Firestore chunks, so this form does not impose a fixed PDF size limit.</div><div class="books-admin-progress" id="books-admin-progress">'+(pendingBookFile?esc(pendingBookFile.name):'No file selected.')+'</div></div><div class="books-admin-field"><label for="books-admin-cover">Book cover image</label><input id="books-admin-cover" type="file" accept="image/*"><div class="books-admin-note">Upload the exact cover you want shown in Books. If empty, the first PDF page will be used automatically when possible.</div></div><div><button class="btn primary" id="books-admin-upload">Upload Book</button> <button class="btn" id="books-admin-cancel">Cancel</button></div></div></div>':'';
-    const rows=books.map(b=>'<div class="row books-admin-row"><div><h3>'+esc(b.title||b.fileName||'Untitled Book')+'</h3><p>'+esc(b.fileName||'PDF')+' · '+(Number(b.size||0)/1024/1024).toFixed(2)+' MB</p><div class="books-admin-stats"><span>Views <strong>'+Math.max(0,Number(b.viewCount||0))+'</strong></span><span>Downloads <strong>'+Math.max(0,Number(b.downloadCount||0))+'</strong></span><span>Added <strong>'+esc(b.createdAt?new Date(b.createdAt).toLocaleString():'—')+'</strong></span></div></div><div class="right books-admin-actions"><a class="btn" href="/book.html?id='+encodeURIComponent(b.id)+'" target="_blank" rel="noopener">Open</a> <button class="btn danger" data-delete-book="'+esc(b.id)+'">Delete</button></div></div>').join('');
+    const e=state.editing;
+    const isEdit=!!(e&&e.id);
+    const editor=e?'<div class="bigcard books-admin-editor"><div class="admin-head" style="margin-bottom:8px"><div><h2>'+(isEdit?'Edit Book':'Add Book')+'</h2><span class="admin-count">'+(isEdit?'Change title, cover, or replace the PDF.':'PDF upload · stored in Firestore chunks')+'</span></div></div><div class="books-admin-form">'+
+      '<div class="books-admin-field"><label for="books-admin-title">Book title</label><input id="books-admin-title" type="text" value="'+esc(e.title||'')+'" placeholder="e.g. IMO 2024 SL"></div>'+
+      '<div class="books-admin-field"><label for="books-admin-file">'+(isEdit?'Replace PDF (optional)':'PDF file')+'</label><input id="books-admin-file" type="file" accept="application/pdf,.pdf"><div class="books-admin-note">'+(isEdit?'Leave empty to keep the current PDF.':'Large files are uploaded as Firestore chunks.')+'</div><div class="books-admin-progress" id="books-admin-progress">'+(pendingBookFile?esc(pendingBookFile.name):(isEdit?'Current PDF kept.':'No file selected.'))+'</div></div>'+
+      '<div class="books-admin-field"><label for="books-admin-cover">Book cover image</label><input id="books-admin-cover" type="file" accept="image/*"><div class="books-admin-note">'+(e.coverImage?'Current cover is shown below. Choose another image to replace it, or remove it.':'Upload the exact cover. If empty on a new book, the first PDF page is used when possible.')+'</div>'+
+      '<div id="books-admin-cover-preview" style="display:flex;gap:10px;align-items:center;margin-top:6px">'+(e.coverImage?'<img src="'+esc(e.coverImage)+'" alt="" style="width:76px;height:108px;object-fit:cover;border:1px solid #d9dad8;border-radius:6px"><button type="button" class="btn danger" id="books-admin-remove-cover">Remove cover</button>':'')+'</div></div>'+
+      '<div><button class="btn primary" id="books-admin-upload">'+(isEdit?'Save Changes':'Upload Book')+'</button> <button class="btn" id="books-admin-cancel">Cancel</button></div></div></div>':'';
+
+    const rows=books.map(b=>'<div class="row books-admin-row"><div><h3>'+esc(b.title||b.fileName||'Untitled Book')+'</h3><p>'+esc(b.fileName||'PDF')+' · '+(Number(b.size||0)/1024/1024).toFixed(2)+' MB</p><div class="books-admin-stats"><span>Views <strong>'+Math.max(0,Number(b.viewCount||0))+'</strong></span><span>Downloads <strong>'+Math.max(0,Number(b.downloadCount||0))+'</strong></span><span>Added <strong>'+esc(b.createdAt?new Date(b.createdAt).toLocaleString():'—')+'</strong></span></div></div><div class="right books-admin-actions"><a class="btn" href="/book.html?id='+encodeURIComponent(b.id)+'">Open</a> <button class="btn" data-edit-book="'+esc(b.id)+'">Edit</button> <button class="btn danger" data-delete-book="'+esc(b.id)+'">Delete</button></div></div>').join('');
     m.innerHTML='<div class="admin-head"><div><h2>Books</h2><span class="admin-count">'+books.length+' books</span></div><div><button class="btn primary" id="books-admin-new">+ New Book</button></div></div>'+editor+'<div class="rows">'+(rows||'<div class="empty">No books have been added yet.</div>')+'</div>';
-    document.getElementById('books-admin-new')?.addEventListener('click',()=>{pendingBookFile=null;state.editing={id:null,title:''};render()});
+
+    document.getElementById('books-admin-new')?.addEventListener('click',()=>{pendingBookFile=null;state.editing={id:null,title:'',coverImage:''};render()});
     document.getElementById('books-admin-cancel')?.addEventListener('click',()=>{pendingBookFile=null;state.editing=null;render()});
     const input=document.getElementById('books-admin-file');
-    input?.addEventListener('change',()=>{pendingBookFile=input.files?.[0]||null;const st=document.getElementById('books-admin-progress');if(st)st.textContent=pendingBookFile?pendingBookFile.name:'No file selected.'});
+    input?.addEventListener('change',()=>{pendingBookFile=input.files?.[0]||null;const st=document.getElementById('books-admin-progress');if(st)st.textContent=pendingBookFile?pendingBookFile.name:(state.editing?.id?'Current PDF kept.':'No file selected.')});
     document.getElementById('books-admin-upload')?.addEventListener('click',saveBookAdmin);
+    document.getElementById('books-admin-remove-cover')?.addEventListener('click',()=>{if(state.editing){state.editing.coverImage='';render()}});
+    document.querySelectorAll('[data-edit-book]').forEach(btn=>btn.onclick=()=>{
+      const b=books.find(x=>x.id===btn.dataset.editBook); if(!b)return;
+      pendingBookFile=null;state.editing={...b};render();
+    });
     document.querySelectorAll('[data-delete-book]').forEach(btn=>btn.onclick=()=>removeBookAdmin(btn.dataset.deleteBook));
   }catch(e){
     m.innerHTML='<div class="bigcard"><h3>Could not load Books</h3><p>'+esc(e.message||'Check Firestore permissions.')+'</p></div>';
   }
 }
+
 async function saveBookAdmin(){
+  const editing=state.editing||{};
   const title=document.getElementById('books-admin-title')?.value.trim();
   const file=pendingBookFile;
   const coverFile=document.getElementById('books-admin-cover')?.files?.[0];
   const status=document.getElementById('books-admin-progress'),button=document.getElementById('books-admin-upload');
   if(!title){toast('Enter a book title.');return}
-  if(!file){toast('Choose a PDF file.');return}
-  if(file.type!=='application/pdf'&&!/\.pdf$/i.test(file.name)){toast('Please choose a PDF file.');return}
-  const id=crypto.randomUUID();
+  const isEdit=!!editing.id;
+  if(!isEdit&&!file){toast('Choose a PDF file.');return}
+  if(file&&(file.type!=='application/pdf'&&!/\.pdf$/i.test(file.name))){toast('Please choose a PDF file.');return}
   const {db}=await fb();
-  const {doc,setDoc,collection,getDocs,deleteDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const chunkBytes=512000;
-  const bytes=new Uint8Array(await file.arrayBuffer());
-  const totalChunks=Math.max(1,Math.ceil(bytes.length/chunkBytes));
+  const {doc,setDoc,getDoc,collection,getDocs,deleteDoc,updateDoc,writeBatch}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const id=editing.id||crypto.randomUUID();
   button.disabled=true;
   try{
-    if(status)status.textContent='Preparing cover…';
-    let coverImage='';
-    if(coverFile){try{coverImage=await compressAdminImage(coverFile,{maxSide:1200,maxChars:650000})}catch(e){toast(e.message||'Could not process cover image.');button.disabled=false;return}}
-    if(!coverImage)try{
-      const pdfjsLib=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
-      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
-      const pdf=await pdfjsLib.getDocument({data:bytes}).promise;
-      const first=await pdf.getPage(1);
-      const base=first.getViewport({scale:1});
-      const scale=Math.min(620/base.width,820/base.height);
-      const viewport=first.getViewport({scale});
-      const canvas=document.createElement('canvas');
-      canvas.width=Math.max(1,Math.round(viewport.width));
-      canvas.height=Math.max(1,Math.round(viewport.height));
-      const ctx=canvas.getContext('2d',{alpha:false});
-      ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
-      await first.render({canvasContext:ctx,viewport}).promise;
-      let q=.76;
-      coverImage=canvas.toDataURL('image/jpeg',q);
-      while(coverImage.length>650000&&q>.45){q-=.06;coverImage=canvas.toDataURL('image/jpeg',q)}
-      if(coverImage.length>700000)coverImage='';
-      canvas.width=1;canvas.height=1;
-    }catch(e){console.warn('Could not generate PDF cover preview:',e)}
+    let coverImage=editing.coverImage||'';
+    if(coverFile)coverImage=await compressAdminImage(coverFile,{maxSide:1200,maxChars:650000});
+    if(!isEdit&&!coverImage&&file){
+      try{
+        const bytesForCover=new Uint8Array(await file.arrayBuffer());
+        const pdfjsLib=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
+        pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+        const pdf=await pdfjsLib.getDocument({data:bytesForCover}).promise,first=await pdf.getPage(1),base=first.getViewport({scale:1});
+        const viewport=first.getViewport({scale:Math.min(620/base.width,820/base.height)});
+        const canvas=document.createElement('canvas');canvas.width=Math.round(viewport.width);canvas.height=Math.round(viewport.height);
+        const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+        await first.render({canvasContext:ctx,viewport}).promise;
+        let q=.76;coverImage=canvas.toDataURL('image/jpeg',q);
+        while(coverImage.length>650000&&q>.45){q-=.06;coverImage=canvas.toDataURL('image/jpeg',q)}
+      }catch(e){console.warn('Could not generate PDF cover preview:',e)}
+    }
+    if(isEdit&&!file){
+      await updateDoc(doc(db,'books',id),{title,coverImage});
+      state.editing=null;pendingBookFile=null;toast('Book updated.');render();return;
+    }
+    const chunkBytes=512000,bytes=new Uint8Array(await file.arrayBuffer()),totalChunks=Math.max(1,Math.ceil(bytes.length/chunkBytes));
+    if(status)status.textContent='Replacing PDF…';
+    const oldSnap=isEdit?await getDocs(collection(db,'books',id,'chunks')):null;
+    if(oldSnap){for(let i=0;i<oldSnap.docs.length;i+=400){const batch=writeBatch(db);oldSnap.docs.slice(i,i+400).forEach(x=>batch.delete(x.ref));await batch.commit()}}
     for(let index=0;index<totalChunks;index++){
       const part=bytes.slice(index*chunkBytes,Math.min(bytes.length,(index+1)*chunkBytes));
-      const data=arrayBufferToBase64(part);
-      await setDoc(doc(db,'books',id,'chunks',String(index).padStart(7,'0')),{index,data},{merge:false});
+      await setDoc(doc(db,'books',id,'chunks',String(index).padStart(7,'0')),{index,data:arrayBufferToBase64(part)},{merge:false});
       if(status)status.textContent='Uploading '+(index+1)+' / '+totalChunks+' · '+Math.round(((index+1)/totalChunks)*100)+'%';
     }
     await setDoc(doc(db,'books',id),{
       id,title,fileName:file.name,size:file.size,contentType:'application/pdf',
-      chunkCount:totalChunks,coverImage,viewCount:0,downloadCount:0,createdAt:new Date().toISOString()
-    });
-    pendingBookFile=null;state.editing=null;toast('Book uploaded successfully.');render();
-  }catch(e){
-    try{
-      const snap=await getDocs(collection(db,'books',id,'chunks'));
-      for(const c of snap.docs)await deleteDoc(c.ref);
-    }catch{}
-    toast(e.message||'Could not upload the book.');
-    button.disabled=false;
-    if(status)status.textContent='Upload failed.';
-  }
+      chunkCount:totalChunks,coverImage,viewCount:isEdit?Number(editing.viewCount||0):0,
+      downloadCount:isEdit?Number(editing.downloadCount||0):0,createdAt:editing.createdAt||new Date().toISOString()
+    },{merge:true});
+    pendingBookFile=null;state.editing=null;toast(isEdit?'Book updated.':'Book uploaded successfully.');render();
+  }catch(e){toast(e.message||'Could not save the book.');button.disabled=false;if(status)status.textContent='Save failed.'}
 }
-async function removeBookAdmin(id){
-  if(!confirm('Delete this book and its PDF permanently?'))return;
-  try{
-    const {db}=await fb();
-    const {doc,deleteDoc,collection,getDocs,writeBatch}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-    const snap=await getDocs(collection(db,'books',id,'chunks'));
-    for(let i=0;i<snap.docs.length;i+=400){
-      const batch=writeBatch(db);
-      snap.docs.slice(i,i+400).forEach(x=>batch.delete(x.ref));
-      await batch.commit();
-    }
-    await deleteDoc(doc(db,'books',id));
-    toast('Book deleted.');render();
-  }catch(e){toast(e.message||'Could not delete the book.')}
-}
-
 async function render(){
   const m=document.getElementById('main');if(!m)return;
 
