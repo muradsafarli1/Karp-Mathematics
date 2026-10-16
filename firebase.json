@@ -97,6 +97,14 @@
       {
         "source": "/meeting",
         "destination": "/meeting.html"
+      },
+      {
+        "source": "/books",
+        "destination": "/books.html"
+      },
+      {
+        "source": "/book",
+        "destination": "/book.html"
       }
     ],
     "redirects": [
