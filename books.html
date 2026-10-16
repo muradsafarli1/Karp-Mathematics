@@ -15,14 +15,12 @@
 .books-search:focus{border-color:#b8bbb8;box-shadow:0 0 0 3px rgba(47,120,183,.08)}
 .books-grid{width:min(1220px,calc(100% - 42px));margin:0 auto;padding:0 0 80px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:28px 20px}
 .book-card{display:block;min-width:0;text-decoration:none;color:inherit}
-.book-cover{position:relative;aspect-ratio:0.69;overflow:hidden;border:1px solid #d1d3cf;border-radius:5px 12px 12px 5px;background:linear-gradient(150deg,#ecece8 0%,#e0e2dd 100%);box-shadow:9px 9px 0 -7px #d0d2ce,0 10px 26px rgba(30,34,38,.08);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
-.book-cover:before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px;background:linear-gradient(#25282c,#63686e);opacity:.72}
-.book-cover:after{content:"";position:absolute;inset:12px;border:1px solid rgba(255,255,255,.55);border-radius:4px;pointer-events:none}
-.book-card:hover .book-cover{transform:translateY(-4px);border-color:#b8bbb8;box-shadow:11px 13px 30px rgba(30,34,38,.12),9px 9px 0 -7px #c7cac5}
-.book-cover-inner{position:absolute;inset:0;padding:24px 18px 18px 23px;display:flex;flex-direction:column;justify-content:space-between}
-.book-series{font-size:8px;font-weight:800;letter-spacing:1.7px;text-transform:uppercase;color:#686d73}
-.book-cover h2{font-family:'Space Grotesk';font-size:21px;line-height:1.08;letter-spacing:-.7px;margin:0;color:#17191c;overflow-wrap:anywhere}
-.book-cover-bottom{font-size:9px;letter-spacing:1.1px;text-transform:uppercase;color:#747a80}
+.book-cover{position:relative;aspect-ratio:0.7071;overflow:hidden;border:1px solid #cfd2ce;border-radius:0;background:#fff;box-shadow:0 9px 22px rgba(30,34,38,.08);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.book-cover img{display:block;width:100%;height:100%;object-fit:cover;background:#fff}
+.book-cover-fallback{position:absolute;inset:0;padding:24px 18px;display:flex;flex-direction:column;justify-content:space-between;background:#eeeeeb}
+.book-cover-fallback h2{font-family:'Space Grotesk';font-size:21px;line-height:1.08;letter-spacing:-.7px;margin:0;color:#17191c;overflow-wrap:anywhere}
+.book-cover-fallback small{font-size:8px;font-weight:800;letter-spacing:1.7px;text-transform:uppercase;color:#686d73}
+.book-card:hover .book-cover{transform:translateY(-4px);border-color:#aeb3af;box-shadow:0 13px 28px rgba(30,34,38,.13)}
 .book-card-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 2px 0}
 .book-card-title{font-size:11px;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#2a2d31}
 .book-views{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;color:#666b73;font-size:10px}
@@ -58,7 +56,7 @@
       grid.innerHTML=filtered.length?filtered.map(b=>{
         const title=b.title||b.fileName||'Untitled Book';
         return '<a class="book-card" href="/book.html?id='+encodeURIComponent(b.id)+'" aria-label="Open '+esc(title)+'">'+
-          '<div class="book-cover"><div class="book-cover-inner"><div class="book-series">KARP · OLYMPIAD MATHEMATICS</div><h2>'+esc(title)+'</h2><div class="book-cover-bottom">PDF BOOKLET</div></div></div>'+
+          '<div class="book-cover">'+(b.coverImage?'<img src="'+esc(b.coverImage)+'" alt="">':'<div class="book-cover-fallback"><small>KARP · OLYMPIAD MATHEMATICS</small><h2>'+esc(title)+'</h2><small>PDF BOOKLET</small></div>')+'</div>'+
           '<div class="book-card-meta"><span class="book-card-title">'+esc(title)+'</span><span class="book-views">'+eye+esc(fmt(b.viewCount))+'</span></div>'+
         '</a>';
       }).join(''):'<div class="books-empty">'+(q?'No books match your search.':'No books have been published yet.')+'</div>';
