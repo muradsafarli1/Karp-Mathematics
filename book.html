@@ -7,8 +7,24 @@
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js"></script>
 <style>
-html,body{margin:0!important;padding:0!important;background:#fff!important}
-body{min-height:100vh!important}
+html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow:hidden;background:#eef0f2!important}
+.karp-pdf-browser{position:fixed;inset:0;display:flex;flex-direction:column;background:#fff;color:#202124;font-family:Arial,sans-serif}
+.karp-pdf-tabs{height:42px;display:flex;align-items:flex-end;background:#e9eaec;border-bottom:1px solid #c8cbd0;padding:0 8px;gap:3px;flex:0 0 auto}
+.karp-pdf-tab{height:36px;min-width:180px;max-width:260px;padding:0 12px;display:flex;align-items:center;gap:8px;background:#dfe1e5;border:1px solid #c9cbd0;border-bottom:0;border-radius:9px 9px 0 0;cursor:pointer;color:#3c4043;font-size:12px}
+.karp-pdf-tab.active{background:#fff;color:#202124}
+.karp-pdf-tab .tab-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.karp-pdf-tab .tab-close{font-size:16px;color:#666;line-height:1}
+.karp-pdf-new{height:32px;width:32px;border:0;background:transparent;font-size:23px;color:#4b4f53;cursor:pointer;margin-bottom:2px}
+.karp-pdf-bar{height:46px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#fff;border-bottom:1px solid #d7d9dc;flex:0 0 auto}
+.karp-pdf-bar button{border:0;background:transparent;border-radius:6px;padding:7px 9px;color:#444;cursor:pointer;font-size:13px}
+.karp-pdf-bar button:hover{background:#f0f1f2}
+.karp-pdf-bar .pdf-title{font-size:13px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.karp-pdf-stage{position:relative;flex:1;min-height:0;background:#525659;overflow:auto;display:flex;justify-content:center;padding:24px}
+.karp-pdf-frame{width:min(100%,1100px);height:100%;min-height:700px;border:0;background:#525659}
+.karp-pdf-loading{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:13px}
+.karp-book-picker{position:fixed;z-index:20;inset:88px 8% 8%;background:#fff;border:1px solid #c8cbd0;border-radius:10px;box-shadow:0 20px 60px #0004;display:none;overflow:auto;padding:28px}
+.karp-book-picker h2{margin:0 0 18px;font-size:22px}.karp-book-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:20px}.karp-picker-card{border:1px solid #d5d7da;border-radius:8px;padding:10px;background:#fff;cursor:pointer}.karp-picker-card img{width:100%;aspect-ratio:.707;object-fit:cover;display:block}.karp-picker-card strong{display:block;font-size:11px;margin-top:8px}
+@media(max-width:700px){.karp-pdf-tab{min-width:130px}.karp-pdf-stage{padding:10px}.karp-book-picker{inset:70px 3% 3%}}
 </style>
 <script>
 (async()=>{
@@ -45,32 +61,68 @@ body{min-height:100vh!important}
 <body>
 <script>
 (async()=>{
-  const params=new URLSearchParams(location.search),id=params.get('id');
+  const {db}=await fb();
+  const {doc,getDoc,getDocs,collection,updateDoc,increment}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const esc=x=>escapeHtml(String(x??''));
+  const id=new URLSearchParams(location.search).get('id');
   if(!id){location.href='/books.html';return}
-  try{
-    const {db}=await fb();
-    const {doc,getDoc,getDocs,collection,updateDoc,increment}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-    const snap=await getDoc(doc(db,'books',id));
-    if(!snap.exists()){location.href='/books.html';return}
-    const book={id:snap.id,...snap.data()};
-    document.title='KARP — '+(book.title||'Book');
-    try{await updateDoc(doc(db,'books',id),{viewCount:increment(1)})}catch(e){console.warn('Book view count update failed:',e)}
-    const snapChunks=await getDocs(collection(db,'books',id,'chunks'));
-    const chunks=snapChunks.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>Number(a.index??a.id)-Number(b.index??b.id));
-    if(!chunks.length)throw new Error('PDF data is missing.');
-    const b64ToBytes=base64=>{
-      const binary=atob(base64),bytes=new Uint8Array(binary.length);
-      for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
-      return bytes;
-    };
-    const parts=chunks.map(x=>b64ToBytes(x.data));
-    const total=parts.reduce((n,x)=>n+x.length,0);
-    const bytes=new Uint8Array(total);let offset=0;
-    parts.forEach(part=>{bytes.set(part,offset);offset+=part.length});
-    location.replace(URL.createObjectURL(new Blob([bytes],{type:'application/pdf'})));
-  }catch(e){
-    document.body.innerHTML='<div style="font:14px system-ui;padding:40px;text-align:center"><h2>Unable to open this book</h2><p>'+escapeHtml(e.message||'Something went wrong.')+'</p><a href="/books.html">← Back to Books</a></div>';
+  const snap=await getDoc(doc(db,'books',id));
+  if(!snap.exists()){location.href='/books.html';return}
+  const current={id:snap.id,...snap.data()};
+  document.body.innerHTML='<div class="karp-pdf-browser">'+
+    '<div class="karp-pdf-tabs" id="pdf-tabs"><button class="karp-pdf-new" id="pdf-new" title="New tab">+</button></div>'+
+    '<div class="karp-pdf-bar"><button id="pdf-back">←</button><button id="pdf-home">⌂</button><span class="pdf-title" id="pdf-title"></span></div>'+
+    '<div class="karp-pdf-stage"><div class="karp-pdf-loading" id="pdf-loading">Opening PDF…</div><iframe id="pdf-frame" class="karp-pdf-frame" title="PDF viewer"></iframe></div>'+
+    '<div class="karp-book-picker" id="book-picker"><h2>Books</h2><div class="karp-book-picker-grid" id="book-picker-grid"></div></div>'+
+  '</div>';
+  const tabs=document.getElementById('pdf-tabs'),frame=document.getElementById('pdf-frame'),titleEl=document.getElementById('pdf-title'),loading=document.getElementById('pdf-loading'),picker=document.getElementById('book-picker'),pickerGrid=document.getElementById('book-picker-grid');
+  let books=[];
+  const tabStates=new Map();
+  function tabButton(book){
+    const b=document.createElement('button');b.className='karp-pdf-tab active';b.dataset.id=book.id;b.innerHTML='<span class="tab-title">'+esc(book.title||book.fileName||'Book')+'</span><span class="tab-close">×</span>';
+    b.onclick=()=>openBook(book.id);
+    b.querySelector('.tab-close').onclick=e=>{e.stopPropagation();closeTab(book.id)};
+    return b;
   }
+  function addTab(book){
+    const b=tabButton(book);tabs.insertBefore(b,document.getElementById('pdf-new'));tabStates.set(book.id,{book,url:null});
+  }
+  function activateTab(id){tabs.querySelectorAll('.karp-pdf-tab').forEach(x=>x.classList.toggle('active',x.dataset.id===id))}
+  async function getPdfUrl(book){
+    const st=tabStates.get(book.id);if(st.url)return st.url;
+    const chunks=await getDocs(collection(db,'books',book.id,'chunks'));
+    const parts=chunks.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>Number(a.index??a.id)-Number(b.index??b.id));
+    const b64=x=>{const bin=atob(x),out=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);return out};
+    const bytes=parts.reduce((acc,p)=>{const z=b64(p.data),n=new Uint8Array(acc.length+z.length);n.set(acc);n.set(z,acc.length);return n},new Uint8Array());
+    st.url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));return st.url;
+  }
+  async function openBook(bookId){
+    const book=books.find(x=>x.id===bookId)||current;
+    if(!tabStates.has(book.id))addTab(book);
+    tabs.querySelectorAll('.karp-pdf-tab').forEach(x=>x.style.display='');activateTab(book.id);
+    titleEl.textContent=book.title||book.fileName||'Book';loading.style.display='grid';frame.src=await getPdfUrl(book);loading.style.display='none';
+    try{await updateDoc(doc(db,'books',book.id),{viewCount:increment(1)})}catch(e){}
+    picker.style.display='none';
+    history.replaceState({},'',location.pathname+'?id='+encodeURIComponent(book.id));
+  }
+  function closeTab(id){
+    const st=tabStates.get(id);if(st?.url)URL.revokeObjectURL(st.url);tabStates.delete(id);
+    tabs.querySelector('[data-id="'+CSS.escape(id)+'"]')?.remove();
+    const next=[...tabStates.keys()].at(-1);
+    if(next)openBook(next);else location.href='/books.html';
+  }
+  document.getElementById('pdf-new').onclick=async()=>{
+    picker.style.display='block';
+    pickerGrid.innerHTML=books.map(x=>'<button class="karp-picker-card" data-pick="'+esc(x.id)+'">'+(x.coverImage?'<img src="'+esc(x.coverImage)+'" alt="">':'<div style="aspect-ratio:.707;background:#eee;display:grid;place-items:center">PDF</div>')+'<strong>'+esc(x.title||x.fileName||'Book')+'</strong></button>').join('');
+    pickerGrid.querySelectorAll('[data-pick]').forEach(x=>x.onclick=()=>openBook(x.dataset.pick));
+  };
+  document.getElementById('pdf-back').onclick=()=>history.back();
+  document.getElementById('pdf-home').onclick=()=>location.href='/books.html';
+  try{
+    const snapBooks=await getDocs(collection(db,'books'));
+    books=snapBooks.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+    await openBook(current.id);
+  }catch(e){loading.textContent=e.message||'Could not load PDF.'}
 })();
 </script>
 </body>
