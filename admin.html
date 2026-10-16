@@ -245,7 +245,7 @@ async function loadJournalDetails(id,tab='views',refresh=false){
     ]);
     if(journalsAdminDetails.id!==id)return;
     journalsAdminDetails={id,tab,loading:false,loaded:true,views:viewSnap.docs.map(x=>({id:x.id,...x.data()})),sessions:sessionSnap.docs.map(x=>({id:x.id,...x.data()})),downloads:downloadSnap.docs.map(x=>({id:x.id,...x.data()})),error:''};
-  }catch(e){if(journalsAdminDetails.id===id)journalsAdminDetails={...journalsAdminDetails,loading:false,loaded:true,error:e.message||'Unable to load this journal\\'s activity.'}}
+  }catch(e){if(journalsAdminDetails.id===id)journalsAdminDetails={...journalsAdminDetails,loading:false,loaded:true,error:e.message||'Unable to load this journal\'s activity.'}}
   await renderJournalsAdmin();
 }
 async function renderJournalsAdmin(){
