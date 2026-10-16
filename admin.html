@@ -123,10 +123,20 @@ async function uploadJournalIssue(){
   if(file.size>15*1024*1024){toast('PDF is too large. Maximum size is 15 MB without Firebase Storage.');return}
   const {db}=await fb();
   const {doc,setDoc,collection,updateDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const issueId=crypto.randomUUID(),issueRef=doc(db,'journalIssues',issueId),base64=arrayBufferToBase64(await file.arrayBuffer()),chunkSize=700000,chunkCount=Math.ceil(base64.length/chunkSize);
+  const issueId=crypto.randomUUID(),issueRef=doc(db,'journalIssues',issueId),fileBytes=new Uint8Array(await file.arrayBuffer()),base64=arrayBufferToBase64(fileBytes),chunkSize=700000,chunkCount=Math.ceil(base64.length/chunkSize);
+  let coverImage='';
+  try{
+    const pdfjsLib=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+    const pdf=await pdfjsLib.getDocument({data:fileBytes}).promise;
+    const first=await pdf.getPage(1),base=first.getViewport({scale:1}),scale=Math.min(620/base.width,820/base.height),viewport=first.getViewport({scale});
+    const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(viewport.width));canvas.height=Math.max(1,Math.round(viewport.height));
+    const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);await first.render({canvasContext:ctx,viewport}).promise;
+    let q=.76;coverImage=canvas.toDataURL('image/jpeg',q);while(coverImage.length>650000&&q>.45){q-=.06;coverImage=canvas.toDataURL('image/jpeg',q)}if(coverImage.length>700000)coverImage='';canvas.width=1;canvas.height=1;
+  }catch(e){console.warn('Could not generate Journal cover preview:',e)}
   button.disabled=true;status.textContent='Uploading 0 / '+chunkCount+'…';
   try{
-    await setDoc(issueRef,{id:issueId,title,description,fileName:file.name,size:file.size,contentType:'application/pdf',chunkCount,published:false,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+    await setDoc(issueRef,{id:issueId,title,description,fileName:file.name,size:file.size,contentType:'application/pdf',chunkCount,published:false,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),coverImage});
     for(let i=0;i<chunkCount;i++){
       await setDoc(doc(issueRef,'chunks',String(i).padStart(6,'0')),{index:i,data:base64.slice(i*chunkSize,(i+1)*chunkSize)});
       status.textContent='Uploading '+(i+1)+' / '+chunkCount+'…';
