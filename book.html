@@ -7,45 +7,39 @@
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js"></script>
 <style>
-html,body{background:#f7f7f5!important;color:#17191c!important}
-.book-page{min-height:calc(100vh - 80px);background:#f7f7f5;color:#17191c;display:flex;flex-direction:column}
-.book-reader-head{height:64px;flex:0 0 64px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:16px;padding:0 20px;border-bottom:1px solid #dedfdc;background:#f7f7f5}
-.book-reader-title{min-width:0;font:700 15px/1.2 'Space Grotesk';letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.book-reader-actions{display:flex;justify-content:flex-end;align-items:center;gap:7px}
-.book-reader-page{font:600 12px/1 'Space Grotesk';color:#666b73;white-space:nowrap}
-.book-viewer-shell{position:relative;flex:1;min-height:calc(100vh - 144px);display:flex;justify-content:center;align-items:center;padding:18px 58px 20px 22px;overflow:hidden}
-.book-canvas-stage{position:relative;max-width:calc(100vw - 110px);max-height:calc(100vh - 126px);display:flex;align-items:center;justify-content:center}
-.book-canvas-shell{max-width:100%;max-height:calc(100vh - 126px);overflow:auto;background:#fff;box-shadow:0 8px 28px rgba(20,24,30,.14);border:1px solid #d8d9d6}
-#book-canvas{display:block}
-.book-loading{display:grid;place-items:center;min-width:420px;min-height:520px;color:#737a80;font-size:12px}
-.book-tools{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid #d9dad8;border-radius:12px;background:rgba(247,247,245,.96);box-shadow:0 8px 25px rgba(20,24,30,.08);backdrop-filter:blur(8px)}
-.book-tools .btn{min-width:38px}
-.book-page-input{width:54px;box-sizing:border-box;text-align:center;padding:8px 6px;border:1px solid #d9dad8;border-radius:9px;background:#fff;color:#17191c;font-size:12px}
-.book-page-total{font-size:10px;color:#666b73;white-space:nowrap}
-.book-rail{position:fixed;right:15px;top:50%;transform:translateY(-50%);z-index:25;width:20px;height:min(72vh,620px);display:flex;justify-content:center}
-.book-rail-scroll{width:100%;display:flex;flex-direction:column;align-items:center;gap:5px;overflow:auto;scrollbar-width:none;padding:6px 0}
-.book-rail-scroll::-webkit-scrollbar{display:none}
-.book-rail-dot{width:6px;height:6px;flex:0 0 6px;border:0;border-radius:50%;background:#b9bcb8;padding:0;cursor:pointer;transition:transform .14s ease,background .14s ease}
-.book-rail-dot:hover{transform:scale(1.5);background:#777d84}
-.book-rail-dot.active{background:#2f78b7;transform:scale(1.75)}
-.book-hidden{display:none!important}
-@media(max-width:700px){
-  .book-reader-head{height:56px;flex-basis:56px;padding:0 12px;grid-template-columns:minmax(0,1fr) auto}
-  .book-reader-title{font-size:13px}
-  .book-reader-page{display:none}
-  .book-viewer-shell{min-height:calc(100vh - 136px);padding:10px 28px 14px 10px}
-  .book-canvas-stage,.book-canvas-shell{max-width:calc(100vw - 48px);max-height:calc(100vh - 154px)}
-  .book-loading{min-width:240px;min-height:420px}
-  .book-tools{bottom:10px;gap:5px;padding:7px}
-  .book-tools .btn{min-width:35px;padding:8px 10px}
-  .book-rail{right:6px;height:58vh;width:14px}
-}
+html,body{margin:0!important;padding:0!important;background:#fff!important}
+body{min-height:100vh!important}
 </style>
 <script>
-window.KARPPdfReady=import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs').then(pdfjsLib=>{
-  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
-  return pdfjsLib;
-});
+(async()=>{
+  const params=new URLSearchParams(location.search),id=params.get('id');
+  if(!id){location.href='/books.html';return}
+  try{
+    const {db}=await fb();
+    const {doc,getDoc,getDocs,collection,updateDoc,increment}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const snap=await getDoc(doc(db,'books',id));
+    if(!snap.exists()){location.href='/books.html';return}
+    const book={id:snap.id,...snap.data()};
+    document.title='KARP — '+(book.title||'Book');
+    try{await updateDoc(doc(db,'books',id),{viewCount:increment(1)})}catch(e){console.warn('Book view count update failed:',e)}
+    const snapChunks=await getDocs(collection(db,'books',id,'chunks'));
+    const chunks=snapChunks.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>Number(a.index??a.id)-Number(b.index??b.id));
+    if(!chunks.length)throw new Error('PDF data is missing.');
+    const b64ToBytes=base64=>{
+      const binary=atob(base64),bytes=new Uint8Array(binary.length);
+      for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+      return bytes;
+    };
+    const parts=chunks.map(x=>b64ToBytes(x.data));
+    const total=parts.reduce((n,x)=>n+x.length,0);
+    const bytes=new Uint8Array(total);let offset=0;
+    parts.forEach(part=>{bytes.set(part,offset);offset+=part.length});
+    const blobUrl=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+    location.replace(blobUrl);
+  }catch(e){
+    document.body.innerHTML='<div style="font:14px system-ui;padding:40px;text-align:center"><h2>Unable to open this book</h2><p>'+escapeHtml(e.message||'Something went wrong.')+'</p><a href="/books.html">← Back to Books</a></div>';
+  }
+})();
 </script>
 </head>
 <body>
