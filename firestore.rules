@@ -339,12 +339,75 @@ service cloud.firestore {
       allow update: if isAdmin()
         || (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
-          && request.resource.data.viewCount == resource.data.viewCount + 1
+          && request.resource.data.viewCount == (resource.data.viewCount is number ? resource.data.viewCount : 0) + 1
         )
         || (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['downloadCount'])
-          && request.resource.data.downloadCount == resource.data.downloadCount + 1
+          && request.resource.data.downloadCount == (resource.data.downloadCount is number ? resource.data.downloadCount : 0) + 1
         );
+    }
+
+    match /books/{bookId}/views/{viewerId} {
+      // One unique-view document per signed-in account or browser-local guest ID.
+      allow get: if isAdmin()
+        || (request.auth != null && request.auth.uid == viewerId)
+        || viewerId.matches('guest_[A-Za-z0-9_-]+');
+      allow list: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['viewerId','uid','displayName','email','createdAt'])
+        && request.resource.data.keys().hasAll(['viewerId','uid','displayName','email','createdAt'])
+        && request.resource.data.viewerId == viewerId
+        && request.resource.data.displayName is string
+        && request.resource.data.email is string
+        && request.resource.data.createdAt is string
+        && ((request.auth == null && request.resource.data.uid == null)
+          || (request.auth != null && request.resource.data.uid == request.auth.uid));
+      allow update, delete: if isAdmin();
+    }
+
+    match /books/{bookId}/viewSessions/{sessionId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['sessionId','bookId','viewerId','uid','displayName','email','userType','startedAt','endedAt','durationSeconds','status'])
+        && request.resource.data.keys().hasAll(['sessionId','bookId','viewerId','uid','displayName','email','userType','startedAt','endedAt','durationSeconds','status'])
+        && request.resource.data.sessionId == sessionId
+        && request.resource.data.bookId == bookId
+        && request.resource.data.viewerId is string
+        && request.resource.data.displayName is string
+        && request.resource.data.email is string
+        && request.resource.data.userType in ['account','guest']
+        && request.resource.data.startedAt is string
+        && request.resource.data.endedAt == null
+        && request.resource.data.durationSeconds == 0
+        && request.resource.data.status == 'active'
+        && ((request.auth == null && request.resource.data.uid == null && request.resource.data.userType == 'guest')
+          || (request.auth != null && request.resource.data.uid == request.auth.uid && request.resource.data.userType == 'account'));
+      allow update: if isAdmin()
+        || (resource.data.status == 'active'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['endedAt','durationSeconds','status'])
+          && request.resource.data.status == 'ended'
+          && request.resource.data.endedAt is string
+          && request.resource.data.durationSeconds is number
+          && request.resource.data.durationSeconds >= resource.data.durationSeconds
+          && request.resource.data.viewerId == resource.data.viewerId
+          && ((request.auth == null && resource.data.uid == null)
+            || (request.auth != null && resource.data.uid == request.auth.uid)));
+      allow delete: if isAdmin();
+    }
+
+    match /books/{bookId}/downloads/{downloadId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['downloadId','bookId','viewerId','uid','displayName','email','userType','fileName','createdAt'])
+        && request.resource.data.keys().hasAll(['downloadId','bookId','viewerId','uid','displayName','email','userType','fileName','createdAt'])
+        && request.resource.data.downloadId == downloadId
+        && request.resource.data.bookId == bookId
+        && request.resource.data.viewerId is string
+        && request.resource.data.displayName is string
+        && request.resource.data.email is string
+        && request.resource.data.userType in ['account','guest']
+        && request.resource.data.fileName is string
+        && request.resource.data.createdAt is string
+        && ((request.auth == null && request.resource.data.uid == null && request.resource.data.userType == 'guest')
+          || (request.auth != null && request.resource.data.uid == request.auth.uid && request.resource.data.userType == 'account'));
+      allow update, delete: if isAdmin();
     }
 
     match /books/{bookId}/chunks/{chunkId} {

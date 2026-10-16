@@ -17,7 +17,23 @@
 .books-admin-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center}
 .books-admin-stats{display:flex;gap:12px;flex-wrap:wrap;color:#70767e;font-size:10px}
 .books-admin-stats strong{color:#17191c}
-@media(max-width:700px){.books-admin-row{grid-template-columns:1fr}.books-admin-actions{justify-self:start}}
+.books-admin-item{border-bottom:1px solid #d9dad8}
+.books-admin-item>.books-admin-row{border-bottom:0}
+.books-admin-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.books-admin-details{margin:0 0 14px;padding:15px;border:1px solid #d9dad8;border-radius:12px;background:#f7f7f5}
+.books-admin-detail-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.books-admin-detail-head strong{font-size:13px}
+.books-admin-detail-summary{font-size:10px;color:#737a80;margin-top:3px}
+.books-admin-detail-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.books-admin-detail-tab{padding:8px 12px;border:1px solid #d9dad8;border-radius:9px;background:#fff;color:#565c64;font-size:11px;font-weight:700}
+.books-admin-detail-tab.active{background:#e8e9e6;border-color:#bfc3be;color:#17191c}
+.books-admin-detail-table-wrap{overflow:auto}
+.books-admin-detail-table{width:100%;border-collapse:collapse;background:#fff}
+.books-admin-detail-table th,.books-admin-detail-table td{padding:10px 9px;border-bottom:1px solid #e5e6e3;text-align:left;font-size:10px;vertical-align:top;white-space:normal;overflow-wrap:anywhere}
+.books-admin-detail-table th{font-size:9px;letter-spacing:.7px;text-transform:uppercase;color:#737a80;background:#f0f1ee}
+.books-admin-detail-empty{padding:22px 10px;border:1px dashed #d4d6d1;border-radius:9px;text-align:center;font-size:11px;color:#737a80;background:#fff}
+.books-admin-detail-note{margin-top:10px;font-size:10px;color:#737a80;line-height:1.5}
+@media(max-width:700px){.books-admin-row{grid-template-columns:1fr}.books-admin-actions{justify-self:start}.books-admin-details{padding:10px}.books-admin-detail-head{align-items:flex-start;flex-direction:column}}
 </style>
 </style><style>
 /* Advanced admin visual skin */
@@ -52,7 +68,7 @@
 .about-founder-placeholder{width:100%;height:100%;display:grid;place-items:center;text-align:center;padding:16px;color:#858b93;font-size:11px}
 @media(max-width:760px){.about-founder-admin-preview{grid-template-columns:1fr}.about-founder-file-wrap{width:150px}}
 </style></head><body><div id="root"></div><script>
-let state={type:'problems',editing:null},liveDocs=[],liveUnsub=null,liveTimer=null,pendingVideoThumbnail='',pendingFounderImage='',pendingMeetingImage='',pendingBookFile=null;
+let state={type:'problems',editing:null},liveDocs=[],liveUnsub=null,liveTimer=null,pendingVideoThumbnail='',pendingFounderImage='',pendingMeetingImage='',pendingBookFile=null,booksAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function startAdminPresence(db,u){
   try{
@@ -166,34 +182,102 @@ async function renderBooksAdmin(){
     const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
     const snap=await getDocs(collection(db,'books'));
     const books=snap.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
-    const e=state.editing;
-    const isEdit=!!(e&&e.id);
+    const e=state.editing,isEdit=!!(e&&e.id);
     const editor=e?'<div class="bigcard books-admin-editor"><div class="admin-head" style="margin-bottom:8px"><div><h2>'+(isEdit?'Edit Book':'Add Book')+'</h2><span class="admin-count">'+(isEdit?'Change title, cover, or replace the PDF.':'PDF upload · stored in Firestore chunks')+'</span></div></div><div class="books-admin-form">'+
       '<div class="books-admin-field"><label for="books-admin-title">Book title</label><input id="books-admin-title" type="text" value="'+esc(e.title||'')+'" placeholder="e.g. IMO 2024 SL"></div>'+
       '<div class="books-admin-field"><label for="books-admin-file">'+(isEdit?'Replace PDF (optional)':'PDF file')+'</label><input id="books-admin-file" type="file" accept="application/pdf,.pdf"><div class="books-admin-note">'+(isEdit?'Leave empty to keep the current PDF.':'Large files are uploaded as Firestore chunks.')+'</div><div class="books-admin-progress" id="books-admin-progress">'+(pendingBookFile?esc(pendingBookFile.name):(isEdit?'Current PDF kept.':'No file selected.'))+'</div></div>'+
       '<div class="books-admin-field"><label for="books-admin-cover">Book cover image</label><input id="books-admin-cover" type="file" accept="image/*"><div class="books-admin-note">'+(e.coverImage?'Current cover is shown below. Choose another image to replace it, or remove it.':'Upload the exact cover. If empty on a new book, the first PDF page is used when possible.')+'</div>'+
       '<div id="books-admin-cover-preview" style="display:flex;gap:10px;align-items:center;margin-top:6px">'+(e.coverImage?'<img src="'+esc(e.coverImage)+'" alt="" style="width:76px;height:108px;object-fit:cover;border:1px solid #d9dad8;border-radius:6px"><button type="button" class="btn danger" id="books-admin-remove-cover">Remove cover</button>':'')+'</div></div>'+
       '<div><button class="btn primary" id="books-admin-upload">'+(isEdit?'Save Changes':'Upload Book')+'</button> <button class="btn" id="books-admin-cancel">Cancel</button></div></div></div>':'';
-
-    const rows=books.map(b=>'<div class="row books-admin-row"><div><h3>'+esc(b.title||b.fileName||'Untitled Book')+'</h3><p>'+esc(b.fileName||'PDF')+' · '+(Number(b.size||0)/1024/1024).toFixed(2)+' MB</p><div class="books-admin-stats"><span>Views <strong>'+Math.max(0,Number(b.viewCount||0))+'</strong></span><span>Downloads <strong>'+Math.max(0,Number(b.downloadCount||0))+'</strong></span><span>Added <strong>'+esc(b.createdAt?new Date(b.createdAt).toLocaleString():'—')+'</strong></span></div></div><div class="right books-admin-actions"><a class="btn" href="/book.html?id='+encodeURIComponent(b.id)+'">Open</a> <button class="btn" data-edit-book="'+esc(b.id)+'">Edit</button> <button class="btn danger" data-delete-book="'+esc(b.id)+'">Delete</button></div></div>').join('');
+    const rows=books.map(b=>{
+      const title=b.title||b.fileName||'Untitled Book',details=booksAdminDetails.id===b.id?renderBookDetailsPanel(b):'';
+      return '<div class="books-admin-item"><div class="row books-admin-row"><div><h3>'+esc(title)+'</h3><p>'+esc(b.fileName||'PDF')+' · '+(Number(b.size||0)/1024/1024).toFixed(2)+' MB</p><div class="books-admin-stats"><span>Views <strong>'+Math.max(0,Number(b.viewCount||0))+'</strong></span><span>Downloads <strong>'+Math.max(0,Number(b.downloadCount||0))+'</strong></span><span>Added <strong>'+esc(b.createdAt?new Date(b.createdAt).toLocaleString():'—')+'</strong></span></div></div><div class="right books-admin-actions"><a class="btn" href="/book.html?id='+encodeURIComponent(b.id)+'">Open</a> <button class="btn" data-book-details="'+esc(b.id)+'">Details</button> <button class="btn" data-edit-book="'+esc(b.id)+'">Edit</button> <button class="btn danger" data-delete-book="'+esc(b.id)+'">Delete</button></div></div>'+details+'</div>';
+    }).join('');
     m.innerHTML='<div class="admin-head"><div><h2>Books</h2><span class="admin-count">'+books.length+' books</span></div><div><button class="btn primary" id="books-admin-new">+ New Book</button></div></div>'+editor+'<div class="rows">'+(rows||'<div class="empty">No books have been added yet.</div>')+'</div>';
-
     document.getElementById('books-admin-new')?.addEventListener('click',()=>{pendingBookFile=null;state.editing={id:null,title:'',coverImage:''};render()});
     document.getElementById('books-admin-cancel')?.addEventListener('click',()=>{pendingBookFile=null;state.editing=null;render()});
     const input=document.getElementById('books-admin-file');
     input?.addEventListener('change',()=>{pendingBookFile=input.files?.[0]||null;const st=document.getElementById('books-admin-progress');if(st)st.textContent=pendingBookFile?pendingBookFile.name:(state.editing?.id?'Current PDF kept.':'No file selected.')});
     document.getElementById('books-admin-upload')?.addEventListener('click',saveBookAdmin);
     document.getElementById('books-admin-remove-cover')?.addEventListener('click',()=>{if(state.editing){state.editing.coverImage='';render()}});
-    document.querySelectorAll('[data-edit-book]').forEach(btn=>btn.onclick=()=>{
-      const b=books.find(x=>x.id===btn.dataset.editBook); if(!b)return;
-      pendingBookFile=null;state.editing={...b};render();
-    });
-    document.querySelectorAll('[data-delete-book]').forEach(btn=>btn.onclick=()=>removeBookAdmin(btn.dataset.deleteBook));
-  }catch(e){
-    m.innerHTML='<div class="bigcard"><h3>Could not load Books</h3><p>'+esc(e.message||'Check Firestore permissions.')+'</p></div>';
-  }
+    document.querySelectorAll('[data-edit-book]').forEach(btn=>btn.onclick=()=>{const b=books.find(x=>x.id===btn.dataset.editBook);if(!b)return;pendingBookFile=null;state.editing={...b};render()});
+    document.querySelectorAll('[data-delete-book]').forEach(btn=>btn.onclick=()=>removeBookAdmin(btn.dataset.deleteBook,btn.closest('.books-admin-item')?.querySelector('h3')?.textContent||'this book',btn));
+    document.querySelectorAll('[data-book-details]').forEach(btn=>btn.onclick=()=>{const id=btn.dataset.bookDetails;if(booksAdminDetails.id===id){booksAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};renderBooksAdmin()}else loadBookDetails(id,'views',true)});
+    document.querySelectorAll('[data-book-details-tab]').forEach(btn=>btn.onclick=()=>{booksAdminDetails.tab=btn.dataset.bookDetailsTab;renderBooksAdmin()});
+    document.querySelectorAll('[data-refresh-book-details]').forEach(btn=>btn.onclick=()=>loadBookDetails(booksAdminDetails.id,booksAdminDetails.tab,true));
+    document.querySelectorAll('[data-close-book-details]').forEach(btn=>btn.onclick=()=>{booksAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};renderBooksAdmin()});
+  }catch(e){m.innerHTML='<div class="bigcard"><h3>Could not load Books</h3><p>'+esc(e.message||'Check Firestore permissions.')+'</p></div>'}
 }
-
+function bookAdminDate(value){
+  if(!value)return '—';
+  const d=value&&typeof value.toDate==='function'?value.toDate():new Date(value);
+  return Number.isNaN(d.getTime())?'—':d.toLocaleString();
+}
+function bookAdminDuration(value){
+  const n=Math.max(0,Number(value||0)),m=Math.floor(n/60),s=Math.floor(n%60),h=Math.floor(m/60);
+  return h?h+'h '+(m%60)+'m':m?m+'m '+s+'s':s+'s';
+}
+function renderBookDetailsPanel(book){
+  const d=booksAdminDetails,tab=d.tab==='downloads'?'downloads':'views';
+  const unique=Math.max(0,Number(book.viewCount||0)),downloadTotal=Math.max(0,Number(book.downloadCount||0));
+  let body='';
+  if(d.loading)body='<div class="books-admin-detail-empty">Loading activity…</div>';
+  else if(d.error)body='<div class="books-admin-detail-empty">'+esc(d.error)+'</div>';
+  else if(tab==='downloads'){
+    const rows=(d.downloads||[]).slice().sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+    body=rows.length?'<div class="books-admin-detail-table-wrap"><table class="books-admin-detail-table"><thead><tr><th>Who</th><th>Downloaded at</th><th>PDF filename</th></tr></thead><tbody>'+rows.map(x=>'<tr><td><strong>'+esc(x.displayName||x.email||(x.uid?'Signed-in account':'Guest / private window'))+'</strong>'+(x.email?'<br>'+esc(x.email):'')+(x.uid?'<br><span style="color:#737a80">Account</span>':'<br><span style="color:#737a80">Anonymous visitor</span>')+'</td><td>'+esc(bookAdminDate(x.createdAt))+'</td><td>'+esc(x.fileName||book.fileName||book.title||'PDF')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="books-admin-detail-empty">No detailed downloads have been recorded yet.</div>';
+    body+='<div class="books-admin-detail-note">Total Downloads counter: '+downloadTotal+'. Detailed records are created when the KARP Download PDF button is used; older downloads and the browser\'s built-in PDF toolbar cannot be reconstructed retroactively.</div>';
+  }else{
+    const sessions=(d.sessions||[]).slice().sort((a,b)=>new Date(b.startedAt||0)-new Date(a.startedAt||0));
+    if(sessions.length){
+      body='<div class="books-admin-detail-table-wrap"><table class="books-admin-detail-table"><thead><tr><th>Who</th><th>Entered</th><th>Left / hidden</th><th>Active time</th></tr></thead><tbody>'+sessions.map(x=>{
+        const who=x.displayName||x.email||(x.uid?'Signed-in account':'Guest / private window');
+        const elapsed=x.endedAt?Number(x.durationSeconds||0):Math.max(0,Math.round((Date.now()-new Date(x.startedAt||Date.now()).getTime())/1000));
+        return '<tr><td><strong>'+esc(who)+'</strong>'+(x.email?'<br>'+esc(x.email):'')+(x.uid?'<br><span style="color:#737a80">Account</span>':'<br><span style="color:#737a80">Anonymous visitor</span>')+'</td><td>'+esc(bookAdminDate(x.startedAt))+'</td><td>'+(x.endedAt?esc(bookAdminDate(x.endedAt)):'<span style="color:#737a80">Exit not received yet</span>')+'</td><td>'+esc(bookAdminDuration(elapsed))+'</td></tr>';
+      }).join('')+'</tbody></table></div>';
+    }else{
+      const legacy=(d.views||[]).slice().sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+      body=legacy.length?'<div class="books-admin-detail-table-wrap"><table class="books-admin-detail-table"><thead><tr><th>Visitor</th><th>First recorded view</th><th>Session details</th></tr></thead><tbody>'+legacy.map(x=>'<tr><td>'+esc(x.displayName||x.email||(x.uid?'Signed-in account':'Guest / private window'))+(x.email?'<br>'+esc(x.email):'')+'</td><td>'+esc(bookAdminDate(x.createdAt))+'</td><td>Legacy record — exit time and duration were not stored.</td></tr>').join('')+'</tbody></table></div>':'<div class="books-admin-detail-empty">No view activity is recorded yet.</div>';
+    }
+    body='<div class="books-admin-detail-summary">Unique viewers: '+unique+' · Recorded sessions: '+sessions.length+'</div>'+body+
+      '<div class="books-admin-detail-note">A view is counted once per signed-in account, or once per browser-local guest ID. Session time counts only while this PDF tab is visible. Anonymous/private-window visitors cannot be identified by name or email unless they sign in.</div>';
+  }
+  return '<section class="books-admin-details"><div class="books-admin-detail-head"><div><strong>'+esc(book.title||book.fileName||'Book')+' · Details</strong><div class="books-admin-detail-summary">Activity history for this PDF</div></div><div class="books-admin-actions"><button class="btn" data-refresh-book-details>Refresh</button> <button class="btn" data-close-book-details>Close</button></div></div><div class="books-admin-detail-tabs"><button class="books-admin-detail-tab '+(tab==='views'?'active':'')+'" data-book-details-tab="views">Views & sessions</button><button class="books-admin-detail-tab '+(tab==='downloads'?'active':'')+'" data-book-details-tab="downloads">Downloads ('+downloadTotal+')</button></div>'+body+'</section>';
+}
+async function loadBookDetails(bookId,tab='views',refresh=false){
+  if(booksAdminDetails.id===bookId&&booksAdminDetails.loaded&&!refresh){booksAdminDetails.tab=tab;await renderBooksAdmin();return}
+  booksAdminDetails={id:bookId,tab,loading:true,loaded:false,views:[],sessions:[],downloads:[],error:''};
+  await renderBooksAdmin();
+  try{
+    const {db}=await fb();
+    const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const [viewSnap,sessionSnap,downloadSnap]=await Promise.all([getDocs(collection(db,'books',bookId,'views')),getDocs(collection(db,'books',bookId,'viewSessions')),getDocs(collection(db,'books',bookId,'downloads'))]);
+    if(booksAdminDetails.id!==bookId)return;
+    booksAdminDetails={id:bookId,tab,loading:false,loaded:true,views:viewSnap.docs.map(x=>({id:x.id,...x.data()})),sessions:sessionSnap.docs.map(x=>({id:x.id,...x.data()})),downloads:downloadSnap.docs.map(x=>({id:x.id,...x.data()})),error:''};
+  }catch(e){if(booksAdminDetails.id===bookId)booksAdminDetails={...booksAdminDetails,loading:false,loaded:true,error:e.message||'Unable to load this book\'s activity.'}}
+  await renderBooksAdmin();
+}
+async function removeBookAdmin(id,title,button){
+  if(!confirm('Permanently delete "'+title+'" and its PDF data and analytics? This cannot be undone.'))return;
+  if(button){button.disabled=true;button.textContent='Deleting…'}
+  try{
+    const {db}=await fb();
+    const {collection,getDocs,writeBatch,doc,deleteDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    for(const subcollection of ['chunks','views','viewSessions','downloads']){
+      const snap=await getDocs(collection(db,'books',id,subcollection));
+      for(let i=0;i<snap.docs.length;i+=400){
+        const batch=writeBatch(db);
+        snap.docs.slice(i,i+400).forEach(x=>batch.delete(x.ref));
+        await batch.commit();
+      }
+    }
+    await deleteDoc(doc(db,'books',id));
+    if(state.editing?.id===id){state.editing=null;pendingBookFile=null}
+    if(booksAdminDetails.id===id)booksAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};
+    toast('Book, PDF chunks, and analytics deleted.');
+    await renderBooksAdmin();
+  }catch(e){toast(e.message||'Could not delete the book. Check Firestore permissions.');if(button){button.disabled=false;button.textContent='Delete'}}
+}
 async function saveBookAdmin(){
   const editing=state.editing||{};
   const title=document.getElementById('books-admin-title')?.value.trim();
