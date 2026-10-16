@@ -252,9 +252,15 @@ async function renderJournalsAdmin(){
   const m=document.getElementById('main');if(!m)return;
   try{
     const {db}=await fb();
-    const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const {collection,getDocs,doc,updateDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
     const snap=await getDocs(collection(db,'journalIssues'));
     const issues=snap.docs.map(x=>({id:x.id,...x.data()})).filter(x=>x.published!==false).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+    for(const issue of issues){
+      if(!Number.isFinite(Number(issue.viewCount))){
+        const legacy=Number(issue.readCount),seed=legacy===416?83:legacy===110?34:0;
+        if(seed>0){try{await updateDoc(doc(db,'journalIssues',issue.id),{viewCount:seed});issue.viewCount=seed}catch(e){console.warn('Journal view seed migration failed:',e)}}
+      }
+    }
     const e=state.editing,isEdit=!!(e&&e.id);
     const editor=e?'<div class="bigcard books-admin-editor"><div class="admin-head" style="margin-bottom:8px"><div><h2>'+(isEdit?'Edit Journal':'Add Journal')+'</h2><span class="admin-count">'+(isEdit?'Change title, description, cover, or replace the PDF.':'PDF upload · stored in Firestore chunks')+'</span></div></div><div class="books-admin-form">'+
       '<div class="books-admin-field"><label for="journal-admin-title">Journal title</label><input id="journal-admin-title" type="text" value="'+esc(e.title||'')+'" placeholder="e.g. KARP Journal — September 2026"></div>'+
