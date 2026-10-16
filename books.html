@@ -55,7 +55,7 @@
       const filtered=books.filter(b=>String(b.title||b.fileName||'').toLowerCase().includes(q));
       grid.innerHTML=filtered.length?filtered.map(b=>{
         const title=b.title||b.fileName||'Untitled Book';
-        return '<a class="book-card" href="/book.html?id='+encodeURIComponent(b.id)+'" target="_blank" rel="noopener" aria-label="Open '+esc(title)+'">'+
+        return '<a class="book-card" href="/book.html?id='+encodeURIComponent(b.id)+'" aria-label="Open '+esc(title)+'">'+
           '<div class="book-cover">'+(b.coverImage?'<img src="'+esc(b.coverImage)+'" alt="">':'<div class="book-cover-fallback"><small>KARP · OLYMPIAD MATHEMATICS</small><h2>'+esc(title)+'</h2><small>PDF BOOKLET</small></div>')+'</div>'+
           '<div class="book-card-meta"><span class="book-card-title">'+esc(title)+'</span><span class="book-views">'+eye+esc(fmt(b.viewCount))+'</span></div>'+
         '</a>';
