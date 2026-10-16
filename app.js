@@ -349,11 +349,17 @@ async function api(path, opts = {}) {
     const exams=snap.docs.map(x=>({id:x.id,...x.data()}));
     if(uid){
       const statusEntries=await Promise.all(exams.map(async exam=>{
-        const submission=await getDoc(doc(db,'exams',exam.id,'submissions',uid));
-        return [exam.id,submission.exists()];
+        const [submission,registration]=await Promise.all([
+          getDoc(doc(db,'exams',exam.id,'submissions',uid)),
+          getDoc(doc(db,'exams',exam.id,'registrations',uid))
+        ]);
+        return [exam.id,{completed:submission.exists(),registered:registration.exists()}];
       }));
-      const completedById=new Map(statusEntries);
-      return {exams:exams.map(exam=>({...publicExam(exam),completedByCurrentUser:completedById.get(exam.id)===true}))};
+      const statusById=new Map(statusEntries);
+      return {exams:exams.map(exam=>{
+        const status=statusById.get(exam.id)||{};
+        return {...publicExam(exam),completedByCurrentUser:status.completed===true,registeredByCurrentUser:status.registered===true};
+      })};
     }
     return {exams:exams.map(publicExam)};
   }
