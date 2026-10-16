@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KARP — Book</title>
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js"></script>
+<style>
+.book-page{min-height:100vh;background:#f7f7f5;color:#17191c}
+.book-top{width:min(1220px,calc(100% - 42px));margin:0 auto;padding:48px 0 22px;display:flex;align-items:flex-end;justify-content:space-between;gap:18px}
+.book-top h1{font-family:'Space Grotesk';font-size:clamp(30px,4vw,52px);line-height:1.04;letter-spacing:-2px;margin:0}
+.book-top-meta{margin-top:8px;color:#747a80;font-size:11px}
+.book-top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.book-viewer-shell{width:min(1220px,calc(100% - 42px));margin:0 auto 70px;display:grid;grid-template-columns:minmax(0,1fr) 42px;gap:14px;align-items:stretch}
+.book-viewer{min-height:720px;border:1px solid #d9dad8;border-radius:16px;background:#eeeeeb;box-shadow:0 10px 30px rgba(20,24,30,.06);display:flex;flex-direction:column;overflow:hidden}
+.book-canvas-wrap{position:relative;flex:1;display:grid;place-items:center;min-height:0;padding:28px}
+.book-canvas-shell{max-width:100%;max-height:calc(100vh - 260px);overflow:auto;background:#fff;box-shadow:0 7px 24px rgba(20,24,30,.12);border:1px solid #d8d9d6}
+#book-canvas{display:block}
+.book-loading{display:grid;place-items:center;min-height:660px;color:#737a80;font-size:12px}
+.book-toolbar{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap;padding:12px 14px;border-top:1px solid #d9dad8;background:#eeeeeb}
+.book-toolbar .btn{min-width:42px}
+.book-page-input{width:62px;box-sizing:border-box;text-align:center;padding:9px 8px;border:1px solid #d9dad8;border-radius:10px;background:#f7f7f5;color:#17191c;font-size:12px}
+.book-page-total{font-size:11px;color:#666b73;min-width:58px;text-align:left}
+.book-rail{position:relative;border:1px solid #d9dad8;border-radius:13px;background:#eeeeeb;padding:11px 7px;display:flex;justify-content:center;overflow:hidden}
+.book-rail-scroll{width:100%;display:flex;flex-direction:column;align-items:center;gap:5px;overflow:auto;scrollbar-width:thin;padding:4px 0}
+.book-rail-dot{width:8px;height:8px;flex:0 0 8px;border:0;border-radius:50%;background:#b9bcb8;padding:0;cursor:pointer;transition:transform .14s ease,background .14s ease;position:relative}
+.book-rail-dot:hover{transform:scale(1.4);background:#777d84}
+.book-rail-dot.active{background:#2f78b7;transform:scale(1.65)}
+.book-error{padding:50px 20px;text-align:center;color:#737a80;font-size:13px}
+.book-hidden{display:none!important}
+@media(max-width:700px){
+  .book-top{width:calc(100% - 28px);align-items:flex-start;flex-direction:column}
+  .book-top-actions{justify-content:flex-start}
+  .book-viewer-shell{width:calc(100% - 28px);grid-template-columns:minmax(0,1fr);gap:10px}
+  .book-rail{height:40px;padding:7px 9px}
+  .book-rail-scroll{flex-direction:row;justify-content:flex-start;overflow-x:auto;overflow-y:hidden}
+  .book-viewer{min-height:590px}
+  .book-canvas-wrap{padding:13px}
+  .book-loading{min-height:520px}
+}
+</style>
+<script>
+window.KARPPdfReady=import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs').then(pdfjsLib=>{
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+  return pdfjsLib;
+});
+</script>
+</head>
+<body>
+<script>
+(async()=>{
+  const params=new URLSearchParams(location.search),id=params.get('id');
+  if(!id){location.href='/books.html';return}
+  try{
+    const {db}=await fb();
+    const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const {doc,getDoc,getDocs,collection,updateDoc,increment}=fs;
+    const snap=await getDoc(doc(db,'books',id));
+    if(!snap.exists()){location.href='/books.html';return}
+    const book={id:snap.id,...snap.data()};
+    document.title='KARP — '+(book.title||'Book');
+    shell('Books',book.title||'Book',
+      '<main class="book-page"><section class="book-top"><div><h1>'+escapeHtml(book.title||book.fileName||'Untitled Book')+'</h1><div class="book-top-meta">'+escapeHtml(book.fileName||'PDF')+'</div></div><div class="book-top-actions"><button class="btn" id="book-download" type="button">Download PDF</button><a class="btn" href="/books.html">← Books</a></div></section>'+
+      '<section class="book-viewer-shell"><div class="book-viewer"><div class="book-canvas-wrap"><div class="book-loading" id="book-loading">Loading PDF…</div><div class="book-canvas-shell book-hidden" id="book-canvas-shell"><canvas id="book-canvas"></canvas></div></div><div class="book-toolbar"><button class="btn" id="book-prev" type="button">←</button><input class="book-page-input" id="book-page-input" type="number" min="1" value="1" aria-label="Page number"><span class="book-page-total" id="book-page-total">/ —</span><button class="btn" id="book-next" type="button">→</button><button class="btn" id="book-zoom-out" type="button">−</button><button class="btn" id="book-zoom-in" type="button">+</button><button class="btn" id="book-fit" type="button">Fit</button></div></div><aside class="book-rail"><div class="book-rail-scroll" id="book-rail-scroll" aria-label="Pages"></div></aside></section></main>'
+    );
+    setKarpActivity({page:'Books',label:'Reading book',detail:book.title||'Book',question:null});
+    try{await updateDoc(doc(db,'books',id),{viewCount:increment(1)})}catch(e){console.warn('Book view count update failed:',e)}
+
+    const pdfjsLib=await window.KARPPdfReady;
+    let pdf=null,page=1,scale=1,baseBytes=null,lastWidth=0;
+    const loading=document.getElementById('book-loading'),shellEl=document.getElementById('book-canvas-shell'),canvas=document.getElementById('book-canvas'),ctx=canvas.getContext('2d',{alpha:false}),pageInput=document.getElementById('book-page-input'),pageTotal=document.getElementById('book-page-total'),rail=document.getElementById('book-rail-scroll');
+
+    const b64ToBytes=base64=>{
+      const binary=atob(base64),bytes=new Uint8Array(binary.length);
+      for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+      return bytes;
+    };
+    async function loadBytes(){
+      const snap=await getDocs(collection(db,'books',id,'chunks'));
+      const chunks=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>Number(a.index??a.id)-Number(b.index??b.id));
+      if(!chunks.length)throw new Error('PDF data is missing.');
+      const parts=chunks.map(x=>b64ToBytes(x.data));
+      const total=parts.reduce((n,x)=>n+x.length,0);
+      const out=new Uint8Array(total);let offset=0;
+      parts.forEach(part=>{out.set(part,offset);offset+=part.length});
+      return out;
+    }
+    function buildRail(total){
+      rail.innerHTML=Array.from({length:total},(_,i)=>'<button class="book-rail-dot" type="button" data-page="'+(i+1)+'" title="Page '+(i+1)+'" aria-label="Page '+(i+1)+'"></button>').join('');
+      rail.querySelectorAll('.book-rail-dot').forEach(dot=>dot.onclick=()=>go(Number(dot.dataset.page)));
+    }
+    function updateRail(){
+      const active=rail.querySelector('.book-rail-dot.active');active?.classList.remove('active');
+      const next=rail.querySelector('.book-rail-dot[data-page="'+page+'"]');next?.classList.add('active');
+      next?.scrollIntoView({block:'nearest',inline:'nearest'});
+    }
+    async function renderPage(){
+      if(!pdf)return;
+      const p=await pdf.getPage(page);
+      const base=p.getViewport({scale:1});
+      const available=Math.max(260,shellEl.clientWidth-2);
+      const fit=available/base.width;
+      const applied=Math.max(.5,Math.min(2.3,fit*scale));
+      const viewport=p.getViewport({scale:applied});
+      const ratio=window.devicePixelRatio||1;
+      canvas.width=Math.floor(viewport.width*ratio);
+      canvas.height=Math.floor(viewport.height*ratio);
+      canvas.style.width=Math.floor(viewport.width)+'px';
+      canvas.style.height=Math.floor(viewport.height)+'px';
+      ctx.setTransform(ratio,0,0,ratio,0,0);
+      await p.render({canvasContext:ctx,viewport}).promise;
+      pageInput.value=String(page);
+      pageTotal.textContent='/ '+pdf.numPages;
+      shellEl.classList.remove('book-hidden');
+      loading.classList.add('book-hidden');
+      updateRail();
+    }
+    async function go(n){if(!pdf)return;page=Math.max(1,Math.min(pdf.numPages,Math.floor(Number(n)||1)));await renderPage()}
+    function change(delta){go(page+delta)}
+    document.getElementById('book-prev').onclick=()=>change(-1);
+    document.getElementById('book-next').onclick=()=>change(1);
+    pageInput.onchange=()=>go(pageInput.value);
+    document.getElementById('book-zoom-in').onclick=()=>{scale=Math.min(1.8,scale+.15);renderPage()};
+    document.getElementById('book-zoom-out').onclick=()=>{scale=Math.max(.7,scale-.15);renderPage()};
+    document.getElementById('book-fit').onclick=()=>{scale=1;renderPage()};
+    window.addEventListener('resize',()=>{clearTimeout(window.__bookResize);window.__bookResize=setTimeout(()=>renderPage().catch(()=>{}),120)});
+    document.getElementById('book-download').onclick=async()=>{
+      try{
+        const bytes=baseBytes||await loadBytes();
+        baseBytes=bytes;
+        await updateDoc(doc(db,'books',id),{downloadCount:increment(1)});
+        const blob=new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+        a.href=url;a.download=book.fileName||((book.title||'book').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')+'.pdf');
+        document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+      }catch(e){toast(e.message||'Could not download PDF.')}
+    };
+    baseBytes=await loadBytes();
+    pdf=await pdfjsLib.getDocument({data:baseBytes}).promise;
+    pageTotal.textContent='/ '+pdf.numPages;
+    buildRail(pdf.numPages);
+    await renderPage();
+  }catch(e){
+    console.error(e);
+    document.body.innerHTML='<div class="error-page"><h1>Unable to open this book</h1><p>'+escapeHtml(e.message||'Something went wrong.')+'</p><a href="/books.html">← Back to Books</a></div>';
+  }
+})();
+</script>
+</body>
+</html>
