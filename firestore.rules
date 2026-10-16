@@ -333,6 +333,25 @@ service cloud.firestore {
         allow delete: if isAdmin();
       }
     }
+    match /books/{id} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
+          && request.resource.data.viewCount == resource.data.viewCount + 1
+        )
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['downloadCount'])
+          && request.resource.data.downloadCount == resource.data.downloadCount + 1
+        );
+    }
+
+    match /books/{bookId}/chunks/{chunkId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     match /journals/{uid}/entries/{entryId} {
       allow read, create, update, delete: if signedIn() && request.auth.uid == uid;
     }
