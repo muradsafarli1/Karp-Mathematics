@@ -841,7 +841,7 @@ async function saveItem(){
     data.questions=(state.editing.questions||[]).map(q=>({...q,statementEn:normalizeMathMarkdown(q.statementEn||''),statementAz:normalizeMathMarkdown(q.statementAz||''),statementTr:normalizeMathMarkdown(q.statementTr||''),solution:normalizeMathMarkdown(q.solution||'')}));
   }
   if(state.type==='contests'){
-    data.problems=(state.editing.problems||[]).map(q=>({...q,statementEn:normalizeMathMarkdown(q.statementEn||''),statementAz:normalizeMathMarkdown(q.statementAz||'')}));
+    data.problems=(state.editing.problems||[]).map(q=>({...q,statementEn:normalizeMathMarkdown(q.statementEn||''),statementAz:normalizeMathMarkdown(q.statementAz||''),statementTr:normalizeMathMarkdown(q.statementTr||'')}));
   }
   if(state.type==='problems'){
     data.statementEn=normalizeMathMarkdown(data.statementEn||'');
