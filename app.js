@@ -28,8 +28,9 @@
     .auth-action-close{position:absolute;right:14px;top:12px;border:0;background:transparent;color:var(--muted);font-size:25px;cursor:pointer}.auth-action-buttons{display:flex;gap:8px;flex-wrap:wrap}
     .theme-toggle{width:38px;height:38px;border:1px solid #30343d;background:#15181d;color:#f3f5f8;border-radius:10px;font-size:17px;display:grid;place-items:center;padding:0;line-height:1}
     .theme-toggle:hover{background:#22262d;transform:translateY(-1px)}
-    .language-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--line,#292d34);background:var(--panel,#101216);border-radius:10px;margin-bottom:28px}
-    .language-switch button{border:0;background:transparent;color:#858b96;padding:7px 12px;border-radius:7px;font-size:12px;font-weight:800;letter-spacing:.6px}
+    .language-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--line,#292d34);background:var(--panel,#101216);border-radius:11px;margin-bottom:28px}
+    .language-switch button{border:0;background:transparent;color:#858b96;padding:8px 13px;border-radius:8px;font-size:12px;font-weight:700;letter-spacing:0;white-space:nowrap;transition:background .15s,color .15s}
+    .language-switch button:hover{color:var(--text,#17191c)}
     .language-switch button.active{background:#eef0ff;color:#101218}
     .detail-content{font-size:19px;line-height:1.9;color:var(--text);white-space:pre-wrap}
     .detail-content mjx-container{white-space:normal}
@@ -1111,10 +1112,15 @@ function nav(active){const links=[['Problems','/problems.html'],['Contests','/co
 async function updateNavUser(){const box=document.getElementById('nav-actions');if(!box)return;const u=await me();if(!u)return;const avatar=u.photoURL?`<img src="${escapeHtml(u.photoURL)}" alt="" class="nav-profile-img">`:`<span class="nav-profile-initial">${escapeHtml((u.name||'K').charAt(0).toUpperCase())}</span>`;box.innerHTML=`<a class="nav-profile" href="/account.html" aria-label="Account" title="Account">${avatar}</a>${u.role==='admin'?'<a class="btn nav-admin" href="/admin.html">Admin</a>':''}<button class="nav-logout" onclick="logout()">Log out</button>`}
 function shell(active,title,body){document.title=`KARP — ${title}`;document.body.innerHTML=nav(active)+body+footer();updateNavUser()}
 function footer(){return `<footer class="footer"><div class="wrap footgrid"><div><div class="brand">KARP</div><div class="small">Olympiad mathematics for serious problem solvers.</div></div><div class="footlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/articles.html">Articles</a><a href="/exams.html">Exams</a><a href="/mock.html">Mocks</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a href="/about.html">About Us</a></div></div></footer>`}
-function currentLanguage(){return localStorage.getItem('able_lang')==='az'?'az':'en'}
-function setLanguage(lang){localStorage.setItem('able_lang',lang);return lang}
-function localized(item,field,lang=currentLanguage()){const az=item?.[`${field}Az`],en=item?.[`${field}En`],old=item?.[field];return lang==='az'?(az||en||old||''):(en||az||old||'')}
-function languageSwitch(){const lang=currentLanguage();return `<div class="language-switch" role="group" aria-label="Language"><button type="button" class="${lang==='en'?'active':''}" data-lang="en">ENG</button><button type="button" class="${lang==='az'?'active':''}" data-lang="az">AZE</button></div>`}
+function currentLanguage(){const lang=localStorage.getItem('able_lang');return lang==='az'||lang==='tr'?lang:'en'}
+function setLanguage(lang){const next=lang==='az'||lang==='tr'?lang:'en';localStorage.setItem('able_lang',next);return next}
+function localized(item,field,lang=currentLanguage()){
+  const en=item?.[`${field}En`],az=item?.[`${field}Az`],tr=item?.[`${field}Tr`],old=item?.[field];
+  if(lang==='az')return az||en||tr||old||'';
+  if(lang==='tr')return tr||en||az||old||'';
+  return en||az||tr||old||'';
+}
+function languageSwitch(){const lang=currentLanguage();return `<div class="language-switch" role="group" aria-label="Language"><button type="button" class="${lang==='en'?'active':''}" data-lang="en">English</button><button type="button" class="${lang==='az'?'active':''}" data-lang="az">Azerbaijani</button><button type="button" class="${lang==='tr'?'active':''}" data-lang="tr">Turkish</button></div>`}
 function bindLanguageSwitch(renderFn){document.querySelectorAll('.language-switch button').forEach(b=>b.onclick=()=>{setLanguage(b.dataset.lang);renderFn()})}
 async function typesetMath(root,retries=40){
   if(!root)return false;
