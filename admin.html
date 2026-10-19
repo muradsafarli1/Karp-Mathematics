@@ -631,8 +631,17 @@ function __usersRender(){
   // document exists, without writing or resetting any previously saved values.
   const recordedIds=new Set(visitorDocs.filter(p=>__usersVisitorKind(p)==='account').map(p=>String(p.uid||p.id||'')));
   users.forEach(u=>{
+    const existing=visitorDocs.find(p=>String(p.uid||p.id||'')===String(u.id)&&__usersVisitorKind(p)==='account');
+    if(existing){
+      // Preserve the largest saved historical total across profile/presence schemas.
+      existing.totalActiveSeconds=Math.max(Number(existing.totalActiveSeconds||0),Number(u.totalActiveSeconds||0));
+      if(!existing.firstSeenAt&&u.createdAt)existing.firstSeenAt=u.createdAt;
+      if(!existing.name&&u.name)existing.name=u.name;
+      if(!existing.email&&u.email)existing.email=u.email;
+      return;
+    }
     if(recordedIds.has(String(u.id)))return;
-    const hasLegacyActivity=Number(u.totalActiveSeconds||0)>0||u.lastSeen||u.lastLoginAt||u.activity;
+    const hasLegacyActivity=Number(u.totalActiveSeconds||0)>0||u.lastSeen||u.activity;
     if(hasLegacyActivity){
       visitorDocs.push({id:u.id,uid:u.id,visitorId:u.id,userType:'account',name:u.name||'KARP Member',email:u.email||'',online:false,totalActiveSeconds:Number(u.totalActiveSeconds||0),lastSeen:u.lastSeen||null,firstSeenAt:u.createdAt||null,activity:u.activity||null,legacyProfileFallback:true});
       recordedIds.add(String(u.id));
