@@ -34,42 +34,47 @@
   .hero .cta{margin-top:42px!important;gap:12px!important}
 }
 </style><style>
-/* KARP signature intro — homepage only, short, skippable and session-limited */
-.karp-site-intro{position:fixed;inset:0;z-index:99999;display:none;place-items:center;overflow:hidden;background:#f7f7f5;color:#17191c;opacity:1;visibility:visible;transition:opacity .26s ease,visibility .26s ease}
+/* KARP signature intro — vivid, cinematic and consistent with the homepage hero */
+.karp-site-intro{position:fixed;inset:0;z-index:99999;display:none;place-items:center;overflow:hidden;background:radial-gradient(ellipse at 17% 22%,rgba(79,62,183,.34),transparent 43%),radial-gradient(ellipse at 83% 78%,rgba(23,150,210,.24),transparent 43%),radial-gradient(ellipse at 72% 18%,rgba(217,70,239,.18),transparent 38%),#07080a;color:#f6f7ff;opacity:1;visibility:visible;transition:opacity .26s ease,visibility .26s ease}
+.karp-site-intro:before,.karp-site-intro:after{content:"";position:absolute;pointer-events:none;width:min(72vw,900px);aspect-ratio:1;border-radius:50%;filter:blur(82px);opacity:.24;animation:karpIntroAurora 5.5s ease-in-out infinite alternate}
+.karp-site-intro:before{left:-22%;top:-55%;background:radial-gradient(circle,rgba(106,82,255,.9),rgba(106,82,255,0) 67%)}
+.karp-site-intro:after{right:-25%;bottom:-62%;background:radial-gradient(circle,rgba(28,218,244,.75),rgba(217,70,239,0) 68%);animation-delay:-2.3s}
 html.karp-intro-pending .karp-site-intro{display:grid}
 html.karp-intro-exit .karp-site-intro{opacity:0;visibility:hidden;pointer-events:none}
-.karp-intro-grain{position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(rgba(73,82,94,.15) .55px,transparent .75px);background-size:24px 24px;opacity:.19;mask-image:radial-gradient(ellipse at center,#000 0%,transparent 77%)}
-.karp-intro-glow{position:absolute;width:min(66vw,680px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(218,222,230,.62) 0%,rgba(236,237,239,.38) 37%,transparent 70%);filter:blur(10px);pointer-events:none}
+.karp-intro-grain{position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(rgba(255,255,255,.45) .6px,transparent .8px);background-size:25px 25px;opacity:.12;mask-image:radial-gradient(ellipse at center,#000 0%,transparent 79%)}
+.karp-intro-glow{position:absolute;width:min(78vw,820px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 31% 34%,rgba(75,230,255,.32),transparent 35%),radial-gradient(circle at 68% 36%,rgba(211,72,239,.28),transparent 36%),radial-gradient(circle at 52% 69%,rgba(92,101,255,.32),transparent 48%);filter:blur(26px);pointer-events:none;animation:karpIntroAurora 4.3s ease-in-out infinite alternate}
 .karp-intro-inner{position:relative;width:min(88vw,900px);height:min(66vh,520px);min-height:300px;display:grid;place-items:center}
-.karp-intro-orbit{position:absolute;width:min(65vw,440px);aspect-ratio:1;border:1px solid rgba(115,124,137,.17);border-radius:50%;animation:karpIntroOrbit 1.65s cubic-bezier(.2,.65,.25,1) both}
-.karp-intro-orbit:before,.karp-intro-orbit:after{content:"";position:absolute;border:1px solid rgba(115,124,137,.12);border-radius:50%;inset:12%}
-.karp-intro-orbit:after{inset:25%;border-color:rgba(115,124,137,.10)}
+.karp-intro-orbit{position:absolute;width:min(65vw,440px);aspect-ratio:1;border:1px solid rgba(223,231,255,.22);border-radius:50%;animation:karpIntroOrbit 1.65s cubic-bezier(.2,.65,.25,1) both;box-shadow:0 0 70px rgba(114,122,255,.08),inset 0 0 55px rgba(55,191,255,.035)}
+.karp-intro-orbit:before,.karp-intro-orbit:after{content:"";position:absolute;border:1px solid rgba(206,220,255,.15);border-radius:50%;inset:12%}
+.karp-intro-orbit:after{inset:25%;border-color:rgba(103,220,255,.18)}
 .karp-intro-center{position:relative;display:grid;place-items:center;min-width:min(80vw,520px);height:190px}
-.karp-intro-k,.karp-intro-word{grid-area:1/1;font-family:"Space Grotesk","DM Sans",sans-serif;font-weight:700;color:#17191c;line-height:1;user-select:none}
-.karp-intro-k{font-size:clamp(118px,20vw,204px);letter-spacing:-.085em;padding-right:.085em;opacity:0;transform:translateY(16px) scale(.88);animation:karpIntroK 1.12s cubic-bezier(.2,.7,.25,1) .04s both}
-.karp-intro-word{font-size:clamp(64px,10.5vw,112px);letter-spacing:-.095em;padding-right:.095em;opacity:0;transform:translateY(10px) scale(.97);animation:karpIntroWord .88s cubic-bezier(.2,.7,.2,1) .58s both}
-.karp-intro-rule{position:absolute;width:min(38vw,210px);height:1px;left:50%;bottom:5px;transform:translateX(-50%) scaleX(0);transform-origin:center;background:linear-gradient(90deg,transparent,#8d98aa 24%,#8d98aa 76%,transparent);animation:karpIntroRule .58s ease-out 1.08s both}
-.karp-intro-tagline{position:absolute;left:0;right:0;bottom:24px;text-align:center;font:700 9px/1.5 "DM Sans",sans-serif;letter-spacing:3px;color:#828892;text-transform:uppercase;opacity:0;animation:karpIntroTag .5s ease-out 1.02s both}
-.karp-intro-symbol{position:absolute;font-family:"Cambria Math","STIX Two Math","Times New Roman",serif;font-size:clamp(22px,3.2vw,34px);color:#89919d;opacity:0;animation:karpIntroFloat 1.35s ease-out both;user-select:none}
-.karp-intro-symbol.s1{left:17%;top:21%;animation-delay:.13s;color:#777f8b}
-.karp-intro-symbol.s2{left:25%;top:65%;animation-delay:.27s;color:#9a8bb0}
-.karp-intro-symbol.s3{right:19%;top:23%;animation-delay:.2s;color:#788ba1}
-.karp-intro-symbol.s4{right:23%;top:67%;animation-delay:.32s;color:#9a8c76}
-.karp-intro-symbol.s5{left:36%;top:14%;font-size:clamp(16px,2.4vw,23px);animation-delay:.38s}
-.karp-intro-symbol.s6{right:35%;bottom:15%;font-size:clamp(16px,2.4vw,23px);animation-delay:.42s}
-.karp-intro-symbol.s7{left:13%;top:47%;font-size:clamp(17px,2.5vw,25px);animation-delay:.31s}
-.karp-intro-symbol.s8{right:13%;top:48%;font-size:clamp(17px,2.5vw,25px);animation-delay:.24s}
-.karp-intro-skip{position:absolute;top:22px;right:24px;z-index:2;display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid #dfe2e5;border-radius:8px;background:rgba(255,255,255,.72);color:#5e646d;font:700 10px/1 "DM Sans",sans-serif;letter-spacing:.45px;transition:background .15s ease,border-color .15s ease}
-.karp-intro-skip:hover{background:#fff;border-color:#c9cdd2}
-.karp-intro-skip:focus-visible{outline:2px solid #7588a8;outline-offset:3px}
+.karp-intro-k,.karp-intro-word{grid-area:1/1;font-family:"Space Grotesk","DM Sans",sans-serif;font-weight:700;line-height:1;user-select:none;background:linear-gradient(112deg,#f7f8ff 3%,#b8c0ff 27%,#8ff5ff 48%,#e6a4ff 68%,#fff 88%);background-size:240% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;filter:drop-shadow(0 0 24px rgba(117,127,255,.18))}
+.karp-intro-k{font-size:clamp(118px,20vw,204px);letter-spacing:-.085em;padding-right:.085em;opacity:0;transform:translateY(16px) scale(.88);animation:karpIntroK 1.12s cubic-bezier(.2,.7,.25,1) .04s both,karpIntroWordShine 5s linear 1.2s infinite}
+.karp-intro-word{font-size:clamp(64px,10.5vw,112px);letter-spacing:-.095em;padding-right:.095em;opacity:0;transform:translateY(10px) scale(.97);animation:karpIntroWord .88s cubic-bezier(.2,.7,.2,1) .58s both,karpIntroWordShine 5s linear 1.4s infinite}
+.karp-intro-rule{position:absolute;width:min(38vw,210px);height:1px;left:50%;bottom:5px;transform:translateX(-50%) scaleX(0);transform-origin:center;background:linear-gradient(90deg,transparent,#8ff5ff 23%,#a8adff 50%,#e6a4ff 78%,transparent);box-shadow:0 0 18px rgba(124,181,255,.35);animation:karpIntroRule .58s ease-out 1.08s both}
+.karp-intro-tagline{position:absolute;left:0;right:0;bottom:24px;text-align:center;font:700 9px/1.5 "DM Sans",sans-serif;letter-spacing:3px;color:#9ba3b3;text-transform:uppercase;opacity:0;animation:karpIntroTag .5s ease-out 1.02s both}
+.karp-intro-symbol{position:absolute;font-family:"Cambria Math","STIX Two Math","Times New Roman",serif;font-size:clamp(22px,3.2vw,34px);color:#8ff5ff;text-shadow:0 0 20px rgba(103,220,255,.2);opacity:0;animation:karpIntroFloat 1.35s ease-out both;user-select:none}
+.karp-intro-symbol.s1{left:17%;top:21%;animation-delay:.13s;color:#9d9bff;text-shadow:0 0 25px rgba(124,77,255,.48)}
+.karp-intro-symbol.s2{left:25%;top:65%;animation-delay:.27s;color:#efb2ff;text-shadow:0 0 25px rgba(217,70,239,.32)}
+.karp-intro-symbol.s3{right:19%;top:23%;animation-delay:.2s;color:#8ff5ff;text-shadow:0 0 25px rgba(23,205,235,.34)}
+.karp-intro-symbol.s4{right:23%;top:67%;animation-delay:.32s;color:#d6c4ff;text-shadow:0 0 24px rgba(151,126,255,.38)}
+.karp-intro-symbol.s5{left:36%;top:14%;font-size:clamp(16px,2.4vw,23px);animation-delay:.38s;color:#7cecff}
+.karp-intro-symbol.s6{right:35%;bottom:15%;font-size:clamp(16px,2.4vw,23px);animation-delay:.42s;color:#ffc0e9}
+.karp-intro-symbol.s7{left:13%;top:47%;font-size:clamp(17px,2.5vw,25px);animation-delay:.31s;color:#9ef4da}
+.karp-intro-symbol.s8{right:13%;top:48%;font-size:clamp(17px,2.5vw,25px);animation-delay:.24s;color:#ffd58f}
+.karp-intro-skip{position:absolute;top:22px;right:24px;z-index:2;display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid rgba(220,229,255,.21);border-radius:8px;background:rgba(15,17,27,.48);backdrop-filter:blur(14px);color:#bbc2d0;font:700 10px/1 "DM Sans",sans-serif;letter-spacing:.45px;transition:background .15s ease,border-color .15s ease}
+.karp-intro-skip:hover{background:rgba(30,33,49,.8);border-color:rgba(220,229,255,.42);color:#fff}
+.karp-intro-skip:focus-visible{outline:2px solid #8ff5ff;outline-offset:3px}
 @keyframes karpIntroK{0%{opacity:0;transform:translateY(16px) scale(.88);filter:blur(5px)}20%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}48%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}72%,100%{opacity:0;transform:translateY(-7px) scale(1.07);filter:blur(3px)}}
 @keyframes karpIntroWord{0%{opacity:0;transform:translateY(10px) scale(.97);filter:blur(4px);letter-spacing:-.11em}32%{opacity:1;filter:blur(0)}100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0);letter-spacing:-.095em}}
-@keyframes karpIntroRule{from{transform:translateX(-50%) scaleX(0);opacity:0}to{transform:translateX(-50%) scaleX(1);opacity:.85}}
+@keyframes karpIntroRule{from{transform:translateX(-50%) scaleX(0);opacity:0}to{transform:translateX(-50%) scaleX(1);opacity:.95}}
 @keyframes karpIntroTag{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
-@keyframes karpIntroFloat{0%{opacity:0;transform:translateY(13px) scale(.92)}24%{opacity:.82}75%{opacity:.82;transform:translateY(-4px) scale(1)}100%{opacity:.72;transform:translateY(0) scale(1)}}
+@keyframes karpIntroFloat{0%{opacity:0;transform:translateY(13px) scale(.92)}24%{opacity:.9}75%{opacity:.9;transform:translateY(-4px) scale(1)}100%{opacity:.78;transform:translateY(0) scale(1)}}
 @keyframes karpIntroOrbit{0%{transform:scale(.82) rotate(-12deg);opacity:0}35%{opacity:1}100%{transform:scale(1) rotate(0);opacity:.85}}
+@keyframes karpIntroAurora{0%{transform:translate3d(-2%,1%,0) scale(.94);filter:blur(76px);opacity:.19}100%{transform:translate3d(3%,-2%,0) scale(1.07);filter:blur(96px);opacity:.34}}
+@keyframes karpIntroWordShine{0%,100%{background-position:0% center}50%{background-position:100% center}}
 @media(max-width:600px){.karp-intro-inner{width:96vw;height:58vh;min-height:270px}.karp-intro-orbit{width:76vw}.karp-intro-center{min-width:88vw;height:150px}.karp-intro-tagline{bottom:12px;font-size:8px;letter-spacing:2.2px}.karp-intro-skip{top:14px;right:14px}.karp-intro-symbol.s1{left:11%;top:24%}.karp-intro-symbol.s3{right:11%;top:25%}.karp-intro-symbol.s2{left:14%;top:67%}.karp-intro-symbol.s4{right:14%;top:68%}}
-@media(prefers-reduced-motion:reduce){.karp-site-intro{transition:none!important}.karp-intro-orbit,.karp-intro-k,.karp-intro-word,.karp-intro-rule,.karp-intro-tagline,.karp-intro-symbol{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.karp-site-intro,.karp-site-intro:before,.karp-site-intro:after,.karp-intro-glow{animation:none!important;transition:none!important}.karp-intro-orbit,.karp-intro-k,.karp-intro-word,.karp-intro-rule,.karp-intro-tagline,.karp-intro-symbol{animation:none!important}}
 </style><script>
 /* Do not replay on every navigation or refresh in the same tab. */
 (function(){try{if(!sessionStorage.getItem('karpIntroSeen_v1')&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('karp-intro-pending')}catch{}})();
