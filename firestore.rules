@@ -189,7 +189,12 @@ service cloud.firestore {
 
     match /presence/{uid} {
       allow read: if isAdmin();
-      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow create, update: if (signedIn() && request.auth.uid == uid)
+        || (!signedIn()
+          && uid.matches('guest_[A-Za-z0-9_-]+')
+          && request.resource.data.guestId == uid
+          && request.resource.data.uid == null
+          && request.resource.data.userType == 'guest');
       allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
     }
 
