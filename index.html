@@ -34,61 +34,25 @@
   .hero .cta{margin-top:42px!important;gap:12px!important}
 }
 </style><style>
-/* KARP intro — bright, colorful, four-second cinematic logo reveal */
-.karp-site-intro{position:fixed;inset:0;z-index:99999;display:none;place-items:center;overflow:hidden;background:#f7f7f5;color:#17191c;opacity:1;visibility:visible;transition:opacity .32s ease,visibility .32s ease}
-html.karp-intro-pending .karp-site-intro{display:grid}
-html.karp-intro-exit .karp-site-intro{opacity:0;visibility:hidden;pointer-events:none}
-.karp-intro-grain{position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(rgba(85,95,110,.22) .65px,transparent .85px);background-size:25px 25px;opacity:.16;mask-image:radial-gradient(ellipse at center,#000 0%,transparent 82%)}
-.karp-intro-glow{position:absolute;width:min(75vw,850px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 30% 37%,rgba(124,77,255,.18),transparent 35%),radial-gradient(circle at 70% 34%,rgba(23,150,210,.19),transparent 37%),radial-gradient(circle at 53% 72%,rgba(217,70,239,.13),transparent 43%),radial-gradient(circle at 70% 68%,rgba(255,191,102,.12),transparent 46%);filter:blur(22px);pointer-events:none;animation:karpIntroAurora 5s ease-in-out infinite alternate}
-.karp-intro-inner{position:relative;width:min(94vw,1120px);height:min(74vh,630px);min-height:340px;display:grid;place-items:center}
-.karp-intro-orbit{position:absolute;width:min(66vw,510px);aspect-ratio:1;border:1px solid rgba(124,77,255,.15);border-radius:50%;animation:karpIntroOrbit 2.2s cubic-bezier(.2,.65,.25,1) both;box-shadow:0 0 80px rgba(124,77,255,.06),inset 0 0 60px rgba(23,150,210,.035)}
-.karp-intro-orbit:before,.karp-intro-orbit:after{content:"";position:absolute;border:1px solid rgba(56,103,232,.13);border-radius:50%;inset:11%}
-.karp-intro-orbit:after{inset:23%;border-color:rgba(217,70,239,.13)}
-.karp-intro-center{position:relative;display:grid;place-items:center;width:min(92vw,910px);height:270px}
-.karp-intro-word{position:relative;display:flex;align-items:center;justify-content:center;gap:.008em;font-family:"Space Grotesk","DM Sans",sans-serif;font-size:clamp(78px,13.6vw,166px);font-weight:700;line-height:.9;letter-spacing:-.09em;padding-right:.09em;white-space:nowrap;user-select:none}
-.karp-intro-letter{position:relative;display:inline-block;opacity:0;filter:blur(7px);transform:translateY(42px) scale(.85);will-change:transform,opacity,filter}
-.karp-letter-k{background:linear-gradient(135deg,#7c4dff 7%,#3867e8 52%,#1796d2 93%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;filter:drop-shadow(0 8px 24px rgba(82,102,232,.14));transform-origin:center bottom;animation:karpIntroBigK 1.72s cubic-bezier(.16,.78,.22,1) .04s both}
-.karp-letter-a{background:linear-gradient(135deg,#3867e8 7%,#149fd1 92%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:karpIntroLetter .72s cubic-bezier(.16,.78,.22,1) 1.26s both}
-.karp-letter-r{background:linear-gradient(135deg,#7c4dff 4%,#c04feb 92%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:karpIntroLetter .72s cubic-bezier(.16,.78,.22,1) 1.53s both}
-.karp-letter-p{background:linear-gradient(135deg,#d946ef 0%,#ed83bb 54%,#dca94f 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:karpIntroLetter .72s cubic-bezier(.16,.78,.22,1) 1.80s both}
-.karp-intro-rule{position:absolute;width:min(42vw,255px);height:2px;left:50%;top:calc(50% + 82px);transform:translateX(-50%) scaleX(0);transform-origin:center;border-radius:99px;background:linear-gradient(90deg,transparent,#7c4dff 16%,#3867e8 38%,#1796d2 58%,#d946ef 82%,transparent);box-shadow:0 2px 15px rgba(124,77,255,.15);animation:karpIntroRule .58s ease-out 2.47s both}
-.karp-intro-tagline{position:absolute;left:0;right:0;top:calc(50% + 109px);text-align:center;font:700 10px/1.5 "DM Sans",sans-serif;letter-spacing:3.3px;color:#777e89;text-transform:uppercase;opacity:0;transform:translateY(8px);animation:karpIntroTag .54s ease-out 2.58s both}
-.karp-intro-symbol{position:absolute;font-family:"Cambria Math","STIX Two Math","Times New Roman",serif;font-size:clamp(24px,3.4vw,39px);opacity:0;filter:blur(2px);animation:karpIntroFloat 2s ease-out both;user-select:none}
-.karp-intro-symbol.s1{left:15%;top:20%;color:#7c4dff;text-shadow:0 5px 22px rgba(124,77,255,.17);animation-delay:.23s}
-.karp-intro-symbol.s2{left:23%;top:69%;color:#d946ef;text-shadow:0 5px 22px rgba(217,70,239,.15);animation-delay:.47s}
-.karp-intro-symbol.s3{right:17%;top:23%;color:#1796d2;text-shadow:0 5px 22px rgba(23,150,210,.17);animation-delay:.35s}
-.karp-intro-symbol.s4{right:22%;top:68%;color:#9b78d1;text-shadow:0 5px 22px rgba(155,120,209,.15);animation-delay:.58s}
-.karp-intro-symbol.s5{left:37%;top:12%;font-size:clamp(17px,2.3vw,25px);color:#1796d2;animation-delay:.68s}
-.karp-intro-symbol.s6{right:34%;bottom:13%;font-size:clamp(18px,2.5vw,27px);color:#c77bcf;animation-delay:.76s}
-.karp-intro-symbol.s7{left:12%;top:48%;font-size:clamp(18px,2.6vw,28px);color:#238d78;animation-delay:.56s}
-.karp-intro-symbol.s8{right:12%;top:48%;font-size:clamp(18px,2.6vw,28px);color:#c39845;animation-delay:.43s}
-.karp-intro-skip{position:absolute;top:23px;right:26px;z-index:2;display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid rgba(130,139,151,.25);border-radius:9px;background:rgba(255,255,255,.76);backdrop-filter:blur(12px);color:#686f79;font:700 10px/1 "DM Sans",sans-serif;letter-spacing:.45px;transition:background .15s ease,border-color .15s ease,color .15s ease}
-.karp-intro-skip:hover{background:#fff;border-color:rgba(124,77,255,.35);color:#282d35}
-.karp-intro-skip:focus-visible{outline:2px solid #7c4dff;outline-offset:3px}
-@keyframes karpIntroBigK{0%{opacity:0;transform:translateY(62vh) scale(2.55);filter:blur(12px)}22%{opacity:1;filter:blur(0)}70%{opacity:1;transform:translateY(-7px) scale(.97);filter:blur(0)}84%,100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
-@keyframes karpIntroLetter{0%{opacity:0;transform:translateY(48px) scale(.72);filter:blur(9px)}68%{opacity:1;filter:blur(0)}100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
-@keyframes karpIntroRule{from{transform:translateX(-50%) scaleX(0);opacity:0}to{transform:translateX(-50%) scaleX(1);opacity:1}}
-@keyframes karpIntroTag{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-@keyframes karpIntroFloat{0%{opacity:0;transform:translateY(18px) scale(.8);filter:blur(4px)}28%{opacity:.86;filter:blur(0)}76%{opacity:.86;transform:translateY(-5px) scale(1)}100%{opacity:.76;transform:translateY(0) scale(1);filter:blur(0)}}
-@keyframes karpIntroOrbit{0%{transform:scale(.78) rotate(-13deg);opacity:0}36%{opacity:.85}100%{transform:scale(1) rotate(0);opacity:.75}}
-@keyframes karpIntroAurora{0%{transform:translate3d(-2%,1%,0) scale(.95);opacity:.75}100%{transform:translate3d(3%,-2%,0) scale(1.06);opacity:1}}
-@media(max-width:600px){.karp-intro-inner{width:98vw;height:62vh;min-height:300px}.karp-intro-orbit{width:78vw}.karp-intro-center{width:96vw;height:190px}.karp-intro-word{font-size:clamp(68px,15.8vw,100px)}.karp-intro-rule{top:calc(50% + 61px);width:45vw}.karp-intro-tagline{top:calc(50% + 88px);font-size:8px;letter-spacing:2.4px}.karp-intro-skip{top:14px;right:14px}.karp-intro-symbol.s1{left:7%;top:24%}.karp-intro-symbol.s3{right:7%;top:25%}.karp-intro-symbol.s2{left:10%;top:71%}.karp-intro-symbol.s4{right:10%;top:71%}}
-@media(prefers-reduced-motion:reduce){.karp-site-intro,.karp-site-intro:before,.karp-site-intro:after,.karp-intro-glow{transition:none!important;animation:none!important}.karp-intro-orbit,.karp-intro-letter,.karp-intro-rule,.karp-intro-tagline,.karp-intro-symbol{animation:none!important}.karp-intro-letter{opacity:1!important;filter:none!important;transform:none!important}}
-</style><script>
-/* Do not replay on every navigation or refresh in the same tab. */
-(function(){try{if(!sessionStorage.getItem('karpIntroSeen_v1')&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('karp-intro-pending')}catch{}})();
-</script></head><body><div class="karp-site-intro" id="karp-site-intro" role="status" aria-label="KARP — Olympiad Mathematics" aria-live="polite">
-  <div class="karp-intro-grain" aria-hidden="true"></div><div class="karp-intro-glow" aria-hidden="true"></div>
-  <button type="button" class="karp-intro-skip" id="karp-intro-skip" aria-label="Skip KARP introduction">SKIP <span aria-hidden="true">↗</span></button>
-  <div class="karp-intro-inner" aria-hidden="true">
-    <div class="karp-intro-orbit"></div>
-    <span class="karp-intro-symbol s1">∫</span><span class="karp-intro-symbol s2">π</span>
-    <span class="karp-intro-symbol s3">∑</span><span class="karp-intro-symbol s4">√x</span>
-    <span class="karp-intro-symbol s5">f(x)</span><span class="karp-intro-symbol s6">∞</span>
-    <span class="karp-intro-symbol s7">∂</span><span class="karp-intro-symbol s8">Δ</span>
-    <div class="karp-intro-center"><div class="karp-intro-word"><span class="karp-intro-letter karp-letter-k">K</span><span class="karp-intro-letter karp-letter-a">A</span><span class="karp-intro-letter karp-letter-r">R</span><span class="karp-intro-letter karp-letter-p">P</span></div><div class="karp-intro-rule"></div><div class="karp-intro-tagline">Olympiad Mathematics</div></div>
-  </div>
-</div><header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/mock.html">Mocks</a><a href="/books.html">Books</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/canvas.html"><span>KARP Canvas</span><small>Draw, write and collect ideas</small></a><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a></div></div><a href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header><main><section class="hero"><div class="noise"></div><div class="orb"></div><div class="hero-shapes" aria-hidden="true"><svg class="hero-shape-art" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" focusable="false">
+/* Animate the live homepage wordmark in place: no splash layer or screen switch. */
+.hero h1.karp-wordmark{display:flex!important;justify-content:center!important;align-items:center!important;gap:0!important;width:100%;background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;-webkit-text-fill-color:initial!important;color:#17191c!important;animation:none!important;text-shadow:none!important;filter:none!important;position:relative;isolation:isolate}
+html[data-theme="light"] .hero h1.karp-wordmark{background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;-webkit-text-fill-color:initial!important;color:#17191c!important;animation:none!important;text-shadow:none!important}
+.hero h1.karp-wordmark .karp-hero-letter{position:relative;display:inline-block;opacity:0;filter:blur(7px);transform:translateY(36px) scale(.83);will-change:transform,opacity,filter;line-height:.88;letter-spacing:inherit;-webkit-text-fill-color:transparent!important;background-clip:text!important;-webkit-background-clip:text!important}
+.hero h1.karp-wordmark .karp-hero-k{background-image:linear-gradient(135deg,#3867e8 5%,#7c4dff 54%,#1796d2 100%)!important;transform-origin:center bottom;animation:karpLiveK 1.85s cubic-bezier(.16,.78,.22,1) .02s both,karpLiveSettle .45s ease-out 2.82s both}
+.hero h1.karp-wordmark .karp-hero-a{background-image:linear-gradient(135deg,#3867e8 4%,#149fd1 100%)!important;animation:karpLiveLetter .68s cubic-bezier(.16,.78,.22,1) 1.52s both}
+.hero h1.karp-wordmark .karp-hero-r{background-image:linear-gradient(135deg,#7c4dff 4%,#c04feb 100%)!important;animation:karpLiveLetter .68s cubic-bezier(.16,.78,.22,1) 1.81s both}
+.hero h1.karp-wordmark .karp-hero-p{background-image:linear-gradient(135deg,#d946ef 0%,#ed83bb 58%,#dca94f 100%)!important;animation:karpLiveLetter .68s cubic-bezier(.16,.78,.22,1) 2.10s both}
+.hero h1.karp-wordmark .karp-hero-letter:not(.karp-hero-k){letter-spacing:inherit}
+.hero .cta{opacity:0;animation:karpLiveContent .62s ease-out 2.82s both}
+.hero .journal-announcement-wrap{opacity:0;animation:karpLiveContent .62s ease-out 3s both}
+.hero .micro{opacity:0;animation:karpLiveContent .62s ease-out 3.12s both}
+@keyframes karpLiveK{0%{opacity:0;transform:translateY(66vh) scale(2.5);filter:blur(12px)}18%{opacity:1;filter:blur(0)}64%{opacity:1;transform:translateY(-8px) scale(1.025);filter:blur(0)}82%,100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
+@keyframes karpLiveLetter{0%{opacity:0;transform:translateY(40px) scale(.72);filter:blur(9px)}68%{opacity:1;filter:blur(0)}100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
+@keyframes karpLiveSettle{0%{filter:drop-shadow(0 0 0 rgba(124,77,255,0))}45%{filter:drop-shadow(0 6px 26px rgba(124,77,255,.17))}100%{filter:drop-shadow(0 0 0 rgba(124,77,255,0))}}
+@keyframes karpLiveContent{0%{opacity:0;transform:translateY(9px)}100%{opacity:1;transform:translateY(0)}}
+@media(max-width:620px){.hero h1.karp-wordmark{gap:0!important}.hero h1.karp-wordmark .karp-hero-letter{letter-spacing:inherit}}
+@media(prefers-reduced-motion:reduce){.hero h1.karp-wordmark .karp-hero-letter{animation:none!important;opacity:1!important;filter:none!important;transform:none!important}.hero .cta,.hero .journal-announcement-wrap,.hero .micro{animation:none!important;opacity:1!important;transform:none!important}}
+</style></head><body><header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/mock.html">Mocks</a><a href="/books.html">Books</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/canvas.html"><span>KARP Canvas</span><small>Draw, write and collect ideas</small></a><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a></div></div><a href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header><main><section class="hero"><div class="noise"></div><div class="orb"></div><div class="hero-shapes" aria-hidden="true"><svg class="hero-shape-art" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" focusable="false">
 <g class="drift-a">
   <circle class="geo blue" cx="135" cy="208" r="35"/>
   <circle class="geo cyan dashed" cx="135" cy="208" r="51"/>
@@ -158,23 +122,4 @@ html.karp-intro-exit .karp-site-intro{opacity:0;visibility:hidden;pointer-events
   <text class="math-symbol math-blue" x="905" y="205">lim</text>
   <text class="math-symbol math-gold" x="1090" y="735">a²+b²</text>
   <text class="math-symbol math-green" x="290" y="750">x ∈ ℝ</text>
-</g></svg></div><div class="hero-inner"><div class="eyebrow">Olympiad Mathematics · Since 2026</div><h1>KARP</h1><div class="cta"><a class="btn primary" href="/problems.html">Explore Problems</a><a class="btn" href="/about.html">About KARP</a></div><section class="journal-announcement-wrap"><a class="journal-announcement" href="/exams.html" aria-label="Register for the upcoming KARP Exam"><div class="journal-announcement-text"><h2>Don't forget to register for the upcoming KARP Exam!</h2><p>Registration is available on the Exams page.</p></div><span class="journal-announcement-arrow">→</span></a></section><div class="micro">Problems · Contests · Exams · Mocks · Videos · Journal · Meetings</div></div></section></main><footer class="footer"><div class="wrap footgrid"><div><div class="brand">KARP</div><div class="small">Olympiad mathematics for serious problem solvers.</div></div><div class="footlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a href="/about.html">About Us</a></div></div></footer><script>updateNavUser();</script><script>
-(function(){
-  const root=document.documentElement,intro=document.getElementById('karp-site-intro');
-  if(!intro)return;
-  if(!root.classList.contains('karp-intro-pending')){intro.remove();return}
-  let finished=false,timer=0;
-  const skip=document.getElementById('karp-intro-skip');
-  const onKey=e=>{if(e.key==='Escape')finish()};
-  function finish(){
-    if(finished)return;finished=true;clearTimeout(timer);
-    try{sessionStorage.setItem('karpIntroSeen_v1','1')}catch{}
-    root.classList.add('karp-intro-exit');
-    document.removeEventListener('keydown',onKey);
-    setTimeout(()=>{root.classList.remove('karp-intro-pending','karp-intro-exit');intro.remove()},280);
-  }
-  if(skip)skip.addEventListener('click',finish);
-  document.addEventListener('keydown',onKey);
-  timer=setTimeout(finish,4000);
-})();
-</script></body></html>
+</g></svg></div><div class="hero-inner"><div class="eyebrow">Olympiad Mathematics · Since 2026</div><h1 class="karp-wordmark" aria-label="KARP"><span class="karp-hero-letter karp-hero-k" aria-hidden="true">K</span><span class="karp-hero-letter karp-hero-a" aria-hidden="true">A</span><span class="karp-hero-letter karp-hero-r" aria-hidden="true">R</span><span class="karp-hero-letter karp-hero-p" aria-hidden="true">P</span></h1><div class="cta"><a class="btn primary" href="/problems.html">Explore Problems</a><a class="btn" href="/about.html">About KARP</a></div><section class="journal-announcement-wrap"><a class="journal-announcement" href="/exams.html" aria-label="Register for the upcoming KARP Exam"><div class="journal-announcement-text"><h2>Don't forget to register for the upcoming KARP Exam!</h2><p>Registration is available on the Exams page.</p></div><span class="journal-announcement-arrow">→</span></a></section><div class="micro">Problems · Contests · Exams · Mocks · Videos · Journal · Meetings</div></div></section></main><footer class="footer"><div class="wrap footgrid"><div><div class="brand">KARP</div><div class="small">Olympiad mathematics for serious problem solvers.</div></div><div class="footlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a href="/about.html">About Us</a></div></div></footer><script>updateNavUser();</script></body></html>
