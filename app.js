@@ -764,9 +764,83 @@ function __karpTryClaimTimeOwner(){if(!__karpPresence)return false;try{const uid
 function __karpRenewTimeOwner(){if(!__karpPresence||!__karpPresence.timeOwner)return;try{localStorage.setItem(__karpTimeOwnerKey(__karpPresence.user.uid),JSON.stringify({token:__karpInstanceId(),expiresAt:Date.now()+20000}))}catch{}}
 function __karpReleaseTimeOwner(){if(!__karpPresence)return;try{const uid=__karpPresence.user.uid,cur=__karpReadOwner(uid);if(cur?.token===__karpInstanceId())localStorage.setItem(__karpTimeOwnerKey(uid),JSON.stringify({token:'',expiresAt:0}))}catch{}}
 function __karpConsumeElapsed(nextActive){if(!__karpPresence)return 0;const now=performance.now(),prev=Number(__karpPresence.lastSampleMs||now);const elapsed=Math.min(Math.max(0,(now-prev)/1000),75);const shouldCount=!!__karpPresence.wasActive&&!!__karpPresence.timeOwner;__karpPresence.lastSampleMs=now;__karpPresence.wasActive=!!nextActive;if(!shouldCount||elapsed<=0)return 0;__karpPresence.pendingSeconds=(Number(__karpPresence.pendingSeconds)||0)+elapsed;const whole=Math.floor(__karpPresence.pendingSeconds);if(whole>0)__karpPresence.pendingSeconds-=whole;return whole}
-async function __writeKarpPresence(online=true){try{if(!__karpPresence)return;const {setDoc,doc,Timestamp,increment}=__karpPresence.fs,u=__karpPresence.user,active=!!online&&__karpIsActiveNow();if(active&&!__karpPresence.timeOwner)__karpPresence.timeOwner=__karpTryClaimTimeOwner();if(!active&&__karpPresence.timeOwner){__karpReleaseTimeOwner();__karpPresence.timeOwner=false}if(active&&__karpPresence.timeOwner)__karpRenewTimeOwner();const delta=__karpConsumeElapsed(active),payload={uid:u.uid,name:u.displayName||u.email?.split('@')[0]||'KARP Member',photoURL:u.photoURL||'',online:active,visible:document.visibilityState==='visible',lastSeen:Timestamp.now(),expiresAt:Timestamp.fromMillis(active?Date.now()+70000:0),activity:__karpPresence.activity||{page:'KARP',label:'Browsing'},...(delta>0?{totalActiveSeconds:increment(delta),lastActiveSeconds:delta}:{})};await setDoc(doc(__karpPresence.db,'presence',u.uid),payload,{merge:true})}catch(e){console.warn('KARP presence update failed:',e)}}
+function __karpDeviceInfo(){
+  const ua=navigator.userAgent||'',platform=navigator.platform||'';
+  let deviceType='Desktop';
+  if(/iPad|Tablet|Android(?!.*Mobile)/i.test(ua))deviceType='Tablet';
+  else if(/Mobi|iPhone|iPod|Android/i.test(ua))deviceType='Mobile';
+  let browser='Other';
+  if(/Edg\//i.test(ua))browser='Edge';
+  else if(/OPR\//i.test(ua))browser='Opera';
+  else if(/Firefox\//i.test(ua))browser='Firefox';
+  else if(/Chrome\//i.test(ua)||/CriOS\//i.test(ua))browser='Chrome';
+  else if(/Safari\//i.test(ua)&&!/Chrome\//i.test(ua)&&!/CriOS\//i.test(ua))browser='Safari';
+  let os='Other';
+  if(/Windows NT/i.test(ua))os='Windows';
+  else if(/Android/i.test(ua))os='Android';
+  else if(/iPhone|iPad|iPod/i.test(ua))os='iOS';
+  else if(/Mac OS X/i.test(ua))os='macOS';
+  else if(/Linux/i.test(ua))os='Linux';
+  return {deviceType,browser,os,screen:(window.screen?.width&&window.screen?.height)?window.screen.width+'×'+window.screen.height:'',language:navigator.language||'',platform};
+}
+function __karpGuestId(){
+  try{
+    let id=localStorage.getItem('__karp_guest_id');
+    if(!id){id='guest_'+(crypto?.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+'_'+Date.now());localStorage.setItem('__karp_guest_id',id)}
+    return id;
+  }catch{return 'guest_'+(Math.random().toString(36).slice(2)+'_'+Date.now())}
+}
+let __karpGuestPresence=null;
+function __karpGuestOwnerKey(id){return '__karp_guest_time_owner__'+String(id||'')}
+function __karpGuestReadOwner(id){try{const raw=localStorage.getItem(__karpGuestOwnerKey(id));return raw?JSON.parse(raw):null}catch{return null}}
+function __karpGuestTryClaimTimeOwner(){if(!__karpGuestPresence)return false;try{const id=__karpGuestPresence.guestId,now=Date.now(),me=__karpInstanceId(),cur=__karpGuestReadOwner(id);if(cur&&cur.token!==me&&Number(cur.expiresAt||0)>now)return false;localStorage.setItem(__karpGuestOwnerKey(id),JSON.stringify({token:me,expiresAt:now+20000}));const after=__karpGuestReadOwner(id);return !!after&&after.token===me}catch{return true}}
+function __karpGuestRenewTimeOwner(){if(!__karpGuestPresence||!__karpGuestPresence.timeOwner)return;try{localStorage.setItem(__karpGuestOwnerKey(__karpGuestPresence.guestId),JSON.stringify({token:__karpInstanceId(),expiresAt:Date.now()+20000}))}catch{}}
+function __karpGuestReleaseTimeOwner(){if(!__karpGuestPresence)return;try{const id=__karpGuestPresence.guestId,cur=__karpGuestReadOwner(id);if(cur?.token===__karpInstanceId())localStorage.setItem(__karpGuestOwnerKey(id),JSON.stringify({token:'',expiresAt:0}))}catch{}}
+function __karpConsumeGuestElapsed(nextActive){
+  if(!__karpGuestPresence)return 0;
+  const now=performance.now(),prev=Number(__karpGuestPresence.lastSampleMs||now),elapsed=Math.min(Math.max(0,(now-prev)/1000),75),shouldCount=!!__karpGuestPresence.wasActive&&!!__karpGuestPresence.timeOwner;
+  __karpGuestPresence.lastSampleMs=now;__karpGuestPresence.wasActive=!!nextActive;
+  if(!shouldCount||elapsed<=0)return 0;
+  __karpGuestPresence.pendingSeconds=(Number(__karpGuestPresence.pendingSeconds)||0)+elapsed;
+  const whole=Math.floor(__karpGuestPresence.pendingSeconds);
+  if(whole>0)__karpGuestPresence.pendingSeconds-=whole;
+  return whole;
+}
+async function __writeKarpGuestPresence(){
+  try{
+    if(!__karpGuestPresence)return;
+    const {setDoc,doc,Timestamp,increment}=__karpGuestPresence.fs,active=__karpIsActiveNow(),device=__karpGuestPresence.device;
+    if(active&&!__karpGuestPresence.timeOwner)__karpGuestPresence.timeOwner=__karpGuestTryClaimTimeOwner();
+    if(!active&&__karpGuestPresence.timeOwner){__karpGuestReleaseTimeOwner();__karpGuestPresence.timeOwner=false}
+    if(active&&__karpGuestPresence.timeOwner)__karpGuestRenewTimeOwner();
+    const delta=__karpConsumeGuestElapsed(active),payload={
+      guestId:__karpGuestPresence.guestId,visitorId:__karpGuestPresence.guestId,uid:null,userType:'guest',name:'Anonymous visitor',photoURL:'',
+      online:active,visible:document.visibilityState==='visible',lastSeen:Timestamp.now(),expiresAt:Timestamp.fromMillis(active?Date.now()+70000:0),
+      firstSeenAt:__karpGuestPresence.firstSeenAt,sessionStartedAt:__karpGuestPresence.sessionStartedAt,
+      deviceType:device.deviceType,browser:device.browser,os:device.os,screen:device.screen,language:device.language,platform:device.platform,
+      activity:__karpGuestPresence.activity||{page:'KARP',label:'Browsing'},
+      ...(delta>0?{totalActiveSeconds:increment(delta),lastActiveSeconds:delta}:{})
+    };
+    await setDoc(doc(__karpGuestPresence.db,'presence',__karpGuestPresence.guestId),payload,{merge:true});
+  }catch(e){console.warn('KARP anonymous presence update failed:',e)}
+}
+async function startKarpGuestPresence(){
+  if(window.__karpGuestPresenceStarted)return;
+  window.__karpGuestPresenceStarted=true;
+  try{
+    const {db}=await fb(),fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js'),guestId=__karpGuestId(),now=new Date().toISOString(),device=__karpDeviceInfo();
+    __karpGuestPresence={db,fs,guestId,device,firstSeenAt:now,sessionStartedAt:now,lastSampleMs:performance.now(),wasActive:false,pendingSeconds:0,timeOwner:false,activity:window.__karpPendingActivity||{page:'KARP',label:'Browsing',detail:'',question:null}};
+    await __writeKarpGuestPresence();
+    if(__karpIsActiveNow()){__karpGuestPresence.timeOwner=__karpGuestTryClaimTimeOwner();__karpGuestPresence.wasActive=__karpGuestPresence.timeOwner;__karpGuestPresence.lastSampleMs=performance.now();await __writeKarpGuestPresence()}
+    __karpGuestPresence.timer=setInterval(()=>__writeKarpGuestPresence(),30000);
+    const stateChange=()=>__writeKarpGuestPresence();
+    document.addEventListener('visibilitychange',stateChange);window.addEventListener('focus',stateChange);window.addEventListener('blur',stateChange);
+    window.addEventListener('beforeunload',()=>{try{__karpGuestReleaseTimeOwner()}catch{}});
+  }catch(e){console.warn('KARP anonymous presence could not start:',e)}
+}
+async function __writeKarpPresence(online=true){try{if(!__karpPresence)return;const {setDoc,doc,Timestamp,increment}=__karpPresence.fs,u=__karpPresence.user,active=!!online&&__karpIsActiveNow(),device=__karpPresence.device||__karpDeviceInfo();if(active&&!__karpPresence.timeOwner)__karpPresence.timeOwner=__karpTryClaimTimeOwner();if(!active&&__karpPresence.timeOwner){__karpReleaseTimeOwner();__karpPresence.timeOwner=false}if(active&&__karpPresence.timeOwner)__karpRenewTimeOwner();const delta=__karpConsumeElapsed(active),payload={uid:u.uid,visitorId:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',photoURL:u.photoURL||'',online:active,visible:document.visibilityState==='visible',lastSeen:Timestamp.now(),expiresAt:Timestamp.fromMillis(active?Date.now()+70000:0),sessionStartedAt:__karpPresence.sessionStartedAt,firstSeenAt:__karpPresence.firstSeenAt,deviceType:device.deviceType,browser:device.browser,os:device.os,screen:device.screen,language:device.language,platform:device.platform,activity:__karpPresence.activity||{page:'KARP',label:'Browsing'},...(delta>0?{totalActiveSeconds:increment(delta),lastActiveSeconds:delta}:{})};await setDoc(doc(__karpPresence.db,'presence',u.uid),payload,{merge:true})}catch(e){console.warn('KARP presence update failed:',e)}}
 function setKarpActivity(activity={}){const next={page:String(activity.page||'KARP'),label:String(activity.label||activity.page||'Browsing'),detail:String(activity.detail||''),question:activity.question==null?null:Number(activity.question)};if(__karpPresence){const prev=__karpPresence.activity||{};if(JSON.stringify(prev)===JSON.stringify(next))return;__karpPresence.activity=next;__writeKarpPresence(true)}else window.__karpPendingActivity=next}
-async function startKarpPresence(){if(window.__karpPresenceStarted)return;window.__karpPresenceStarted=true;try{const {db,auth}=await fb();await authReady();if(!auth.currentUser||auth.currentUser.emailVerified!==true)return;const {getDoc,doc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js'),profileSnap=await getDoc(doc(db,'users',auth.currentUser.uid));if(!profileSnap.exists()||profileSnap.data()?.requiresEmailVerification===true)return;const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');__karpPresence={db,user:auth.currentUser,fs,activity:window.__karpPendingActivity||{page:'KARP',label:'Browsing',detail:'',question:null},lastSampleMs:performance.now(),wasActive:false,pendingSeconds:0,timeOwner:false};await __writeKarpPresence(true);if(__karpIsActiveNow()){__karpPresence.timeOwner=__karpTryClaimTimeOwner();__karpPresence.wasActive=__karpPresence.timeOwner;__karpPresence.lastSampleMs=performance.now();await __writeKarpPresence(true)}__karpPresence.timer=setInterval(()=>__writeKarpPresence(true),30000);const stateChange=()=>__writeKarpPresence(true);document.addEventListener('visibilitychange',stateChange);window.addEventListener('focus',stateChange);window.addEventListener('blur',stateChange);window.addEventListener('storage',e=>{if(__karpPresence&&e.key===__karpTimeOwnerKey(__karpPresence.user.uid)&&__karpIsActiveNow()&&!__karpPresence.timeOwner)__writeKarpPresence(true)});window.addEventListener('beforeunload',()=>{try{__karpReleaseTimeOwner();const {setDoc,doc,Timestamp}=__karpPresence.fs;setDoc(doc(__karpPresence.db,'presence',__karpPresence.user.uid),{online:false,visible:false,lastSeen:Timestamp.now(),expiresAt:Timestamp.fromMillis(0)},{merge:true}).catch(()=>{})}catch{}})}catch(e){console.warn('KARP presence could not start:',e)}}
+async function startKarpPresence(){if(window.__karpPresenceStarted)return;window.__karpPresenceStarted=true;try{const {db,auth}=await fb();await authReady();if(!auth.currentUser||auth.currentUser.emailVerified!==true){await startKarpGuestPresence();return}const {getDoc,doc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js'),profileSnap=await getDoc(doc(db,'users',auth.currentUser.uid));if(!profileSnap.exists()||profileSnap.data()?.requiresEmailVerification===true){await startKarpGuestPresence();return}const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js'),now=new Date().toISOString(),device=__karpDeviceInfo();__karpPresence={db,user:auth.currentUser,fs,device,sessionStartedAt:now,firstSeenAt:now,activity:window.__karpPendingActivity||{page:'KARP',label:'Browsing',detail:'',question:null},lastSampleMs:performance.now(),wasActive:false,pendingSeconds:0,timeOwner:false};await __writeKarpPresence(true);if(__karpIsActiveNow()){__karpPresence.timeOwner=__karpTryClaimTimeOwner();__karpPresence.wasActive=__karpPresence.timeOwner;__karpPresence.lastSampleMs=performance.now();await __writeKarpPresence(true)}__karpPresence.timer=setInterval(()=>__writeKarpPresence(true),30000);const stateChange=()=>__writeKarpPresence(true);document.addEventListener('visibilitychange',stateChange);window.addEventListener('focus',stateChange);window.addEventListener('blur',stateChange);window.addEventListener('storage',e=>{if(__karpPresence&&e.key===__karpTimeOwnerKey(__karpPresence.user.uid)&&__karpIsActiveNow()&&!__karpPresence.timeOwner)__writeKarpPresence(true)});window.addEventListener('beforeunload',()=>{try{__karpReleaseTimeOwner();const {setDoc,doc,Timestamp}=__karpPresence.fs;setDoc(doc(__karpPresence.db,'presence',__karpPresence.user.uid),{online:false,visible:false,lastSeen:Timestamp.now(),expiresAt:Timestamp.fromMillis(0)},{merge:true}).catch(()=>{})}catch{}})}catch(e){console.warn('KARP presence could not start:',e)}}
 async function me(){try{return(await api('/api/me')).user}catch{return null}}
 async function logout(){
   try{
