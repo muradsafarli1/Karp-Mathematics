@@ -313,24 +313,20 @@ function formatPresenceDuration(seconds){
   if(m)return m+'m '+s+'s';
   return s+'s';
 }
-function presenceMillis(v){
-  if(v?.toMillis)return v.toMillis();
-  const n=Number(v);
-  if(Number.isFinite(n)&&n>0)return n;
-  const parsed=Date.parse(String(v||''));
-  return Number.isFinite(parsed)?parsed:0;
-}
 function presenceDevice(p){
   const type=p.deviceType||'Unknown device',browser=p.browser||'Unknown browser',os=p.os||'Unknown OS';
   return type+' · '+browser+' · '+os+(p.screen?' · '+p.screen:'');
+}
+function presenceKind(p){
+  return (p.userType==='guest'||(!p.uid&&String(p.guestId||'').startsWith('guest_'))) ? 'guest' : 'account';
 }
 function renderLivePresence(){
   const el=document.getElementById('live-presence');if(!el)return;
   const now=Date.now();
   const rows=(Array.isArray(liveDocs)?liveDocs:[]).filter(p=>p&&p.visitorId);
   const onlineRows=rows.filter(p=>p.online===true&&presenceMillis(p.expiresAt)>now).sort((a,b)=>presenceMillis(b.lastSeen)-presenceMillis(a.lastSeen));
-  const accounts=rows.filter(p=>p.userType==='account'||(p.uid&&p.uid!=='')).length;
-  const guests=rows.filter(p=>p.userType==='guest'||(!p.uid&&String(p.guestId||'').startsWith('guest_'))).length;
+  const accounts=rows.filter(p=>presenceKind(p)==='account').length;
+  const guests=rows.filter(p=>presenceKind(p)==='guest').length;
   const onlinePeople=onlineRows.map(p=>{
     const a=p.activity||{},where=a.page==='Exam'?'Exam':a.page==='Mock'?'Mock':a.page||'KARP',detail=a.detail||a.label||'Browsing',q=a.question?(' · Problem '+a.question):'';
     const who=p.userType==='guest'?'Anonymous visitor':(p.name||'KARP Member');
@@ -351,7 +347,7 @@ function renderLivePresence(){
     const meta=p.userType==='guest'?'Guest / no account':('Account'+(p.email?' · '+p.email:''));
     return '<tr><td><div class="visitor-visitor">'+status+escapeHtml(who)+'</div><div class="visitor-meta">'+escapeHtml(meta)+'</div></td><td>'+escapeHtml(formatPresenceDuration(p.totalActiveSeconds||0))+'</td><td><div class="visitor-device">'+escapeHtml(presenceDevice(p))+'</div><div class="visitor-meta">'+escapeHtml(p.language||'')+'</div></td><td>'+escapeHtml(location)+'</td><td>'+escapeHtml(last?new Date(last).toLocaleString():'—')+'</td></tr>';
   }).join('');
-  el.innerHTML='<div class="live-presence-head"><strong>Live now</strong><span class="live-presence-count">'+onlineRows.length+' online · '+onlineRows.filter(p=>p.userType==="account").length+' accounts · '+onlineRows.filter(p=>p.userType==="guest").length+' guests</span></div><div class="live-presence-grid">'+(onlinePeople||'<span class="live-empty">No active visitors right now.</span>')+'</div><div class="visitor-analytics"><div class="visitor-analytics-head"><strong>Visitor analytics</strong><span>'+accounts+' account visitors · '+guests+' anonymous browser visitors · showing latest '+recent.length+'</span></div><div class="visitor-analytics-table-wrap">'+(recentRows?'<table class="visitor-analytics-table"><thead><tr><th>Visitor</th><th>Active time</th><th>Device</th><th>Current / last page</th><th>Last seen</th></tr></thead><tbody>'+recentRows+'</tbody></table>':'<div class="visitor-empty">No visitor data yet.</div>')+'</div></div>';
+  el.innerHTML='<div class="live-presence-head"><strong>Live now</strong><span class="live-presence-count">'+onlineRows.length+' online · '+onlineRows.filter(p=>presenceKind(p)==='account').length+' accounts · '+onlineRows.filter(p=>presenceKind(p)==='guest').length+' guests</span></div><div class="live-presence-grid">'+(onlinePeople||'<span class="live-empty">No active visitors right now.</span>')+'</div><div class="visitor-analytics"><div class="visitor-analytics-head"><strong>Visitor analytics</strong><span>'+accounts+' account visitors · '+guests+' anonymous browser visitors · showing latest '+recent.length+'</span></div><div class="visitor-analytics-table-wrap">'+(recentRows?'<table class="visitor-analytics-table"><thead><tr><th>Visitor</th><th>Active time</th><th>Device</th><th>Current / last page</th><th>Last seen</th></tr></thead><tbody>'+recentRows+'</tbody></table>':'<div class="visitor-empty">No visitor data yet.</div>')+'</div></div>';
 }
 function initLivePresence(db){
   try{
