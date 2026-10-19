@@ -200,6 +200,62 @@ body.users-analytics-fullscreen .admin-main{width:100%!important;max-width:none!
  .users-trend-chart{gap:5px;height:175px}
  .users-trend-day-label{font-size:8px}
 }
+</style><style>
+/* Refined neutral-white Users analytics surface */
+body.users-analytics-fullscreen,
+body.users-analytics-fullscreen .admin,
+body.users-analytics-fullscreen .admin-main,
+body.users-analytics-fullscreen .admin .wrap{background:#fff!important;color:#17191c!important}
+body.users-analytics-fullscreen .admin .wrap{padding-top:26px!important}
+.users-dashboard{max-width:1760px!important;gap:22px!important}
+.users-dashboard-head{border-bottom:1px solid #e5e7e8!important;padding-bottom:22px!important}
+.users-dashboard-kicker{color:#858b92!important;letter-spacing:2px!important}
+.users-dashboard-head h2{font-size:clamp(30px,3.3vw,44px)!important;font-weight:700!important;letter-spacing:-1.5px!important}
+.users-dashboard-head p{font-size:12px!important;color:#777e85!important}
+.users-dashboard-live{background:#fff!important;border-color:#e2e4e6!important;color:#555d65!important}
+.users-dashboard-back{background:#fff!important;border-color:#e2e4e6!important;color:#333940!important}
+.users-primary-metrics .users-kpi,
+.users-time-card,
+.users-panel,
+.users-trend{background:#fff!important;border-color:#e2e4e6!important;box-shadow:none!important}
+.users-primary-metrics .users-kpi{border-radius:13px!important;min-height:126px!important;padding:20px 22px!important}
+.users-primary-metrics .users-kpi strong{color:#17191c!important;font-size:clamp(34px,3.5vw,48px)!important;letter-spacing:-1.5px!important}
+.users-primary-metrics .users-kpi span{color:#555d65!important;font-size:11px!important}
+.users-primary-metrics .users-kpi small{color:#92979c!important;font-size:9px!important}
+.users-time-overview{gap:14px!important}
+.users-time-card{min-height:160px!important;border-radius:13px!important;padding:21px 23px!important}
+.users-time-card-total{background:#fff!important}
+.users-time-card-label{font-size:10px!important;color:#858b92!important;letter-spacing:.8px}
+.users-time-card-value{font-size:clamp(35px,3.6vw,50px)!important;font-weight:700!important;letter-spacing:-1.6px!important}
+.users-time-card-note{font-size:10px!important;color:#777e85!important}
+.users-trend-chart{background:#fff!important}
+.users-trend-bar{background:#858e97!important;border-radius:4px 4px 0 0!important}
+.users-trend-bar-space{background:linear-gradient(to top,#f7f8f8,transparent 85%)!important;border-bottom-color:#e2e4e6!important}
+.users-trend-empty{background:#fff!important;border-color:#e2e4e6!important}
+.users-dashboard .users-panel{border-radius:13px!important}
+.users-dashboard .users-panel-head{background:#fff!important;border-bottom-color:#e7e9ea!important;padding:15px 17px!important}
+.users-dashboard .users-panel-head strong{font-size:12px!important;color:#242a30!important}
+.users-dashboard .users-live-list{background:#fff!important;gap:0!important}
+.users-dashboard .users-live-row{background:#fff!important;border-bottom:1px solid #edf0f1!important;padding:13px 17px!important}
+.users-dashboard .users-live-row:last-child{border-bottom:0!important}
+.users-dashboard .users-live-who{font-size:11px!important;font-weight:700!important}
+.users-dashboard .users-live-meta{color:#82888e!important}
+.users-dashboard .users-note{background:#fff!important;border-top-color:#e7e9ea!important;color:#82888e!important}
+.users-dashboard .users-stat-list{background:#fff!important}
+.users-dashboard .users-stat-bar{background:#eff1f2!important}
+.users-dashboard .users-stat-fill{background:#8b949c!important}
+.users-dashboard .users-table-wrap{background:#fff!important}
+.users-dashboard .table{background:#fff!important;border-collapse:separate!important;border-spacing:0!important}
+.users-dashboard .table thead th{background:#fff!important;color:#777e85!important;border-bottom:1px solid #e0e3e5!important;font-size:9px!important;letter-spacing:.6px!important;padding:13px 12px!important}
+.users-dashboard .table tbody td{background:#fff!important;color:#343a40!important;border-bottom:1px solid #edf0f1!important;padding:12px!important;font-size:10px!important;line-height:1.45!important}
+.users-dashboard .table tbody tr:last-child td{border-bottom:0!important}
+.users-dashboard .table tbody tr:hover td{background:#fafbfb!important}
+.users-dashboard .users-panel-head span{font-size:10px!important;color:#838a90!important}
+.users-dashboard .btn{background:#fff!important;border-color:#dfe3e5!important;color:#343a40!important;box-shadow:none!important}
+@media(max-width:620px){
+ body.users-analytics-fullscreen .admin .wrap{padding:18px 12px!important}
+ .users-primary-metrics .users-kpi{padding:15px!important;min-height:108px!important}
+}
 </style></head><body><div id="root"></div><script>
 const __adminSavedSection=(()=>{try{return new URLSearchParams(location.search).get('section')||localStorage.getItem('karp_admin_section')||'problems'}catch{return 'problems'}})();
 let state={type:__adminSavedSection,editing:null},liveDocs=[],liveUnsub=null,liveTimer=null,pendingVideoThumbnail='',pendingFounderImage='',pendingMeetingImage='',pendingBookFile=null,pendingJournalFile=null,booksAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''},journalsAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};
@@ -635,7 +691,7 @@ async function saveBookAdmin(){
 }
 let __usersAnalytics={unsubUsers:null,unsubPresence:null,unsubActivity:null,users:[],presence:[],activity:[],activityError:'',activityLoading:true,activityKey:'',db:null,adminUid:null,started:false,timer:null};
 
-let __usersLiveLimit=20,__usersVisitorLimit=25,__usersAccountLimit=25;
+let __usersLiveLimit=15,__usersVisitorLimit=15,__usersAccountLimit=25;
 function __usersTimestamp(v){
   if(v?.toMillis)return v.toMillis();
   if(v?.toDate){const d=v.toDate();return d.getTime()}
@@ -802,9 +858,16 @@ function __usersRender(){
     return '<tr><td>'+ (online?'<span class="admin-online-dot"></span>Online':'<span class="admin-offline-dot"></span>Offline')+'</td><td><strong>'+esc(name)+'</strong><br><span class="visitor-meta">'+esc(kind==='guest'?'Anonymous visitor':'Account')+'</span></td><td>'+esc(email)+'</td><td>'+esc(__usersDeviceLabel(p))+'</td><td>'+esc(__usersLocationLabel(p))+'</td><td><strong>'+esc(__usersFormatDuration(__usersDuration(p,now)))+'</strong></td><td>'+esc(__usersDate(p.firstSeenAt||p.sessionStartedAt))+'</td><td>'+esc(__usersDate(p.lastSeen))+'</td></tr>';
   }).join('');
   const sortedAccounts=users.slice().sort((a,b)=>__usersOnline((visitorDocs.find(p=>p.uid===b.id)||{}),now)-__usersOnline((visitorDocs.find(p=>p.uid===a.id)||{}),now)||__usersTimestamp(b.createdAt)-__usersTimestamp(a.createdAt));
-  const accountRows=sortedAccounts.slice(0,__usersAccountLimit).map(u=>{
-    const p=visitorDocs.find(x=>x.uid===u.id)||{},online=__usersOnline(p,now),seconds=__usersDuration(p,now);
-    return '<tr><td>'+(online?'<span class="admin-online-dot"></span>Online':'<span class="admin-offline-dot"></span>Offline')+'</td><td><strong>'+esc(u.name||'—')+'</strong></td><td>'+esc(u.email||'—')+'</td><td>'+esc(u.role||'user')+'</td><td>'+esc(__usersDate(u.createdAt))+'</td><td>'+esc(u.lastLoginAt?__usersDate(u.lastLoginAt):'Never')+'</td><td>'+esc(p.activity?__usersLocationLabel(p):'Not active')+'</td><td><strong>'+esc(__usersFormatDuration(seconds))+'</strong></td><td>'+Number(u.loginCount||0)+'</td></tr>';
+  const accountRows=sortedAccounts.map(u=>{
+    const p=visitorDocs.find(x=>String(x.uid||x.id)===String(u.id)&&__usersVisitorKind(x)==='account')||{},
+      online=__usersOnline(p,now),
+      seconds=__usersDuration({...p,totalActiveSeconds:Math.max(Number(p.totalActiveSeconds||0),Number(u.totalActiveSeconds||0))},now),
+      lastLogin=u.lastLoginAt||null,
+      lastSeen=p.lastSeen||u.lastSeen||null,
+      lastLogout=u.lastLogoutAt||null,
+      activity=p.activity?__usersLocationLabel(p):(u.activity?__usersLocationLabel({activity:u.activity}):'Not active'),
+      device=(p.deviceType||p.browser||p.os)?__usersDeviceLabel(p):'Not recorded';
+    return '<tr><td>'+(online?'<span class="admin-online-dot"></span>Online':'<span class="admin-offline-dot"></span>Offline')+'</td><td><strong>'+esc(u.name||'—')+'</strong></td><td>'+esc(u.email||'—')+'</td><td>'+esc(u.role||'user')+'</td><td>'+esc(__usersDate(u.createdAt))+'</td><td>'+esc(lastLogin?__usersDate(lastLogin):'Never recorded')+'</td><td>'+esc(__usersDate(lastSeen))+'</td><td>'+esc(__usersDate(lastLogout))+'</td><td>'+esc(activity)+'</td><td>'+esc(device)+'</td><td><strong>'+esc(__usersFormatDuration(seconds))+'</strong></td><td>'+Number(u.loginCount||0)+'</td></tr>';
   }).join('');
 
   const onlineTotal=onlineVisitors.length,liveTotal=Math.max(1,onlineTotal);
@@ -831,14 +894,12 @@ function __usersRender(){
     '</div>'+
     '<section class="users-panel"><div class="users-panel-head"><strong>Live visitors</strong><span>'+onlineTotal+' online right now</span></div><div class="users-live-list">'+(liveRows||'<div class="users-note" style="border-top:0">No visitors are online right now.</div>')+'</div>'+(onlineTotal>liveRows.length?'<div class="users-note"><button type="button" class="btn" id="users-more-live">More +</button> Showing '+liveRows.length+' of '+onlineTotal+' online visitors</div>':'')+'<div class="users-note">Active time counts only while the KARP tab is visible and focused. Anonymous visitors are identified only by a browser-local guest ID; no IP address is collected by this dashboard.</div></section>'+
     '<section class="users-panel"><div class="users-panel-head"><strong>All tracked visitors</strong><span>'+visitorDocs.length+' records</span></div><div class="users-table-wrap"><table class="table"><thead><tr><th>Status</th><th>Visitor</th><th>Email</th><th>Device</th><th>Current / last page</th><th>Active time</th><th>First seen</th><th>Last seen</th></tr></thead><tbody>'+(allRows||'<tr><td colspan="8">No visitor records yet.</td></tr>')+'</tbody></table></div>'+(visitorDocs.length>allRows.length?'<div class="users-note"><button type="button" class="btn" id="users-more-visitors">More +</button> Showing '+allRows.length+' of '+visitorDocs.length+' tracked visitors</div>':'')+'</section>'+
-    '<section class="users-panel"><div class="users-panel-head"><strong>Registered accounts</strong><span>'+users.length+' total accounts</span></div><div class="users-table-wrap"><table class="table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Role</th><th>Created</th><th>Last login</th><th>Current activity</th><th>Active time</th><th>Logins</th></tr></thead><tbody>'+accountRows+'</tbody></table></div>'+(users.length>accountRows.length?'<div class="users-note"><button type="button" class="btn" id="users-more-accounts">More +</button> Showing '+accountRows.length+' of '+users.length+' accounts</div>':'')+'</section>'+
+    '<section class="users-panel"><div class="users-panel-head"><strong>Registered accounts</strong><span>All '+users.length+' accounts</span></div><div class="users-table-wrap"><table class="table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Role</th><th>Account created</th><th>Last login</th><th>Last seen</th><th>Last logout</th><th>Current / last activity</th><th>Last device</th><th>Total active time</th><th>Logins</th></tr></thead><tbody>'+accountRows+'</tbody></table></div><div class="users-note">Showing all '+users.length+' registered accounts. Login/logout times are shown when KARP has recorded them; active time is the saved cumulative total.</div></section>'+
   '</div>';
   const moreLive=document.getElementById('users-more-live');
   if(moreLive)moreLive.onclick=()=>{__usersLiveLimit+=50;__usersRender()};
   const moreVisitors=document.getElementById('users-more-visitors');
   if(moreVisitors)moreVisitors.onclick=()=>{__usersVisitorLimit+=50;__usersRender()};
-  const moreAccounts=document.getElementById('users-more-accounts');
-  if(moreAccounts)moreAccounts.onclick=()=>{__usersAccountLimit+=50;__usersRender()};
   const backToAdmin=document.getElementById('users-back-to-admin');
   if(backToAdmin)backToAdmin.onclick=__usersExitDashboard;
 }
