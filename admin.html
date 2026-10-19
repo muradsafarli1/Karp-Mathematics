@@ -256,6 +256,19 @@ body.users-analytics-fullscreen .admin .wrap{padding-top:26px!important}
  body.users-analytics-fullscreen .admin .wrap{padding:18px 12px!important}
  .users-primary-metrics .users-kpi{padding:15px!important;min-height:108px!important}
 }
+</style><style>
+/* True full-viewport, neutral analytics workspace */
+body.users-analytics-fullscreen{margin:0!important;padding:0!important;width:100%!important;min-height:100vh!important;overflow-x:hidden!important;background:#fff!important}
+body.users-analytics-fullscreen .admin{width:100vw!important;max-width:none!important;min-height:100vh!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;position:relative!important;left:0!important;transform:none!important;background:#fff!important}
+body.users-analytics-fullscreen .admin .wrap{width:100%!important;max-width:none!important;min-height:100vh!important;margin:0!important;padding:clamp(18px,2.2vw,34px) clamp(14px,2.6vw,42px)!important;box-sizing:border-box!important}
+body.users-analytics-fullscreen .admin-grid{width:100%!important;max-width:none!important;display:block!important;grid-template-columns:minmax(0,1fr)!important;gap:0!important;margin:0!important}
+body.users-analytics-fullscreen .admin-main{width:100%!important;max-width:none!important;min-width:0!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;background:#fff!important}
+body.users-analytics-fullscreen .users-dashboard{width:100%!important;max-width:none!important;margin:0 auto!important;gap:20px!important}
+body.users-analytics-fullscreen .users-dashboard-head{padding:0 0 20px!important;margin-bottom:2px!important}
+body.users-analytics-fullscreen .users-kpi,body.users-analytics-fullscreen .users-time-card,body.users-analytics-fullscreen .users-panel,body.users-analytics-fullscreen .users-trend{border-radius:10px!important;box-shadow:none!important}
+body.users-analytics-fullscreen .users-table-wrap{border-radius:0!important}
+body.users-analytics-fullscreen .users-dashboard-back{background:#fff!important;border:1px solid #dfe2e5!important;border-radius:8px!important;box-shadow:none!important}
+@media(max-width:620px){body.users-analytics-fullscreen .admin .wrap{padding:14px 10px!important}.users-dashboard-head{gap:14px!important}.users-dashboard-head-actions{justify-content:flex-start!important}}
 </style></head><body><div id="root"></div><script>
 const __adminSavedSection=(()=>{try{return new URLSearchParams(location.search).get('section')||localStorage.getItem('karp_admin_section')||'problems'}catch{return 'problems'}})();
 let state={type:__adminSavedSection,editing:null},liveDocs=[],liveUnsub=null,liveTimer=null,pendingVideoThumbnail='',pendingFounderImage='',pendingMeetingImage='',pendingBookFile=null,pendingJournalFile=null,booksAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''},journalsAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};
@@ -819,16 +832,22 @@ function __usersRender(){
   const trackedGuests=visitorDocs.filter(p=>__usersVisitorKind(p)==='guest').length;
   const accountCreatedToday=users.filter(u=>__usersTimestamp(u.createdAt)>=dayStart).length;
   const seenToday=visitorDocs.filter(p=>__usersTimestamp(p.lastSeen)>=dayStart).length;
-  const totalActive=visitorDocs.reduce((sum,p)=>sum+__usersDuration(p,now),0);
-  const accountActive=visitorDocs.filter(p=>__usersVisitorKind(p)==='account').reduce((sum,p)=>sum+__usersDuration(p,now),0);
-  const guestActive=visitorDocs.filter(p=>__usersVisitorKind(p)==='guest').reduce((sum,p)=>sum+__usersDuration(p,now),0);
+  const totalActive=visitorDocs.reduce((sum,p)=>sum+totalSecondsFor(p),0);
+  const accountActive=visitorDocs.filter(p=>__usersVisitorKind(p)==='account').reduce((sum,p)=>sum+totalSecondsFor(p),0);
+  const guestActive=visitorDocs.filter(p=>__usersVisitorKind(p)==='guest').reduce((sum,p)=>sum+totalSecondsFor(p),0);
   const activityRecords=(__usersAnalytics.activity||[]).filter(p=>String(p.uid||'')!==String(adminUid||''));
-  const todayRecords=activityRecords.filter(p=>__usersTimestamp(p.timestamp)>=dayStart);
-  const todayActive=todayRecords.reduce((sum,p)=>sum+Math.max(0,Number(p.activeSeconds||0)),0);
+  const todayKey=__usersLocalDateString(now),todayRecords=activityRecords.filter(p=>__usersTimestamp(p.timestamp)>=dayStart);
+  const activitySecondsByVisitor=new Map(),todaySecondsByVisitor=new Map();
+  activityRecords.forEach(p=>{const key=String(p.visitorId||p.uid||p.guestId||'');if(!key)return;const seconds=Math.max(0,Number(p.activeSeconds||0));activitySecondsByVisitor.set(key,(activitySecondsByVisitor.get(key)||0)+seconds);if(__usersTimestamp(p.timestamp)>=dayStart)todaySecondsByVisitor.set(key,(todaySecondsByVisitor.get(key)||0)+seconds)});
+  visitorDocs.forEach(p=>{const key=String(p.uid||p.visitorId||p.guestId||p.id||'');if(!key)return;const daily=String(p.activeDate||'')===todayKey?Math.max(0,Number(p.todayActiveSeconds||0)):0;if(daily>(todaySecondsByVisitor.get(key)||0))todaySecondsByVisitor.set(key,daily);const saved=__usersDuration(p,now);if(saved>(activitySecondsByVisitor.get(key)||0))activitySecondsByVisitor.set(key,saved)});
+  const visitorKey=p=>String(p?.uid||p?.visitorId||p?.guestId||p?.id||'');
+  const todaySecondsFor=p=>Math.max(0,Number(todaySecondsByVisitor.get(visitorKey(p))||0));
+  const totalSecondsFor=p=>Math.max(__usersDuration(p,now),Number(activitySecondsByVisitor.get(visitorKey(p))||0));
+  const todayActive=[...todaySecondsByVisitor.values()].reduce((sum,seconds)=>sum+Math.max(0,Number(seconds)||0),0);
   const weekStart=now-7*24*60*60*1000;
   const weekRecords=activityRecords.filter(p=>__usersTimestamp(p.timestamp)>=weekStart);
   const weekActive=weekRecords.reduce((sum,p)=>sum+Math.max(0,Number(p.activeSeconds||0)),0);
-  const todayVisitors=new Set(todayRecords.map(p=>String(p.visitorId||p.uid||p.guestId||'')).filter(Boolean)).size;
+  const todayVisitors=[...todaySecondsByVisitor.values()].filter(seconds=>Number(seconds)>0).length;
   const dayPoints=[];
   for(let i=6;i>=0;i--){
     const d=new Date(now);d.setHours(0,0,0,0);d.setDate(d.getDate()-i);
@@ -855,19 +874,20 @@ function __usersRender(){
   const sortedVisitorDocs=visitorDocs.slice().sort((a,b)=>__usersOnline(b,now)-__usersOnline(a,now)||__usersTimestamp(b.lastSeen)-__usersTimestamp(a.lastSeen)||__usersDuration(b,now)-__usersDuration(a,now));
   const allRows=sortedVisitorDocs.slice(0,__usersVisitorLimit).map(p=>{
     const kind=__usersVisitorKind(p),name=kind==='guest'?'Anonymous visitor':(p.name||userMap.get(p.uid)?.name||'KARP Member'),email=kind==='guest'?'—':(p.email||userMap.get(p.uid)?.email||'—'),online=__usersOnline(p,now);
-    return '<tr><td>'+ (online?'<span class="admin-online-dot"></span>Online':'<span class="admin-offline-dot"></span>Offline')+'</td><td><strong>'+esc(name)+'</strong><br><span class="visitor-meta">'+esc(kind==='guest'?'Anonymous visitor':'Account')+'</span></td><td>'+esc(email)+'</td><td>'+esc(__usersDeviceLabel(p))+'</td><td>'+esc(__usersLocationLabel(p))+'</td><td><strong>'+esc(__usersFormatDuration(__usersDuration(p,now)))+'</strong></td><td>'+esc(__usersDate(p.firstSeenAt||p.sessionStartedAt))+'</td><td>'+esc(__usersDate(p.lastSeen))+'</td></tr>';
+    return '<tr><td>'+ (online?'<span class="admin-online-dot"></span>Online':'<span class="admin-offline-dot"></span>Offline')+'</td><td><strong>'+esc(name)+'</strong><br><span class="visitor-meta">'+esc(kind==='guest'?'Anonymous visitor':'Account')+'</span></td><td>'+esc(email)+'</td><td>'+esc(__usersDeviceLabel(p))+'</td><td>'+esc(__usersLocationLabel(p))+'</td><td><strong>'+esc(__usersFormatDuration(totalSecondsFor(p)))+'</strong></td><td><strong>'+esc(__usersFormatDuration(todaySecondsFor(p)))+'</strong></td><td>'+esc(__usersDate(p.firstSeenAt||p.sessionStartedAt))+'</td><td>'+esc(__usersDate(p.lastSeen))+'</td></tr>';
   }).join('');
   const sortedAccounts=users.slice().sort((a,b)=>__usersOnline((visitorDocs.find(p=>p.uid===b.id)||{}),now)-__usersOnline((visitorDocs.find(p=>p.uid===a.id)||{}),now)||__usersTimestamp(b.createdAt)-__usersTimestamp(a.createdAt));
   const accountRows=sortedAccounts.map(u=>{
     const p=visitorDocs.find(x=>String(x.uid||x.id)===String(u.id)&&__usersVisitorKind(x)==='account')||{},
       online=__usersOnline(p,now),
-      seconds=__usersDuration({...p,totalActiveSeconds:Math.max(Number(p.totalActiveSeconds||0),Number(u.totalActiveSeconds||0))},now),
+      seconds=totalSecondsFor({...p,uid:u.id,id:u.id,totalActiveSeconds:Math.max(Number(p.totalActiveSeconds||0),Number(u.totalActiveSeconds||0))}),
+      todaySeconds=todaySecondsFor({uid:u.id,id:u.id}),
       lastLogin=u.lastLoginAt||null,
       lastSeen=p.lastSeen||u.lastSeen||null,
       lastLogout=u.lastLogoutAt||null,
       activity=p.activity?__usersLocationLabel(p):(u.activity?__usersLocationLabel({activity:u.activity}):'Not active'),
       device=(p.deviceType||p.browser||p.os)?__usersDeviceLabel(p):'Not recorded';
-    return '<tr><td>'+(online?'<span class="admin-online-dot"></span>Online':'<span class="admin-offline-dot"></span>Offline')+'</td><td><strong>'+esc(u.name||'—')+'</strong></td><td>'+esc(u.email||'—')+'</td><td>'+esc(u.role||'user')+'</td><td>'+esc(__usersDate(u.createdAt))+'</td><td>'+esc(lastLogin?__usersDate(lastLogin):'Never recorded')+'</td><td>'+esc(__usersDate(lastSeen))+'</td><td>'+esc(__usersDate(lastLogout))+'</td><td>'+esc(activity)+'</td><td>'+esc(device)+'</td><td><strong>'+esc(__usersFormatDuration(seconds))+'</strong></td><td>'+Number(u.loginCount||0)+'</td></tr>';
+    return '<tr><td>'+(online?'<span class="admin-online-dot"></span>Online':'<span class="admin-offline-dot"></span>Offline')+'</td><td><strong>'+esc(u.name||'—')+'</strong></td><td>'+esc(u.email||'—')+'</td><td>'+esc(u.role||'user')+'</td><td>'+esc(__usersDate(u.createdAt))+'</td><td>'+esc(lastLogin?__usersDate(lastLogin):'Never recorded')+'</td><td>'+esc(__usersDate(lastSeen))+'</td><td>'+esc(__usersDate(lastLogout))+'</td><td>'+esc(activity)+'</td><td>'+esc(device)+'</td><td><strong>'+esc(__usersFormatDuration(todaySeconds))+'</strong></td><td><strong>'+esc(__usersFormatDuration(seconds))+'</strong></td><td>'+Number(u.loginCount||0)+'</td></tr>';
   }).join('');
 
   const onlineTotal=onlineVisitors.length,liveTotal=Math.max(1,onlineTotal);
@@ -881,7 +901,7 @@ function __usersRender(){
     '</div>'+
     '<div class="users-time-overview">'+
       '<section class="users-time-card users-time-card-total"><div><div class="users-time-card-label">TOTAL ACTIVE TIME · ALL TRACKED VISITORS</div><div class="users-time-card-value">'+esc(__usersFormatDuration(totalActive))+'</div></div><div class="users-time-card-note">'+esc(__usersFormatDuration(accountActive))+' from accounts · '+esc(__usersFormatDuration(guestActive))+' from anonymous visitors. Saved cumulative time is preserved across dashboard updates.</div></section>'+
-      '<section class="users-time-card"><div><div class="users-time-card-label">ACTIVE TIME TODAY</div><div class="users-time-card-value">'+(__usersAnalytics.activityLoading?'Loading…':(todayRecords.length?esc(__usersFormatDuration(todayActive)):'Collecting data'))+'</div></div><div class="users-time-card-note">'+(todayRecords.length?todayVisitors+' visitors contributed '+todayRecords.length+' active-time records today.':(__usersAnalytics.activityError?'Timestamped history could not be loaded: '+esc(__usersAnalytics.activityError):'Daily breakdown begins when timestamped tracking is enabled. Existing lifetime totals above are unaffected.'))+'</div></section>'+
+      '<section class="users-time-card"><div><div class="users-time-card-label">ACTIVE TIME TODAY</div><div class="users-time-card-value">'+(__usersAnalytics.activityLoading?'Loading…':(todayVisitors?esc(__usersFormatDuration(todayActive)):'Collecting data'))+'</div></div><div class="users-time-card-note">'+(todayVisitors?todayVisitors+' visitors · '+todayRecords.length+' timestamped activity records today.':(__usersAnalytics.activityError?'Timestamped history could not be loaded: '+esc(__usersAnalytics.activityError):'Daily breakdown begins when timestamped tracking is enabled. Existing lifetime totals above are unaffected.'))+'</div></section>'+
     '</div>'+
     '<section class="users-panel users-trend"><div class="users-trend-title">Daily activity · Last 7 days</div><div class="users-trend-subtitle">Active time recorded in KARP while the tab is visible and focused</div>'+
       (daysWithData?'<div class="users-trend-chart">'+dayPoints.map(d=>'<div class="users-trend-day"><div class="users-trend-day-value">'+(d.seconds?esc(__usersFormatDuration(d.seconds)):'')+'</div><div class="users-trend-bar-space"><div class="users-trend-bar" title="'+esc(d.dateLabel+': '+__usersFormatDuration(d.seconds))+'" style="height:'+(d.seconds?Math.max(5,Math.round(d.seconds/chartMax*100)):0)+'%"></div></div><div class="users-trend-day-label">'+esc(d.label)+'<br>'+esc(d.dateLabel)+'</div></div>').join('')+'</div><div class="users-trend-note">Daily records are available from the date timestamped tracking was deployed. Before that date, only cumulative active time was saved.</div>':'<div class="users-trend-empty">'+(__usersAnalytics.activityLoading?'Loading daily activity…':(__usersAnalytics.activityError?'Daily activity is unavailable: '+esc(__usersAnalytics.activityError):'No timestamped daily activity has been recorded yet. New activity will appear here automatically; previously saved total active time remains available above.'))+'</div>')+
@@ -892,14 +912,14 @@ function __usersRender(){
       '<section class="users-panel"><div class="users-panel-head"><strong>Operating systems</strong><span>'+onlineTotal+' online visitors</span></div>'+statList(osCounts,liveTotal,'No visitors online.')+'</section>'+
       '<section class="users-panel"><div class="users-panel-head"><strong>Current pages</strong><span>'+onlineTotal+' online visitors</span></div>'+statList(pageCounts,liveTotal,'No visitors online.')+'</section>'+
     '</div>'+
-    '<section class="users-panel"><div class="users-panel-head"><strong>Live visitors</strong><span>'+onlineTotal+' online right now</span></div><div class="users-live-list">'+(liveRows||'<div class="users-note" style="border-top:0">No visitors are online right now.</div>')+'</div>'+(onlineTotal>liveRows.length?'<div class="users-note"><button type="button" class="btn" id="users-more-live">More +</button> Showing '+liveRows.length+' of '+onlineTotal+' online visitors</div>':'')+'<div class="users-note">Active time counts only while the KARP tab is visible and focused. Anonymous visitors are identified only by a browser-local guest ID; no IP address is collected by this dashboard.</div></section>'+
-    '<section class="users-panel"><div class="users-panel-head"><strong>All tracked visitors</strong><span>'+visitorDocs.length+' records</span></div><div class="users-table-wrap"><table class="table"><thead><tr><th>Status</th><th>Visitor</th><th>Email</th><th>Device</th><th>Current / last page</th><th>Active time</th><th>First seen</th><th>Last seen</th></tr></thead><tbody>'+(allRows||'<tr><td colspan="8">No visitor records yet.</td></tr>')+'</tbody></table></div>'+(visitorDocs.length>allRows.length?'<div class="users-note"><button type="button" class="btn" id="users-more-visitors">More +</button> Showing '+allRows.length+' of '+visitorDocs.length+' tracked visitors</div>':'')+'</section>'+
-    '<section class="users-panel"><div class="users-panel-head"><strong>Registered accounts</strong><span>All '+users.length+' accounts</span></div><div class="users-table-wrap"><table class="table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Role</th><th>Account created</th><th>Last login</th><th>Last seen</th><th>Last logout</th><th>Current / last activity</th><th>Last device</th><th>Total active time</th><th>Logins</th></tr></thead><tbody>'+accountRows+'</tbody></table></div><div class="users-note">Showing all '+users.length+' registered accounts. Login/logout times are shown when KARP has recorded them; active time is the saved cumulative total.</div></section>'+
+    '<section class="users-panel"><div class="users-panel-head"><strong>Live visitors</strong><span>'+onlineTotal+' online right now</span></div><div class="users-live-list">'+(liveRows||'<div class="users-note" style="border-top:0">No visitors are online right now.</div>')+'</div>'+(sortedLiveVisitors.length>__usersLiveLimit?'<div class="users-note"><button type="button" class="btn" id="users-more-live">More +</button> Showing '+Math.min(__usersLiveLimit,sortedLiveVisitors.length)+' of '+sortedLiveVisitors.length+' online visitors</div>':'')+'<div class="users-note">Active time counts only while the KARP tab is visible and focused. Anonymous visitors are identified only by a browser-local guest ID; no IP address is collected by this dashboard.</div></section>'+
+    '<section class="users-panel"><div class="users-panel-head"><strong>All tracked visitors</strong><span>'+visitorDocs.length+' records</span></div><div class="users-table-wrap"><table class="table"><thead><tr><th>Status</th><th>Visitor</th><th>Email</th><th>Device</th><th>Current / last page</th><th>Total active</th><th>Today</th><th>First seen</th><th>Last seen</th></tr></thead><tbody>'+(allRows||'<tr><td colspan="9">No visitor records yet.</td></tr>')+'</tbody></table></div>'+(sortedVisitorDocs.length>__usersVisitorLimit?'<div class="users-note"><button type="button" class="btn" id="users-more-visitors">More +</button> Showing '+Math.min(__usersVisitorLimit,sortedVisitorDocs.length)+' of '+sortedVisitorDocs.length+' tracked visitors</div>':'')+'</section>'+
+    '<section class="users-panel"><div class="users-panel-head"><strong>Registered accounts</strong><span>All '+users.length+' accounts</span></div><div class="users-table-wrap"><table class="table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Role</th><th>Account created</th><th>Last login</th><th>Last seen</th><th>Last logout</th><th>Current / last activity</th><th>Last device</th><th>Active today</th><th>Total active time</th><th>Logins</th></tr></thead><tbody>'+accountRows+'</tbody></table></div><div class="users-note">Showing all '+users.length+' registered accounts. Daily time is shown separately from cumulative active time; login/logout times appear when KARP has recorded them.</div></section>'+
   '</div>';
   const moreLive=document.getElementById('users-more-live');
-  if(moreLive)moreLive.onclick=()=>{__usersLiveLimit+=50;__usersRender()};
+  if(moreLive)moreLive.onclick=()=>{__usersLiveLimit+=15;__usersRender()};
   const moreVisitors=document.getElementById('users-more-visitors');
-  if(moreVisitors)moreVisitors.onclick=()=>{__usersVisitorLimit+=50;__usersRender()};
+  if(moreVisitors)moreVisitors.onclick=()=>{__usersVisitorLimit+=15;__usersRender()};
   const backToAdmin=document.getElementById('users-back-to-admin');
   if(backToAdmin)backToAdmin.onclick=__usersExitDashboard;
 }
