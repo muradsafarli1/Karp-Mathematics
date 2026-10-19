@@ -85,8 +85,49 @@
 .visitor-device{white-space:nowrap}
 .visitor-empty{padding:16px 10px;text-align:center;color:#737a80;font-size:10px}
 @media(max-width:800px){.visitor-analytics-head{align-items:flex-start;flex-direction:column}}
+</style><style>
+/* Users analytics dashboard — intentionally isolated to Admin > Users */
+.users-dashboard{display:grid;gap:14px}
+.users-dashboard-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.users-dashboard-head h2{margin:0;font-size:22px}
+.users-dashboard-head p{margin:4px 0 0;color:#737a80;font-size:10px;line-height:1.55}
+.users-dashboard-live{display:inline-flex;align-items:center;gap:8px;padding:8px 11px;border:1px solid #d9dad8;border-radius:10px;background:#fff;font-size:10px;color:#60666d}
+.users-dashboard-live-dot{width:7px;height:7px;border-radius:50%;background:#2a9d57;display:inline-block}
+.users-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.users-kpi{min-height:94px;padding:14px 15px;border:1px solid #d9dad8;border-radius:13px;background:#f7f7f5}
+.users-kpi strong{display:block;font:800 27px/1.05 'Space Grotesk';letter-spacing:-.8px}
+.users-kpi span{display:block;margin-top:7px;color:#737a80;font-size:9px;line-height:1.4}
+.users-kpi small{display:block;margin-top:4px;color:#969ba1;font-size:8px}
+.users-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.users-panel{border:1px solid #d9dad8;border-radius:14px;background:#f7f7f5;overflow:hidden}
+.users-panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid #d9dad8}
+.users-panel-head strong{font-size:12px}
+.users-panel-head span{font-size:9px;color:#737a80}
+.users-stat-list{padding:10px 14px 13px;display:grid;gap:8px}
+.users-stat-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
+.users-stat-row span{font-size:10px;color:#5f646b}
+.users-stat-row strong{font-size:10px}
+.users-stat-bar{height:5px;border-radius:999px;background:#e8e9e6;overflow:hidden;margin-top:4px}
+.users-stat-fill{height:100%;border-radius:999px;background:#8f969d}
+.users-live-list{display:grid;gap:1px;background:#d9dad8}
+.users-live-row{display:grid;grid-template-columns:minmax(210px,1.25fr) minmax(150px,1fr) minmax(150px,1fr) auto;gap:12px;align-items:center;padding:12px 14px;background:#f7f7f5}
+.users-live-who{font-size:11px;font-weight:800}
+.users-live-meta{margin-top:2px;color:#737a80;font-size:9px;line-height:1.35}
+.users-live-status{font-size:9px}
+.users-live-green{color:#2a9d57;font-weight:800}
+.users-live-gray{color:#8a8f95}
+.users-device{font-size:9px;color:#555b62;line-height:1.45}
+.users-table-wrap{overflow:auto}
+.users-dashboard table{min-width:1040px}
+.users-dashboard .table th{white-space:nowrap}
+.users-dashboard .table td{vertical-align:top}
+.users-note{padding:11px 14px;font-size:9px;line-height:1.6;color:#737a80;border-top:1px solid #d9dad8}
+.users-refresh{font-size:9px;color:#737a80}
+@media(max-width:1000px){.users-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.users-grid-2{grid-template-columns:1fr}.users-live-row{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.users-kpis{grid-template-columns:1fr 1fr}.users-live-row{grid-template-columns:1fr}.users-dashboard-head{align-items:flex-start}}
 </style></head><body><div id="root"></div><script>
-let state={type:'problems',editing:null},liveDocs=[],liveUnsub=null,liveTimer=null,pendingVideoThumbnail='',pendingFounderImage='',pendingMeetingImage='',pendingBookFile=null,pendingJournalFile=null,booksAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''},journalsAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};
+const __adminSavedSection=(()=>{try{return new URLSearchParams(location.search).get('section')||localStorage.getItem('karp_admin_section')||'problems'}catch{return 'problems'}})();
+let state={type:__adminSavedSection,editing:null},liveDocs=[],liveUnsub=null,liveTimer=null,pendingVideoThumbnail='',pendingFounderImage='',pendingMeetingImage='',pendingBookFile=null,pendingJournalFile=null,booksAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''},journalsAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function startAdminPresence(db,u){
   try{
@@ -109,7 +150,7 @@ async function startAdminPresence(db,u){
     },{merge:true}).catch(()=>{}));
   }catch(e){console.warn('KARP admin presence could not start:',e)}
 }
-async function init(){const u=await requireAdmin();if(!u)return;let db;try{({db}=await fb());const {doc,setDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');const now=new Date().toISOString();await setDoc(doc(db,'publicProfiles',u.id),{uid:u.id,name:u.name||'KARP Admin',nameLower:String(u.name||'KARP Admin').trim().toLowerCase(),photoURL:u.photoURL||'',isAdmin:true,updatedAt:now},{merge:true})}catch(e){console.warn('Could not sync admin public profile',e)}document.getElementById('root').innerHTML=`<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><div class="actions"><span style="color:#aeb7c8">${esc(u.name)}</span><a class="btn" href="/">View site</a><button class="btn" onclick="logout()">Log out</button></div></div></header><section class="live-presence" id="live-presence"><div class="live-presence-head"><strong>Live now</strong><span class="live-presence-count">Loading…</span></div><div class="live-presence-grid"><span class="live-empty">Loading live activity…</span></div></section><main class="admin"><div class="wrap"><div class="admin-grid"><aside class="admin-side"><button class="active" data-type="problems">Problems</button><button data-type="contests">Contests</button><button data-type="articles">Articles</button><button data-type="exams">Exams</button><button data-type="videos">Videos</button><button data-type="journals">Journals</button><button data-type="meetings">Meetings</button><button type="button" onclick="location.href='/mathnet-sync.html'">MathNet Sync</button><button data-type="mocks">Mocks</button><button data-type="books">Books</button><button data-type="users">Users</button><button data-type="about">About Us</button></aside><section class="admin-main" id="main"></section></div></div></main>`;startAdminPresence(db,u);initLivePresence(db);document.querySelectorAll('.admin-side button').forEach(b=>b.onclick=()=>{syncCurrent();document.querySelectorAll('.admin-side button').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.type=b.dataset.type;state.editing=null;render()});render()}
+async function init(){const u=await requireAdmin();if(!u)return;let db;try{({db}=await fb());const {doc,setDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');const now=new Date().toISOString();await setDoc(doc(db,'publicProfiles',u.id),{uid:u.id,name:u.name||'KARP Admin',nameLower:String(u.name||'KARP Admin').trim().toLowerCase(),photoURL:u.photoURL||'',isAdmin:true,updatedAt:now},{merge:true})}catch(e){console.warn('Could not sync admin public profile',e)}document.getElementById('root').innerHTML=`<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><div class="actions"><span style="color:#aeb7c8">${esc(u.name)}</span><a class="btn" href="/">View site</a><button class="btn" onclick="logout()">Log out</button></div></div></header><main class="admin"><div class="wrap"><div class="admin-grid"><aside class="admin-side"><button class="active" data-type="problems">Problems</button><button data-type="contests">Contests</button><button data-type="articles">Articles</button><button data-type="exams">Exams</button><button data-type="videos">Videos</button><button data-type="journals">Journals</button><button data-type="meetings">Meetings</button><button type="button" onclick="location.href='/mathnet-sync.html'">MathNet Sync</button><button data-type="mocks">Mocks</button><button data-type="books">Books</button><button data-type="users">Users</button><button data-type="about">About Us</button></aside><section class="admin-main" id="main"></section></div></div></main>`;startAdminPresence(db,u);document.querySelectorAll('.admin-side button').forEach(b=>b.onclick=()=>{if(!b.dataset.type)return;syncCurrent();document.querySelectorAll('.admin-side button').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.type=b.dataset.type;state.editing=null;try{localStorage.setItem('karp_admin_section',state.type);const u=new URL(location.href);u.searchParams.set('section',state.type);history.replaceState(null,'',u)}catch{}render()});document.querySelectorAll('.admin-side button').forEach(b=>b.classList.toggle('active',b.dataset.type===state.type));render()}
 document.addEventListener('DOMContentLoaded',init);
 function examList(d){return Array.isArray(d)?d:(d?.exams||[])}
 function presenceMillis(v){return v?.toMillis?v.toMillis():Number(v)||0}
@@ -517,8 +558,135 @@ async function saveBookAdmin(){
     pendingBookFile=null;state.editing=null;toast(isEdit?'Book updated.':'Book uploaded successfully.');render();
   }catch(e){toast(e.message||'Could not save the book.');button.disabled=false;if(status)status.textContent='Save failed.'}
 }
+let __usersAnalytics={unsubUsers:null,unsubPresence:null,users:[],presence:[],adminUid:null,started:false,timer:null};
+function __usersTimestamp(v){
+  if(v?.toMillis)return v.toMillis();
+  if(v?.toDate){const d=v.toDate();return d.getTime()}
+  const n=Number(v);if(Number.isFinite(n)&&n>0)return n;
+  const parsed=Date.parse(String(v||''));return Number.isFinite(parsed)?parsed:0;
+}
+function __usersOnline(p,now=Date.now()){
+  const exp=__usersTimestamp(p?.expiresAt);
+  return !!p?.online&&exp>now;
+}
+function __usersDuration(p,now=Date.now()){
+  const stored=Math.max(0,Math.floor(Number(p?.totalActiveSeconds||0)));
+  const last=__usersTimestamp(p?.lastSeen);
+  if(__usersOnline(p,now)&&last>0)return stored+Math.max(0,Math.floor((now-last)/1000));
+  return stored;
+}
+function __usersFormatDuration(sec){
+  const n=Math.max(0,Math.floor(Number(sec)||0)),h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=n%60;
+  if(h)return h+'h '+String(m).padStart(2,'0')+'m';
+  if(m)return m+'m '+String(s).padStart(2,'0')+'s';
+  return s+'s';
+}
+function __usersDate(v){
+  const ms=__usersTimestamp(v);
+  return ms?new Date(ms).toLocaleString():'—';
+}
+function __usersDayStart(){
+  const d=new Date();d.setHours(0,0,0,0);return d.getTime();
+}
+function __usersVisitorKind(p){
+  return (p?.userType==='guest'||(!p?.uid&&String(p?.guestId||'').startsWith('guest_'))) ? 'guest':'account';
+}
+function __usersDeviceLabel(p){
+  return [p?.deviceType||'Unknown device',p?.browser||'Unknown browser',p?.os||'Unknown OS'].join(' · ');
+}
+function __usersLocationLabel(p){
+  const a=p?.activity||{};
+  return (a.page||'KARP')+(a.detail?' · '+a.detail:'')+(a.question?' · Problem '+a.question:'');
+}
+function __usersDestroyLive(){
+  if(__usersAnalytics.unsubUsers){__usersAnalytics.unsubUsers();__usersAnalytics.unsubUsers=null}
+  if(__usersAnalytics.unsubPresence){__usersAnalytics.unsubPresence();__usersAnalytics.unsubPresence=null}
+  if(__usersAnalytics.timer){clearInterval(__usersAnalytics.timer);__usersAnalytics.timer=null}
+  __usersAnalytics.started=false;
+}
+function __usersStartLive(db,adminUid){
+  __usersAnalytics.adminUid=adminUid||null;
+  if(__usersAnalytics.started)return;
+  __usersAnalytics.started=true;
+  import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js').then(({collection,onSnapshot})=>{
+    __usersAnalytics.unsubUsers=onSnapshot(collection(db,'users'),snap=>{
+      __usersAnalytics.users=snap.docs.map(x=>({id:x.id,...x.data()}));
+      __usersRender();
+    },e=>console.warn('KARP Users analytics users listener failed:',e));
+    __usersAnalytics.unsubPresence=onSnapshot(collection(db,'presence'),snap=>{
+      __usersAnalytics.presence=snap.docs.map(x=>({id:x.id,...x.data()}));
+      __usersRender();
+    },e=>console.warn('KARP Users analytics presence listener failed:',e));
+    __usersAnalytics.timer=setInterval(__usersRender,1000);
+  }).catch(e=>console.warn('Could not start KARP Users analytics:',e));
+}
+function __usersRender(){
+  if(state.type!=='users')return;
+  const m=document.getElementById('main');if(!m)return;
+  const users=__usersAnalytics.users||[],presence=__usersAnalytics.presence||[],now=Date.now(),dayStart=__usersDayStart(),adminUid=__usersAnalytics.adminUid;
+  const userMap=new Map(users.map(u=>[u.id,u]));
+  const visitorDocs=presence.filter(p=>p&&p.visitorId&&p.id!==adminUid);
+  const onlineVisitors=visitorDocs.filter(p=>__usersOnline(p,now));
+  const onlineAccounts=onlineVisitors.filter(p=>__usersVisitorKind(p)==='account');
+  const onlineGuests=onlineVisitors.filter(p=>__usersVisitorKind(p)==='guest');
+  const trackedAccounts=visitorDocs.filter(p=>__usersVisitorKind(p)==='account').length;
+  const trackedGuests=visitorDocs.filter(p=>__usersVisitorKind(p)==='guest').length;
+  const accountCreatedToday=users.filter(u=>__usersTimestamp(u.createdAt)>=dayStart).length;
+  const seenToday=visitorDocs.filter(p=>__usersTimestamp(p.lastSeen)>=dayStart).length;
+  const totalActive=visitorDocs.reduce((sum,p)=>sum+__usersDuration(p,now),0);
+  const accountActive=visitorDocs.filter(p=>__usersVisitorKind(p)==='account').reduce((sum,p)=>sum+__usersDuration(p,now),0);
+  const guestActive=visitorDocs.filter(p=>__usersVisitorKind(p)==='guest').reduce((sum,p)=>sum+__usersDuration(p,now),0);
+  const deviceCounts={Desktop:0,Mobile:0,Tablet:0,Other:0},browserCounts={},osCounts={},pageCounts={};
+  onlineVisitors.forEach(p=>{
+    const d=['Desktop','Mobile','Tablet'].includes(p.deviceType)?p.deviceType:'Other';deviceCounts[d]++;
+    const br=p.browser||'Unknown';browserCounts[br]=(browserCounts[br]||0)+1;
+    const os=p.os||'Unknown';osCounts[os]=(osCounts[os]||0)+1;
+    const pg=(p.activity?.page)||'KARP';pageCounts[pg]=(pageCounts[pg]||0)+1;
+  });
+  const topRows=(obj)=>Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+  const statList=(obj,total,empty='No live data')=>{const rows=topRows(obj);if(!rows.length)return '<div class="users-stat-list"><div class="users-note" style="border-top:0">'+empty+'</div></div>';return '<div class="users-stat-list">'+rows.map(([k,v])=>{const pct=total?Math.round(v/total*100):0;return '<div><div class="users-stat-row"><span>'+esc(k)+'</span><strong>'+v+' · '+pct+'%</strong></div><div class="users-stat-bar"><div class="users-stat-fill" style="width:'+pct+'%"></div></div></div>'}).join('')+'</div>'};
+  const liveRows=onlineVisitors.slice().sort((a,b)=>__usersDuration(b,now)-__usersDuration(a,now)||__usersTimestamp(b.lastSeen)-__usersTimestamp(a.lastSeen)).map(p=>{
+    const kind=__usersVisitorKind(p),name=kind==='guest'?'Anonymous visitor':(p.name||userMap.get(p.uid)?.name||'KARP Member'),email=kind==='guest'?'No account':(p.email||userMap.get(p.uid)?.email||'—');
+    return '<div class="users-live-row"><div><div class="users-live-who"><span class="visitor-online"></span>'+esc(name)+'</div><div class="users-live-meta">'+esc(email)+' · '+(kind==='guest'?'Guest':'Account')+'</div></div><div><div class="users-live-status users-live-green">Online now · '+esc(__usersFormatDuration(__usersDuration(p,now)))+'</div><div class="users-live-meta">'+esc(__usersLocationLabel(p))+'</div></div><div class="users-device">'+esc(__usersDeviceLabel(p))+'<br>'+esc(p.screen||'')+'</div><div class="users-live-meta">'+esc(__usersDate(p.lastSeen))+'</div></div>';
+  }).join('');
+  const allRows=visitorDocs.slice().sort((a,b)=>__usersOnline(b,now)-__usersOnline(a,now)||__usersTimestamp(b.lastSeen)-__usersTimestamp(a.lastSeen)||__usersDuration(b,now)-__usersDuration(a,now)).slice(0,120).map(p=>{
+    const kind=__usersVisitorKind(p),name=kind==='guest'?'Anonymous visitor':(p.name||userMap.get(p.uid)?.name||'KARP Member'),email=kind==='guest'?'—':(p.email||userMap.get(p.uid)?.email||'—'),online=__usersOnline(p,now);
+    return '<tr><td>'+ (online?'<span class="admin-online-dot"></span>Online':'<span class="admin-offline-dot"></span>Offline')+'</td><td><strong>'+esc(name)+'</strong><br><span class="visitor-meta">'+esc(kind==='guest'?'Anonymous visitor':'Account')+'</span></td><td>'+esc(email)+'</td><td>'+esc(__usersDeviceLabel(p))+'</td><td>'+esc(__usersLocationLabel(p))+'</td><td><strong>'+esc(__usersFormatDuration(__usersDuration(p,now)))+'</strong></td><td>'+esc(__usersDate(p.firstSeenAt||p.sessionStartedAt))+'</td><td>'+esc(__usersDate(p.lastSeen))+'</td></tr>';
+  }).join('');
+  const accountRows=users.slice().sort((a,b)=>__usersOnline((visitorDocs.find(p=>p.uid===b.id)||{}),now)-__usersOnline((visitorDocs.find(p=>p.uid===a.id)||{}),now)||__usersTimestamp(b.createdAt)-__usersTimestamp(a.createdAt)).map(u=>{
+    const p=visitorDocs.find(x=>x.uid===u.id)||{},online=__usersOnline(p,now),seconds=__usersDuration(p,now);
+    return '<tr><td>'+(online?'<span class="admin-online-dot"></span>Online':'<span class="admin-offline-dot"></span>Offline')+'</td><td><strong>'+esc(u.name||'—')+'</strong></td><td>'+esc(u.email||'—')+'</td><td>'+esc(u.role||'user')+'</td><td>'+esc(__usersDate(u.createdAt))+'</td><td>'+esc(u.lastLoginAt?__usersDate(u.lastLoginAt):'Never')+'</td><td>'+esc(p.activity?__usersLocationLabel(p):'Not active')+'</td><td><strong>'+esc(__usersFormatDuration(seconds))+'</strong></td><td>'+Number(u.loginCount||0)+'</td></tr>';
+  }).join('');
+
+  const onlineTotal=onlineVisitors.length,liveTotal=Math.max(1,onlineTotal);
+  m.innerHTML='<div class="users-dashboard">'+
+    '<div class="users-dashboard-head"><div><h2>Users</h2><p>Live visitor analytics, account statistics, device breakdown and activity history. The admin session itself is excluded from visitor/live counts.</p></div><div class="users-dashboard-live"><span class="users-dashboard-live-dot"></span>Live · updating continuously <span class="users-refresh">'+new Date(now).toLocaleTimeString()+'</span></div></div>'+
+    '<div class="users-kpis">'+
+      '<div class="users-kpi"><strong>'+users.length+'</strong><span>Registered accounts</span><small>'+accountCreatedToday+' created today</small></div>'+
+      '<div class="users-kpi"><strong>'+onlineAccounts.length+'</strong><span>Accounts online now</span><small>'+trackedAccounts+' account visitor records tracked</small></div>'+
+      '<div class="users-kpi"><strong>'+onlineGuests.length+'</strong><span>Anonymous visitors online</span><small>'+trackedGuests+' anonymous browser records tracked</small></div>'+
+      '<div class="users-kpi"><strong>'+onlineTotal+'</strong><span>Total visitors online</span><small>'+seenToday+' tracked visitors seen today</small></div>'+
+    '</div>'+
+    '<div class="users-kpis">'+
+      '<div class="users-kpi"><strong>'+esc(__usersFormatDuration(totalActive))+'</strong><span>Total tracked active time</span><small>Accounts + anonymous visitors</small></div>'+
+      '<div class="users-kpi"><strong>'+esc(__usersFormatDuration(accountActive))+'</strong><span>Account active time</span><small>Signed-in visitors</small></div>'+
+      '<div class="users-kpi"><strong>'+esc(__usersFormatDuration(guestActive))+'</strong><span>Anonymous active time</span><small>Browser-local guest IDs</small></div>'+
+      '<div class="users-kpi"><strong>'+trackedAccounts+' + '+trackedGuests+'</strong><span>Tracked visitor records</span><small>Persistent presence identities</small></div>'+
+    '</div>'+
+    '<div class="users-grid-2">'+
+      '<section class="users-panel"><div class="users-panel-head"><strong>Live devices</strong><span>'+onlineTotal+' online visitors</span></div>'+statList(deviceCounts,liveTotal,'No visitors online.')+'</section>'+
+      '<section class="users-panel"><div class="users-panel-head"><strong>Live browsers</strong><span>'+onlineTotal+' online visitors</span></div>'+statList(browserCounts,liveTotal,'No visitors online.')+'</section>'+
+      '<section class="users-panel"><div class="users-panel-head"><strong>Operating systems</strong><span>'+onlineTotal+' online visitors</span></div>'+statList(osCounts,liveTotal,'No visitors online.')+'</section>'+
+      '<section class="users-panel"><div class="users-panel-head"><strong>Current pages</strong><span>'+onlineTotal+' online visitors</span></div>'+statList(pageCounts,liveTotal,'No visitors online.')+'</section>'+
+    '</div>'+
+    '<section class="users-panel"><div class="users-panel-head"><strong>Live visitors</strong><span>'+onlineTotal+' online right now</span></div><div class="users-live-list">'+(liveRows||'<div class="users-note" style="border-top:0">No visitors are online right now.</div>')+'</div><div class="users-note">Active time counts only while the KARP tab is visible and focused. Anonymous visitors are identified only by a browser-local guest ID; no IP address is collected by this dashboard.</div></section>'+
+    '<section class="users-panel"><div class="users-panel-head"><strong>All tracked visitors</strong><span>Latest '+Math.min(visitorDocs.length,120)+' records</span></div><div class="users-table-wrap"><table class="table"><thead><tr><th>Status</th><th>Visitor</th><th>Email</th><th>Device</th><th>Current / last page</th><th>Active time</th><th>First seen</th><th>Last seen</th></tr></thead><tbody>'+(allRows||'<tr><td colspan="8">No visitor records yet.</td></tr>')+'</tbody></table></div></section>'+
+    '<section class="users-panel"><div class="users-panel-head"><strong>Registered accounts</strong><span>'+users.length+' total accounts</span></div><div class="users-table-wrap"><table class="table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Role</th><th>Created</th><th>Last login</th><th>Current activity</th><th>Active time</th><th>Logins</th></tr></thead><tbody>'+accountRows+'</tbody></table></div></section>'+
+  '</div>';
+}
 async function render(){
   const m=document.getElementById('main');if(!m)return;
+  if(state.type!=='users' && __usersAnalytics.started)__usersDestroyLive();
 
   if(state.type==='books'){
     await renderBooksAdmin();
@@ -551,26 +719,11 @@ async function render(){
 
   if(state.type==='users'){
     try{
-      const d=await api('/api/admin/users');
-      const users=d.users||[];
-      const presenceLabel=u=>{
-        const x=u.activity||{};
-        return x.page?((x.label||x.page)+(x.detail?' · '+x.detail:'')+(x.question?' · Problem '+x.question:'')):'Not active';
-      };
-      const fmtLast=u=>u.online?'Online now':(u.lastSeen?new Date(u.lastSeen).toLocaleString():'Never');
-      const fmtActive=sec=>{
-        const n=Math.max(0,Math.floor(Number(sec||0)));
-        if(!n)return'0m';
-        const h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=n%60;
-        return h?(`${h}h ${m}m`):(m?(`${m}m ${s}s`):(`${s}s`));
-      };
-      const totalActive=users.reduce((sum,u)=>sum+Math.max(0,Number(u.totalActiveSeconds||0)),0);
-      m.innerHTML='<div class="admin-head"><div><h2>Users</h2><span class="admin-count">'+users.length+' users</span></div></div>'+
-        '<div class="bigcard admin-user-summary"><strong>'+users.filter(u=>u.online).length+'</strong> online · <strong>'+users.filter(u=>!u.online).length+'</strong> offline · <strong>'+fmtActive(totalActive)+'</strong> tracked active time · activity is measured while the KARP tab is visible and focused.</div>'+
-        '<div class="bigcard" style="overflow-x:auto"><table class="table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Role</th><th>Account created</th><th>Last login</th><th>Last seen</th><th>Last logout</th><th>Current activity</th><th>Active time</th><th>Logins</th></tr></thead><tbody>'+
-        users.slice().sort((x,y)=>Number(y.online)-Number(x.online)||Number(y.totalActiveSeconds||0)-Number(x.totalActiveSeconds||0)||new Date(y.lastLoginAt||0)-new Date(x.lastLoginAt||0)).map(u=>'<tr><td><span class="'+(u.online?'admin-online-dot':'admin-offline-dot')+'"></span>'+ (u.online?'Online':'Offline') +'</td><td>'+esc(u.name||'—')+'</td><td>'+esc(u.email||'—')+'</td><td>'+esc(u.role||'user')+'</td><td>'+(u.createdAt?new Date(u.createdAt).toLocaleString():'—')+'</td><td>'+(u.lastLoginAt?new Date(u.lastLoginAt).toLocaleString():'Never')+'</td><td>'+fmtLast(u)+'</td><td>'+(u.lastLogoutAt?new Date(u.lastLogoutAt).toLocaleString():'—')+'</td><td>'+esc(presenceLabel(u))+'</td><td><strong>'+fmtActive(u.totalActiveSeconds)+'</strong>'+(u.online?' <span style="color:#6f757c">• active now</span>':'')+'</td><td>'+Number(u.loginCount||0)+'</td></tr>').join('')+
-        '</tbody></table></div>';
-    }catch(e){m.innerHTML='<div class="bigcard"><h3>Could not load users</h3><p>'+esc(e.message)+'</p></div>'}
+      const {db}=await fb();
+      const admin=await me();
+      __usersStartLive(db,admin?.id||null);
+      __usersRender();
+    }catch(e){m.innerHTML='<div class="bigcard"><h3>Could not load Users analytics</h3><p>'+esc(e.message||'Check Firestore permissions.')+'</p></div>'}
     return;
   }
 
