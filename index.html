@@ -52,6 +52,23 @@ html[data-theme="light"] .hero h1.karp-wordmark{background:none!important;-webki
 @keyframes karpLiveContent{0%{opacity:0;transform:translateY(9px)}100%{opacity:1;transform:translateY(0)}}
 @media(max-width:620px){.hero h1.karp-wordmark{gap:0!important}.hero h1.karp-wordmark .karp-hero-letter{letter-spacing:inherit}}
 @media(prefers-reduced-motion:reduce){.hero h1.karp-wordmark .karp-hero-letter{animation:none!important;opacity:1!important;filter:none!important;transform:none!important}.hero .cta,.hero .journal-announcement-wrap,.hero .micro{animation:none!important;opacity:1!important;transform:none!important}}
+/* Preserve the entrance animation while making every letter the same matte navy. */
+.hero h1.karp-wordmark .karp-hero-letter,
+.hero h1.karp-wordmark .karp-hero-letter.karp-hero-k,
+.hero h1.karp-wordmark .karp-hero-letter.karp-hero-a,
+.hero h1.karp-wordmark .karp-hero-letter.karp-hero-r,
+.hero h1.karp-wordmark .karp-hero-letter.karp-hero-p{
+  background:none!important;
+  background-image:none!important;
+  background-clip:border-box!important;
+  -webkit-background-clip:border-box!important;
+  -webkit-text-fill-color:#263b5b!important;
+  color:#263b5b!important;
+  text-shadow:none!important;
+}
+.hero h1.karp-wordmark .karp-hero-k{
+  animation:karpLiveK 1.85s cubic-bezier(.16,.78,.22,1) .02s both!important;
+}
 </style></head><body><header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/mock.html">Mocks</a><a href="/books.html">Books</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/canvas.html"><span>KARP Canvas</span><small>Draw, write and collect ideas</small></a><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a></div></div><a href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header><main><section class="hero"><div class="noise"></div><div class="orb"></div><div class="hero-shapes" aria-hidden="true"><svg class="hero-shape-art" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" focusable="false">
 <g class="drift-a">
   <circle class="geo blue" cx="135" cy="208" r="35"/>
