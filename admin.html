@@ -818,7 +818,7 @@ function __usersRender(){
   const trackedAccounts=visitorDocs.filter(p=>__usersVisitorKind(p)==='account').length;
   const trackedGuests=visitorDocs.filter(p=>__usersVisitorKind(p)==='guest').length;
   const accountCreatedToday=users.filter(u=>__usersTimestamp(u.createdAt)>=dayStart).length;
-  const seenToday=visitorDocs.filter(p=>__usersTimestamp(p.lastSeen)>=dayStart).length;
+  const seenToday=new Set(visitorDocs.filter(p=>__usersTimestamp(p.lastSeen)>=dayStart).map(p=>String(p.visitorId||p.uid||p.guestId||p.id||'').trim()).filter(Boolean)).size;
   const totalActive=visitorDocs.reduce((sum,p)=>sum+__usersDuration(p,now),0);
   const accountActive=visitorDocs.filter(p=>__usersVisitorKind(p)==='account').reduce((sum,p)=>sum+__usersDuration(p,now),0);
   const guestActive=visitorDocs.filter(p=>__usersVisitorKind(p)==='guest').reduce((sum,p)=>sum+__usersDuration(p,now),0);
@@ -877,7 +877,7 @@ function __usersRender(){
       '<div class="users-kpi"><strong>'+users.length+'</strong><span>Registered accounts</span><small>'+accountCreatedToday+' created today</small></div>'+
       '<div class="users-kpi"><strong>'+onlineAccounts.length+'</strong><span>Accounts online now</span><small>'+trackedAccounts+' tracked account identities</small></div>'+
       '<div class="users-kpi"><strong>'+onlineGuests.length+'</strong><span>Anonymous visitors online</span><small>'+trackedGuests+' tracked guest identities</small></div>'+
-      '<div class="users-kpi"><strong>'+onlineTotal+'</strong><span>Total online visitors</span><small>'+seenToday+' visitors seen today</small></div>'+
+      '<div class="users-kpi"><strong>'+onlineTotal+'</strong><span>Total online visitors</span><small>'+seenToday+' unique tracked IDs today</small></div>'+
     '</div>'+
     '<div class="users-time-overview">'+
       '<section class="users-time-card users-time-card-total"><div><div class="users-time-card-label">TOTAL ACTIVE TIME · ALL TRACKED VISITORS</div><div class="users-time-card-value">'+esc(__usersFormatDuration(totalActive))+'</div></div><div class="users-time-card-note">'+esc(__usersFormatDuration(accountActive))+' from accounts · '+esc(__usersFormatDuration(guestActive))+' from anonymous visitors. Saved cumulative time is preserved across dashboard updates.</div></section>'+
