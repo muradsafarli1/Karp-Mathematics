@@ -559,6 +559,7 @@ async function saveBookAdmin(){
   }catch(e){toast(e.message||'Could not save the book.');button.disabled=false;if(status)status.textContent='Save failed.'}
 }
 let __usersAnalytics={unsubUsers:null,unsubPresence:null,users:[],presence:[],adminUid:null,started:false,timer:null};
+let __usersLiveLimit=20,__usersVisitorLimit=25,__usersAccountLimit=25;
 function __usersTimestamp(v){
   if(v?.toMillis)return v.toMillis();
   if(v?.toDate){const d=v.toDate();return d.getTime()}
@@ -625,7 +626,18 @@ function __usersRender(){
   const m=document.getElementById('main');if(!m)return;
   const users=__usersAnalytics.users||[],presence=__usersAnalytics.presence||[],now=Date.now(),dayStart=__usersDayStart(),adminUid=__usersAnalytics.adminUid;
   const userMap=new Map(users.map(u=>[u.id,u]));
-  const visitorDocs=presence.filter(p=>p&&p.visitorId&&p.id!==adminUid);
+  const visitorDocs=presence.filter(p=>p&&p.id!==adminUid&&(p.visitorId||p.uid||p.userType==='guest'||String(p.guestId||'').startsWith('guest_')));
+  // Legacy account totals can also exist on the user profile. Surface them if no presence
+  // document exists, without writing or resetting any previously saved values.
+  const recordedIds=new Set(visitorDocs.filter(p=>__usersVisitorKind(p)==='account').map(p=>String(p.uid||p.id||'')));
+  users.forEach(u=>{
+    if(recordedIds.has(String(u.id)))return;
+    const hasLegacyActivity=Number(u.totalActiveSeconds||0)>0||u.lastSeen||u.lastLoginAt||u.activity;
+    if(hasLegacyActivity){
+      visitorDocs.push({id:u.id,uid:u.id,visitorId:u.id,userType:'account',name:u.name||'KARP Member',email:u.email||'',online:false,totalActiveSeconds:Number(u.totalActiveSeconds||0),lastSeen:u.lastSeen||null,firstSeenAt:u.createdAt||null,activity:u.activity||null,legacyProfileFallback:true});
+      recordedIds.add(String(u.id));
+    }
+  });
   const onlineVisitors=visitorDocs.filter(p=>__usersOnline(p,now));
   const onlineAccounts=onlineVisitors.filter(p=>__usersVisitorKind(p)==='account');
   const onlineGuests=onlineVisitors.filter(p=>__usersVisitorKind(p)==='guest');
@@ -645,15 +657,18 @@ function __usersRender(){
   });
   const topRows=(obj)=>Object.entries(obj).sort((a,b)=>b[1]-a[1]);
   const statList=(obj,total,empty='No live data')=>{const rows=topRows(obj);if(!rows.length)return '<div class="users-stat-list"><div class="users-note" style="border-top:0">'+empty+'</div></div>';return '<div class="users-stat-list">'+rows.map(([k,v])=>{const pct=total?Math.round(v/total*100):0;return '<div><div class="users-stat-row"><span>'+esc(k)+'</span><strong>'+v+' · '+pct+'%</strong></div><div class="users-stat-bar"><div class="users-stat-fill" style="width:'+pct+'%"></div></div></div>'}).join('')+'</div>'};
-  const liveRows=onlineVisitors.slice().sort((a,b)=>__usersDuration(b,now)-__usersDuration(a,now)||__usersTimestamp(b.lastSeen)-__usersTimestamp(a.lastSeen)).map(p=>{
+  const sortedLiveVisitors=onlineVisitors.slice().sort((a,b)=>__usersDuration(b,now)-__usersDuration(a,now)||__usersTimestamp(b.lastSeen)-__usersTimestamp(a.lastSeen));
+  const liveRows=sortedLiveVisitors.slice(0,__usersLiveLimit).map(p=>{
     const kind=__usersVisitorKind(p),name=kind==='guest'?'Anonymous visitor':(p.name||userMap.get(p.uid)?.name||'KARP Member'),email=kind==='guest'?'No account':(p.email||userMap.get(p.uid)?.email||'—');
     return '<div class="users-live-row"><div><div class="users-live-who"><span class="visitor-online"></span>'+esc(name)+'</div><div class="users-live-meta">'+esc(email)+' · '+(kind==='guest'?'Guest':'Account')+'</div></div><div><div class="users-live-status users-live-green">Online now · '+esc(__usersFormatDuration(__usersDuration(p,now)))+'</div><div class="users-live-meta">'+esc(__usersLocationLabel(p))+'</div></div><div class="users-device">'+esc(__usersDeviceLabel(p))+'<br>'+esc(p.screen||'')+'</div><div class="users-live-meta">'+esc(__usersDate(p.lastSeen))+'</div></div>';
   }).join('');
-  const allRows=visitorDocs.slice().sort((a,b)=>__usersOnline(b,now)-__usersOnline(a,now)||__usersTimestamp(b.lastSeen)-__usersTimestamp(a.lastSeen)||__usersDuration(b,now)-__usersDuration(a,now)).slice(0,120).map(p=>{
+  const sortedVisitorDocs=visitorDocs.slice().sort((a,b)=>__usersOnline(b,now)-__usersOnline(a,now)||__usersTimestamp(b.lastSeen)-__usersTimestamp(a.lastSeen)||__usersDuration(b,now)-__usersDuration(a,now));
+  const allRows=sortedVisitorDocs.slice(0,__usersVisitorLimit).map(p=>{
     const kind=__usersVisitorKind(p),name=kind==='guest'?'Anonymous visitor':(p.name||userMap.get(p.uid)?.name||'KARP Member'),email=kind==='guest'?'—':(p.email||userMap.get(p.uid)?.email||'—'),online=__usersOnline(p,now);
     return '<tr><td>'+ (online?'<span class="admin-online-dot"></span>Online':'<span class="admin-offline-dot"></span>Offline')+'</td><td><strong>'+esc(name)+'</strong><br><span class="visitor-meta">'+esc(kind==='guest'?'Anonymous visitor':'Account')+'</span></td><td>'+esc(email)+'</td><td>'+esc(__usersDeviceLabel(p))+'</td><td>'+esc(__usersLocationLabel(p))+'</td><td><strong>'+esc(__usersFormatDuration(__usersDuration(p,now)))+'</strong></td><td>'+esc(__usersDate(p.firstSeenAt||p.sessionStartedAt))+'</td><td>'+esc(__usersDate(p.lastSeen))+'</td></tr>';
   }).join('');
-  const accountRows=users.slice().sort((a,b)=>__usersOnline((visitorDocs.find(p=>p.uid===b.id)||{}),now)-__usersOnline((visitorDocs.find(p=>p.uid===a.id)||{}),now)||__usersTimestamp(b.createdAt)-__usersTimestamp(a.createdAt)).map(u=>{
+  const sortedAccounts=users.slice().sort((a,b)=>__usersOnline((visitorDocs.find(p=>p.uid===b.id)||{}),now)-__usersOnline((visitorDocs.find(p=>p.uid===a.id)||{}),now)||__usersTimestamp(b.createdAt)-__usersTimestamp(a.createdAt));
+  const accountRows=sortedAccounts.slice(0,__usersAccountLimit).map(u=>{
     const p=visitorDocs.find(x=>x.uid===u.id)||{},online=__usersOnline(p,now),seconds=__usersDuration(p,now);
     return '<tr><td>'+(online?'<span class="admin-online-dot"></span>Online':'<span class="admin-offline-dot"></span>Offline')+'</td><td><strong>'+esc(u.name||'—')+'</strong></td><td>'+esc(u.email||'—')+'</td><td>'+esc(u.role||'user')+'</td><td>'+esc(__usersDate(u.createdAt))+'</td><td>'+esc(u.lastLoginAt?__usersDate(u.lastLoginAt):'Never')+'</td><td>'+esc(p.activity?__usersLocationLabel(p):'Not active')+'</td><td><strong>'+esc(__usersFormatDuration(seconds))+'</strong></td><td>'+Number(u.loginCount||0)+'</td></tr>';
   }).join('');
@@ -679,10 +694,16 @@ function __usersRender(){
       '<section class="users-panel"><div class="users-panel-head"><strong>Operating systems</strong><span>'+onlineTotal+' online visitors</span></div>'+statList(osCounts,liveTotal,'No visitors online.')+'</section>'+
       '<section class="users-panel"><div class="users-panel-head"><strong>Current pages</strong><span>'+onlineTotal+' online visitors</span></div>'+statList(pageCounts,liveTotal,'No visitors online.')+'</section>'+
     '</div>'+
-    '<section class="users-panel"><div class="users-panel-head"><strong>Live visitors</strong><span>'+onlineTotal+' online right now</span></div><div class="users-live-list">'+(liveRows||'<div class="users-note" style="border-top:0">No visitors are online right now.</div>')+'</div><div class="users-note">Active time counts only while the KARP tab is visible and focused. Anonymous visitors are identified only by a browser-local guest ID; no IP address is collected by this dashboard.</div></section>'+
-    '<section class="users-panel"><div class="users-panel-head"><strong>All tracked visitors</strong><span>Latest '+Math.min(visitorDocs.length,120)+' records</span></div><div class="users-table-wrap"><table class="table"><thead><tr><th>Status</th><th>Visitor</th><th>Email</th><th>Device</th><th>Current / last page</th><th>Active time</th><th>First seen</th><th>Last seen</th></tr></thead><tbody>'+(allRows||'<tr><td colspan="8">No visitor records yet.</td></tr>')+'</tbody></table></div></section>'+
-    '<section class="users-panel"><div class="users-panel-head"><strong>Registered accounts</strong><span>'+users.length+' total accounts</span></div><div class="users-table-wrap"><table class="table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Role</th><th>Created</th><th>Last login</th><th>Current activity</th><th>Active time</th><th>Logins</th></tr></thead><tbody>'+accountRows+'</tbody></table></div></section>'+
+    '<section class="users-panel"><div class="users-panel-head"><strong>Live visitors</strong><span>'+onlineTotal+' online right now</span></div><div class="users-live-list">'+(liveRows||'<div class="users-note" style="border-top:0">No visitors are online right now.</div>')+'</div>'+(onlineTotal>liveRows.length?'<div class="users-note"><button type="button" class="btn" id="users-more-live">More +</button> Showing '+liveRows.length+' of '+onlineTotal+' online visitors</div>':'')+'<div class="users-note">Active time counts only while the KARP tab is visible and focused. Anonymous visitors are identified only by a browser-local guest ID; no IP address is collected by this dashboard.</div></section>'+
+    '<section class="users-panel"><div class="users-panel-head"><strong>All tracked visitors</strong><span>'+visitorDocs.length+' records</span></div><div class="users-table-wrap"><table class="table"><thead><tr><th>Status</th><th>Visitor</th><th>Email</th><th>Device</th><th>Current / last page</th><th>Active time</th><th>First seen</th><th>Last seen</th></tr></thead><tbody>'+(allRows||'<tr><td colspan="8">No visitor records yet.</td></tr>')+'</tbody></table></div>'+(visitorDocs.length>allRows.length?'<div class="users-note"><button type="button" class="btn" id="users-more-visitors">More +</button> Showing '+allRows.length+' of '+visitorDocs.length+' tracked visitors</div>':'')+'</section>'+
+    '<section class="users-panel"><div class="users-panel-head"><strong>Registered accounts</strong><span>'+users.length+' total accounts</span></div><div class="users-table-wrap"><table class="table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Role</th><th>Created</th><th>Last login</th><th>Current activity</th><th>Active time</th><th>Logins</th></tr></thead><tbody>'+accountRows+'</tbody></table></div>'+(users.length>accountRows.length?'<div class="users-note"><button type="button" class="btn" id="users-more-accounts">More +</button> Showing '+accountRows.length+' of '+users.length+' accounts</div>':'')+'</section>'+
   '</div>';
+  const moreLive=document.getElementById('users-more-live');
+  if(moreLive)moreLive.onclick=()=>{__usersLiveLimit+=50;__usersRender()};
+  const moreVisitors=document.getElementById('users-more-visitors');
+  if(moreVisitors)moreVisitors.onclick=()=>{__usersVisitorLimit+=50;__usersRender()};
+  const moreAccounts=document.getElementById('users-more-accounts');
+  if(moreAccounts)moreAccounts.onclick=()=>{__usersAccountLimit+=50;__usersRender()};
 }
 async function render(){
   const m=document.getElementById('main');if(!m)return;
