@@ -209,7 +209,7 @@ async function api(path, opts = {}) {
   const {db,auth}=await fb();
   await authReady();
   const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const {collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,runTransaction,increment}=fs;
+  const {collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,runTransaction,increment,writeBatch}=fs;
   const method=(opts.method||'GET').toUpperCase();
   let body={};
   try{body=opts.body?JSON.parse(opts.body):{}}catch{}
@@ -404,75 +404,79 @@ async function api(path, opts = {}) {
     const s=await getDoc(doc(db,'exams',em[1]));
     if(!s.exists())throw new Error('Exam not found');
     const exam=publicExam({id:s.id,...s.data()});
-    // The exam document is public. Do not read the user's submission
-    // every time the exam page opens; this was the direct source of the
-    // repeated BatchGetDocuments 429 requests under load.
-    // Completion is enforced server-side when submitting.
-    return {exam,completedByCurrentUser:false};
+    let completedByCurrentUser=false,participatedByCurrentUser=false;
+    if(uid){
+      // Read only the lightweight per-user exam state. Never read the
+      // submission document while opening an exam.
+      const entry=await getDoc(doc(db,'users',uid,'examEntries',em[1]));
+      if(entry.exists()){
+        const state=entry.data()||{};
+        completedByCurrentUser=state.completed===true;
+        participatedByCurrentUser=state.participated===true;
+      }
+    }
+    return {exam,completedByCurrentUser,participatedByCurrentUser};
   }
   const er=path.match(/^\/api\/exams\/([^/]+)\/(register|submit)$/);
   if(er&&method==='POST'){
     if(!user) throw new Error('Authentication required');
     const examId=er[1];
     const examRef=doc(db,'exams',examId);
-    if(er[2]==='register'){
-      const examSnap=await getDoc(examRef);
-      if(!examSnap.exists()) throw new Error('Exam not found');
 
-      // Only the user's own registration document participates in the
-      // duplicate check. The hot exam document is not read inside the
-      // transaction, so many users can register concurrently without
-      // transaction retries against the same exam document.
+    if(er[2]==='register'){
+      // Registration uses one atomic batch with no read and no transaction.
+      // The registration document is created exactly once; the exam counter
+      // increments only when that create succeeds.
       const regRef=doc(db,'exams',examId,'registrations',uid);
       const entryRef=doc(db,'users',uid,'examEntries',examId);
-      const created=await runTransaction(db,async tx=>{
-        const regSnap=await tx.get(regRef);
-        if(regSnap.exists())return false;
-        tx.set(regRef,{
-          userId:uid,
-          registeredAt:new Date().toISOString()
-        },{merge:true});
-        return true;
-      });
-
-      await setDoc(entryRef,{
-        examId,
-        registered:true,
-        registeredAt:new Date().toISOString()
-      },{merge:true});
-      if(created){
-        await updateDoc(examRef,{registrationCount:increment(1)});
+      const batch=writeBatch(db);
+      const now=new Date().toISOString();
+      batch.set(regRef,{userId:uid,registeredAt:now});
+      batch.update(examRef,{registrationCount:increment(1)});
+      batch.set(entryRef,{examId,registered:true,registeredAt:now},{merge:true});
+      try{
+        await batch.commit();
+        return {ok:true,registered:true,alreadyRegistered:false};
+      }catch(e){
+        // A second click/race against an existing registration is a normal
+        // duplicate, not a Firestore transaction failure.
+        if(e?.code==='permission-denied') return {ok:true,registered:true,alreadyRegistered:true};
+        throw e;
       }
-      return {ok:true,registered:true,alreadyRegistered:!created};
     }
 
-    // Submit is protected by a single transaction on this user's submission
-    // document. The per-user exam state is updated at the same time, so the
-    // Exams page never needs to scan submission subcollections.
+    // NEVER read submissions here. Firestore rules allow this document to be
+    // created but not updated by a normal user. Therefore a duplicate attempt
+    // is rejected by the rules themselves without a BatchGetDocuments read.
     const subRef=doc(db,'exams',examId,'submissions',uid);
     const entryRef=doc(db,'users',uid,'examEntries',examId);
     const submittedAt=body.submittedAt||new Date().toISOString();
-    await runTransaction(db,async tx=>{
-      const existing=await tx.get(subRef);
-      if(existing.exists())throw new Error('You have already completed this exam.');
-      tx.set(subRef,{
-        userId:uid,
-        userName:user.name,
-        answers:body.answers||{},
-        startedAt:body.startedAt||null,
-        endedAt:body.endedAt||new Date().toISOString(),
-        submittedAt,
-        attemptId:body.attemptId||null,
-        durationSeconds:Math.max(0,Number(body.durationSeconds||0)),
-        reason:body.reason||'manual'
-      });
-      tx.set(entryRef,{
-        examId,
-        completed:true,
-        completedAt:submittedAt
-      },{merge:true});
+    const batch=writeBatch(db);
+    batch.set(subRef,{
+      userId:uid,
+      userName:user.name,
+      answers:body.answers||{},
+      startedAt:body.startedAt||null,
+      endedAt:body.endedAt||new Date().toISOString(),
+      submittedAt,
+      attemptId:body.attemptId||null,
+      durationSeconds:Math.max(0,Number(body.durationSeconds||0)),
+      reason:body.reason||'manual'
     });
-    return {ok:true};
+    batch.set(entryRef,{
+      examId,
+      completed:true,
+      completedAt:submittedAt
+    },{merge:true});
+    try{
+      await batch.commit();
+      return {ok:true};
+    }catch(e){
+      if(e?.code==='permission-denied'){
+        throw new Error('You have already completed this exam.');
+      }
+      throw e;
+    }
   }
   const am=path.match(/^\/api\/admin\/(problems|articles|contests|videos|exams|meetings|about)(?:\/([^/]+))?$/);
   if(am){
