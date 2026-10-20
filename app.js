@@ -732,28 +732,39 @@ async function markKarpExamEntry(examId){
   await authReady();
   const uid=auth.currentUser?.uid;
   if(!uid||!examId)return false;
-  const {doc,runTransaction}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+
+  // Do not use a transaction here. Entering an exam is a very common write
+  // and the old transaction read the same exam document + marker + legacy
+  // session, then updated the hot exam counter. Under concurrent traffic
+  // Firestore could retry that transaction repeatedly and produce 429
+  // RESOURCE_EXHAUSTED errors.
+  const {
+    doc,getDoc,setDoc,updateDoc,increment
+  }=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+
   const examRef=doc(db,'exams',String(examId));
   const markerRef=doc(db,'users',uid,'examEntries',String(examId));
-  const legacySessionRef=doc(db,'examSessions',String(examId)+'_'+String(uid));
+
   try{
-    return await runTransaction(db,async tx=>{
-      const exam=await tx.get(examRef);
-      const marker=await tx.get(markerRef);
-      const legacySession=await tx.get(legacySessionRef);
-      if(!exam.exists())return false;
-      const markerData=marker.exists()?marker.data()||{}:{};
-      if(markerData.participated===true)return false;
-      const legacyData=legacySession.exists()?legacySession.data()||{}:{};
-      const hadHistoricalAttempt=!!legacyData.startedAt&&String(legacyData.status||'')!=='archive-view';
-      const now=new Date().toISOString();
-      tx.set(markerRef,{examId:String(examId),participated:true,firstParticipatedAt:markerData.firstParticipatedAt||now,lastParticipatedAt:now},{merge:true});
-      if(hadHistoricalAttempt)return false;
-      const count=Number(exam.data()?.participatedCount||0);
-      tx.update(examRef,{participatedCount:count+1});
-      return true;
-    });
-  }catch(e){console.warn('KARP exam participation tracking failed:',e);return false}
+    const marker=await getDoc(markerRef);
+    if(marker.exists() && marker.data()?.participated===true)return false;
+
+    const now=new Date().toISOString();
+    await setDoc(markerRef,{
+      examId:String(examId),
+      participated:true,
+      firstParticipatedAt:marker.data()?.firstParticipatedAt||now,
+      lastParticipatedAt:now
+    },{merge:true});
+
+    // Atomic server-side increment: no read-modify-write transaction and
+    // therefore no transaction retry storm on the exam document.
+    await updateDoc(examRef,{participatedCount:increment(1)});
+    return true;
+  }catch(e){
+    console.warn('KARP exam participation tracking failed:',e);
+    return false;
+  }
 }
 let __karpPresence=null;
 function __karpIsActiveNow(){try{return document.visibilityState==='visible'&&document.hasFocus()}catch{return document.visibilityState!=='hidden'}}
