@@ -348,18 +348,28 @@ async function api(path, opts = {}) {
   if(path==='/api/exams'){
     const snap=await getDocs(collection(db,'exams'));
     const exams=snap.docs.map(x=>({id:x.id,...x.data()}));
+
+    // Do NOT read every user's submission + registration document here.
+    // The old implementation performed 2 extra Firestore reads per exam on
+    // every Exams-page load. With traffic this multiplied rapidly and could
+    // exhaust the daily read quota.
     if(uid){
       const statusEntries=await Promise.all(exams.map(async exam=>{
-        const [submission,registration]=await Promise.all([
-          getDoc(doc(db,'exams',exam.id,'submissions',uid)),
-          getDoc(doc(db,'exams',exam.id,'registrations',uid))
-        ]);
-        return [exam.id,{completed:submission.exists(),registered:registration.exists()}];
+        const entry=await getDoc(doc(db,'users',uid,'examEntries',exam.id));
+        const d=entry.exists()?entry.data()||{}:{};
+        return [exam.id,{
+          completed:d.completed===true,
+          registered:d.registered===true,
+          participated:d.participated===true
+        }];
       }));
       const statusById=new Map(statusEntries);
       return {exams:exams.map(exam=>{
         const status=statusById.get(exam.id)||{};
-        return {...publicExam(exam),completedByCurrentUser:status.completed===true,registeredByCurrentUser:status.registered===true};
+        return {...publicExam(exam),
+          completedByCurrentUser:status.completed===true,
+          registeredByCurrentUser:status.registered===true
+        };
       })};
     }
     return {exams:exams.map(publicExam)};
@@ -381,12 +391,11 @@ async function api(path, opts = {}) {
     const s=await getDoc(doc(db,'exams',em[1]));
     if(!s.exists())throw new Error('Exam not found');
     const exam=publicExam({id:s.id,...s.data()});
-    let completedByCurrentUser=false;
-    if(uid){
-      const submission=await getDoc(doc(db,'exams',em[1],'submissions',uid));
-      completedByCurrentUser=submission.exists();
-    }
-    return {exam,completedByCurrentUser};
+    // The exam document is public. Do not read the user's submission
+    // every time the exam page opens; this was the direct source of the
+    // repeated BatchGetDocuments 429 requests under load.
+    // Completion is enforced server-side when submitting.
+    return {exam,completedByCurrentUser:false};
   }
   const er=path.match(/^\/api\/exams\/([^/]+)\/(register|submit)$/);
   if(er&&method==='POST'){
