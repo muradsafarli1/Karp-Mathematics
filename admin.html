@@ -1004,6 +1004,10 @@ async function render(){
           patch.timedAttemptCount=timedAttemptCount;
           ex.timedAttemptCount=timedAttemptCount;
         }
+        if(Number(ex.attemptedCount||0)!==timedAttemptCount){
+          patch.attemptedCount=timedAttemptCount;
+          ex.attemptedCount=timedAttemptCount;
+        }
         if(Object.keys(patch).length){
           await updateDoc(doc(db,'exams',ex.id),patch);
           Object.assign(ex,patch);
