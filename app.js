@@ -203,31 +203,46 @@ function publicExam(exam){
   });
   return safe;
 }
+let __apiUserCache={uid:null,loaded:false,user:null};
+
 async function api(path, opts = {}) {
   const {db,auth}=await fb();
   await authReady();
   const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const {collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,runTransaction}=fs;
+  const {collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,runTransaction,increment}=fs;
   const method=(opts.method||'GET').toUpperCase();
   let body={};
   try{body=opts.body?JSON.parse(opts.body):{}}catch{}
   const authUid=auth.currentUser?.uid||null;
   let uid=null,user=null,userDoc=null;
   if(authUid){
-    userDoc=await getDoc(doc(db,'users',authUid));
-    const data=userDoc.exists()?userDoc.data()||{}:{};
-    const active=auth.currentUser?.emailVerified===true && data.requiresEmailVerification!==true;
-    if(userDoc.exists() && active){
-      uid=authUid;
-      user={id:authUid,...data};
+    if(__apiUserCache.loaded && __apiUserCache.uid===authUid){
+      user=__apiUserCache.user;
+      uid=user?.id||null;
+    }else{
+      userDoc=await getDoc(doc(db,'users',authUid));
+      const data=userDoc.exists()?userDoc.data()||{}:{};
+      const active=auth.currentUser?.emailVerified===true && data.requiresEmailVerification!==true;
+      if(userDoc.exists() && active){
+        uid=authUid;
+        user={id:authUid,...data};
+      }
+      __apiUserCache={uid:authUid,loaded:true,user};
     }
   }
   if(path==='/api/me'){
     return {user:user?{id:user.id,name:user.name,email:user.email,role:user.role||'user',createdAt:user.createdAt,photoURL:user.photoURL||'',requiresEmailVerification:user.requiresEmailVerification===true,emailVerified:!!auth.currentUser?.emailVerified}:null};
   }
-  if(path==='/api/logout'){await (await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js')).signOut(auth);return {ok:true};}
+  if(path==='/api/logout'){await (await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js')).signOut(auth);__apiUserCache={uid:null,loaded:false,user:null};return {ok:true};}
   if(uid && (path.startsWith('/api/exams/history') || path.match(/^\/api\/exams\/[^/]+\/(register|submit)$/) || path.startsWith('/api/admin/'))){
     if(userDoc?.exists()) user={id:uid,...userDoc.data()};
+  }
+  const contentContest=path.match(/^\/api\/content\/contest\/([^/]+)$/);
+  if(contentContest && method==='GET'){
+    const contestId=decodeURIComponent(contentContest[1]);
+    const snap=await getDoc(doc(db,'contests',contestId));
+    if(!snap.exists()) throw new Error('Contest not found');
+    return {contest:{id:snap.id,...snap.data()}};
   }
   if(path==='/api/content'){
     // Public content is stored in Firestore and these collections are readable
@@ -349,21 +364,19 @@ async function api(path, opts = {}) {
     const snap=await getDocs(collection(db,'exams'));
     const exams=snap.docs.map(x=>({id:x.id,...x.data()}));
 
-    // Do NOT read every user's submission + registration document here.
-    // The old implementation performed 2 extra Firestore reads per exam on
-    // every Exams-page load. With traffic this multiplied rapidly and could
-    // exhaust the daily read quota.
+    // Read the signed-in user's exam state once, not once per exam.
+    // This keeps Exams-page reads essentially constant as the number of
+    // exams grows and avoids a major source of quota spikes.
     if(uid){
-      const statusEntries=await Promise.all(exams.map(async exam=>{
-        const entry=await getDoc(doc(db,'users',uid,'examEntries',exam.id));
-        const d=entry.exists()?entry.data()||{}:{};
-        return [exam.id,{
+      const entriesSnap=await getDocs(collection(db,'users',uid,'examEntries'));
+      const statusById=new Map(entriesSnap.docs.map(entry=>{
+        const d=entry.data()||{};
+        return [entry.id,{
           completed:d.completed===true,
           registered:d.registered===true,
           participated:d.participated===true
         }];
       }));
-      const statusById=new Map(statusEntries);
       return {exams:exams.map(exam=>{
         const status=statusById.get(exam.id)||{};
         return {...publicExam(exam),
@@ -400,23 +413,45 @@ async function api(path, opts = {}) {
   const er=path.match(/^\/api\/exams\/([^/]+)\/(register|submit)$/);
   if(er&&method==='POST'){
     if(!user) throw new Error('Authentication required');
-    const examRef=doc(db,'exams',er[1]),examSnap=await getDoc(examRef);
-    if(!examSnap.exists()) throw new Error('Exam not found');
+    const examId=er[1];
+    const examRef=doc(db,'exams',examId);
     if(er[2]==='register'){
-      await runTransaction(db,async tx=>{
-        const examRef=doc(db,'exams',er[1]);
-        const regRef=doc(db,'exams',er[1],'registrations',uid);
+      const examSnap=await getDoc(examRef);
+      if(!examSnap.exists()) throw new Error('Exam not found');
+
+      // Only the user's own registration document participates in the
+      // duplicate check. The hot exam document is not read inside the
+      // transaction, so many users can register concurrently without
+      // transaction retries against the same exam document.
+      const regRef=doc(db,'exams',examId,'registrations',uid);
+      const entryRef=doc(db,'users',uid,'examEntries',examId);
+      const created=await runTransaction(db,async tx=>{
         const regSnap=await tx.get(regRef);
-        const examForCount=await tx.get(examRef);
-        if(regSnap.exists())return;
-        const data=examForCount.data()||{};
-        const current=Number(data.registrationCount||0);
-        tx.set(regRef,{userId:uid,registeredAt:new Date().toISOString()},{merge:true});
-        tx.update(examRef,{registrationCount:current+1});
+        if(regSnap.exists())return false;
+        tx.set(regRef,{
+          userId:uid,
+          registeredAt:new Date().toISOString()
+        },{merge:true});
+        return true;
       });
-      return {ok:true};
+
+      if(created){
+        await updateDoc(examRef,{registrationCount:increment(1)});
+        await setDoc(entryRef,{
+          examId,
+          registered:true,
+          registeredAt:new Date().toISOString()
+        },{merge:true});
+      }
+      return {ok:true,registered:true,alreadyRegistered:!created};
     }
-    const subRef=doc(db,'exams',er[1],'submissions',uid);
+
+    // Submit is protected by a single transaction on this user's submission
+    // document. The per-user exam state is updated at the same time, so the
+    // Exams page never needs to scan submission subcollections.
+    const subRef=doc(db,'exams',examId,'submissions',uid);
+    const entryRef=doc(db,'users',uid,'examEntries',examId);
+    const submittedAt=body.submittedAt||new Date().toISOString();
     await runTransaction(db,async tx=>{
       const existing=await tx.get(subRef);
       if(existing.exists())throw new Error('You have already completed this exam.');
@@ -426,11 +461,16 @@ async function api(path, opts = {}) {
         answers:body.answers||{},
         startedAt:body.startedAt||null,
         endedAt:body.endedAt||new Date().toISOString(),
-        submittedAt:body.submittedAt||new Date().toISOString(),
+        submittedAt,
         attemptId:body.attemptId||null,
         durationSeconds:Math.max(0,Number(body.durationSeconds||0)),
         reason:body.reason||'manual'
       });
+      tx.set(entryRef,{
+        examId,
+        completed:true,
+        completedAt:submittedAt
+      },{merge:true});
     });
     return {ok:true};
   }
@@ -679,20 +719,22 @@ async function markKarpRead(type,id,sourceType=''){
   const uid=auth.currentUser?.uid;
   if(!uid||!id)return false;
   const collectionName=await karpReadCollection(type,sourceType);
-  const {doc,runTransaction}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const {doc,runTransaction,updateDoc,increment}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
   const markerRef=doc(db,'users',uid,'readMarks',karpReadMarkerId(type,collectionName,id));
   const contentRef=doc(db,collectionName,String(id));
   try{
-    return await runTransaction(db,async tx=>{
+    // Transaction only touches this user's unique marker. We do not read the
+    // shared content document, avoiding contention when many users open the
+    // same contest/article/problem at once.
+    const created=await runTransaction(db,async tx=>{
       const marker=await tx.get(markerRef);
       if(marker.exists())return false;
-      const content=await tx.get(contentRef);
-      if(!content.exists())return false;
-      const count=Number(content.data()?.readCount||0);
       tx.set(markerRef,{type:String(type),contentId:String(id),collection:String(collectionName),readAt:new Date().toISOString()});
-      tx.update(contentRef,{readCount:count+1});
       return true;
     });
+    if(!created)return false;
+    await updateDoc(contentRef,{readCount:increment(1)});
+    return true;
   }catch(e){console.warn('KARP read tracking failed:',e);return false}
 }
 async function getKarpReadCounts(type,items=[]){
@@ -742,32 +784,30 @@ async function markKarpExamEntry(examId){
   const uid=auth.currentUser?.uid;
   if(!uid||!examId)return false;
 
-  // Do not use a transaction here. Entering an exam is a very common write
-  // and the old transaction read the same exam document + marker + legacy
-  // session, then updated the hot exam counter. Under concurrent traffic
-  // Firestore could retry that transaction repeatedly and produce 429
-  // RESOURCE_EXHAUSTED errors.
   const {
-    doc,getDoc,setDoc,updateDoc,increment
+    doc,runTransaction,setDoc,updateDoc,increment
   }=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
 
   const examRef=doc(db,'exams',String(examId));
   const markerRef=doc(db,'users',uid,'examEntries',String(examId));
 
   try{
-    const marker=await getDoc(markerRef);
-    if(marker.exists() && marker.data()?.participated===true)return false;
-
-    const now=new Date().toISOString();
-    await setDoc(markerRef,{
-      examId:String(examId),
-      participated:true,
-      firstParticipatedAt:marker.data()?.firstParticipatedAt||now,
-      lastParticipatedAt:now
-    },{merge:true});
-
-    // Atomic server-side increment: no read-modify-write transaction and
-    // therefore no transaction retry storm on the exam document.
+    // Protect uniqueness using only this user's marker document. The shared
+    // exam counter is updated atomically after the marker is created.
+    const created=await runTransaction(db,async tx=>{
+      const marker=await tx.get(markerRef);
+      if(marker.exists() && marker.data()?.participated===true)return false;
+      const now=new Date().toISOString();
+      const previous=marker.exists()?marker.data()||{}:{};
+      tx.set(markerRef,{
+        examId:String(examId),
+        participated:true,
+        firstParticipatedAt:previous.firstParticipatedAt||now,
+        lastParticipatedAt:now
+      },{merge:true});
+      return true;
+    });
+    if(!created)return false;
     await updateDoc(examRef,{participatedCount:increment(1)});
     return true;
   }catch(e){
@@ -879,7 +919,7 @@ async function startKarpGuestPresence(){
 }
 async function __writeKarpPresence(online=true){try{if(!__karpPresence)return;const {setDoc,doc,Timestamp,increment}=__karpPresence.fs,u=__karpPresence.user,active=!!online&&__karpIsActiveNow(),device=__karpPresence.device||__karpDeviceInfo();if(active&&!__karpPresence.timeOwner)__karpPresence.timeOwner=__karpTryClaimTimeOwner();if(!active&&__karpPresence.timeOwner){__karpReleaseTimeOwner();__karpPresence.timeOwner=false}if(active&&__karpPresence.timeOwner)__karpRenewTimeOwner();const delta=__karpConsumeElapsed(active),payload={uid:u.uid,visitorId:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',photoURL:u.photoURL||'',online:active,visible:document.visibilityState==='visible',lastSeen:Timestamp.now(),expiresAt:Timestamp.fromMillis(active?Date.now()+70000:0),sessionStartedAt:__karpPresence.sessionStartedAt,firstSeenAt:__karpPresence.firstSeenAt,deviceType:device.deviceType,browser:device.browser,os:device.os,screen:device.screen,language:device.language,platform:device.platform,activity:__karpPresence.activity||{page:'KARP',label:'Browsing'},...(delta>0?{totalActiveSeconds:increment(delta),lastActiveSeconds:delta}:{})};await setDoc(doc(__karpPresence.db,'presence',u.uid),payload,{merge:true});if(delta>0)await __karpLogActiveTime(delta,{db:__karpPresence.db,fs:__karpPresence.fs,visitorId:u.uid,uid:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',device,activity:__karpPresence.activity})}catch(e){console.warn('KARP presence update failed:',e)}}
 function setKarpActivity(activity={}){const next={page:String(activity.page||'KARP'),label:String(activity.label||activity.page||'Browsing'),detail:String(activity.detail||''),question:activity.question==null?null:Number(activity.question)};if(__karpPresence){const prev=__karpPresence.activity||{};if(JSON.stringify(prev)===JSON.stringify(next))return;__karpPresence.activity=next;__writeKarpPresence(true)}else window.__karpPendingActivity=next}
-async function startKarpPresence(){if(window.__karpPresenceStarted)return;window.__karpPresenceStarted=true;try{const {db,auth}=await fb();await authReady();if(!auth.currentUser||auth.currentUser.emailVerified!==true){await startKarpGuestPresence();return}const {getDoc,doc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js'),profileSnap=await getDoc(doc(db,'users',auth.currentUser.uid));if(!profileSnap.exists()||profileSnap.data()?.requiresEmailVerification===true){await startKarpGuestPresence();return}const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js'),now=new Date().toISOString(),device=__karpDeviceInfo();__karpPresence={db,user:auth.currentUser,fs,device,sessionStartedAt:now,firstSeenAt:now,activity:window.__karpPendingActivity||{page:'KARP',label:'Browsing',detail:'',question:null},lastSampleMs:performance.now(),wasActive:false,pendingSeconds:0,timeOwner:false};await __writeKarpPresence(true);if(__karpIsActiveNow()){__karpPresence.timeOwner=__karpTryClaimTimeOwner();__karpPresence.wasActive=__karpPresence.timeOwner;__karpPresence.lastSampleMs=performance.now();await __writeKarpPresence(true)}__karpPresence.timer=setInterval(()=>__writeKarpPresence(true),30000);const stateChange=()=>__writeKarpPresence(true);document.addEventListener('visibilitychange',stateChange);window.addEventListener('focus',stateChange);window.addEventListener('blur',stateChange);window.addEventListener('storage',e=>{if(__karpPresence&&e.key===__karpTimeOwnerKey(__karpPresence.user.uid)&&__karpIsActiveNow()&&!__karpPresence.timeOwner)__writeKarpPresence(true)});window.addEventListener('beforeunload',()=>{try{__karpReleaseTimeOwner();const {setDoc,doc,Timestamp}=__karpPresence.fs;setDoc(doc(__karpPresence.db,'presence',__karpPresence.user.uid),{online:false,visible:false,lastSeen:Timestamp.now(),expiresAt:Timestamp.fromMillis(0)},{merge:true}).catch(()=>{})}catch{}})}catch(e){console.warn('KARP presence could not start:',e)}}
+async function startKarpPresence(){if(window.__karpPresenceStarted)return;window.__karpPresenceStarted=true;try{const {db,auth}=await fb();await authReady();if(!auth.currentUser||auth.currentUser.emailVerified!==true){await startKarpGuestPresence();return}const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js'),now=new Date().toISOString(),device=__karpDeviceInfo();__karpPresence={db,user:auth.currentUser,fs,device,sessionStartedAt:now,firstSeenAt:now,activity:window.__karpPendingActivity||{page:'KARP',label:'Browsing',detail:'',question:null},lastSampleMs:performance.now(),wasActive:false,pendingSeconds:0,timeOwner:false};await __writeKarpPresence(true);if(__karpIsActiveNow()){__karpPresence.timeOwner=__karpTryClaimTimeOwner();__karpPresence.wasActive=__karpPresence.timeOwner;__karpPresence.lastSampleMs=performance.now();await __writeKarpPresence(true)}__karpPresence.timer=setInterval(()=>__writeKarpPresence(true),30000);const stateChange=()=>__writeKarpPresence(true);document.addEventListener('visibilitychange',stateChange);window.addEventListener('focus',stateChange);window.addEventListener('blur',stateChange);window.addEventListener('storage',e=>{if(__karpPresence&&e.key===__karpTimeOwnerKey(__karpPresence.user.uid)&&__karpIsActiveNow()&&!__karpPresence.timeOwner)__writeKarpPresence(true)});window.addEventListener('beforeunload',()=>{try{__karpReleaseTimeOwner();const {setDoc,doc,Timestamp}=__karpPresence.fs;setDoc(doc(__karpPresence.db,'presence',__karpPresence.user.uid),{online:false,visible:false,lastSeen:Timestamp.now(),expiresAt:Timestamp.fromMillis(0)},{merge:true}).catch(()=>{})}catch{}})}catch(e){console.warn('KARP presence could not start:',e)}}
 async function me(){try{return(await api('/api/me')).user}catch{return null}}
 async function logout(){
   try{
