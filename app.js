@@ -806,17 +806,14 @@ async function markKarpExamEntry(examId){
   const uid=auth.currentUser?.uid;
   if(!uid||!examId)return false;
 
-  const {
-    doc,runTransaction,setDoc,updateDoc,increment
-  }=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-
-  const examRef=doc(db,'exams',String(examId));
+  const {doc,runTransaction}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
   const markerRef=doc(db,'users',uid,'examEntries',String(examId));
 
   try{
-    // Protect uniqueness using only this user's marker document. The shared
-    // exam counter is updated atomically after the marker is created.
-    const created=await runTransaction(db,async tx=>{
+    // Only write the individual participant's state. Do not update a shared
+    // exam document when hundreds of participants enter simultaneously.
+    // The Admin panel derives participant counts from per-user examSessions.
+    return await runTransaction(db,async tx=>{
       const marker=await tx.get(markerRef);
       if(marker.exists() && marker.data()?.participated===true)return false;
       const now=new Date().toISOString();
@@ -829,9 +826,6 @@ async function markKarpExamEntry(examId){
       },{merge:true});
       return true;
     });
-    if(!created)return false;
-    await updateDoc(examRef,{participatedCount:increment(1)});
-    return true;
   }catch(e){
     console.warn('KARP exam participation tracking failed:',e);
     return false;
