@@ -438,9 +438,14 @@ async function api(path, opts = {}) {
         await batch.commit();
         return {ok:true,registered:true,alreadyRegistered:false};
       }catch(e){
-        // A second click/race against an existing registration is a normal
-        // duplicate, not a Firestore transaction failure.
-        if(e?.code==='permission-denied') return {ok:true,registered:true,alreadyRegistered:true};
+        // With immutable registration documents, permission-denied here means
+        // the registration already exists (the batch is atomic, so the count
+        // was not incremented). Sync the lightweight user state so the UI
+        // immediately shows Registered on the next load.
+        if(e?.code==='permission-denied'){
+          await setDoc(entryRef,{examId,registered:true},{merge:true}).catch(()=>{});
+          return {ok:true,registered:true,alreadyRegistered:true};
+        }
         throw e;
       }
     }
