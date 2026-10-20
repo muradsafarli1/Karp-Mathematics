@@ -702,8 +702,8 @@ function __usersOnline(p,now=Date.now()){
   const exp=__usersTimestamp(p?.expiresAt);
   return !!p?.online&&exp>now;
 }
-function __usersDuration(p,now=Date.now()){
-  const stored=Math.max(0,Math.floor(Number(p?.totalActiveSeconds||0)));
+function __usersDuration(p,now=Date.now(),activitySeconds=0){
+  const stored=Math.max(0,Math.floor(Number(p?.totalActiveSeconds||0)),Math.floor(Number(activitySeconds||0)));
   const last=__usersTimestamp(p?.lastSeen);
   if(__usersOnline(p,now)&&last>0)return stored+Math.max(0,Math.floor((now-last)/1000));
   return stored;
@@ -819,10 +819,17 @@ function __usersRender(){
   const trackedGuests=visitorDocs.filter(p=>__usersVisitorKind(p)==='guest').length;
   const accountCreatedToday=users.filter(u=>__usersTimestamp(u.createdAt)>=dayStart).length;
   const seenToday=new Set(visitorDocs.filter(p=>__usersTimestamp(p.lastSeen)>=dayStart).map(p=>String(p.visitorId||p.uid||p.guestId||p.id||'').trim()).filter(Boolean)).size;
-  const totalActive=visitorDocs.reduce((sum,p)=>sum+__usersDuration(p,now),0);
-  const accountActive=visitorDocs.filter(p=>__usersVisitorKind(p)==='account').reduce((sum,p)=>sum+__usersDuration(p,now),0);
-  const guestActive=visitorDocs.filter(p=>__usersVisitorKind(p)==='guest').reduce((sum,p)=>sum+__usersDuration(p,now),0);
+  const totalActive=visitorDocs.reduce((sum,p)=>sum+__usersDuration(p,now,visitorSeconds(p)),0);
+  const accountActive=visitorDocs.filter(p=>__usersVisitorKind(p)==='account').reduce((sum,p)=>sum+__usersDuration(p,now,visitorSeconds(p)),0);
+  const guestActive=visitorDocs.filter(p=>__usersVisitorKind(p)==='guest').reduce((sum,p)=>sum+__usersDuration(p,now,visitorSeconds(p)),0);
   const activityRecords=(__usersAnalytics.activity||[]).filter(p=>String(p.uid||'')!==String(adminUid||''));
+  const activityTotals=new Map();
+  activityRecords.forEach(r=>{
+    const id=String(r.visitorId||r.uid||r.guestId||'').trim();
+    if(!id)return;
+    activityTotals.set(id,(activityTotals.get(id)||0)+Math.max(0,Number(r.activeSeconds||0)));
+  });
+  const visitorSeconds=p=>activityTotals.get(String(p?.visitorId||p?.uid||p?.guestId||p?.id||''))||0;
   const todayRecords=activityRecords.filter(p=>__usersTimestamp(p.timestamp)>=dayStart);
   const todayActive=todayRecords.reduce((sum,p)=>sum+Math.max(0,Number(p.activeSeconds||0)),0);
   const weekStart=now-7*24*60*60*1000;
@@ -847,21 +854,21 @@ function __usersRender(){
   });
   const topRows=(obj)=>Object.entries(obj).sort((a,b)=>b[1]-a[1]);
   const statList=(obj,total,empty='No live data')=>{const rows=topRows(obj);if(!rows.length)return '<div class="users-stat-list"><div class="users-note" style="border-top:0">'+empty+'</div></div>';return '<div class="users-stat-list">'+rows.map(([k,v])=>{const pct=total?Math.round(v/total*100):0;return '<div><div class="users-stat-row"><span>'+esc(k)+'</span><strong>'+v+' · '+pct+'%</strong></div><div class="users-stat-bar"><div class="users-stat-fill" style="width:'+pct+'%"></div></div></div>'}).join('')+'</div>'};
-  const sortedLiveVisitors=onlineVisitors.slice().sort((a,b)=>__usersDuration(b,now)-__usersDuration(a,now)||__usersTimestamp(b.lastSeen)-__usersTimestamp(a.lastSeen));
+  const sortedLiveVisitors=onlineVisitors.slice().sort((a,b)=>__usersDuration(b,now,visitorSeconds(b))-__usersDuration(a,now,visitorSeconds(a))||__usersTimestamp(b.lastSeen)-__usersTimestamp(a.lastSeen));
   const liveRows=sortedLiveVisitors.slice(0,__usersLiveLimit).map(p=>{
     const kind=__usersVisitorKind(p),name=kind==='guest'?'Anonymous visitor':(p.name||userMap.get(p.uid)?.name||'KARP Member'),email=kind==='guest'?'No account':(p.email||userMap.get(p.uid)?.email||'—');
-    return '<div class="users-live-row"><div><div class="users-live-who"><span class="visitor-online"></span>'+esc(name)+'</div><div class="users-live-meta">'+esc(email)+' · '+(kind==='guest'?'Guest':'Account')+'</div></div><div><div class="users-live-status users-live-green">Online now · '+esc(__usersFormatDuration(__usersDuration(p,now)))+'</div><div class="users-live-meta">'+esc(__usersLocationLabel(p))+'</div></div><div class="users-device">'+esc(__usersDeviceLabel(p))+'<br>'+esc(p.screen||'')+'</div><div class="users-live-meta">'+esc(__usersDate(p.lastSeen))+'</div></div>';
+    return '<div class="users-live-row"><div><div class="users-live-who"><span class="visitor-online"></span>'+esc(name)+'</div><div class="users-live-meta">'+esc(email)+' · '+(kind==='guest'?'Guest':'Account')+'</div></div><div><div class="users-live-status users-live-green">Online now · '+esc(__usersFormatDuration(__usersDuration(p,now,visitorSeconds(p))))+'</div><div class="users-live-meta">'+esc(__usersLocationLabel(p))+'</div></div><div class="users-device">'+esc(__usersDeviceLabel(p))+'<br>'+esc(p.screen||'')+'</div><div class="users-live-meta">'+esc(__usersDate(p.lastSeen))+'</div></div>';
   }).join('');
-  const sortedVisitorDocs=visitorDocs.slice().sort((a,b)=>__usersOnline(b,now)-__usersOnline(a,now)||__usersTimestamp(b.lastSeen)-__usersTimestamp(a.lastSeen)||__usersDuration(b,now)-__usersDuration(a,now));
+  const sortedVisitorDocs=visitorDocs.slice().sort((a,b)=>__usersOnline(b,now)-__usersOnline(a,now)||__usersTimestamp(b.lastSeen)-__usersTimestamp(a.lastSeen)||__usersDuration(b,now,visitorSeconds(b))-__usersDuration(a,now,visitorSeconds(a)));
   const allRows=sortedVisitorDocs.slice(0,__usersVisitorLimit).map(p=>{
     const kind=__usersVisitorKind(p),name=kind==='guest'?'Anonymous visitor':(p.name||userMap.get(p.uid)?.name||'KARP Member'),email=kind==='guest'?'—':(p.email||userMap.get(p.uid)?.email||'—'),online=__usersOnline(p,now);
-    return '<tr><td>'+ (online?'<span class="admin-online-dot"></span>Online':'<span class="admin-offline-dot"></span>Offline')+'</td><td><strong>'+esc(name)+'</strong><br><span class="visitor-meta">'+esc(kind==='guest'?'Anonymous visitor':'Account')+'</span></td><td>'+esc(email)+'</td><td>'+esc(__usersDeviceLabel(p))+'</td><td>'+esc(__usersLocationLabel(p))+'</td><td><strong>'+esc(__usersFormatDuration(__usersDuration(p,now)))+'</strong></td><td>'+esc(__usersDate(p.firstSeenAt||p.sessionStartedAt))+'</td><td>'+esc(__usersDate(p.lastSeen))+'</td></tr>';
+    return '<tr><td>'+ (online?'<span class="admin-online-dot"></span>Online':'<span class="admin-offline-dot"></span>Offline')+'</td><td><strong>'+esc(name)+'</strong><br><span class="visitor-meta">'+esc(kind==='guest'?'Anonymous visitor':'Account')+'</span></td><td>'+esc(email)+'</td><td>'+esc(__usersDeviceLabel(p))+'</td><td>'+esc(__usersLocationLabel(p))+'</td><td><strong>'+esc(__usersFormatDuration(__usersDuration(p,now,visitorSeconds(p))))+'</strong></td><td>'+esc(__usersDate(p.firstSeenAt||p.sessionStartedAt))+'</td><td>'+esc(__usersDate(p.lastSeen))+'</td></tr>';
   }).join('');
   const sortedAccounts=users.slice().sort((a,b)=>__usersOnline((visitorDocs.find(p=>p.uid===b.id)||{}),now)-__usersOnline((visitorDocs.find(p=>p.uid===a.id)||{}),now)||__usersTimestamp(b.createdAt)-__usersTimestamp(a.createdAt));
   const accountRows=sortedAccounts.map(u=>{
     const p=visitorDocs.find(x=>String(x.uid||x.id)===String(u.id)&&__usersVisitorKind(x)==='account')||{},
       online=__usersOnline(p,now),
-      seconds=__usersDuration({...p,totalActiveSeconds:Math.max(Number(p.totalActiveSeconds||0),Number(u.totalActiveSeconds||0))},now),
+      seconds=__usersDuration({...p,totalActiveSeconds:Math.max(Number(p.totalActiveSeconds||0),Number(u.totalActiveSeconds||0))},now,visitorSeconds(p)),
       lastLogin=u.lastLoginAt||null,
       lastSeen=p.lastSeen||u.lastSeen||null,
       lastLogout=u.lastLogoutAt||null,
