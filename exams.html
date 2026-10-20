@@ -88,12 +88,10 @@ function parseExamInstant(value,offset=4){
         :(previewAction+(completed?'<a class="btn" href="/exam.html?id='+encodeURIComponent(e.id)+'&review=1">Completed</a>':'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Open →</a>'));
       const count=isUpcoming
         ?Math.max(0,Number(e.registrationCount||0))
-        :Math.max(0,Number(e.attemptedCount??e.timedAttemptCount??0));
-      const countText=count>0
-        ?count+(isUpcoming
-          ?(count===1?' person registered':' people registered')
-          :' attempted')
-        :'';
+        :Math.max(0,Number(e.timedAttemptCount||0),Number(e.attemptedCount||0));
+      const countText=isUpcoming
+        ?(count>0?count+(count===1?' person registered':' people registered'):'')
+        :count+' timed attempts';
       const meta=isUpcoming
         ?'<div class="exam-meta"><div class="exam-meta-item"><span>Date</span><strong>'+escapeHtml(dateLabel(e,state.dt))+'</strong></div><div class="exam-meta-item"><span>Start time</span><strong>'+escapeHtml(timeLabel(state.dt,e.timezoneOffset??4))+'</strong></div><div class="exam-meta-item"><span>Duration</span><strong>'+escapeHtml(durationLabel)+'</strong></div><div class="exam-meta-item"><span>Questions</span><strong>'+questionCount+'</strong></div></div>'
         :'<div class="exam-meta prominent"><div class="exam-meta-item"><span>Duration</span><strong>'+escapeHtml(durationLabel)+'</strong></div><div class="exam-meta-item"><span>Questions</span><strong>'+questionCount+'</strong></div></div>';
