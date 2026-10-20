@@ -435,13 +435,13 @@ async function api(path, opts = {}) {
         return true;
       });
 
+      await setDoc(entryRef,{
+        examId,
+        registered:true,
+        registeredAt:new Date().toISOString()
+      },{merge:true});
       if(created){
         await updateDoc(examRef,{registrationCount:increment(1)});
-        await setDoc(entryRef,{
-          examId,
-          registered:true,
-          registeredAt:new Date().toISOString()
-        },{merge:true});
       }
       return {ok:true,registered:true,alreadyRegistered:!created};
     }
