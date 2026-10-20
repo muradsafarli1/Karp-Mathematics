@@ -360,7 +360,11 @@ service cloud.firestore {
       }
 
       match /submissions/{uid} {
-        allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+        // Support direct reads by owner and safe collection-group queries
+        // filtered by userId, which lets Exam history discover completed exams
+        // without probing every exam's submission document.
+        allow read: if isAdmin() || (signedIn()
+          && (request.auth.uid == uid || resource.data.userId == request.auth.uid));
         allow create: if signedIn()
           && request.auth.uid == uid
           && request.resource.data.userId == request.auth.uid;
