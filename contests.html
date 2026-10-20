@@ -26,7 +26,7 @@
       const card=event.target.closest('[data-read-id]');
       if(!card)return;
       event.preventDefault();
-      try{await markKarpRead('contest',card.dataset.readId)}catch(e){console.warn('Contest read tracking failed:',e)}
+      markKarpRead('contest',card.dataset.readId).catch(e=>console.warn('Contest read tracking failed:',e));
       location.href='/contest.html?id='+encodeURIComponent(card.dataset.readId);
     });
     const input=document.getElementById('contestSearch');
