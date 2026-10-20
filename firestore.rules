@@ -372,6 +372,13 @@ service cloud.firestore {
         allow delete: if isAdmin();
       }
     }
+    // Collection-group access for a signed-in user's own exam submissions.
+    // The userId equality filter in app.js keeps this query scoped to that user.
+    match /{path=**}/submissions/{submissionId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+    }
+
     match /books/{id} {
       allow read: if true;
       allow create, delete: if isAdmin();
