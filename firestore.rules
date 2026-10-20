@@ -352,7 +352,10 @@ service cloud.firestore {
 
       match /registrations/{uid} {
         allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
-        allow create, update: if signedIn() && request.auth.uid == uid;
+        // Registration is immutable for normal users so a duplicate create
+        // can never silently increment the public registration counter again.
+        allow create: if signedIn() && request.auth.uid == uid;
+        allow update: if isAdmin();
         allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
       }
 
