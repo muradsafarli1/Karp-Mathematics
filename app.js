@@ -209,7 +209,7 @@ async function api(path, opts = {}) {
   const {db,auth}=await fb();
   await authReady();
   const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const {collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,runTransaction,increment,writeBatch}=fs;
+  const {collection,collectionGroup,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,runTransaction,increment,writeBatch,query,where}=fs;
   const method=(opts.method||'GET').toUpperCase();
   let body={};
   try{body=opts.body?JSON.parse(opts.body):{}}catch{}
@@ -364,11 +364,14 @@ async function api(path, opts = {}) {
     const snap=await getDocs(collection(db,'exams'));
     const exams=snap.docs.map(x=>({id:x.id,...x.data()}));
 
-    // Read the signed-in user's exam state once, not once per exam.
-    // This keeps Exams-page reads essentially constant as the number of
-    // exams grows and avoids a major source of quota spikes.
     if(uid){
-      const entriesSnap=await getDocs(collection(db,'users',uid,'examEntries'));
+      // Load the user's state once and also discover legacy submissions through
+      // a userId-filtered collection-group query. This does not read one empty
+      // submission document per exam, so it stays far cheaper than the old loop.
+      const [entriesSnap,submissionsSnap]=await Promise.all([
+        getDocs(collection(db,'users',uid,'examEntries')),
+        getDocs(query(collectionGroup(db,'submissions'),where('userId','==',uid)))
+      ]);
       const statusById=new Map(entriesSnap.docs.map(entry=>{
         const d=entry.data()||{};
         return [entry.id,{
@@ -377,10 +380,13 @@ async function api(path, opts = {}) {
           participated:d.participated===true
         }];
       }));
+      const submittedExamIds=new Set(submissionsSnap.docs
+        .map(s=>s.ref.parent.parent?.id)
+        .filter(Boolean));
       return {exams:exams.map(exam=>{
         const status=statusById.get(exam.id)||{};
         return {...publicExam(exam),
-          completedByCurrentUser:status.completed===true,
+          completedByCurrentUser:status.completed===true||submittedExamIds.has(exam.id),
           registeredByCurrentUser:status.registered===true
         };
       })};
@@ -389,15 +395,22 @@ async function api(path, opts = {}) {
   }
   if(path==='/api/exams/history'){
     if(!user) throw new Error('Authentication required');
-    const snap=await getDocs(collection(db,'exams')),history=[];
-    for(const x of snap.docs){
-      const sub=await getDoc(doc(db,'exams',x.id,'submissions',uid));
-      if(sub.exists()){
-        const s=sub.data();
-        const rawExam={id:x.id,...x.data()},safe=publicExam(rawExam),reviewQuestions=(rawExam.questions||[]).map(q=>({...q}));history.push({examId:x.id,title:safe.titleEn||safe.title||'',titleEn:safe.titleEn||safe.title||'',titleAz:safe.titleAz||'',submittedAt:s.submittedAt,answers:s.answers||{},questions:reviewQuestions});
-      }
-    }
-    history.sort((a,b)=>new Date(b.submittedAt)-new Date(a.submittedAt)); return {history};
+    // A single collection-group query replaces one submission getDoc per exam.
+    const [submissionsSnap,examSnap]=await Promise.all([
+      getDocs(query(collectionGroup(db,'submissions'),where('userId','==',uid))),
+      getDocs(collection(db,'exams'))
+    ]);
+    const examsById=new Map(examSnap.docs.map(x=>[x.id,{id:x.id,...x.data()}]));
+    const history=submissionsSnap.docs.map(sub=>{
+      const examId=sub.ref.parent.parent?.id;
+      const rawExam=examsById.get(examId);
+      if(!rawExam)return null;
+      const s=sub.data()||{},safe=publicExam(rawExam);
+      const reviewQuestions=(rawExam.questions||[]).map(q=>({...q}));
+      return {examId,title:safe.titleEn||safe.title||'',titleEn:safe.titleEn||safe.title||'',titleAz:safe.titleAz||'',submittedAt:s.submittedAt,answers:s.answers||{},questions:reviewQuestions};
+    }).filter(Boolean);
+    history.sort((a,b)=>new Date(b.submittedAt)-new Date(a.submittedAt));
+    return {history};
   }
   const em=path.match(/^\/api\/exams\/([^/]+)$/);
   if(em&&method==='GET'){
