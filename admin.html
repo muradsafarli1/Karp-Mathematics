@@ -988,9 +988,25 @@ async function render(){
       for(const ex of examBase){
         const current=Number(ex.participatedCount||0),derived=historicalParticipantIds.get(String(ex.id))?.size||0;
         const migratedCount=Math.max(current,derived);
+        const sessionsForExam=sessions.filter(s=>
+          String(s.examId)===String(ex.id) &&
+          !!s.uid &&
+          !!(s.startedAt||s.attemptId||['active','completed'].includes(String(s.status||'').toLowerCase())) &&
+          String(s.status||'')!=='archive-view'
+        );
+        const timedAttemptCount=sessionsForExam.length;
+        const patch={};
         if(typeof ex.participatedCount!=='number'||migratedCount>current){
-          await updateDoc(doc(db,'exams',ex.id),{participatedCount:migratedCount});
+          patch.participatedCount=migratedCount;
           ex.participatedCount=migratedCount;
+        }
+        if(Number(ex.timedAttemptCount||0)!==timedAttemptCount){
+          patch.timedAttemptCount=timedAttemptCount;
+          ex.timedAttemptCount=timedAttemptCount;
+        }
+        if(Object.keys(patch).length){
+          await updateDoc(doc(db,'exams',ex.id),patch);
+          Object.assign(ex,patch);
         }
       }
       const exams=examBase.sort((a,b)=>new Date(String(b.date||b.createdAt||0))-new Date(String(a.date||a.createdAt||0)));
