@@ -925,9 +925,9 @@ async function __karpLogActiveTime(delta,{db,fs,visitorId,uid=null,userType='gue
       browser:String(device.browser||'Unknown browser'),os:String(device.os||'Unknown OS'),
       screen:String(device.screen||''),language:String(device.language||''),
       page:String(activity.page||'KARP'),pageLabel:String(activity.label||activity.page||'Browsing'),
-      timestamp:serverTimestamp(),updatedAt:serverTimestamp(),activeSeconds:seconds?increment(seconds):0,
-      sessionId:sid
+      timestamp:serverTimestamp(),updatedAt:serverTimestamp(),sessionId:sid
     };
+    if(seconds)data.activeSeconds=increment(seconds);
     if(sessionStartedAt)data.sessionStartedAt=String(sessionStartedAt);
     if(sessionEnded)data.sessionEndedAt=serverTimestamp();
     await setDoc(doc(db,'visitorActivity',eventId),data,{merge:true});
