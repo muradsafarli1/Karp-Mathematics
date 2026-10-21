@@ -256,20 +256,37 @@ body.users-analytics-fullscreen .admin .wrap{padding-top:26px!important}
  body.users-analytics-fullscreen .admin .wrap{padding:18px 12px!important}
  .users-primary-metrics .users-kpi{padding:15px!important;min-height:108px!important}
 }
+</style><style>
+.users-search-panel{overflow:hidden}
+.users-search-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 17px;border-bottom:1px solid #e2e4e6;background:#fff}
+.users-search-head>div{display:grid;gap:4px}.users-search-head strong{font-size:13px}.users-search-head span{font-size:10px;color:#777e85}
+.users-search-input{width:min(360px,100%);box-sizing:border-box;padding:10px 12px;border:1px solid #d9dad8;border-radius:9px;background:#fff;color:#17191c;font:11px inherit;outline:none}
+.users-search-input:focus{border-color:#aeb4ba;box-shadow:0 0 0 3px rgba(130,138,146,.10)}
+.users-click-row{cursor:pointer;transition:background .12s ease}.users-click-row:hover{background:#f6f7f7!important}
+.users-user-detail{border:1px solid #e2e4e6;border-radius:15px;background:#fff;overflow:hidden}
+.users-user-detail-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding:20px 22px;border-bottom:1px solid #e2e4e6}
+.users-user-detail-head h3{margin:5px 0 3px;font-size:24px;letter-spacing:-.6px}.users-user-detail-head p{margin:0;color:#777e85;font-size:10px}
+.users-detail-close{padding:8px 11px;border:1px solid #d9dad8;border-radius:9px;background:#fff;color:#343a40;font-size:10px;font-weight:800;cursor:pointer}
+.users-detail-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:14px 16px;background:#f7f7f5}
+.users-detail-kpis>div{padding:13px;border:1px solid #e2e4e6;border-radius:11px;background:#fff}.users-detail-kpis strong{display:block;font-size:16px;line-height:1.2;overflow-wrap:anywhere}.users-detail-kpis span{display:block;margin-top:5px;font-size:9px;color:#777e85}
+.users-detail-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:14px;padding:16px}.users-detail-panel{border:1px solid #e2e4e6;border-radius:12px;overflow:hidden}.users-detail-panel-title{padding:11px 13px;border-bottom:1px solid #e2e4e6;font-size:11px;font-weight:800}
+.users-detail-day{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 13px;border-bottom:1px solid #edf0f1}.users-detail-day:last-child{border-bottom:0}.users-detail-day div{display:grid;gap:2px}.users-detail-day span{font-size:8px;color:#92979c}.users-detail-day>strong{font-size:11px;white-space:nowrap}
+.users-detail-info{display:grid;grid-template-columns:100px minmax(0,1fr);gap:9px 12px;padding:13px;font-size:10px}.users-detail-info span{color:#858b92}.users-detail-info strong{overflow-wrap:anywhere}.users-detail-empty{padding:20px 13px;color:#777e85;font-size:10px}
+@media(max-width:800px){.users-search-head{align-items:flex-start;flex-direction:column}.users-search-input{width:100%}.users-detail-kpis{grid-template-columns:1fr 1fr}.users-detail-grid{grid-template-columns:1fr}}
 </style></head><body><div id="root"></div><script>
 const __adminSavedSection=(()=>{try{return new URLSearchParams(location.search).get('section')||localStorage.getItem('karp_admin_section')||'problems'}catch{return 'problems'}})();
 let state={type:__adminSavedSection,editing:null},liveDocs=[],liveUnsub=null,liveTimer=null,pendingVideoThumbnail='',pendingFounderImage='',pendingMeetingImage='',pendingBookFile=null,pendingJournalFile=null,booksAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''},journalsAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function startAdminPresence(db,u){
   try{
-    const {doc,setDoc,Timestamp}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const {doc,setDoc,Timestamp,serverTimestamp}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
     const write=()=>setDoc(doc(db,'presence',u.id),{
       uid:u.id,
       name:u.name||'KARP Admin',
       photoURL:u.photoURL||'',
       online:true,
       visible:!document.hidden,
-      lastSeen:Timestamp.now(),
+      lastSeen:serverTimestamp(),
       expiresAt:Timestamp.fromMillis(Date.now()+70000),
       activity:{page:'Admin',label:'Admin panel',detail:state.type==='users'?'Users':'Admin'}
     },{merge:true}).catch(e=>console.warn('KARP admin presence update failed:',e));
@@ -277,7 +294,7 @@ async function startAdminPresence(db,u){
     window.__adminPresenceTimer=setInterval(write,30000);
     document.addEventListener('visibilitychange',write);
     window.addEventListener('beforeunload',()=>setDoc(doc(db,'presence',u.id),{
-      online:false,visible:false,lastSeen:Timestamp.now(),expiresAt:Timestamp.fromMillis(0)
+      online:false,visible:false,lastSeen:serverTimestamp(),expiresAt:Timestamp.fromMillis(0)
     },{merge:true}).catch(()=>{}));
   }catch(e){console.warn('KARP admin presence could not start:',e)}
 }
@@ -496,7 +513,7 @@ function renderLivePresence(){
   const el=document.getElementById('live-presence');if(!el)return;
   const now=Date.now();
   const rows=(Array.isArray(liveDocs)?liveDocs:[]).filter(p=>p&&p.visitorId);
-  const onlineRows=rows.filter(p=>p.online===true&&presenceMillis(p.expiresAt)>now).sort((a,b)=>presenceMillis(b.lastSeen)-presenceMillis(a.lastSeen));
+  const onlineRows=rows.filter(p=>p.online===true&&presenceMillis(p.lastSeen)>0&&presenceMillis(p.lastSeen)<=now+5000&&now-presenceMillis(p.lastSeen)<=75000).sort((a,b)=>presenceMillis(b.lastSeen)-presenceMillis(a.lastSeen));
   const accounts=rows.filter(p=>presenceKind(p)==='account').length;
   const guests=rows.filter(p=>presenceKind(p)==='guest').length;
   const onlinePeople=onlineRows.map(p=>{
@@ -510,7 +527,7 @@ function renderLivePresence(){
     .sort((a,b)=>presenceMillis(b.lastSeen)-presenceMillis(a.lastSeen))
     .slice(0,80);
   const recentRows=recent.map(p=>{
-    const isOnline=p.online===true&&presenceMillis(p.expiresAt)>now;
+    const isOnline=p.online===true&&presenceMillis(p.lastSeen)>0&&presenceMillis(p.lastSeen)<=now+5000&&now-presenceMillis(p.lastSeen)<=75000;
     const who=p.userType==='guest'?'Anonymous visitor':(p.name||'KARP Member');
     const last=presenceMillis(p.lastSeen);
     const a=p.activity||{};
@@ -689,9 +706,9 @@ async function saveBookAdmin(){
     pendingBookFile=null;state.editing=null;toast(isEdit?'Book updated.':'Book uploaded successfully.');render();
   }catch(e){toast(e.message||'Could not save the book.');button.disabled=false;if(status)status.textContent='Save failed.'}
 }
-let __usersAnalytics={unsubUsers:null,unsubPresence:null,unsubActivity:null,users:[],presence:[],activity:[],activityError:'',activityLoading:true,activityKey:'',db:null,adminUid:null,started:false,timer:null};
+let __usersAnalytics={unsubUsers:null,unsubPresence:null,unsubActivity:null,users:[],presence:[],activity:[],activityError:'',activityLoading:true,activityKey:'',db:null,adminUid:null,started:false,timer:null,searchTerm:'',selectedId:null};
 
-let __usersLiveLimit=15,__usersVisitorLimit=15,__usersAccountLimit=25;
+let __usersLiveLimit=15,__usersVisitorLimit=50,__usersAccountLimit=25;
 function __usersTimestamp(v){
   if(v?.toMillis)return v.toMillis();
   if(v?.toDate){const d=v.toDate();return d.getTime()}
@@ -699,8 +716,9 @@ function __usersTimestamp(v){
   const parsed=Date.parse(String(v||''));return Number.isFinite(parsed)?parsed:0;
 }
 function __usersOnline(p,now=Date.now()){
-  const exp=__usersTimestamp(p?.expiresAt);
-  return !!p?.online&&exp>now;
+  const last=__usersTimestamp(p?.lastSeen);
+  if(!p?.online||!last)return false;
+  return last<=now+5000&&now-last<=75000;
 }
 function __usersDuration(p,now=Date.now(),activitySeconds=0){
   const stored=Math.max(0,Math.floor(Number(p?.totalActiveSeconds||0)),Math.floor(Number(activitySeconds||0)));
@@ -715,9 +733,17 @@ function __usersFormatDuration(sec){
   if(s===0)return '0m';
   return s+'s';
 }
+function __usersFormatMinutes(sec){
+  const n=Math.max(0,Math.floor(Number(sec)||0));
+  if(n<60)return n+'s';
+  const m=Math.floor(n/60),s=n%60;
+  if(m<60)return m+'m '+String(s).padStart(2,'0')+'s';
+  return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m';
+}
 function __usersDate(v){
   const ms=__usersTimestamp(v);
-  return ms?new Date(ms).toLocaleString():'—';
+  if(!ms||ms>Date.now()+5000)return '—';
+  return new Date(ms).toLocaleString();
 }
 function __usersDayStart(){
   const d=new Date();d.setHours(0,0,0,0);return d.getTime();
@@ -735,6 +761,10 @@ function __usersLocationLabel(p){
 function __usersLocalDateString(ms){
   const d=new Date(ms);
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function __usersIdentity(p,userMap){
+  const kind=__usersVisitorKind(p),u=kind==='account'?userMap.get(String(p.uid||p.id||'')):null;
+  return {kind,name:kind==='guest'?'Anonymous visitor':(p.name||u?.name||'KARP Member'),email:kind==='guest'?'—':(p.email||u?.email||'—'),id:String(p.visitorId||p.uid||p.guestId||p.id||''),user:u};
 }
 function __usersLoadActivity(db,force=false){
   if(!db)return;
@@ -759,6 +789,80 @@ function __usersLoadActivity(db,force=false){
     console.warn('KARP active-time history query failed:',e);
     if(__usersAnalytics.activityKey===key){__usersAnalytics.activityLoading=false;__usersAnalytics.activityError=e.message||'Could not load time history.';__usersRender()}
   });
+}
+function __usersRender(){
+  if(state.type!=='users')return;
+  const m=document.getElementById('main');if(!m)return;
+  const users=__usersAnalytics.users||[],presence=__usersAnalytics.presence||[],now=Date.now(),dayStart=__usersDayStart(),adminUid=__usersAnalytics.adminUid;
+  const userMap=new Map(users.map(u=>[String(u.id),u]));
+  const visitorDocs=presence.filter(p=>p&&p.id!==adminUid&&(p.visitorId||p.uid||p.userType==='guest'||String(p.guestId||'').startsWith('guest_')));
+  const recordedIds=new Set(visitorDocs.filter(p=>__usersVisitorKind(p)==='account').map(p=>String(p.uid||p.id||'')));
+  users.forEach(u=>{
+    const existing=visitorDocs.find(p=>String(p.uid||p.id||'')===String(u.id)&&__usersVisitorKind(p)==='account');
+    if(existing){
+      existing.totalActiveSeconds=Math.max(Number(existing.totalActiveSeconds||0),Number(u.totalActiveSeconds||0));
+      if(!existing.firstSeenAt&&u.createdAt)existing.firstSeenAt=u.createdAt;
+      if(!existing.name&&u.name)existing.name=u.name;
+      if(!existing.email&&u.email)existing.email=u.email;
+      return;
+    }
+    if(recordedIds.has(String(u.id)))return;
+    const hasLegacyActivity=Number(u.totalActiveSeconds||0)>0||u.lastSeen||u.activity;
+    if(hasLegacyActivity){
+      visitorDocs.push({id:u.id,uid:u.id,visitorId:u.id,userType:'account',name:u.name||'KARP Member',email:u.email||'',online:false,totalActiveSeconds:Number(u.totalActiveSeconds||0),lastSeen:u.lastSeen||null,firstSeenAt:u.createdAt||null,activity:u.activity||null,legacyProfileFallback:true});
+      recordedIds.add(String(u.id));
+    }
+  });
+  const activityRecords=(__usersAnalytics.activity||[]).filter(p=>{const t=__usersTimestamp(p.timestamp);return String(p.uid||'')!==String(adminUid||'')&&t>0&&t<=now+5000});
+  const activityTotals=new Map();
+  activityRecords.forEach(r=>{const id=String(r.visitorId||r.uid||r.guestId||'').trim();if(id)activityTotals.set(id,(activityTotals.get(id)||0)+Math.max(0,Number(r.activeSeconds||0)))}); 
+  const visitorSeconds=p=>activityTotals.get(String(p?.visitorId||p?.uid||p?.guestId||p?.id||''))||0;
+  const onlineVisitors=visitorDocs.filter(p=>__usersOnline(p,now));
+  const onlineAccounts=onlineVisitors.filter(p=>__usersVisitorKind(p)==='account');
+  const onlineGuests=onlineVisitors.filter(p=>__usersVisitorKind(p)==='guest');
+  const trackedAccounts=visitorDocs.filter(p=>__usersVisitorKind(p)==='account').length;
+  const trackedGuests=visitorDocs.filter(p=>__usersVisitorKind(p)==='guest').length;
+  const accountCreatedToday=users.filter(u=>__usersTimestamp(u.createdAt)>=dayStart).length;
+  const seenToday=new Set(visitorDocs.filter(p=>{const t=__usersTimestamp(p.lastSeen);return t>=dayStart&&t<=now+5000}).map(p=>String(p.visitorId||p.uid||p.guestId||p.id||'').trim()).filter(Boolean)).size;
+  const totalActive=visitorDocs.reduce((sum,p)=>sum+__usersDuration(p,now,visitorSeconds(p)),0);
+  const accountActive=visitorDocs.filter(p=>__usersVisitorKind(p)==='account').reduce((sum,p)=>sum+__usersDuration(p,now,visitorSeconds(p)),0);
+  const guestActive=visitorDocs.filter(p=>__usersVisitorKind(p)==='guest').reduce((sum,p)=>sum+__usersDuration(p,now,visitorSeconds(p)),0);
+  const todayRecords=activityRecords.filter(p=>__usersTimestamp(p.timestamp)>=dayStart);
+  const todayActive=todayRecords.reduce((sum,p)=>sum+Math.max(0,Number(p.activeSeconds||0)),0);
+  const dayPoints=[];
+  for(let i=6;i>=0;i--){const d=new Date(now);d.setHours(0,0,0,0);d.setDate(d.getDate()-i);const key=__usersLocalDateString(d.getTime());const records=activityRecords.filter(p=>__usersLocalDateString(__usersTimestamp(p.timestamp))===key);dayPoints.push({key,label:d.toLocaleDateString(undefined,{weekday:'short'}),dateLabel:d.toLocaleDateString(undefined,{day:'numeric',month:'short'}),seconds:records.reduce((sum,p)=>sum+Math.max(0,Number(p.activeSeconds||0)),0),count:records.length})}
+  const chartMax=Math.max(60,...dayPoints.map(d=>d.seconds));
+  const search=String(__usersAnalytics.searchTerm||'').trim().toLowerCase();
+  const matches=p=>{const x=__usersIdentity(p,userMap);return !search||[x.name,x.email,x.id,x.kind].join(' ').toLowerCase().includes(search)};
+  const filteredVisitors=visitorDocs.filter(matches);
+  if(__usersAnalytics.selectedId&&!visitorDocs.some(p=>String(p.visitorId||p.uid||p.guestId||p.id||'')===String(__usersAnalytics.selectedId)))__usersAnalytics.selectedId=null;
+  const selected=__usersAnalytics.selectedId?visitorDocs.find(p=>String(p.visitorId||p.uid||p.guestId||p.id||'')===String(__usersAnalytics.selectedId)):null;
+  const topRows=obj=>Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+  const statList=(obj,total,empty='No live data')=>{const rows=topRows(obj);if(!rows.length)return '<div class="users-stat-list"><div class="users-note" style="border-top:0">'+empty+'</div></div>';return '<div class="users-stat-list">'+rows.map(([k,v])=>{const pct=total?Math.round(v/total*100):0;return '<div><div class="users-stat-row"><span>'+esc(k)+'</span><strong>'+v+' · '+pct+'%</strong></div><div class="users-stat-bar"><div class="users-stat-fill" style="width:'+pct+'%"></div></div></div>'}).join('')+'</div>'};
+  const deviceCounts={Desktop:0,Mobile:0,Tablet:0,Other:0},pageCounts={};
+  onlineVisitors.forEach(p=>{const d=['Desktop','Mobile','Tablet'].includes(p.deviceType)?p.deviceType:'Other';deviceCounts[d]++;const pg=p.activity?.page||'KARP';pageCounts[pg]=(pageCounts[pg]||0)+1});
+  const allRows=filteredVisitors.slice().sort((a,b)=>__usersOnline(b,now)-__usersOnline(a,now)||__usersTimestamp(b.lastSeen)-__usersTimestamp(a.lastSeen)||__usersDuration(b,now,visitorSeconds(b))-__usersDuration(a,now,visitorSeconds(a))).slice(0,__usersVisitorLimit).map(p=>{const x=__usersIdentity(p,userMap),online=__usersOnline(p,now),id=esc(x.id);return '<tr class="users-click-row" data-user-id="'+id+'"><td>'+(online?'<span class="admin-online-dot"></span>Online':'<span class="admin-offline-dot"></span>Offline')+'</td><td><strong>'+esc(x.name)+'</strong><br><span class="visitor-meta">'+esc(x.kind==='guest'?'Anonymous visitor':'Account')+'</span></td><td>'+esc(x.email)+'</td><td>'+esc(__usersDeviceLabel(p))+'</td><td>'+esc(__usersLocationLabel(p))+'</td><td><strong>'+esc(__usersFormatDuration(__usersDuration(p,now,visitorSeconds(p))))+'</strong></td><td>'+esc(__usersDate(p.firstSeenAt||p.sessionStartedAt))+'</td><td>'+esc(__usersDate(p.lastSeen))+'</td></tr>}).join('');
+  let detailHtml='';
+  if(selected){
+    const x=__usersIdentity(selected,userMap),sid=x.id,records=activityRecords.filter(r=>String(r.visitorId||r.uid||r.guestId||'')===sid),daily=new Map();
+    records.forEach(r=>{const t=__usersTimestamp(r.timestamp),key=__usersLocalDateString(t);daily.set(key,(daily.get(key)||0)+Math.max(0,Number(r.activeSeconds||0)))}); 
+    const days=Array.from(daily.entries()).sort((a,b)=>b[0].localeCompare(a[0]));
+    const detailTotal=Math.max(__usersDuration(selected,now,visitorSeconds(selected)),records.reduce((s,r)=>s+Math.max(0,Number(r.activeSeconds||0)),0));
+    const rows=days.length?days.map(([key,sec])=>{const d=new Date(key+'T12:00:00');return '<div class="users-detail-day"><div><strong>'+esc(d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short',year:'numeric'}))+'</strong><span>'+esc(key)+'</span></div><strong>'+esc(__usersFormatMinutes(sec))+'</strong></div>'}).join(''):'<div class="users-detail-empty">No timestamped activity for this visitor in the last 30 days.</div>';
+    detailHtml='<section class="users-user-detail"><div class="users-user-detail-head"><div><div class="users-dashboard-kicker">VISITOR ANALYSIS</div><h3>'+esc(x.name)+'</h3><p>'+esc(x.email==='—'?'Anonymous visitor · '+x.id:x.email)+'</p></div><button type="button" class="users-detail-close" id="users-detail-close">Close</button></div><div class="users-detail-kpis"><div><strong>'+esc(__usersFormatDuration(detailTotal))+'</strong><span>Total tracked active time</span></div><div><strong>'+esc(String(days.length))+'</strong><span>Active days in history</span></div><div><strong>'+esc(__usersDate(selected.firstSeenAt||selected.sessionStartedAt))+'</strong><span>First seen</span></div><div><strong>'+esc(__usersDate(selected.lastSeen))+'</strong><span>Last seen</span></div></div><div class="users-detail-grid"><div class="users-detail-panel"><div class="users-detail-panel-title">Daily active time · last 30 days</div>'+rows+'</div><div class="users-detail-panel"><div class="users-detail-panel-title">Current details</div><div class="users-detail-info"><span>Type</span><strong>'+esc(x.kind==='guest'?'Anonymous visitor':'Account')+'</strong><span>Email</span><strong>'+esc(x.email)+'</strong><span>Device</span><strong>'+esc(__usersDeviceLabel(selected))+'</strong><span>Last page</span><strong>'+esc(__usersLocationLabel(selected))+'</strong><span>Status</span><strong>'+(__usersOnline(selected,now)?'Online now':'Offline')+'</strong></div></div></div></section>';
+  }
+  const onlineTotal=onlineVisitors.length;
+  const liveRows=onlineVisitors.slice().sort((a,b)=>__usersDuration(b,now,visitorSeconds(b))-__usersDuration(a,now,visitorSeconds(a))).slice(0,__usersLiveLimit).map(p=>{const x=__usersIdentity(p,userMap);return '<div class="users-live-row"><div><div class="users-live-who"><span class="visitor-online"></span>'+esc(x.name)+'</div><div class="users-live-meta">'+esc(x.email)+' · '+esc(x.kind==='guest'?'Guest':'Account')+'</div></div><div><div class="users-live-status users-live-green">Online now · '+esc(__usersFormatDuration(__usersDuration(p,now,visitorSeconds(p))))+'</div><div class="users-live-meta">'+esc(__usersLocationLabel(p))+'</div></div><div class="users-device">'+esc(__usersDeviceLabel(p))+'<br>'+esc(p.screen||'')+'</div><div class="users-live-meta">'+esc(__usersDate(p.lastSeen))+'</div></div>'}).join('');
+  m.innerHTML='<div class="users-dashboard"><div class="users-dashboard-head"><div><div class="users-dashboard-kicker">KARP · ADMIN ANALYTICS</div><h2>Users & Activity</h2><p>Live visitors, preserved cumulative active time and per-user daily history.</p></div><div class="users-dashboard-head-actions"><div class="users-dashboard-live"><span class="users-dashboard-live-dot"></span>Live · '+new Date(now).toLocaleTimeString()+'</div><button type="button" class="users-dashboard-back" id="users-back-to-admin">← Admin sections</button></div></div><div class="users-kpis users-primary-metrics"><div class="users-kpi"><strong>'+users.length+'</strong><span>Registered accounts</span><small>'+accountCreatedToday+' created today</small></div><div class="users-kpi"><strong>'+onlineAccounts.length+'</strong><span>Accounts online now</span><small>'+trackedAccounts+' tracked account identities</small></div><div class="users-kpi"><strong>'+onlineGuests.length+'</strong><span>Anonymous visitors online</span><small>'+trackedGuests+' tracked guest identities</small></div><div class="users-kpi"><strong>'+onlineTotal+'</strong><span>Total online visitors</span><small>'+seenToday+' unique tracked IDs today</small></div></div><div class="users-time-overview"><section class="users-time-card users-time-card-total"><div><div class="users-time-card-label">TOTAL ACTIVE TIME · ALL TRACKED VISITORS</div><div class="users-time-card-value">'+esc(__usersFormatDuration(totalActive))+'</div></div><div class="users-time-card-note">'+esc(__usersFormatDuration(accountActive))+' from accounts · '+esc(__usersFormatDuration(guestActive))+' from anonymous visitors. Existing saved totals are preserved.</div></section><section class="users-time-card"><div><div class="users-time-card-label">ACTIVE TIME TODAY</div><div class="users-time-card-value">'+(__usersAnalytics.activityLoading?'Loading…':esc(__usersFormatDuration(todayActive)))+'</div></div><div class="users-time-card-note">'+todayRecords.length+' timestamped active-time records today. History is retained in Firestore.</div></section></div><section class="users-panel users-trend"><div class="users-trend-title">Daily activity · Last 7 days</div><div class="users-trend-subtitle">Timestamped active time only; lifetime totals are never reset here.</div><div class="users-trend-chart">'+dayPoints.map(d=>'<div class="users-trend-day"><div class="users-trend-day-value">'+esc(__usersFormatDuration(d.seconds))+'</div><div class="users-trend-bar-space"><div class="users-trend-bar" style="height:'+Math.max(0,Math.round(d.seconds/chartMax*100))+'%"></div></div><div class="users-trend-day-label">'+esc(d.label)+' · '+esc(d.dateLabel)+'</div></div>').join('')+'</div></section><section class="users-panel users-search-panel"><div class="users-search-head"><div><strong>Visitors</strong><span>'+filteredVisitors.length+' matching visitor identities</span></div><input id="users-search" class="users-search-input" type="search" placeholder="Search name, email, or visitor ID…" value="'+esc(__usersAnalytics.searchTerm||'')+'"></div><div class="users-table-wrap"><table class="table users-dashboard-table"><thead><tr><th>Status</th><th>Visitor</th><th>Email</th><th>Device</th><th>Current / last page</th><th>Active time</th><th>First seen</th><th>Last seen</th></tr></thead><tbody>'+(allRows||'<tr><td colspan="8" class="visitor-empty">No visitors match your search.</td></tr>')+'</tbody></table></div><div class="users-note">Click any visitor row to open the detailed analysis. Active time is accumulated from focused/visible usage and is not reset by this dashboard.</div></section>'+detailHtml+'<div class="users-grid-2"><section class="users-panel"><div class="users-panel-head"><strong>Live devices</strong><span>'+onlineTotal+' online</span></div>'+statList(deviceCounts,onlineTotal)+'</section><section class="users-panel"><div class="users-panel-head"><strong>Live pages</strong><span>'+onlineTotal+' online</span></div>'+statList(pageCounts,onlineTotal)+'</section></div><section class="users-panel"><div class="users-panel-head"><strong>Live visitors</strong><span>'+Math.min(onlineTotal,__usersLiveLimit)+' shown</span></div><div class="users-live-list">'+(liveRows||'<div class="users-note">No active visitors right now.</div>')+'</div></section></div>';
+  const searchEl=document.getElementById('users-search');
+  if(searchEl){
+    const wasSearch=document.activeElement===searchEl,caret=wasSearch?searchEl.selectionStart:null;
+    searchEl.addEventListener('input',e=>{__usersAnalytics.searchTerm=e.target.value;__usersRender()});
+    if(wasSearch){searchEl.focus();const p=Math.min(Number(caret||searchEl.value.length),searchEl.value.length);try{searchEl.setSelectionRange(p,p)}catch{}}
+  }
+  m.querySelectorAll('[data-user-id]').forEach(row=>row.addEventListener('click',()=>{__usersAnalytics.selectedId=row.getAttribute('data-user-id');__usersRender()}));
+  const close=document.getElementById('users-detail-close');if(close)close.addEventListener('click',()=>{__usersAnalytics.selectedId=null;__usersRender()});
+  const back=document.getElementById('users-back-to-admin');if(back)back.addEventListener('click',()=>{__usersAnalytics.selectedId=null;__usersAnalytics.searchTerm='';if(typeof showAdminSection==='function')showAdminSection('dashboard');else{state.type='dashboard';render()}});
 }
 function __usersDestroyLive(){
   if(__usersAnalytics.unsubActivity){__usersAnalytics.unsubActivity();__usersAnalytics.unsubActivity=null}
