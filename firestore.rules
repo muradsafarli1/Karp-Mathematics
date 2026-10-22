@@ -207,7 +207,11 @@ service cloud.firestore {
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 4000);
-        allow update, delete: if isAdmin();
+        allow update: if isAdmin();
+      allow delete: if isAdmin()
+        || (signedIn()
+          && resource.data.senderId == request.auth.uid
+          && conversationMember(get(/databases/$(database)/documents/conversations/$(conversationId)).data));
       }
     }
 
