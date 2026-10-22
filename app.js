@@ -989,8 +989,8 @@ async function startKarpGuestPresence(){
     __karpGuestPresence.timer=setInterval(()=>__writeKarpGuestPresence(),10000);
     const stateChange=()=>__writeKarpGuestPresence();
     document.addEventListener('visibilitychange',stateChange);window.addEventListener('focus',stateChange);window.addEventListener('blur',stateChange);
-    const markGuestOffline=()=>{try{__karpGuestReleaseTimeOwner();__writeKarpGuestPresence(true)}catch{}};
-    window.addEventListener('pagehide',markGuestOffline);window.addEventListener('beforeunload',markGuestOffline);
+    const markGuestLeaving=()=>{try{__writeKarpGuestPresence(true)}catch{}};
+    window.addEventListener('pagehide',markGuestLeaving);window.addEventListener('beforeunload',markGuestLeaving);
   }catch(e){console.warn('KARP anonymous presence could not start:',e)}
 }
 async function __writeKarpPresence(online=true){
@@ -1038,8 +1038,8 @@ async function startKarpPresence(){
     const stateChange=()=>__writeKarpPresence(true);
     document.addEventListener('visibilitychange',stateChange);window.addEventListener('focus',stateChange);window.addEventListener('blur',stateChange);
     window.addEventListener('storage',e=>{if(__karpPresence&&e.key===__karpTimeOwnerKey(__karpPresence.user.uid)&&__karpIsActiveNow()&&!__karpPresence.timeOwner)__writeKarpPresence(true)});
-    const markAccountOffline=()=>{try{__karpReleaseTimeOwner();__writeKarpPresence(false)}catch{}};
-    window.addEventListener('pagehide',markAccountOffline);window.addEventListener('beforeunload',markAccountOffline);
+    const markAccountLeaving=()=>{try{__writeKarpPresence(true)}catch{}};
+    window.addEventListener('pagehide',markAccountLeaving);window.addEventListener('beforeunload',markAccountLeaving);
   }catch(e){console.warn('KARP presence could not start:',e)}
 }
 async function me(){try{return(await api('/api/me')).user}catch{return null}}
