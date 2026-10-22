@@ -972,7 +972,7 @@ async function __writeKarpGuestPresence(forceOffline=false){
     if(guestSessionJustStarted){
       await __karpLogVisit({db:__karpGuestPresence.db,fs:__karpGuestPresence.fs,visitorId:__karpGuestPresence.guestId,userType:'guest',name:'Anonymous visitor',device,sessionId:__karpGuestPresence.sessionId,sessionStartedAt:__karpGuestPresence.sessionStartedAt});
     }
-    if(delta>0||(!active&&__karpGuestPresence.sessionId)){
+    if(delta>0){
       await __karpLogActiveTime(delta,{db:__karpGuestPresence.db,fs:__karpGuestPresence.fs,visitorId:__karpGuestPresence.guestId,userType:'guest',name:'Anonymous visitor',device,activity:__karpGuestPresence.activity,sessionId:__karpGuestPresence.sessionId||'legacy',sessionStartedAt:__karpGuestPresence.sessionStartedAt,sessionEnded:!active});
     }
     if(!active){__karpGuestPresence.sessionId='';__karpGuestPresence.sessionStartedAt=''}
@@ -1013,7 +1013,7 @@ async function __writeKarpPresence(online=true){
     if(accountSessionJustStarted){
       await __karpLogVisit({db:__karpPresence.db,fs:__karpPresence.fs,visitorId:u.uid,uid:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',device,sessionId:__karpPresence.sessionId,sessionStartedAt:__karpPresence.sessionStartedAt});
     }
-    if(delta>0||(!active&&__karpPresence.sessionId)){
+    if(delta>0){
       await __karpLogActiveTime(delta,{db:__karpPresence.db,fs:__karpPresence.fs,visitorId:u.uid,uid:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',device,activity:__karpPresence.activity,sessionId:__karpPresence.sessionId||'legacy',sessionStartedAt:__karpPresence.sessionStartedAt,sessionEnded:!active});
     }
     if(!active){__karpPresence.sessionId='';__karpPresence.sessionStartedAt=''}
