@@ -178,8 +178,37 @@ async function ensureDirectConversation(otherUid){
   if(!user||!otherUid||otherUid===user.uid)throw new Error('Invalid conversation members.');
   const members=[user.uid,otherUid].sort();
   const id=members.join('_');
-  // Do not read the conversation first. A missing document can fail the read rule,
-  // while the authenticated friendship itself is enough to authorize this write.
+
+  // If the accepted request exists but the friendship record is missing,
+  // materialize the friendship first. The conversation rule then has a concrete
+  // friendship document to verify.
+  const existingFriend=friends.some(f=>f.status==='accepted'&&f.id===id&&Array.isArray(f.members)&&members.every(x=>f.members.includes(x)));
+  if(!existingFriend){
+    const [inSnap,outSnap]=await Promise.all([
+      getDocs(query(collection(db,'friendRequests'),where('toUid','==',user.uid))),
+      getDocs(query(collection(db,'friendRequests'),where('fromUid','==',user.uid)))
+    ]);
+    const accepted=[...inSnap.docs,...outSnap.docs]
+      .map(d=>({id:d.id,...d.data()}))
+      .find(r=>r.status==='accepted'&&(
+        (r.fromUid===user.uid&&r.toUid===otherUid) ||
+        (r.toUid===user.uid&&r.fromUid===otherUid)
+      ));
+    if(!accepted)throw new Error('This member is not connected to you yet.');
+
+    const createdAt=accepted.createdAt||new Date().toISOString();
+    await setDoc(doc(db,'friendships',id),{
+      members,
+      status:'accepted',
+      requestId:accepted.id,
+      createdAt
+    },{merge:true});
+    const localFriend={id,members,status:'accepted',requestId:accepted.id,createdAt};
+    const fi=friends.findIndex(x=>x.id===id);
+    if(fi>=0)friends[fi]={...friends[fi],...localFriend};
+    else friends.push(localFriend);
+  }
+
   await setDoc(doc(db,'conversations',id),{
     type:'direct',
     status:'accepted',
