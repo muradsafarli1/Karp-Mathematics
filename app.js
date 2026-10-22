@@ -989,7 +989,7 @@ async function startKarpGuestPresence(){
     __karpGuestPresence.timer=setInterval(()=>__writeKarpGuestPresence(),10000);
     const stateChange=()=>__writeKarpGuestPresence();
     document.addEventListener('visibilitychange',stateChange);window.addEventListener('focus',stateChange);window.addEventListener('blur',stateChange);
-    const markGuestLeaving=()=>{try{__writeKarpGuestPresence(true)}catch{}};
+    const markGuestLeaving=()=>{try{__writeKarpGuestPresence()}catch{}};
     window.addEventListener('pagehide',markGuestLeaving);window.addEventListener('beforeunload',markGuestLeaving);
   }catch(e){console.warn('KARP anonymous presence could not start:',e)}
 }
