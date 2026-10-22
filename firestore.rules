@@ -103,7 +103,7 @@ service cloud.firestore {
     }
 
     match /friendRequests/{requestId} {
-      allow read: if isAdmin() || verifiedAccount(request.auth.uid);
+      allow read: if isAdmin() || signedIn();
       allow create: if verifiedAccount(request.auth.uid)
         && request.resource.data.fromUid == request.auth.uid
         && request.resource.data.toUid != request.auth.uid
