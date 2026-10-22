@@ -15,7 +15,7 @@
 .chat-left-tools{padding:10px;border-bottom:1px solid var(--wa-line);display:flex;gap:7px}.chat-search{flex:1;min-width:0;border:1px solid #dfe2df;border-radius:10px;background:#f7f8f7;padding:9px 11px;font:11px Inter,system-ui;outline:none}.chat-search:focus{border-color:#b8bec4}
 .icon-btn,.text-btn{border:1px solid #dfe2df;background:#fff;border-radius:10px;cursor:pointer;color:#343a40}.icon-btn{width:36px;height:36px;font-size:16px}.text-btn{padding:8px 10px;font-size:10px;font-weight:800}.text-btn.primary{background:var(--wa-accent);border-color:var(--wa-accent);color:#fff}
 .chat-tabs{display:flex;padding:8px 10px;gap:4px;border-bottom:1px solid var(--wa-line)}.chat-tab{flex:1;border:0;background:transparent;border-radius:8px;padding:8px;font-size:9px;font-weight:800;color:#737a80;cursor:pointer}.chat-tab.active{background:#eef1f3;color:#1d2329}
-.chat-list{overflow:auto;flex:1}.chat-row{display:flex;gap:11px;padding:12px 14px;border-bottom:1px solid #f0f1f0;cursor:pointer}.chat-row:hover,.chat-row.active{background:#f6f7f6}.chat-avatar{width:43px;height:43px;min-width:43px;border-radius:50%;overflow:hidden;background:#e7eaeb;color:#263b5b;display:grid;place-items:center;font-size:11px;font-weight:900}.chat-avatar img{width:100%;height:100%;object-fit:cover}.chat-row-main{min-width:0;flex:1}.chat-row-top{display:flex;justify-content:space-between;gap:7px}.chat-row-name{font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-row-time{font-size:8px;color:#90969b;white-space:nowrap}.chat-row-preview{margin-top:4px;font-size:9px;color:#7b8289;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-unread{display:inline-grid;place-items:center;min-width:16px;height:16px;border-radius:99px;background:var(--wa-accent);color:#fff;font-size:8px;font-weight:900;padding:0 4px}
+.chat-list{overflow:auto;flex:1}.chat-row{display:flex;gap:11px;padding:12px 14px;border-bottom:1px solid #f0f1f0;cursor:pointer}.chat-row:hover,.chat-row.active{background:#f6f7f6}.chat-avatar{width:43px;height:43px;min-width:43px;border-radius:50%;overflow:hidden;background:#e7eaeb;color:#263b5b;display:grid;place-items:center;font-size:11px;font-weight:900}.chat-avatar img{width:100%;height:100%;object-fit:cover}.chat-row-main{min-width:0;flex:1}.chat-row-top{display:flex;justify-content:space-between;gap:7px}.chat-row-name{font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-row-time{font-size:8px;color:#90969b;white-space:nowrap}.chat-row-preview{margin-top:4px;font-size:9px;color:#7b8289;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-row-meta{display:flex;align-items:center;gap:5px;white-space:nowrap}.chat-unread{display:inline-grid;place-items:center;min-width:17px;height:17px;border-radius:99px;background:var(--wa-accent);color:#fff;font-size:8px;font-weight:900;padding:0 5px}.msg-delete{position:absolute;right:5px;top:5px;width:18px;height:18px;border:0;border-radius:50%;background:#fff;color:#8a8f93;font-size:11px;line-height:18px;display:none;cursor:pointer;padding:0}.msg:hover .msg-delete{display:block}
 .chat-main{display:grid;grid-template-rows:64px minmax(0,1fr) 64px;min-width:0;min-height:0;background:#f3f5f3;overflow:hidden}
 .chat-head{display:flex;align-items:center;gap:11px;padding:0 18px;background:#fff;border-bottom:1px solid var(--wa-line)}.chat-head-copy{min-width:0;flex:1}.chat-head-name{font-size:12px;font-weight:850}.chat-head-status{font-size:9px;color:#7b8289;margin-top:3px}.chat-head-actions{display:flex;gap:6px}
 .chat-messages{overflow-y:auto;overflow-x:hidden;min-height:0;padding:24px clamp(28px,7vw,110px);display:flex;flex-direction:column;gap:4px;overscroll-behavior:contain;scroll-behavior:auto;background:linear-gradient(rgba(243,245,243,.96),rgba(243,245,243,.96)),radial-gradient(circle at 20% 20%,#e9ecea 1px,transparent 1px);background-size:auto,18px 18px}
@@ -47,7 +47,7 @@
 const {db,auth}=await import('/karp-firebase.js');
 const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
 const au=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
-const {collection,doc,getDoc,getDocs,query,where,orderBy,limit,onSnapshot,addDoc,setDoc,updateDoc,writeBatch,serverTimestamp}=fs;
+const {collection,doc,getDocs,query,where,orderBy,limit,onSnapshot,addDoc,setDoc,updateDoc,deleteDoc,increment,serverTimestamp}=fs;
 let user=null,meProfile={},conversations=[],friends=[],incoming=[],outgoing=[],selected=null,messages=[],unsubConv=null,unsubMsg=null,unsubIncoming=null,unsubOutgoing=null,listMode='chats';
 const esc=window.escapeHtml||((x)=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
 const signedIn=()=>!!user;
@@ -189,7 +189,16 @@ async function ensureDirectConversation(otherUid){
   },{merge:true});
   return id;
 }
-async function loadConversations(){if(!user)return;try{const s=await getDocs(query(collection(db,'conversations'),where('members','array-contains',user.uid)));conversations=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>Date.parse(b.updatedAt||b.createdAt||0)-Date.parse(a.updatedAt||a.createdAt||0))}catch(e){console.warn('conversations',e);conversations=[]}}
+async function loadConversations(){
+  if(!user)return;
+  if(unsubConv){unsubConv();unsubConv=null}
+  const q=query(collection(db,'conversations'),where('members','array-contains',user.uid));
+  unsubConv=onSnapshot(q,s=>{
+    conversations=s.docs.map(d=>({id:d.id,...d.data()}))
+      .sort((a,b)=>Date.parse(b.updatedAt||b.createdAt||0)-Date.parse(a.updatedAt||a.createdAt||0));
+    renderList().catch(e=>console.warn('render conversations',e));
+  },e=>console.error('conversation listener',e));
+}
 async function hydratePeople(ids){const map=new Map();await Promise.all([...new Set(ids.filter(Boolean))].map(async id=>{try{const s=await getDoc(doc(db,'publicProfiles',id));if(s.exists())map.set(id,{uid:id,...s.data()})}catch{}}));return map}
 function otherId(c){return c.type==='direct'?c.members.find(x=>x!==user.uid)||'':''}
 async function conversationPeople(){const ids=[];conversations.forEach(c=>c.members?.forEach(id=>{if(id!==user.uid)ids.push(id)}));friends.forEach(f=>f.members?.forEach(id=>{if(id!==user.uid)ids.push(id)}));incoming.forEach(r=>{if(r.fromUid&&r.fromUid!==user.uid)ids.push(r.fromUid)});outgoing.forEach(r=>{if(r.toUid&&r.toUid!==user.uid)ids.push(r.toUid)});return hydratePeople(ids)}
@@ -206,7 +215,7 @@ else{
     const p=c.type==='direct'?people.get(other):null;
     const name=c.type==='group'?c.name:(p?.name||'KARP Member');
     if(!q||name.toLowerCase().includes(q)){
-      chatItems.push({kind:'conversation',id:c.id,personId:other,data:c,name,url:c.type==='group'?'':p?.photoURL});
+      chatItems.push({kind:'conversation',id:c.id,personId:other,data:c,name,url:c.type==='group'?'':p?.photoURL,unread:Number(c['unread_'+user.uid]||0)});
     }
   });
   // A friendship is itself enough to show the person in Chats even if the conversation
@@ -226,7 +235,7 @@ else{
     return Date.parse(tb||0)-Date.parse(ta||0);
   });
   html=chatItems.length?chatItems.map(x=>x.kind==='conversation'
-    ? '<div class="chat-row '+(selected?.id===x.id?'active':'')+'" data-conv="'+x.id+'">'+avatar(x.name,x.url)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.name)+'</span><span class="chat-row-time">'+esc(fmt(x.data.updatedAt||x.data.createdAt))+'</span></div><div class="chat-row-preview">'+esc(x.data.lastMessage||'No messages yet')+'</div></div></div>'
+    ? '<div class="chat-row '+(selected?.id===x.id?'active':'')+'" data-conv="'+x.id+'">'+avatar(x.name,x.url)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.name)+'</span><span class="chat-row-meta"><span class="chat-row-time">'+esc(fmt(x.data.updatedAt||x.data.createdAt))+'</span>'+(x.unread?'<span class="chat-unread">'+esc(x.unread>99?'99+':x.unread)+'</span>':'')+'</span></div><div class="chat-row-preview">'+esc(x.data.lastMessage||'No messages yet')+'</div></div></div>'
     : '<div class="chat-row" data-person="'+x.personId+'">'+avatar(x.name,x.url)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.name)+'</span></div><div class="chat-row-preview">Friend · start conversation</div></div></div>'
   ).join(''):'<div class="empty-chat"><div><strong>No conversations</strong>Start a new chat with a KARP friend.</div></div>';
 }
@@ -236,29 +245,86 @@ list.querySelectorAll('[data-person]').forEach(x=>x.onclick=()=>startDirect(x.da
 list.querySelectorAll('[data-accept]').forEach(x=>x.onclick=()=>acceptRequest(x.dataset.accept));
 list.querySelectorAll('[data-reject]').forEach(x=>x.onclick=()=>rejectRequest(x.dataset.reject));
 }
-async function openConversation(id){const c=conversations.find(x=>x.id===id);if(!c)return;selected=c;if(unsubMsg)unsubMsg();document.getElementById('headName').textContent=c.type==='group'?c.name:(people.get(otherId(c))?.name||'KARP Member');const p=c.type==='direct'?people.get(otherId(c)):null;document.getElementById('headAvatar').outerHTML=avatar(c.type==='group'?c.name:(p?.name||'K'),c.type==='direct'?p?.photoURL:'','chat-avatar');document.getElementById('headStatus').textContent=c.type==='group'?((c.members?.length||0)+' members'):'Private conversation';document.getElementById('composer').disabled=false;document.getElementById('send').disabled=false;document.getElementById('chat-window').classList.remove('mobile-list');const mq=window.matchMedia('(max-width:700px)');if(mq.matches)document.getElementById('backMobile').style.display='grid';unsubMsg=onSnapshot(query(collection(db,'conversations',id,'messages'),orderBy('createdAt','asc'),limit(500)),s=>{messages=s.docs.map(d=>({id:d.id,...d.data()}));renderMessages()});}
+async function openConversation(id){
+  const c=conversations.find(x=>x.id===id);
+  if(!c)return;
+  selected=c;
+  if(unsubMsg)unsubMsg();
+  document.getElementById('headName').textContent=c.type==='group'?c.name:(people.get(otherId(c))?.name||'KARP Member');
+  const p=c.type==='direct'?people.get(otherId(c)):null;
+  document.getElementById('headAvatar').outerHTML=avatar(c.type==='group'?c.name:(p?.name||'K'),c.type==='direct'?p?.photoURL:'','chat-avatar');
+  document.getElementById('headStatus').textContent=c.type==='group'?((c.members?.length||0)+' members'):'Private conversation';
+  document.getElementById('composer').disabled=false;
+  document.getElementById('send').disabled=false;
+  document.getElementById('chat-window').classList.remove('mobile-list');
+  const mq=window.matchMedia('(max-width:700px)');
+  if(mq.matches)document.getElementById('backMobile').style.display='grid';
+
+  try{
+    await updateDoc(doc(db,'conversations',id),{['unread_'+user.uid]:0});
+  }catch(e){console.warn('mark conversation read',e)}
+  conversations=conversations.map(x=>x.id===id?{...x,['unread_'+user.uid]:0}:x);
+  unsubMsg=onSnapshot(query(collection(db,'conversations',id,'messages'),orderBy('createdAt','asc'),limit(500)),s=>{
+    messages=s.docs.map(d=>({id:d.id,...d.data()}));
+    renderMessages();
+    updateDoc(doc(db,'conversations',id),{['unread_'+user.uid]:0}).catch(()=>{});
+  },e=>console.error('message listener',e));
+  renderList().catch(()=>{});
+}
 function renderMessages(){
   const e=document.getElementById('messages');
   if(!messages.length){
     e.innerHTML='<div class="empty-chat"><div><strong>No messages yet</strong>Start the conversation.</div></div>';
     return;
   }
-  // Show exactly one date at the top of the conversation.
   const first=messages[0];
   const firstDate=first.createdAt?.toDate?first.createdAt.toDate():new Date(first.createdAt||Date.now());
   const dateLabel=Number.isNaN(firstDate.getTime())?'':firstDate.toLocaleDateString([], {day:'numeric',month:'long',year:'numeric'});
   e.innerHTML=(dateLabel?'<div class="day-divider conversation-date">'+esc(dateLabel)+'</div>':'')+
     messages.map(m=>{
-      return '<div class="msg '+(m.senderId===user.uid?'mine':'')+'">'+
-        (selected?.type==='group'&&m.senderId!==user.uid?'<div class="msg-author">'+esc(m.senderName||'KARP Member')+'</div>':'')+
-        '<div class="msg-text">'+esc(m.text||'')+'</div>'+
+      const mine=m.senderId===user.uid;
+      return '<div class="msg '+(mine?'mine':'')+'">'+
+        (!mine&&selected?.type==='group'?'<div class="msg-author">'+esc(m.senderName||'KARP Member')+'</div>':'')+
+        '<div class="msg-text">'+esc(m.deletedAt?'This message was deleted':(m.text||''))+'</div>'+
         '<div class="msg-meta">'+esc(fmt(m.createdAt))+'</div>'+
+        (mine&&!m.deletedAt?'<button class="msg-delete" title="Delete message" data-delete-msg="'+m.id+'">×</button>':'')+
       '</div>';
     }).join('');
+  e.querySelectorAll('[data-delete-msg]').forEach(b=>b.onclick=()=>deleteMessage(b.dataset.deleteMsg));
   e.scrollTop=e.scrollHeight;
 }
+async function deleteMessage(messageId){
+  if(!requireUser()||!selected||!messageId)return;
+  const m=messages.find(x=>x.id===messageId);
+  if(!m||m.senderId!==user.uid)return;
+  try{
+    await deleteDoc(doc(db,'conversations',selected.id,'messages',messageId));
+  }catch(e){alert(e.message||'Could not delete message.')}
+}
 
-async function sendMessage(){if(!requireUser()||!selected)return;const e=document.getElementById('composer'),text=e.value.trim();if(!text)return;e.value='';try{await addDoc(collection(db,'conversations',selected.id,'messages'),{senderId:user.uid,senderName:displayName(),senderPhoto:photo(),text,createdAt:serverTimestamp()});await updateDoc(doc(db,'conversations',selected.id),{lastMessage:text.slice(0,180),lastSenderId:user.uid,updatedAt:new Date().toISOString()})}catch(err){e.value=text;alert(err.message||'Could not send message.')} }
+async function sendMessage(){
+  if(!requireUser()||!selected)return;
+  const e=document.getElementById('composer'),text=e.value.trim();
+  if(!text)return;
+  e.value='';
+  try{
+    await addDoc(collection(db,'conversations',selected.id,'messages'),{
+      senderId:user.uid,senderName:displayName(),senderPhoto:photo(),text,createdAt:serverTimestamp()
+    });
+    const updateData={
+      lastMessage:text.slice(0,180),
+      lastSenderId:user.uid,
+      updatedAt:new Date().toISOString()
+    };
+    (selected.members||[]).filter(uid=>uid!==user.uid).forEach(uid=>{
+      updateData['unread_'+uid]=increment(Number(selected['unread_'+uid]||0)+1);
+    });
+    await updateDoc(doc(db,'conversations',selected.id),updateData);
+  }catch(err){
+    e.value=text;
+    alert(err.message||'Could not send message.');
+  }
+}
 document.getElementById('send').onclick=sendMessage;document.getElementById('composer').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}};document.getElementById('chatSearch').oninput=renderList;
 async function startDirect(uid){
   if(!requireUser()||!uid)return;
