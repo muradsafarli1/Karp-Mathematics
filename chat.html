@@ -217,13 +217,22 @@ async function ensureDirectConversation(otherUid){
   if(fi>=0)friends[fi]={...friends[fi],...localFriend};
   else friends.push(localFriend);
 
-  await setDoc(doc(db,'conversations',id),{
-    type:'direct',
-    status:'accepted',
-    members,
-    updatedAt:new Date().toISOString(),
-    lastMessage:''
-  },{merge:true});
+  // Starting an existing private chat must be a READ, not an UPDATE.
+  // setDoc(...,{merge:true}) becomes an update when the conversation already
+  // exists, which unnecessarily runs the stricter conversation update rule.
+  // Only create the conversation when it truly does not exist.
+  const conversationRef=doc(db,'conversations',id);
+  const conversationSnap=await getDoc(conversationRef);
+  if(!conversationSnap.exists()){
+    await setDoc(conversationRef,{
+      type:'direct',
+      status:'accepted',
+      members,
+      createdAt:new Date().toISOString(),
+      updatedAt:new Date().toISOString(),
+      lastMessage:''
+    });
+  }
   return id;
 }
 async function loadConversations(){
