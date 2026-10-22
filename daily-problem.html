@@ -182,6 +182,9 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
   }
   function renderCurrentSolutions(){
     const items=itemsForProblem(currentProblemId);
+    const approvedCount=items.filter(x=>x.status==='approved').length;
+    const countEl=document.getElementById('daily-solution-count');
+    if(countEl)countEl.textContent=approvedCount+' solution'+(approvedCount===1?'':'s');
     if(!items.length)approvedEl.innerHTML='<div class="daily-empty">No solutions yet. Submit a proof to start the discussion.</div>';
     else approvedEl.innerHTML=items.map(solutionMessage).join('');
     approvedEl.hidden=false;
