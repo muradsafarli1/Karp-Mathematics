@@ -145,7 +145,7 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
   }
   function avatarMarkup(name,photoURL){
     const initials=String(name||'K').trim().split(/\s+/).slice(0,2).map(part=>part.charAt(0)).join('').toUpperCase()||'K';
-    return '<span class="daily-avatar">'+(photoURL?'<img src="'+safe(photoURL)+'" alt="">':safe(initials))+'</span>';
+    return '<span class="daily-avatar" data-initial="'+safe(initials)+'">'+(photoURL?'<img src="'+safe(photoURL)+'" alt="">':safe(initials))+'</span>';
   }
   async function typeset(root,attempt=0){
     if(!root)return;
@@ -154,6 +154,19 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
       if(window.MathJax&&window.MathJax.typesetPromise){if(window.MathJax.typesetClear)window.MathJax.typesetClear([root]);await window.MathJax.typesetPromise([root]);}
       else if(attempt<12)setTimeout(()=>typeset(root,attempt+1),300);
     }catch(e){console.warn('Daily Problem math rendering failed:',e);}
+  }
+  function wireAvatarFallbacks(root){
+    if(!root)return;
+    root.querySelectorAll('.daily-avatar img').forEach(img=>{
+      if(img.dataset.fallbackBound)return;
+      img.dataset.fallbackBound='1';
+      img.addEventListener('error',()=>{
+        const parent=img.parentElement;
+        if(!parent)return;
+        img.remove();
+        parent.textContent=parent.dataset.initial||'K';
+      },{once:true});
+    });
   }
   function renderProblem(){
     const value=currentStatement();
@@ -178,6 +191,7 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
     countEl.textContent=approvedCount+(approvedCount===1?' solution':' solutions');
     if(!items.length)approvedEl.innerHTML='<div class="daily-empty">No solutions yet. Submit a proof to start the discussion.</div>';
     else approvedEl.innerHTML=items.map(solutionMessage).join('');
+    wireAvatarFallbacks(approvedEl);
     approvedEl.hidden=!currentSolutionsOpen;
     currentToggle.textContent=(currentSolutionsOpen?'Hide solutions':'Show solutions')+' ('+approvedCount+')';
     currentToggle.setAttribute('aria-expanded',currentSolutionsOpen?'true':'false');
@@ -198,6 +212,7 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
       const stamp=item.date||item.createdAt||item.updatedAt;
       return '<article class="daily-history-item"><button type="button" class="daily-history-date" data-history-id="'+safe(id)+'"><span>'+safe(dateHeading(stamp))+'</span><small>'+(isOpen?'Hide problem':'Open problem')+'　⌄</small></button><div class="daily-history-details" '+(isOpen?'':'hidden')+'><div class="daily-history-statement">'+(text?safe(text).replace(/\n/g,'<br>'):'No statement saved for this date.')+'</div><div class="daily-history-actions"><button type="button" class="daily-history-toggle" data-history-solutions="'+safe(id)+'">'+(showSolutions?'Hide solutions':'Show solutions')+' ('+solutions.length+')</button></div><div class="daily-history-solutions" '+(showSolutions?'':'hidden')+'>'+ (solutions.length?solutions.map(solutionMessage).join(''):'<div class="daily-history-message">No approved solutions yet.</div>')+'</div></div></article>';
     }).join('');
+    wireAvatarFallbacks(pastEl);
     pastEl.querySelectorAll('[data-history-id]').forEach(button=>button.onclick=()=>{
       const item=historyProblems.find(x=>String(x.id)===button.dataset.historyId);if(!item)return;
       item._open=!item._open;renderPastProblems();
@@ -213,6 +228,7 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
     const name=item.displayName||currentUser?.displayName||(currentUser?.email||'').split('@')[0]||'KARP Member';
     pendingNoticeEl.innerHTML=avatarMarkup(name,item.photoURL||currentUser?.photoURL||userProfile.photoURL||'')+'<div><strong>Solution sent</strong>Your solution has been submitted successfully. Please wait for an administrator to approve it.</div>';
     pendingNoticeEl.hidden=false;
+    wireAvatarFallbacks(pendingNoticeEl);
   }
   function toggleEditor(open){
     form.hidden=!open;
