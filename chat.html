@@ -403,17 +403,29 @@ async function acceptRequest(id){
   const members=[user.uid,r.fromUid].sort();
   const fid=members.join('_');
   const now=new Date().toISOString();
-  let stage='saving the friendship record';
+  let stage='accepting the invitation';
   try{
-    const existingFriend=friends.find(f=>f.id===fid&&f.status==='accepted'&&Array.isArray(f.members)&&members.every(x=>f.members.includes(x)));
-    if(!existingFriend){
-      await setDoc(doc(db,'friendships',fid),{members,status:'accepted',requestId:id,createdAt:now},{merge:true});
-    }
+    // Accept the request first. The friendship rule explicitly permits the
+    // recipient to make this transition from pending -> accepted.
+    await updateDoc(doc(db,'friendRequests',id),{
+      status:'accepted',
+      respondedAt:now
+    });
+
+    stage='saving the friendship';
+    await setDoc(doc(db,'friendships',fid),{
+      members,
+      status:'accepted',
+      requestId:id,
+      createdAt:r.createdAt||now,
+      updatedAt:now
+    },{merge:true});
+
     stage='creating the private conversation';
     await ensureDirectConversation(r.fromUid);
 
-    // Update the local UI immediately; Firestore listeners will reconcile it afterward.
-    const localFriend={id:fid,members,status:'accepted',requestId:id,createdAt:now};
+    // Update the local UI immediately; realtime listeners will reconcile it.
+    const localFriend={id:fid,members,status:'accepted',requestId:id,createdAt:r.createdAt||now,updatedAt:now};
     const friendIndex=friends.findIndex(x=>x.id===fid);
     if(friendIndex>=0)friends[friendIndex]={...friends[friendIndex],...localFriend};
     else friends.unshift(localFriend);
@@ -430,8 +442,6 @@ async function acceptRequest(id){
     if(conversationIndex>=0)conversations[conversationIndex]={...conversations[conversationIndex],...localConversation};
     else conversations.unshift(localConversation);
 
-    stage='marking the invitation as accepted';
-    await updateDoc(doc(db,'friendRequests',id),{status:'accepted',respondedAt:now});
     stage='refreshing contacts and conversations';
     await Promise.all([loadFriends(),loadConversations(),refreshRequestsFromServer()]);
     listMode='chats';
