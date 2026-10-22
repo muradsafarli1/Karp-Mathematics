@@ -21,12 +21,12 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
-    function friendshipId(a,b) {
+    function makeFriendshipId(a,b) {
       return a < b ? a + '_' + b : b + '_' + a;
     }
     function isFriend(a,b) {
-      return exists(/databases/$(database)/documents/friendships/$(friendshipId(a,b)))
-        && get(/databases/$(database)/documents/friendships/$(friendshipId(a,b))).data.status == 'accepted';
+      return exists(/databases/$(database)/documents/friendships/$(makeFriendshipId(a,b)))
+        && get(/databases/$(database)/documents/friendships/$(makeFriendshipId(a,b))).data.status == 'accepted';
     }
     function conversationMember(data) {
       return signedIn() && data.members is list && request.auth.uid in data.members;
@@ -135,13 +135,19 @@ service cloud.firestore {
 
     match /friendships/{friendshipId} {
       allow read: if isAdmin() || (signedIn() && resource.data.members is list && request.auth.uid in resource.data.members);
-      allow create: if isAdmin()
+
+      // Only a real invite between these two users can create or repair this friendship.
+      // This applies to updates too, because setDoc(..., {merge:true}) updates an existing document.
+      allow create, update: if isAdmin()
         || (signedIn()
           && request.resource.data.status == 'accepted'
           && request.resource.data.members is list
           && request.resource.data.members.size() == 2
+          && request.resource.data.members[0] is string
+          && request.resource.data.members[1] is string
           && request.resource.data.members[0] != request.resource.data.members[1]
           && request.auth.uid in request.resource.data.members
+          && friendshipId == makeFriendshipId(request.resource.data.members[0],request.resource.data.members[1])
           && request.resource.data.requestId is string
           && exists(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId))
           && get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.fromUid is string
@@ -155,14 +161,7 @@ service cloud.firestore {
             (get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.status == 'accepted'
               && request.auth.uid in request.resource.data.members)
           ));
-      allow update: if isAdmin()
-        || (signedIn()
-          && resource.data.members is list
-          && request.auth.uid in resource.data.members
-          && request.resource.data.members == resource.data.members
-          && request.resource.data.status == resource.data.status
-          && request.resource.data.requestId == resource.data.requestId
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['createdAt','updatedAt']));
+
       allow delete: if isAdmin();
     }
 
@@ -178,7 +177,7 @@ service cloud.firestore {
           && (
             (request.resource.data.type == 'direct'
               && request.resource.data.members.size() == 2
-              && conversationId == friendshipId(request.resource.data.members[0],request.resource.data.members[1])
+              && conversationId == makeFriendshipId(request.resource.data.members[0],request.resource.data.members[1])
               && isFriend(request.resource.data.members[0],request.resource.data.members[1]))
             ||
             (request.resource.data.type == 'group'
