@@ -72,7 +72,7 @@ const closeModal=()=>document.getElementById('modal').classList.remove('open');
 document.getElementById('modalClose').onclick=closeModal;document.getElementById('modal').onclick=e=>{if(e.target.id==='modal')closeModal()};
 function requireUser(){if(!signedIn()){window.showAuthPrompt?.('Sign in to KARP','Sign in to send messages and connect with KARP members.');return false}return true}
 async function loadProfile(){if(!user)return;try{const s=await getDoc(doc(db,'publicProfiles',user.uid));if(s.exists())meProfile=s.data()||{};else{meProfile={uid:user.uid,name:displayName(),nameLower:displayName().toLowerCase(),photoURL:photo()};await setDoc(doc(db,'publicProfiles',user.uid),{...meProfile,updatedAt:new Date().toISOString()},{merge:true})}}catch(e){console.warn(e)}}
-async function loadFriends(){if(!user)return;try{const s=await getDocs(query(collection(db,'friendships'),where('members','array-contains',user.uid)));friends=s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>Array.isArray(x.members)&&x.members.includes(user.uid));}catch(e){console.warn('friends',e);friends=[]}}
+async function loadFriends(){if(!user)return;try{const s=await getDocs(query(collection(db,'friendships'),where('members','array-contains',user.uid)));friends=s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.status==='accepted'&&Array.isArray(x.members)&&x.members.includes(user.uid));}catch(e){console.warn('friends',e);friends=[]}}
 async function loadRequests(){
   if(!user)return;
   if(unsubIncoming){unsubIncoming();unsubIncoming=null}
@@ -168,20 +168,23 @@ async function acceptRequest(id){
   const members=[user.uid,r.fromUid].sort();
   const fid=members.join('_');
   const now=new Date().toISOString();
+  let stage='saving the friendship record';
   try{
-    const existingFriend=friends.find(f=>f.id===fid&&Array.isArray(f.members)&&members.every(x=>f.members.includes(x)));
-    // Write the friendship first. If it fails, the request stays pending and remains visible after refresh.
+    const existingFriend=friends.find(f=>f.id===fid&&f.status==='accepted'&&Array.isArray(f.members)&&members.every(x=>f.members.includes(x)));
+    // Persist the relationship first. The request remains pending if this write is rejected.
     if(!existingFriend){
       await setDoc(doc(db,'friendships',fid),{members,status:'accepted',requestId:id,createdAt:now},{merge:true});
     }
+    stage='marking the invitation as accepted';
     await updateDoc(doc(db,'friendRequests',id),{status:'accepted',respondedAt:now});
+    stage='refreshing the friends and requests lists';
     await Promise.all([loadFriends(),refreshRequestsFromServer()]);
     listMode='friends';
     document.querySelectorAll('.chat-tab').forEach(b=>b.classList.toggle('active',b.dataset.list==='friends'));
     await renderList();
   }catch(e){
-    console.error('accept request',e);
-    alert('Could not complete the connection. The request has been kept pending where possible. Details: '+(e.message||'Permission denied'));
+    console.error('accept request failed during '+stage,e);
+    alert('Could not complete the connection ('+stage+'). Details: '+(e.message||'Missing or insufficient permissions.'));
   }
 }
 async function rejectRequest(id){const r=incoming.find(x=>x.id===id);if(!r)return;try{await updateDoc(doc(db,'friendRequests',id),{status:'rejected',respondedAt:new Date().toISOString()});await refreshRequestsFromServer()}catch(e){console.error('reject request',e);alert(e.message||'Could not decline request.')}}
