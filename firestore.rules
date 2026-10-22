@@ -192,28 +192,25 @@ service cloud.firestore {
               && (isAdminUid(request.resource.data.members[0]) || isAdminUid(request.resource.data.members[1])))
           ));
       allow update: if isAdmin()
-        || (conversationMember(resource.data)
-          && request.resource.data.type == resource.data.type
+        || (
+          request.resource.data.type == resource.data.type
           && (
             (request.resource.data.type == 'direct'
               && request.resource.data.status == 'accepted'
               && request.resource.data.members is list
               && request.resource.data.members.size() == 2
-              && resource.data.members is list
-              && resource.data.members.size() == 2
               && request.auth.uid in request.resource.data.members
-              && request.auth.uid in resource.data.members
-              && request.resource.data.members[0] in resource.data.members
-              && request.resource.data.members[1] in resource.data.members
-              && resource.data.members[0] in request.resource.data.members
-              && resource.data.members[1] in request.resource.data.members)
+              && isFriend(request.resource.data.members[0],request.resource.data.members[1]))
             ||
             (request.resource.data.type != 'direct'
+              && conversationMember(resource.data)
+              && request.resource.data.members == resource.data.members
               && request.resource.data.status == resource.data.status
               && resource.data.keys().hasAny(['createdBy'])
               && request.resource.data.keys().hasAny(['createdBy'])
               && request.resource.data.createdBy == resource.data.createdBy)
-          ));
+          )
+        );
       allow delete: if isAdmin();
 
       match /messages/{messageId} {
