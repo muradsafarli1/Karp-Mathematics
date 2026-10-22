@@ -838,7 +838,7 @@ async function markKarpExamEntry(examId){
   }
 }
 let __karpPresence=null;
-function __karpIsActiveNow(){try{return document.visibilityState==='visible'&&document.hasFocus()}catch{return document.visibilityState!=='hidden'}}
+function __karpIsActiveNow(){try{return document.visibilityState!=='hidden'}catch{return true}}
 function __karpTimeOwnerKey(uid){return '__karp_time_owner__'+String(uid||'')}
 function __karpInstanceId(){if(window.__karpTimeInstanceId)return window.__karpTimeInstanceId;window.__karpTimeInstanceId=crypto?.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+'_'+Date.now();return window.__karpTimeInstanceId}
 function __karpReadOwner(uid){try{const raw=localStorage.getItem(__karpTimeOwnerKey(uid));return raw?JSON.parse(raw):null}catch{return null}}
@@ -962,7 +962,7 @@ async function __writeKarpGuestPresence(forceOffline=false){
     if(active&&__karpGuestPresence.timeOwner)__karpGuestRenewTimeOwner();
     const delta=__karpConsumeGuestElapsed(active),payload={
       guestId:__karpGuestPresence.guestId,visitorId:__karpGuestPresence.guestId,uid:null,userType:'guest',name:'Anonymous visitor',photoURL:'',
-      online:active,visible:document.visibilityState==='visible',lastSeen:serverTimestamp(),expiresAt:Timestamp.fromMillis(active?Date.now()+25000:0),
+      online:active,visible:document.visibilityState==='visible',lastSeen:serverTimestamp(),expiresAt:Timestamp.fromMillis(active?Date.now()+35000:0),
       firstSeenAt:__karpGuestPresence.firstSeenAt,sessionStartedAt:__karpGuestPresence.sessionStartedAt,
       deviceType:device.deviceType,browser:device.browser,os:device.os,screen:device.screen,language:device.language,platform:device.platform,
       activity:__karpGuestPresence.activity||{page:'KARP',label:'Browsing'},
@@ -986,11 +986,11 @@ async function startKarpGuestPresence(){
     __karpGuestPresence={db,fs,guestId,device,firstSeenAt:now,sessionStartedAt:'',sessionId:'',lastSampleMs:performance.now(),wasActive:false,pendingSeconds:0,timeOwner:false,activity:window.__karpPendingActivity||{page:'KARP',label:'Browsing',detail:'',question:null}};
     await __writeKarpGuestPresence();
     if(__karpIsActiveNow()){__karpGuestPresence.timeOwner=__karpGuestTryClaimTimeOwner();__karpGuestPresence.wasActive=__karpGuestPresence.timeOwner;__karpGuestPresence.lastSampleMs=performance.now();await __writeKarpGuestPresence()}
-    __karpGuestPresence.timer=setInterval(()=>__writeKarpGuestPresence(),10000);
-    const stateChange=()=>__writeKarpGuestPresence();
-    document.addEventListener('visibilitychange',stateChange);window.addEventListener('focus',stateChange);window.addEventListener('blur',stateChange);
-    const markGuestLeaving=()=>{try{__writeKarpGuestPresence()}catch{}};
-    window.addEventListener('pagehide',markGuestLeaving);window.addEventListener('beforeunload',markGuestLeaving);
+    __karpGuestPresence.timer=setInterval(()=>__writeKarpGuestPresence(),8000);
+    const stateChange=()=>{if(__karpIsActiveNow())__writeKarpGuestPresence();};
+    document.addEventListener('visibilitychange',stateChange);window.addEventListener('focus',stateChange);
+    // Do not write offline on blur/pagehide: another open tab may still be active.
+    // Presence expires automatically when every open tab stops heartbeating.
   }catch(e){console.warn('KARP anonymous presence could not start:',e)}
 }
 async function __writeKarpPresence(online=true){
@@ -1034,12 +1034,12 @@ async function startKarpPresence(){
     __karpPresence={db,user:auth.currentUser,fs,device,sessionStartedAt:'',sessionId:'',firstSeenAt:now,activity:window.__karpPendingActivity||{page:'KARP',label:'Browsing',detail:'',question:null},lastSampleMs:performance.now(),wasActive:false,pendingSeconds:0,timeOwner:false};
     await __writeKarpPresence(true);
     if(__karpIsActiveNow()){__karpPresence.timeOwner=__karpTryClaimTimeOwner();__karpPresence.wasActive=__karpPresence.timeOwner;__karpPresence.lastSampleMs=performance.now();await __writeKarpPresence(true)}
-    __karpPresence.timer=setInterval(()=>__writeKarpPresence(true),10000);
-    const stateChange=()=>__writeKarpPresence(true);
-    document.addEventListener('visibilitychange',stateChange);window.addEventListener('focus',stateChange);window.addEventListener('blur',stateChange);
+    __karpPresence.timer=setInterval(()=>__writeKarpPresence(true),8000);
+    const stateChange=()=>{if(__karpIsActiveNow())__writeKarpPresence(true);};
+    document.addEventListener('visibilitychange',stateChange);window.addEventListener('focus',stateChange);
     window.addEventListener('storage',e=>{if(__karpPresence&&e.key===__karpTimeOwnerKey(__karpPresence.user.uid)&&__karpIsActiveNow()&&!__karpPresence.timeOwner)__writeKarpPresence(true)});
-    const markAccountLeaving=()=>{try{__writeKarpPresence(true)}catch{}};
-    window.addEventListener('pagehide',markAccountLeaving);window.addEventListener('beforeunload',markAccountLeaving);
+    // Do not force an offline write on pagehide: another open tab may still be active.
+    // The 35-second expiry is the authoritative fallback when all tabs disappear.
   }catch(e){console.warn('KARP presence could not start:',e)}
 }
 async function me(){try{return(await api('/api/me')).user}catch{return null}}
