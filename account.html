@@ -43,7 +43,9 @@
   const u=await requireUser(); if(!u)return;
   try{
     const {db}=await fb();
-    const {doc,setDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const {doc,setDoc,getDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    let gemCount=Math.max(0,Number(u.gems)||0);
+    try{const accountDoc=await getDoc(doc(db,'users',u.id));if(accountDoc.exists())gemCount=Math.max(0,Number(accountDoc.data()?.gems)||0);}catch(e){console.warn('Could not load gem balance:',e)}
     const now=new Date().toISOString();
     await setDoc(doc(db,'publicProfiles',u.id),{uid:u.id,name:u.name||'KARP Member',nameLower:String(u.name||'KARP Member').trim().toLowerCase(),photoURL:u.photoURL||'',updatedAt:now},{merge:true});
   }catch(e){console.warn('Could not sync public profile',e)}
@@ -90,7 +92,7 @@
     '</div>'+
     '<div class="profile-name">'+escapeHtml(u.name||'KARP Member')+'</div><div class="profile-email">'+escapeHtml(u.email||'')+'</div>'+
     '</section><section class="account-wrap">'+
-    '<div class="kpi-grid"><div class="kpi"><strong>'+solved.length+'</strong><span>Solved</span></div><div class="kpi"><strong>'+streak+'</strong><span>Day streak</span></div><div class="kpi"><strong>'+saved.length+'</strong><span>Saved</span></div><div class="kpi"><strong>'+exams.length+'</strong><span>Exams</span></div><div class="kpi"><strong>'+mocks.length+'</strong><span>Mocks</span></div></div>'+
+    '<div class="kpi-grid"><div class="kpi"><strong>'+gemCount+'</strong><span>💎 Gems</span></div><div class="kpi"><strong>'+solved.length+'</strong><span>Solved</span></div><div class="kpi"><strong>'+streak+'</strong><span>Day streak</span></div><div class="kpi"><strong>'+saved.length+'</strong><span>Saved</span></div><div class="kpi"><strong>'+exams.length+'</strong><span>Exams</span></div><div class="kpi"><strong>'+mocks.length+'</strong><span>Mocks</span></div></div>'+
     '<section class="dashboard"><div class="dashboard-head"><div><h2>Solved activity</h2><p>Daily, monthly and yearly progress.</p></div><div class="switch" id="activity-switch"><button class="active" data-mode="daily">Daily</button><button data-mode="monthly">Monthly</button><button data-mode="yearly">Yearly</button></div></div><div id="activity-chart">'+chartHtml('daily')+'</div></section>'+
     '<section class="dashboard"><div class="dashboard-head"><div><h2>Topic distribution</h2><p>How your solved problems are distributed across olympiad topics.</p></div></div>'+
       '<div class="topic-cards"><div class="topic-card"><small>Algebra</small><strong>'+totals.A+'</strong></div><div class="topic-card"><small>Geometry</small><strong>'+totals.G+'</strong></div><div class="topic-card"><small>Combinatorics</small><strong>'+totals.C+'</strong></div><div class="topic-card"><small>Number Theory</small><strong>'+totals.N+'</strong></div></div>'+
