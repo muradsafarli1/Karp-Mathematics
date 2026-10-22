@@ -1141,7 +1141,7 @@ async function renderDailyProblemAdmin(){
       const name=String(item.displayName||'KARP Member');
       const initial=name.trim().split(/\s+/).slice(0,2).map(x=>x.charAt(0)).join('').toUpperCase()||'K';
       const photo=String(item.photoURL||'');
-      return '<span style="display:inline-flex;align-items:center;justify-content:center;width:34px!important;height:34px!important;min-width:34px;max-width:34px;flex:0 0 34px;overflow:hidden;border-radius:50%;background:#263b5b;color:#fff;font-size:11px;font-weight:800">'+(photo?'<img src="'+esc(photo)+'" alt="" style="display:block;width:100%!important;height:100%!important;max-width:none!important;object-fit:cover!important;object-position:center;border-radius:50%">':esc(initial))+'</span>';
+      return '<span class="daily-admin-avatar" data-initial="'+esc(initial)+'" style="display:inline-flex;align-items:center;justify-content:center;width:34px!important;height:34px!important;min-width:34px;max-width:34px;flex:0 0 34px;overflow:hidden;border-radius:50%;background:#263b5b;color:#fff;font-size:11px;font-weight:800">'+(photo?'<img src="'+esc(photo)+'" alt="" style="display:block;width:100%!important;height:100%!important;max-width:none!important;object-fit:cover!important;object-position:center;border-radius:50%">':esc(initial))+'</span>';
     };
     const submissionCard=item=>{
       const status=String(item.status||'pending');
@@ -1164,6 +1164,7 @@ async function renderDailyProblemAdmin(){
       (currentItems.length?currentItems.map(submissionCard).join(''):'<div class="bigcard"><p>No solutions submitted for the current problem yet.</p></div>')+
       '<div class="admin-head" style="margin-top:28px"><div><h2>Past Daily Problems</h2><span class="admin-count">'+allPast.length+' previous problems</span></div></div>'+
       '<div class="daily-admin-history">'+historyMarkup+'</div>';
+    m.querySelectorAll('.daily-admin-avatar img').forEach(img=>img.addEventListener('error',()=>{const box=img.parentElement;if(!box)return;img.remove();box.textContent=box.dataset.initial||'K';},{once:true}));
     const saveButton=document.getElementById('daily-admin-save');
     const publishButton=document.getElementById('daily-admin-publish');
     const readForm=()=>({statementEn:document.getElementById('daily-admin-statement-en')?.value||'',statementAz:document.getElementById('daily-admin-statement-az')?.value||''});
