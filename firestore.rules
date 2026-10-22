@@ -197,12 +197,8 @@ service cloud.firestore {
           && request.resource.data.type == resource.data.type
           && request.resource.data.status == resource.data.status
           && (
-            (
-              !resource.data.keys().hasAny(['createdBy'])
-              && !request.resource.data.keys().hasAny(['createdBy'])
-            )
-            ||
-            (
+            request.resource.data.type == 'direct'
+            || (
               resource.data.keys().hasAny(['createdBy'])
               && request.resource.data.keys().hasAny(['createdBy'])
               && request.resource.data.createdBy == resource.data.createdBy
