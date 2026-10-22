@@ -299,7 +299,7 @@ body.users-analytics-fullscreen .admin .wrap{padding-top:26px!important}
   .users-trend-bar-space{min-height:95px}
   .users-trend-summary strong{font-size:19px}
 }
-</style></head><body><div id="root"></div><script>
+</style><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$","$"]],processEnvironments:true,processEscapes:true},svg:{fontCache:"global"},startup:{typeset:false}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script></head><body><div id="root"></div><script>
 const __adminSavedSection=(()=>{try{return new URLSearchParams(location.search).get('section')||localStorage.getItem('karp_admin_section')||'problems'}catch{return 'problems'}})();
 let state={type:__adminSavedSection,editing:null},liveDocs=[],liveUnsub=null,liveTimer=null,pendingVideoThumbnail='',pendingFounderImage='',pendingMeetingImage='',pendingBookFile=null,pendingJournalFile=null,booksAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''},journalsAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -324,7 +324,7 @@ async function startAdminPresence(db,u){
     },{merge:true}).catch(()=>{}));
   }catch(e){console.warn('KARP admin presence could not start:',e)}
 }
-async function init(){const u=await requireAdmin();if(!u)return;let db;try{({db}=await fb());const {doc,setDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');const now=new Date().toISOString();await setDoc(doc(db,'publicProfiles',u.id),{uid:u.id,name:u.name||'KARP Admin',nameLower:String(u.name||'KARP Admin').trim().toLowerCase(),photoURL:u.photoURL||'',isAdmin:true,updatedAt:now},{merge:true})}catch(e){console.warn('Could not sync admin public profile',e)}document.getElementById('root').innerHTML=`<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><div class="actions"><span style="color:#aeb7c8">${esc(u.name)}</span><a class="btn" href="/">View site</a><button class="btn" onclick="logout()">Log out</button></div></div></header><main class="admin"><div class="wrap"><div class="admin-grid"><aside class="admin-side"><button class="active" data-type="problems">Problems</button><button data-type="contests">Contests</button><button data-type="articles">Articles</button><button data-type="exams">Exams</button><button data-type="videos">Videos</button><button data-type="journals">Journals</button><button data-type="meetings">Meetings</button><button type="button" onclick="location.href='/mathnet-sync.html'">MathNet Sync</button><button data-type="mocks">Mocks</button><button data-type="books">Books</button><button data-type="users">Users</button><button data-type="about">About Us</button></aside><section class="admin-main" id="main"></section></div></div></main>`;startAdminPresence(db,u);document.querySelectorAll('.admin-side button').forEach(b=>b.onclick=()=>{if(!b.dataset.type)return;syncCurrent();if(b.dataset.type==='users'&&state.type!=='users'){try{localStorage.setItem('karp_admin_previous_section',state.type)}catch{}}document.querySelectorAll('.admin-side button').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.type=b.dataset.type;state.editing=null;try{localStorage.setItem('karp_admin_section',state.type);const u=new URL(location.href);u.searchParams.set('section',state.type);history.replaceState(null,'',u)}catch{}render()});document.querySelectorAll('.admin-side button').forEach(b=>b.classList.toggle('active',b.dataset.type===state.type));render()}
+async function init(){const u=await requireAdmin();if(!u)return;let db;try{({db}=await fb());const {doc,setDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');const now=new Date().toISOString();await setDoc(doc(db,'publicProfiles',u.id),{uid:u.id,name:u.name||'KARP Admin',nameLower:String(u.name||'KARP Admin').trim().toLowerCase(),photoURL:u.photoURL||'',isAdmin:true,updatedAt:now},{merge:true})}catch(e){console.warn('Could not sync admin public profile',e)}document.getElementById('root').innerHTML=`<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><div class="actions"><span style="color:#aeb7c8">${esc(u.name)}</span><a class="btn" href="/">View site</a><button class="btn" onclick="logout()">Log out</button></div></div></header><main class="admin"><div class="wrap"><div class="admin-grid"><aside class="admin-side"><button class="active" data-type="problems">Problems</button><button data-type="contests">Contests</button><button data-type="articles">Articles</button><button data-type="exams">Exams</button><button data-type="dailyProblem">Daily Problem</button><button data-type="videos">Videos</button><button data-type="journals">Journals</button><button data-type="meetings">Meetings</button><button type="button" onclick="location.href='/mathnet-sync.html'">MathNet Sync</button><button data-type="mocks">Mocks</button><button data-type="books">Books</button><button data-type="users">Users</button><button data-type="about">About Us</button></aside><section class="admin-main" id="main"></section></div></div></main>`;startAdminPresence(db,u);document.querySelectorAll('.admin-side button').forEach(b=>b.onclick=()=>{if(!b.dataset.type)return;syncCurrent();if(b.dataset.type==='users'&&state.type!=='users'){try{localStorage.setItem('karp_admin_previous_section',state.type)}catch{}}document.querySelectorAll('.admin-side button').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.type=b.dataset.type;state.editing=null;try{localStorage.setItem('karp_admin_section',state.type);const u=new URL(location.href);u.searchParams.set('section',state.type);history.replaceState(null,'',u)}catch{}render()});document.querySelectorAll('.admin-side button').forEach(b=>b.classList.toggle('active',b.dataset.type===state.type));render()}
 document.addEventListener('DOMContentLoaded',init);
 function examList(d){return Array.isArray(d)?d:(d?.exams||[])}
 function presenceMillis(v){return v?.toMillis?v.toMillis():Number(v)||0}
@@ -1103,10 +1103,77 @@ async function __usersExitDashboard(){
   document.querySelectorAll('.admin-side button').forEach(b=>b.classList.toggle('active',b.dataset.type===previous));
   await render();
 }
+
+async function renderDailyProblemAdmin(){
+  const m=document.getElementById('main');if(!m)return;
+  try{
+    const {db}=await fb();
+    const {doc,getDoc,setDoc,collection,getDocs,updateDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const [problemSnap,submissionSnap]=await Promise.all([
+      getDoc(doc(db,'dailyProblem','current')),
+      getDocs(collection(db,'dailyProblemSubmissions'))
+    ]);
+    const problem=problemSnap.exists()?problemSnap.data():{};
+    const admin=await me();
+    const submissions=submissionSnap.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+    const pending=submissions.filter(x=>(x.status||'pending')==='pending').length;
+    const submissionCards=submissions.length?submissions.map(item=>{
+      const status=String(item.status||'pending');
+      const date=item.createdAt?new Date(item.createdAt):null;
+      const dateLabel=date&&!Number.isNaN(date.getTime())?date.toLocaleString('en-GB',{timeZone:'Asia/Baku',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})+' (UTC+4)':'Date unavailable';
+      const statusColor=status==='approved'?'#276749':status==='rejected'?'#9b2c2c':'#805b10';
+      const actions=status==='pending'
+        ?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><button class="btn primary" type="button" data-daily-status="approved" data-daily-id="'+esc(item.id)+'">Approve & publish</button><button class="btn danger" type="button" data-daily-status="rejected" data-daily-id="'+esc(item.id)+'">Reject</button></div>'
+        :'<div style="margin-top:14px;font-size:11px;color:'+statusColor+';font-weight:800">'+(status==='approved'?'Published on Daily Problem':status==='rejected'?'Rejected':'Status: '+esc(status))+'</div>';
+      return '<article class="bigcard" style="margin:12px 0;padding:22px"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start"><div><h3 style="margin:0 0 5px">'+esc(item.displayName||'KARP Member')+'</h3><p style="margin:0;color:var(--muted)">'+esc(item.email||'No email provided')+' · '+esc(dateLabel)+'</p></div><span style="display:inline-flex;align-items:center;border:1px solid #d6d9d4;border-radius:7px;padding:5px 8px;font-size:10px;font-weight:800;color:'+statusColor+'">'+esc(status.toUpperCase())+' · '+esc(item.language||'ENG')+'</span></div><div style="margin-top:18px;border:1px solid #e0e2dd;background:#f7f8f5;border-radius:12px;padding:17px;color:#22252a;font-size:14px;line-height:1.9;white-space:pre-wrap;overflow-wrap:anywhere" class="daily-admin-solution">'+esc(item.solution||'')+'</div>'+actions+'</article>';
+    }).join(''):'<div class="bigcard"><p>No solutions have been submitted yet.</p></div>';
+    m.innerHTML='<div class="admin-head"><div><h2>Daily Problem</h2><span class="admin-count">Manage the current problem and review community solutions</span></div><span class="tag">'+pending+' pending review</span></div>'+
+      '<div class="bigcard" style="margin-bottom:20px"><h3 style="margin-top:0">Problem Statement</h3><p>Enter the statement in both languages. The public Daily Problem page updates automatically after saving.</p><label class="daily-admin-label" for="daily-admin-statement-en">English (ENG)</label><textarea id="daily-admin-statement-en" rows="7" style="width:100%;box-sizing:border-box;margin:8px 0 16px;padding:13px;border:1px solid #d5d8d2;border-radius:10px;background:#fbfcfa;color:#17191c;font:13px/1.7 system-ui;resize:vertical">'+esc(problem.statementEn||'')+'</textarea><label class="daily-admin-label" for="daily-admin-statement-az">Azerbaijani (AZE)</label><textarea id="daily-admin-statement-az" rows="7" style="width:100%;box-sizing:border-box;margin:8px 0 16px;padding:13px;border:1px solid #d5d8d2;border-radius:10px;background:#fbfcfa;color:#17191c;font:13px/1.7 system-ui;resize:vertical">'+esc(problem.statementAz||'')+'</textarea><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="btn primary" id="daily-admin-save">Save Problem Statement</button><span style="font-size:11px;color:var(--muted)">LaTeX supported: use \\( ... \\) or \\[ ... \\].</span></div></div>'+
+      '<div class="admin-head"><div><h2>Solution Submissions</h2><span class="admin-count">'+submissions.length+' total · '+pending+' awaiting review</span></div></div>'+
+      '<div class="daily-admin-submissions">'+submissionCards+'</div>';
+    const saveButton=document.getElementById('daily-admin-save');
+    if(saveButton)saveButton.onclick=async()=>{
+      const statementEn=document.getElementById('daily-admin-statement-en')?.value||'';
+      const statementAz=document.getElementById('daily-admin-statement-az')?.value||'';
+      if(!statementEn.trim()&&!statementAz.trim()){toast('Enter the problem statement in at least one language.');return}
+      saveButton.disabled=true;
+      try{
+        await setDoc(doc(db,'dailyProblem','current'),{statementEn,statementAz,updatedAt:new Date().toISOString(),updatedBy:admin?.id||''},{merge:true});
+        toast('Daily Problem saved.');await renderDailyProblemAdmin();
+      }catch(e){toast('Could not save Daily Problem: '+(e.message||'Check Firestore rules.'));saveButton.disabled=false}
+    };
+    m.querySelectorAll('[data-daily-status]').forEach(button=>button.onclick=async()=>{
+      const id=button.dataset.dailyId,status=button.dataset.dailyStatus;
+      if(!id||!['approved','rejected'].includes(status))return;
+      if(status==='rejected'&&!confirm('Reject this solution?'))return;
+      button.disabled=true;
+      try{
+        const changes=status==='approved'
+          ?{status:'approved',approvedAt:new Date().toISOString(),approvedBy:admin?.id||''}
+          :{status:'rejected',rejectedAt:new Date().toISOString(),rejectedBy:admin?.id||''};
+        await updateDoc(doc(db,'dailyProblemSubmissions',id),changes);
+        toast(status==='approved'?'Solution approved and published.':'Solution rejected.');
+        await renderDailyProblemAdmin();
+      }catch(e){toast('Could not update solution: '+(e.message||'Check Firestore rules.'));button.disabled=false}
+    });
+    if(window.MathJax&&window.MathJax.typesetPromise){
+      try{if(window.MathJax.startup?.promise)await window.MathJax.startup.promise;await window.MathJax.typesetPromise([m])}catch(e){console.warn('Daily Problem admin math rendering failed:',e)}
+    }
+  }catch(e){
+    console.error('Could not load Daily Problem admin:',e);
+    m.innerHTML='<div class="bigcard"><h3>Could not load Daily Problem</h3><p>'+esc(e.message||'Please check the deployed Firestore rules and try again.')+'</p></div>';
+  }
+}
+
 async function render(){
   const m=document.getElementById('main');if(!m)return;
   document.body.classList.toggle('users-analytics-fullscreen',state.type==='users');
   if(state.type!=='users' && __usersAnalytics.started)__usersDestroyLive();
+
+  if(state.type==='dailyProblem'){
+    await renderDailyProblemAdmin();
+    return;
+  }
 
   if(state.type==='books'){
     await renderBooksAdmin();
