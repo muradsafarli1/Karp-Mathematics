@@ -970,7 +970,13 @@ function __usersUniqueVisitorBuckets(visits,period,now=Date.now()){
     if(set)set.add(id);
   });
   buckets.forEach(b=>b.count=sets.get(b.key)?.size||0);
-  return {buckets,todayCount:sets.get(todayKey)?.size||0};
+  const todaySet=new Set();
+  (visits||[]).forEach(v=>{
+    if(String(v.dateKey||'')!==todayKey)return;
+    const id=String(v.visitorId||v.uid||v.guestId||v.id||'');
+    if(id)todaySet.add(id);
+  });
+  return {buckets,todayCount:todaySet.size};
 }
 function __usersRenderUniqueVisitorPanel(visits,period,now){
   const mode=['daily','monthly','yearly'].includes(period)?period:'daily';
