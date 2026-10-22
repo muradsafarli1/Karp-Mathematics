@@ -88,12 +88,12 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
       renderProblem();
     });
   });
-  async function typeset(root){
+  async function typeset(root,attempt=0){
     if(!root)return;
     try{
       if(window.MathJax&&window.MathJax.startup&&window.MathJax.startup.promise)await window.MathJax.startup.promise;
       if(window.MathJax&&window.MathJax.typesetPromise){if(window.MathJax.typesetClear)window.MathJax.typesetClear([root]);await window.MathJax.typesetPromise([root]);}
-      else setTimeout(()=>typeset(root),300);
+      else if(attempt<12)setTimeout(()=>typeset(root,attempt+1),300);
     }catch(e){console.warn('Daily Problem math rendering failed:',e);}
   }
   function renderProblem(){
