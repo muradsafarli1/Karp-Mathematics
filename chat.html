@@ -7,8 +7,8 @@
 <script src="/app.js?v=20261022chat3"></script>
 <style>
 :root{--wa-bg:#f5f6f4;--wa-panel:#fff;--wa-line:#e5e7e5;--wa-soft:#f0f2f0;--wa-ink:#17191c;--wa-muted:#7b8289;--wa-accent:#263b5b}
-.chat-app{height:calc(100vh - 72px);min-height:650px;background:var(--wa-bg);padding:18px;box-sizing:border-box}
-.chat-window{height:100%;max-width:1420px;margin:auto;display:grid;grid-template-columns:330px minmax(0,1fr) 270px;border:1px solid #dfe2df;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 14px 45px rgba(23,25,28,.07)}
+.chat-app{height:calc(100vh - 72px);min-height:0;background:var(--wa-bg);padding:0;box-sizing:border-box}
+.chat-window{height:100%;width:100%;max-width:none;margin:0;display:grid;grid-template-columns:360px minmax(0,1fr) 300px;border:0;border-radius:0;overflow:hidden;background:#fff;box-shadow:none}
 .chat-left{border-right:1px solid var(--wa-line);display:flex;flex-direction:column;min-width:0;background:#fff}
 .chat-brand{height:64px;padding:0 18px;border-bottom:1px solid var(--wa-line);display:flex;align-items:center;justify-content:space-between}
 .chat-brand strong{font:800 20px/1 "Space Grotesk";letter-spacing:-.5px}.chat-brand span{font-size:9px;color:var(--wa-muted)}
@@ -18,7 +18,7 @@
 .chat-list{overflow:auto;flex:1}.chat-row{display:flex;gap:11px;padding:12px 14px;border-bottom:1px solid #f0f1f0;cursor:pointer}.chat-row:hover,.chat-row.active{background:#f6f7f6}.chat-avatar{width:43px;height:43px;min-width:43px;border-radius:50%;overflow:hidden;background:#e7eaeb;color:#263b5b;display:grid;place-items:center;font-size:11px;font-weight:900}.chat-avatar img{width:100%;height:100%;object-fit:cover}.chat-row-main{min-width:0;flex:1}.chat-row-top{display:flex;justify-content:space-between;gap:7px}.chat-row-name{font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-row-time{font-size:8px;color:#90969b;white-space:nowrap}.chat-row-preview{margin-top:4px;font-size:9px;color:#7b8289;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-unread{display:inline-grid;place-items:center;min-width:16px;height:16px;border-radius:99px;background:var(--wa-accent);color:#fff;font-size:8px;font-weight:900;padding:0 4px}
 .chat-main{display:grid;grid-template-rows:64px minmax(0,1fr) 64px;min-width:0;min-height:0;background:#f3f5f3;overflow:hidden}
 .chat-head{display:flex;align-items:center;gap:11px;padding:0 18px;background:#fff;border-bottom:1px solid var(--wa-line)}.chat-head-copy{min-width:0;flex:1}.chat-head-name{font-size:12px;font-weight:850}.chat-head-status{font-size:9px;color:#7b8289;margin-top:3px}.chat-head-actions{display:flex;gap:6px}
-.chat-messages{overflow-y:auto;overflow-x:hidden;min-height:0;padding:22px 8%;display:flex;flex-direction:column;gap:4px;overscroll-behavior:contain;scroll-behavior:auto;background:linear-gradient(rgba(243,245,243,.96),rgba(243,245,243,.96)),radial-gradient(circle at 20% 20%,#e9ecea 1px,transparent 1px);background-size:auto,18px 18px}
+.chat-messages{overflow-y:auto;overflow-x:hidden;min-height:0;padding:24px clamp(28px,7vw,110px);display:flex;flex-direction:column;gap:4px;overscroll-behavior:contain;scroll-behavior:auto;background:linear-gradient(rgba(243,245,243,.96),rgba(243,245,243,.96)),radial-gradient(circle at 20% 20%,#e9ecea 1px,transparent 1px);background-size:auto,18px 18px}
 .day-divider{align-self:center;margin:8px 0 10px;padding:5px 9px;border-radius:8px;background:#fff;border:1px solid #e3e6e3;color:#838a90;font-size:8px;font-weight:800}
 .msg{max-width:min(72%,620px);padding:8px 10px;border-radius:10px;background:#fff;border:1px solid #e1e4e1;box-shadow:0 1px 1px rgba(0,0,0,.02);align-self:flex-start;position:relative}.msg.mine{align-self:flex-end;background:#e8edf2;border-color:#dce3e9}.msg-author{font-size:8px;color:#263b5b;font-weight:850;margin-bottom:3px}.msg-text{font-size:10px;line-height:1.6;color:#30363c;white-space:pre-wrap;overflow-wrap:anywhere}.msg-meta{font-size:7px;color:#8c9297;text-align:right;margin-top:4px}
 .chat-composer{display:flex;align-items:center;min-height:64px;box-sizing:border-box;gap:8px;padding:10px 14px;background:#fff;border-top:1px solid var(--wa-line)}.chat-composer textarea{flex:1;min-width:0;height:42px;max-height:110px;resize:none;border:1px solid #dfe2df;border-radius:11px;padding:10px;font:11px Inter,system-ui;outline:none}.chat-composer textarea:focus{border-color:#b8bec4}.send-btn{width:42px;height:42px;border:0;border-radius:11px;background:var(--wa-accent);color:#fff;font-size:16px;cursor:pointer}
@@ -26,7 +26,7 @@
 .empty-chat{height:100%;display:grid;place-items:center;text-align:center;color:#838a90;font-size:11px;padding:30px}.empty-chat strong{display:block;color:#343a40;font-size:16px;margin-bottom:5px}
 .modal-back{position:fixed;inset:0;background:rgba(17,21,24,.35);display:none;align-items:center;justify-content:center;padding:18px;z-index:1000}.modal-back.open{display:flex}.chat-modal{width:min(520px,100%);max-height:min(720px,90vh);overflow:auto;background:#fff;border:1px solid #dfe2df;border-radius:16px;box-shadow:0 25px 70px rgba(0,0,0,.15)}.modal-head{padding:16px 18px;border-bottom:1px solid var(--wa-line);display:flex;justify-content:space-between;align-items:center}.modal-head strong{font-size:14px}.modal-body{padding:15px}.modal-search{width:100%;box-sizing:border-box;border:1px solid #dfe2df;border-radius:10px;padding:10px;font:11px Inter,system-ui;margin-bottom:10px}.contact{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #edf0ed;border-radius:10px;margin:6px 0}.contact-main{flex:1;min-width:0}.contact-main strong{font-size:10px}.contact-main small{display:block;color:#858b91;font-size:8px;margin-top:2px}.contact-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.modal-foot{padding:12px 15px;border-top:1px solid var(--wa-line);display:flex;justify-content:flex-end;gap:6px}
 .group-picks{display:grid;gap:5px;max-height:300px;overflow:auto}.group-pick{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #edf0ed;border-radius:8px}.group-pick input{margin-left:auto}
-@media(max-width:1050px){.chat-window{grid-template-columns:290px minmax(0,1fr)}.chat-right{display:none}}
+@media(max-width:1050px){.chat-window{grid-template-columns:320px minmax(0,1fr)}.chat-right{display:none}}
 @media(max-width:700px){.chat-app{padding:0;height:calc(100vh - 62px)}.chat-window{border-radius:0;border:0;grid-template-columns:1fr}.chat-left{display:none}.chat-window.mobile-list .chat-left{display:flex}.chat-window.mobile-list .chat-main{display:none}.chat-main{height:calc(100vh - 62px)}.chat-messages{padding:16px 5%}.msg{max-width:84%}}
 </style>
 </head>
@@ -48,8 +48,8 @@
 const {db,auth}=await import('/karp-firebase.js');
 const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
 const au=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
-const {collection,doc,getDoc,getDocs,query,where,orderBy,limit,onSnapshot,addDoc,setDoc,updateDoc,serverTimestamp}=fs;
-let user=null,meProfile={},conversations=[],friends=[],incoming=[],outgoing=[],selected=null,messages=[],unsubConv=null,unsubMsg=null,listMode='chats';
+const {collection,doc,getDoc,getDocs,query,where,orderBy,limit,onSnapshot,addDoc,setDoc,updateDoc,writeBatch,serverTimestamp}=fs;
+let user=null,meProfile={},conversations=[],friends=[],incoming=[],outgoing=[],selected=null,messages=[],unsubConv=null,unsubMsg=null,unsubIncoming=null,unsubOutgoing=null,listMode='chats';
 const esc=window.escapeHtml||((x)=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
 const verified=()=>!!user&&user.emailVerified===true;
 function updateChatNav(u){
@@ -74,7 +74,21 @@ document.getElementById('modalClose').onclick=closeModal;document.getElementById
 function requireUser(){if(!verified()){window.showAuthPrompt?.('Sign in to use Messages','Create or verify your KARP account to send messages and connect with other members.');return false}return true}
 async function loadProfile(){if(!user)return;try{const s=await getDoc(doc(db,'publicProfiles',user.uid));if(s.exists())meProfile=s.data()||{};else{meProfile={uid:user.uid,name:displayName(),nameLower:displayName().toLowerCase(),photoURL:photo()};await setDoc(doc(db,'publicProfiles',user.uid),{...meProfile,updatedAt:new Date().toISOString()},{merge:true})}}catch(e){console.warn(e)}}
 async function loadFriends(){if(!user)return;try{const s=await getDocs(query(collection(db,'friendships'),where('members','array-contains',user.uid)));friends=s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>Array.isArray(x.members)&&x.members.includes(user.uid));}catch(e){console.warn('friends',e);friends=[]}}
-async function loadRequests(){if(!user)return;try{const [a,b]=await Promise.all([getDocs(query(collection(db,'friendRequests'),where('toUid','==',user.uid))),getDocs(query(collection(db,'friendRequests'),where('fromUid','==',user.uid)))]);incoming=a.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.status==='pending');outgoing=b.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.status==='pending')}catch(e){console.warn('requests',e);incoming=[];outgoing=[]}}
+async function loadRequests(){
+  if(!user)return;
+  if(unsubIncoming)unsubIncoming();
+  if(unsubOutgoing)unsubOutgoing();
+  const inQ=query(collection(db,'friendRequests'),where('toUid','==',user.uid));
+  const outQ=query(collection(db,'friendRequests'),where('fromUid','==',user.uid));
+  unsubIncoming=onSnapshot(inQ,s=>{
+    incoming=s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.status==='pending');
+    renderList().catch(e=>console.warn('render requests',e));
+  },e=>console.warn('incoming requests listener',e));
+  unsubOutgoing=onSnapshot(outQ,s=>{
+    outgoing=s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.status==='pending');
+    renderList().catch(e=>console.warn('render outgoing requests',e));
+  },e=>console.warn('outgoing requests listener',e));
+}
 async function loadConversations(){if(!user)return;try{const s=await getDocs(query(collection(db,'conversations'),where('members','array-contains',user.uid)));conversations=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>Date.parse(b.updatedAt||b.createdAt||0)-Date.parse(a.updatedAt||a.createdAt||0))}catch(e){console.warn('conversations',e);conversations=[]}}
 async function hydratePeople(ids){const map=new Map();await Promise.all([...new Set(ids.filter(Boolean))].map(async id=>{try{const s=await getDoc(doc(db,'publicProfiles',id));if(s.exists())map.set(id,{uid:id,...s.data()})}catch{}}));return map}
 function otherId(c){return c.type==='direct'?c.members.find(x=>x!==user.uid)||'':''}
@@ -96,7 +110,26 @@ async function renderDetails(c,p){const ids=(c.members||[]).filter(x=>x!==user.u
 async function sendMessage(){if(!requireUser()||!selected)return;const e=document.getElementById('composer'),text=e.value.trim();if(!text)return;e.value='';try{await addDoc(collection(db,'conversations',selected.id,'messages'),{senderId:user.uid,senderName:displayName(),senderPhoto:photo(),text,createdAt:serverTimestamp()});await updateDoc(doc(db,'conversations',selected.id),{lastMessage:text.slice(0,180),lastSenderId:user.uid,updatedAt:new Date().toISOString()})}catch(err){e.value=text;alert(err.message||'Could not send message.')} }
 document.getElementById('send').onclick=sendMessage;document.getElementById('composer').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}};document.getElementById('chatSearch').oninput=renderList;
 async function startDirect(uid){if(!requireUser())return;await loadFriends();const friend=friends.some(f=>f.members?.includes(uid));if(!friend){modal('Connect first','<p style="font-size:11px;line-height:1.6;color:#555d65">You can message members after you are connected.</p>','<button class="text-btn" id="modalFind">Find & connect</button>');document.getElementById('modalFind').onclick=()=>openNewChat();return}const id=[user.uid,uid].sort().join('_');try{await setDoc(doc(db,'conversations',id),{type:'direct',status:'accepted',members:[user.uid,uid].sort(),createdBy:user.uid,updatedAt:new Date().toISOString(),lastMessage:''},{merge:true});await loadConversations();await renderList();openConversation(id)}catch(e){alert(e.message||'Could not start chat.')}}
-async function acceptRequest(id){if(!requireUser())return;const r=incoming.find(x=>x.id===id);if(!r)return;try{await updateDoc(doc(db,'friendRequests',id),{status:'accepted',respondedAt:new Date().toISOString()});const fid=[user.uid,r.fromUid].sort().join('_');await setDoc(doc(db,'friendships',fid),{members:[user.uid,r.fromUid].sort(),status:'accepted',requestId:id,createdAt:new Date().toISOString()},{merge:true});await loadFriends();await loadRequests();listMode='friends';await renderList()}catch(e){alert(e.message||'Could not accept request.')}}
+async function acceptRequest(id){
+  if(!requireUser())return;
+  const r=incoming.find(x=>x.id===id);
+  if(!r)return;
+  const members=[user.uid,r.fromUid].sort();
+  const fid=members.join('_');
+  const now=new Date().toISOString();
+  try{
+    const batch=writeBatch(db);
+    batch.update(doc(db,'friendRequests',id),{status:'accepted',respondedAt:now});
+    batch.set(doc(db,'friendships',fid),{members,status:'accepted',requestId:id,createdAt:now},{merge:true});
+    await batch.commit();
+    await loadFriends();
+    listMode='friends';
+    await renderList();
+  }catch(e){
+    console.error('accept request',e);
+    alert(e.message||'Could not accept request. Nothing was changed.');
+  }
+}
 async function rejectRequest(id){const r=incoming.find(x=>x.id===id);if(!r)return;try{await updateDoc(doc(db,'friendRequests',id),{status:'rejected',respondedAt:new Date().toISOString()});await loadRequests();renderList()}catch(e){alert(e.message||'Could not decline request.')}}
 async function openNewChat(){if(!requireUser())return;modal('New conversation','<input id="peopleSearch" class="modal-search" placeholder="Search KARP members by name…"><div id="peopleResults"><div style="font-size:10px;color:#7b8289">Search for a member to connect.</div></div>');const input=document.getElementById('peopleSearch');let timer;input.oninput=()=>{clearTimeout(timer);timer=setTimeout(()=>searchPeople(input.value),180)};input.focus();searchPeople('')}
 async function searchPeople(term){const box=document.getElementById('peopleResults');if(!box)return;try{const s=await getDocs(query(collection(db,'publicProfiles'),limit(200)));const q=term.trim().toLowerCase();const arr=s.docs.map(d=>({uid:d.id,...d.data()})).filter(p=>p.uid!==user.uid&&(!q||String(p.name||'').toLowerCase().includes(q)||String(p.email||'').toLowerCase().includes(q))).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'en',{sensitivity:'base'})).slice(0,50);const friendIds=new Set(friends.flatMap(f=>f.members||[]));box.innerHTML=arr.length?arr.map(p=>{const isFriend=friendIds.has(p.uid),pendingIn=incoming.some(r=>r.fromUid===p.uid),pendingOut=outgoing.some(r=>r.toUid===p.uid);return '<div class="contact">'+avatar(p.name,p.photoURL)+'<div class="contact-main"><strong>'+esc(p.name||'KARP Member')+'</strong><small>KARP member</small></div><div class="contact-actions">'+(isFriend?'<button class="text-btn primary" data-open-person="'+p.uid+'">Message</button>':pendingIn?'<button class="text-btn" data-accept="'+(incoming.find(r=>r.fromUid===p.uid)?.id||'')+'">Accept</button>':pendingOut?'<button class="text-btn">Invited</button>':'<button class="text-btn primary" data-add="'+p.uid+'">Connect</button>')+'</div></div>'}).join(''):'<div style="padding:18px;text-align:center;font-size:10px;color:#7b8289">No members found.</div>';box.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>sendRequest(b.dataset.add));box.querySelectorAll('[data-open-person]').forEach(b=>{closeModal();startDirect(b.dataset.openPerson)});box.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>{closeModal();acceptRequest(b.dataset.accept)})}catch(e){box.innerHTML='<div style="font-size:10px;color:#9b2c2c">Could not load members.</div>'}}
@@ -105,7 +138,10 @@ function invite(){const url=location.origin+'/signup.html?invite='+encodeURIComp
 function openGroup(initial=[]){if(!requireUser())return;const friendIds=[...new Set(friends.flatMap(f=>f.members||[]).filter(id=>id!==user.uid))];modal('New group','<input id="groupName" class="modal-search" placeholder="Group name"><div class="group-picks">'+friendIds.map(id=>{const p=people.get(id)||{};return '<label class="group-pick">'+avatar(p.name,p.photoURL)+'<span style="font-size:10px;font-weight:750">'+esc(p.name||'KARP Member')+'</span><input type="checkbox" value="'+id+'" '+(initial.includes(id)?'checked':'')+'></label>'}).join('')+'</div>','<button class="text-btn" id="groupCancel">Cancel</button><button class="text-btn primary" id="groupCreate">Create group</button>');document.getElementById('groupCancel').onclick=closeModal;document.getElementById('groupCreate').onclick=async()=>{const name=document.getElementById('groupName').value.trim();const ids=[...document.querySelectorAll('.group-pick input:checked')].map(x=>x.value);if(!name||!ids.length)return;const members=[user.uid,...ids];try{const r=await addDoc(collection(db,'conversations'),{type:'group',status:'accepted',members,createdBy:user.uid,name,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),lastMessage:''});closeModal();await loadConversations();await renderList();openConversation(r.id)}catch(e){alert(e.message||'Could not create group.')}}}
 document.getElementById('newChat').onclick=openNewChat;document.getElementById('inviteBtn').onclick=invite;document.getElementById('infoBtn').onclick=()=>{if(selected){const p=selected.type==='direct'?people.get(otherId(selected)):null;renderDetails(selected,p)}else invite()};document.getElementById('profileBtn').onclick=()=>{if(!verified())return requireUser();modal('Your KARP profile','<div class="profile-card" style="border:0">'+avatar(displayName(),photo())+'<div class="profile-name">'+esc(displayName())+'</div><div class="profile-sub">'+esc(user.email||'')+'</div></div>','<button class="text-btn" id="closeProfile">Close</button>');document.getElementById('closeProfile').onclick=closeModal};document.getElementById('backMobile').onclick=()=>document.getElementById('chat-window').classList.add('mobile-list');
 document.querySelectorAll('.chat-tab').forEach(b=>b.onclick=async()=>{document.querySelectorAll('.chat-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');listMode=b.dataset.list;await renderList()});
-au.onAuthStateChanged(auth,async u=>{user=u||null;updateChatNav(user);if(!verified()){document.getElementById('composer').disabled=true;document.getElementById('send').disabled=true;document.getElementById('chatList').innerHTML='<div class="empty-chat"><div><strong>Sign in to Messages</strong>Create or verify your KARP account to connect with other members.</div></div>';return}await loadProfile();await loadFriends();await loadRequests();await loadConversations();await renderList()});
+au.onAuthStateChanged(auth,async u=>{
+  if(unsubIncoming){unsubIncoming();unsubIncoming=null}
+  if(unsubOutgoing){unsubOutgoing();unsubOutgoing=null}
+  user=u||null;updateChatNav(user);if(!verified()){document.getElementById('composer').disabled=true;document.getElementById('send').disabled=true;document.getElementById('chatList').innerHTML='<div class="empty-chat"><div><strong>Sign in to Messages</strong>Create or verify your KARP account to connect with other members.</div></div>';return}await loadProfile();await loadFriends();await loadRequests();await loadConversations();await renderList()});
 })();
 </script>
 </body></html>
