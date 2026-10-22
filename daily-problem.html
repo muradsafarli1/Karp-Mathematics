@@ -87,6 +87,8 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
   const noticeEl=document.getElementById('daily-submit-notice');
   const safe=value=>String(value==null?'':value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   let language='en',problem={statementEn:'',statementAz:''},currentUser=null,userProfile={},approvedItems=[],ownPendingItems=[],pendingUnsubscribe=null;
+  let authIsReady=false,authReadyResolve;
+  const authReadyPromise=new Promise(resolve=>{authReadyResolve=resolve;});
   try{language=localStorage.getItem('karp_daily_problem_lang')==='az'?'az':'en'}catch(e){}
   languageSwitchEl.querySelectorAll('button').forEach(button=>{
     button.classList.toggle('active',button.dataset.dailyLang===language);
@@ -152,6 +154,7 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
     fs.onSnapshot(approvedQuery,snapshot=>{approvedItems=snapshot.docs.map(x=>({id:x.id,...x.data()}));renderSolutions();},error=>{console.error('Daily Problem solutions could not load:',error);approvedEl.innerHTML='<div class="daily-empty">Could not load solutions. Please refresh the page.</div>';});
     fs.onAuthStateChanged(auth,async user=>{
       currentUser=user||null;
+      authIsReady=true;authReadyResolve();
       userProfile={};
       if(pendingUnsubscribe){pendingUnsubscribe();pendingUnsubscribe=null;}
       ownPendingItems=[];
@@ -165,7 +168,8 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
         renderSolutions();
       },error=>console.warn('Could not load personal Daily Problem submission status:',error));
     });
-    addButton.addEventListener('click',()=>{
+    addButton.addEventListener('click',async()=>{
+      if(!authIsReady)await authReadyPromise;
       if(!currentUser){
         if(typeof showAuthPrompt==='function')showAuthPrompt('Sign in to submit a solution','Sign in or create an account before submitting your proof.');
         else location.href='/login.html?returnTo=%2Fdaily-problem.html';
