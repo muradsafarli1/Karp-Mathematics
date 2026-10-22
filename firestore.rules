@@ -592,7 +592,7 @@ service cloud.firestore {
         || (signedIn() && resource.data.uid == request.auth.uid)
         || resource.data.status == 'approved';
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['uid','displayName','email','language','solution','status','createdAt'])
+        && request.resource.data.keys().hasOnly(['uid','displayName','email','photoURL','language','solution','status','createdAt'])
         && request.resource.data.keys().hasAll(['uid','displayName','email','language','solution','status','createdAt'])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.displayName is string
@@ -600,6 +600,7 @@ service cloud.firestore {
         && request.resource.data.displayName.size() <= 100
         && request.resource.data.email is string
         && request.resource.data.email.size() <= 200
+        && (!request.resource.data.keys().hasAny(['photoURL']) || (request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 2000))
         && request.resource.data.language in ['ENG','AZE']
         && request.resource.data.solution is string
         && request.resource.data.solution.size() > 0
