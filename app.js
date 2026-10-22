@@ -910,6 +910,19 @@ function __karpSessionId(){
   try{return crypto?.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+'_'+Date.now()}
   catch{return Math.random().toString(36).slice(2)+'_'+Date.now()}
 }
+async function __karpLogVisit({db,fs,visitorId,uid=null,userType='guest',name='',email='',device={},sessionId='',sessionStartedAt=''}){
+  try{
+    if(!db||!fs||!visitorId||!sessionId)return;
+    const {doc,setDoc,serverTimestamp}=fs;
+    const dateKey=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Baku',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    await setDoc(doc(db,'visitorVisits',String(visitorId)+'_'+String(sessionId)),{
+      visitorId:String(visitorId),uid:uid||null,guestId:userType==='guest'?String(visitorId):null,userType,
+      name:String(name||''),email:String(email||''),deviceType:String(device.deviceType||'Unknown device'),
+      browser:String(device.browser||'Unknown browser'),os:String(device.os||'Unknown OS'),
+      dateKey,enteredAt:serverTimestamp(),sessionStartedAt:String(sessionStartedAt||''),sessionId:String(sessionId)
+    },{merge:true});
+  }catch(e){console.warn('KARP visit analytics write failed:',e)}
+}
 async function __karpLogActiveTime(delta,{db,fs,visitorId,uid=null,userType='guest',name='',email='',device={},activity={},sessionId='',sessionStartedAt='',sessionEnded=false}){
   try{
     const seconds=Math.max(0,Math.floor(Number(delta)||0));
@@ -940,9 +953,11 @@ async function __writeKarpGuestPresence(forceOffline=false){
     const active=!forceOffline&&__karpIsActiveNow(),device=__karpGuestPresence.device;
     if(active&&!__karpGuestPresence.timeOwner)__karpGuestPresence.timeOwner=__karpGuestTryClaimTimeOwner();
     if(!active&&__karpGuestPresence.timeOwner){__karpGuestReleaseTimeOwner();__karpGuestPresence.timeOwner=false}
+    let guestSessionJustStarted=false;
     if(active&&__karpGuestPresence.timeOwner&&!__karpGuestPresence.sessionId){
       __karpGuestPresence.sessionId=__karpSessionId();
       __karpGuestPresence.sessionStartedAt=new Date().toISOString();
+      guestSessionJustStarted=true;
     }
     if(active&&__karpGuestPresence.timeOwner)__karpGuestRenewTimeOwner();
     const delta=__karpConsumeGuestElapsed(active),payload={
@@ -954,6 +969,9 @@ async function __writeKarpGuestPresence(forceOffline=false){
       ...(delta>0?{totalActiveSeconds:increment(delta),lastActiveSeconds:delta}:{})
     };
     await setDoc(doc(__karpGuestPresence.db,'presence',__karpGuestPresence.guestId),payload,{merge:true});
+    if(guestSessionJustStarted){
+      await __karpLogVisit({db:__karpGuestPresence.db,fs:__karpGuestPresence.fs,visitorId:__karpGuestPresence.guestId,userType:'guest',name:'Anonymous visitor',device,sessionId:__karpGuestPresence.sessionId,sessionStartedAt:__karpGuestPresence.sessionStartedAt});
+    }
     if(delta>0||(!active&&__karpGuestPresence.sessionId)){
       await __karpLogActiveTime(delta,{db:__karpGuestPresence.db,fs:__karpGuestPresence.fs,visitorId:__karpGuestPresence.guestId,userType:'guest',name:'Anonymous visitor',device,activity:__karpGuestPresence.activity,sessionId:__karpGuestPresence.sessionId||'legacy',sessionStartedAt:__karpGuestPresence.sessionStartedAt,sessionEnded:!active});
     }
@@ -981,7 +999,8 @@ async function __writeKarpPresence(online=true){
     const {setDoc,doc,Timestamp,increment,serverTimestamp}=__karpPresence.fs,u=__karpPresence.user,active=!!online&&__karpIsActiveNow(),device=__karpPresence.device||__karpDeviceInfo();
     if(active&&!__karpPresence.timeOwner)__karpPresence.timeOwner=__karpTryClaimTimeOwner();
     if(!active&&__karpPresence.timeOwner){__karpReleaseTimeOwner();__karpPresence.timeOwner=false}
-    if(active&&__karpPresence.timeOwner&&!__karpPresence.sessionId){__karpPresence.sessionId=__karpSessionId();__karpPresence.sessionStartedAt=new Date().toISOString()}
+    let accountSessionJustStarted=false;
+    if(active&&__karpPresence.timeOwner&&!__karpPresence.sessionId){__karpPresence.sessionId=__karpSessionId();__karpPresence.sessionStartedAt=new Date().toISOString();accountSessionJustStarted=true}
     if(active&&__karpPresence.timeOwner)__karpRenewTimeOwner();
     const delta=__karpConsumeElapsed(active),payload={
       uid:u.uid,visitorId:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',photoURL:u.photoURL||'',
@@ -991,6 +1010,9 @@ async function __writeKarpPresence(online=true){
       activity:__karpPresence.activity||{page:'KARP',label:'Browsing'},...(delta>0?{totalActiveSeconds:increment(delta),lastActiveSeconds:delta}:{})
     };
     await setDoc(doc(__karpPresence.db,'presence',u.uid),payload,{merge:true});
+    if(accountSessionJustStarted){
+      await __karpLogVisit({db:__karpPresence.db,fs:__karpPresence.fs,visitorId:u.uid,uid:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',device,sessionId:__karpPresence.sessionId,sessionStartedAt:__karpPresence.sessionStartedAt});
+    }
     if(delta>0||(!active&&__karpPresence.sessionId)){
       await __karpLogActiveTime(delta,{db:__karpPresence.db,fs:__karpPresence.fs,visitorId:u.uid,uid:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',device,activity:__karpPresence.activity,sessionId:__karpPresence.sessionId||'legacy',sessionStartedAt:__karpPresence.sessionStartedAt,sessionEnded:!active});
     }
