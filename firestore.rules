@@ -611,7 +611,7 @@ service cloud.firestore {
         && request.resource.data.displayName.size() <= 100
         && request.resource.data.email is string
         && request.resource.data.email.size() <= 200
-        && (!request.resource.data.keys().hasAny(['photoURL']) || (request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 2000))
+        && (!request.resource.data.keys().hasAny(['photoURL']) || (request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 12000))
         && (!request.resource.data.keys().hasAny(['language']) || request.resource.data.language in ['ENG','AZE'])
         && (!request.resource.data.keys().hasAny(['problemId']) || (request.resource.data.problemId is string && request.resource.data.problemId.size() <= 200))
         && request.resource.data.solution is string
