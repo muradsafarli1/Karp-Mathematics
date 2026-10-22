@@ -142,9 +142,9 @@ service cloud.firestore {
           && request.resource.data.members.size() == 2
           && request.resource.data.members[0] != request.resource.data.members[1]
           && exists(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId))
-          && get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.status == 'accepted'
-          && get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.toUid in request.resource.data.members
-          && get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.fromUid in request.resource.data.members);
+          && getAfter(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.status == 'accepted'
+          && getAfter(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.toUid in request.resource.data.members
+          && getAfter(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.fromUid in request.resource.data.members);
       allow update: if isAdmin()
         || (verifiedAccount(request.auth.uid)
           && resource.data.members is list
