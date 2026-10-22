@@ -145,6 +145,29 @@ async function repairAcceptedRelationships(){
     }
   }catch(e){console.warn('scan accepted KARP requests',e)}
 }
+async function ensureDirectConversation(otherUid){
+  if(!user||!otherUid||otherUid===user.uid)throw new Error('Invalid conversation members.');
+  const members=[user.uid,otherUid].sort();
+  const id=members.join('_');
+  const ref=doc(db,'conversations',id);
+  const existing=await getDoc(ref);
+  if(existing.exists()){
+    const data=existing.data()||{};
+    if(data.type!=='direct'||!Array.isArray(data.members)||!members.every(uid=>data.members.includes(uid))){
+      throw new Error('The existing conversation has mismatched members.');
+    }
+    return id;
+  }
+  await setDoc(ref,{
+    type:'direct',
+    status:'accepted',
+    members,
+    createdBy:user.uid,
+    updatedAt:new Date().toISOString(),
+    lastMessage:''
+  });
+  return id;
+}
 async function loadConversations(){if(!user)return;try{const s=await getDocs(query(collection(db,'conversations'),where('members','array-contains',user.uid)));conversations=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>Date.parse(b.updatedAt||b.createdAt||0)-Date.parse(a.updatedAt||a.createdAt||0))}catch(e){console.warn('conversations',e);conversations=[]}}
 async function hydratePeople(ids){const map=new Map();await Promise.all([...new Set(ids.filter(Boolean))].map(async id=>{try{const s=await getDoc(doc(db,'publicProfiles',id));if(s.exists())map.set(id,{uid:id,...s.data()})}catch{}}));return map}
 function otherId(c){return c.type==='direct'?c.members.find(x=>x!==user.uid)||'':''}
