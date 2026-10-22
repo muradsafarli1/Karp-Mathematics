@@ -168,19 +168,72 @@ let people=new Map();
 async function renderList(){const list=document.getElementById('chatList');people=await conversationPeople();const q=(document.getElementById('chatSearch').value||'').trim().toLowerCase();let html='';
 if(listMode==='requests'){html=incoming.length?incoming.map(r=>{const p=people.get(r.fromUid)||{};return '<div class="contact" style="margin:8px"><div>'+avatar(p.name||'K',p.photoURL)+'</div><div class="contact-main"><strong>'+esc(p.name||'KARP Member')+'</strong><small>Wants to connect with you</small></div><div class="contact-actions"><button class="text-btn primary" data-accept="'+r.id+'">Accept</button><button class="text-btn" data-reject="'+r.id+'">Decline</button></div></div>'}).join(''):'<div class="empty-chat"><div>No pending requests.</div></div>'}
 else if(listMode==='friends'){const arr=friends.map(f=>{const id=f.members.find(x=>x!==user.uid),p=people.get(id)||{};return{id,p}}).filter(x=>!q||String(x.p.name||'').toLowerCase().includes(q));html=arr.length?arr.map(x=>'<div class="chat-row" data-person="'+x.id+'">'+avatar(x.p.name,x.p.photoURL)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.p.name||'KARP Member')+'</span></div><div class="chat-row-preview">Friend · tap to message</div></div></div>').join(''):'<div class="empty-chat"><div>No friends yet.<br>Use ＋ to find KARP members.</div></div>'}
-else{const arr=conversations.filter(c=>{const p=c.type==='direct'?people.get(otherId(c)):null;const name=c.type==='group'?c.name:(p?.name||'KARP Member');return !q||name.toLowerCase().includes(q)});html=arr.length?arr.map(c=>{const p=c.type==='direct'?people.get(otherId(c)):null,name=c.type==='group'?c.name:(p?.name||'KARP Member'),url=c.type==='group'?'':p?.photoURL;return '<div class="chat-row '+(selected?.id===c.id?'active':'')+'" data-conv="'+c.id+'">'+avatar(name,url)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(name)+'</span><span class="chat-row-time">'+esc(fmt(c.updatedAt||c.createdAt))+'</span></div><div class="chat-row-preview">'+esc(c.lastMessage||'No messages yet')+'</div></div></div>'}).join(''):'<div class="empty-chat"><div><strong>No conversations</strong>Start a new chat with a KARP friend.</div></div>'}
+else{
+  const chatItems=[];
+  const seen=new Set();
+  conversations.forEach(c=>{
+    const other=c.type==='direct'?otherId(c):'';
+    if(c.type==='direct'&&other)seen.add(other);
+    const p=c.type==='direct'?people.get(other):null;
+    const name=c.type==='group'?c.name:(p?.name||'KARP Member');
+    if(!q||name.toLowerCase().includes(q)){
+      chatItems.push({kind:'conversation',id:c.id,personId:other,data:c,name,url:c.type==='group'?'':p?.photoURL});
+    }
+  });
+  // A friendship is itself enough to show the person in Chats even if the conversation
+  // document has not appeared yet or an older conversation record is missing.
+  friends.forEach(f=>{
+    const other=f.members?.find(x=>x!==user.uid);
+    if(!other||seen.has(other))return;
+    const p=people.get(other)||{};
+    const name=p.name||'KARP Member';
+    if(!q||name.toLowerCase().includes(q)){
+      chatItems.push({kind:'friend',id:other,personId:other,data:null,name,url:p.photoURL});
+    }
+  });
+  chatItems.sort((a,b)=>{
+    const ta=a.data?.updatedAt||a.data?.createdAt||'';
+    const tb=b.data?.updatedAt||b.data?.createdAt||'';
+    return Date.parse(tb||0)-Date.parse(ta||0);
+  });
+  html=chatItems.length?chatItems.map(x=>x.kind==='conversation'
+    ? '<div class="chat-row '+(selected?.id===x.id?'active':'')+'" data-conv="'+x.id+'">'+avatar(x.name,x.url)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.name)+'</span><span class="chat-row-time">'+esc(fmt(x.data.updatedAt||x.data.createdAt))+'</span></div><div class="chat-row-preview">'+esc(x.data.lastMessage||'No messages yet')+'</div></div></div>'
+    : '<div class="chat-row" data-person="'+x.personId+'">'+avatar(x.name,x.url)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.name)+'</span></div><div class="chat-row-preview">Friend · start conversation</div></div></div>'
+  ).join(''):'<div class="empty-chat"><div><strong>No conversations</strong>Start a new chat with a KARP friend.</div></div>';
+}
 list.innerHTML=html;
 list.querySelectorAll('[data-conv]').forEach(x=>x.onclick=()=>openConversation(x.dataset.conv));
 list.querySelectorAll('[data-person]').forEach(x=>x.onclick=()=>startDirect(x.dataset.person));
 list.querySelectorAll('[data-accept]').forEach(x=>x.onclick=()=>acceptRequest(x.dataset.accept));
 list.querySelectorAll('[data-reject]').forEach(x=>x.onclick=()=>rejectRequest(x.dataset.reject));
 }
-async function openConversation(id){const c=conversations.find(x=>x.id===id);if(!c)return;selected=c;if(unsubMsg)unsubMsg();document.getElementById('headName').textContent=c.type==='group'?c.name:(people.get(otherId(c))?.name||'KARP Member');const p=c.type==='direct'?people.get(otherId(c)):null;document.getElementById('headAvatar').outerHTML=avatar(c.type==='group'?c.name:(p?.name||'K'),c.type==='direct'?p?.photoURL:'','chat-avatar');document.getElementById('headStatus').textContent=c.type==='group'?((c.members?.length||0)+' members'):'Private conversation';document.getElementById('composer').disabled=false;document.getElementById('send').disabled=false;renderDetails(c,p);document.getElementById('chat-window').classList.remove('mobile-list');const mq=window.matchMedia('(max-width:700px)');if(mq.matches)document.getElementById('backMobile').style.display='grid';unsubMsg=onSnapshot(query(collection(db,'conversations',id,'messages'),orderBy('createdAt','asc'),limit(500)),s=>{messages=s.docs.map(d=>({id:d.id,...d.data()}));renderMessages()});}
+async function openConversation(id){const c=conversations.find(x=>x.id===id);if(!c)return;selected=c;if(unsubMsg)unsubMsg();document.getElementById('headName').textContent=c.type==='group'?c.name:(people.get(otherId(c))?.name||'KARP Member');const p=c.type==='direct'?people.get(otherId(c)):null;document.getElementById('headAvatar').outerHTML=avatar(c.type==='group'?c.name:(p?.name||'K'),c.type==='direct'?p?.photoURL:'','chat-avatar');document.getElementById('headStatus').textContent=c.type==='group'?((c.members?.length||0)+' members'):'Private conversation';document.getElementById('composer').disabled=false;document.getElementById('send').disabled=false;document.getElementById('chat-window').classList.remove('mobile-list');const mq=window.matchMedia('(max-width:700px)');if(mq.matches)document.getElementById('backMobile').style.display='grid';unsubMsg=onSnapshot(query(collection(db,'conversations',id,'messages'),orderBy('createdAt','asc'),limit(500)),s=>{messages=s.docs.map(d=>({id:d.id,...d.data()}));renderMessages()});}
 function renderMessages(){const e=document.getElementById('messages');if(!messages.length){e.innerHTML='<div class="empty-chat"><div><strong>No messages yet</strong>Start the conversation.</div></div>';return}let last='';e.innerHTML=messages.map(m=>{const d=m.createdAt?.toDate?m.createdAt.toDate():new Date(m.createdAt||Date.now()),day=d.toLocaleDateString([], {day:'numeric',month:'long',year:'numeric'}),divider=day!==last?(last=day?'<div class="day-divider">'+esc(day)+'</div>':''):'';return divider+'<div class="msg '+(m.senderId===user.uid?'mine':'')+'">'+(selected?.type==='group'&&m.senderId!==user.uid?'<div class="msg-author">'+esc(m.senderName||'KARP Member')+'</div>':'')+'<div class="msg-text">'+esc(m.text||'')+'</div><div class="msg-meta">'+esc(fmt(m.createdAt))+'</div></div>'}).join('');e.scrollTop=e.scrollHeight}
-async function renderDetails(c,p){const ids=(c.members||[]).filter(x=>x!==user.uid),mp=await hydratePeople(ids);document.getElementById('details').innerHTML='<div class="profile-card">'+avatar(c.type==='group'?c.name:(p?.name||'KARP Member'),p?.photoURL)+'<div class="profile-name">'+esc(c.type==='group'?c.name:(p?.name||'KARP Member'))+'</div><div class="profile-sub">'+(c.type==='group'?'KARP group':'KARP member')+'</div></div><div class="detail-section"><div class="detail-title">Members</div>'+ids.map(id=>{const x=mp.get(id)||{};return '<div class="friend-chip">'+avatar(x.name||'K',x.photoURL)+'<span>'+esc(x.name||'KARP Member')+'</span></div>'}).join('')+'</div><div class="detail-section"><div class="detail-title">Actions</div><button class="text-btn" style="width:100%;margin-bottom:7px" id="detailInvite">Invite to KARP</button>'+(c.type==='direct'?'<button class="text-btn" style="width:100%" id="detailGroup">Create group with this person</button>':'')+'</div>';document.getElementById('detailInvite').onclick=invite;document.getElementById('detailGroup')?.addEventListener('click',()=>openGroup([otherId(c)]))}
+
 async function sendMessage(){if(!requireUser()||!selected)return;const e=document.getElementById('composer'),text=e.value.trim();if(!text)return;e.value='';try{await addDoc(collection(db,'conversations',selected.id,'messages'),{senderId:user.uid,senderName:displayName(),senderPhoto:photo(),text,createdAt:serverTimestamp()});await updateDoc(doc(db,'conversations',selected.id),{lastMessage:text.slice(0,180),lastSenderId:user.uid,updatedAt:new Date().toISOString()})}catch(err){e.value=text;alert(err.message||'Could not send message.')} }
 document.getElementById('send').onclick=sendMessage;document.getElementById('composer').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}};document.getElementById('chatSearch').oninput=renderList;
-async function startDirect(uid){if(!requireUser())return;await loadFriends();const friend=friends.some(f=>f.members?.includes(uid));if(!friend){modal('Connect first','<p style="font-size:11px;line-height:1.6;color:#555d65">You can message members after you are connected.</p>','<button class="text-btn" id="modalFind">Find & connect</button>');document.getElementById('modalFind').onclick=()=>openNewChat();return}const id=[user.uid,uid].sort().join('_');try{await setDoc(doc(db,'conversations',id),{type:'direct',status:'accepted',members:[user.uid,uid].sort(),createdBy:user.uid,updatedAt:new Date().toISOString(),lastMessage:''},{merge:true});await loadConversations();await renderList();openConversation(id)}catch(e){alert(e.message||'Could not start chat.')}}
+async function startDirect(uid){
+  if(!requireUser()||!uid)return;
+  await loadFriends();
+  const friend=friends.some(f=>f.status==='accepted'&&f.members?.includes(uid));
+  if(!friend){
+    modal('Connect first','<p style="font-size:11px;line-height:1.6;color:#555d65">You can message members after you are connected.</p>','<button class="text-btn" id="modalFind">Find & connect</button>');
+    document.getElementById('modalFind').onclick=()=>openNewChat();
+    return;
+  }
+  try{
+    const id=await ensureDirectConversation(uid);
+    const local={id,type:'direct',status:'accepted',members:[user.uid,uid].sort(),updatedAt:new Date().toISOString(),lastMessage:''};
+    const existingIndex=conversations.findIndex(x=>x.id===id);
+    if(existingIndex>=0)conversations[existingIndex]={...conversations[existingIndex],...local};
+    else conversations.unshift(local);
+    await renderList();
+    await openConversation(id);
+  }catch(e){
+    console.error('start direct chat',e);
+    alert(e.message||'Could not start chat.');
+  }
+}
 async function acceptRequest(id){
   if(!requireUser())return;
   const r=incoming.find(x=>x.id===id);
