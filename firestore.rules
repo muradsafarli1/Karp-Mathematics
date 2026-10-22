@@ -4,8 +4,13 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function verifiedAccount(uid) {
       return signedIn()
-        && exists(/databases/$(database)/documents/users/$(uid))
-        && get(/databases/$(database)/documents/users/$(uid)).data.requiresEmailVerification != true;
+        && (
+          request.auth.token.email_verified == true
+          || (
+            exists(/databases/$(database)/documents/users/$(uid))
+            && get(/databases/$(database)/documents/users/$(uid)).data.requiresEmailVerification != true
+          )
+        );
     }
     function isAdminUid(uid) {
       return exists(/databases/$(database)/documents/users/$(uid))
