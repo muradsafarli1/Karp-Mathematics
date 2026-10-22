@@ -1133,7 +1133,7 @@ async function renderDailyProblemAdmin(){
     const newId=()=> 'daily-'+dayKey().replace(/-/g,'')+'-'+(typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID().slice(0,8):Math.random().toString(36).slice(2,10));
     const currentProblemId=String(problem.problemId||'legacy-current');
     const historyProblems=problemListSnap.docs.map(x=>({id:x.id,...x.data()}));
-    const submissions=submissionSnap.docs.map(x=>({id:x.id,...x.data(),problemId:String(x.data().problemId||currentProblemId)})).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+    const submissions=submissionSnap.docs.map(x=>({id:x.id,...x.data(),problemId:String(x.data().problemId||currentProblemId)})).filter(x=>String(x.status||'pending')!=='rejected').sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
     const pending=submissions.filter(x=>(x.status||'pending')==='pending').length;
     const currentItems=submissions.filter(x=>x.problemId===currentProblemId);
     const statusColor=status=>status==='approved'?'#276749':status==='rejected'?'#9b2c2c':'#805b10';
@@ -1225,13 +1225,13 @@ async function renderDailyProblemAdmin(){
             const snap=await tx.get(subRef);
             if(!snap.exists())throw new Error('This solution no longer exists.');
             const saved=snap.data();
-            if(saved.status==='rejected')return {already:true,balance:0,removed:0};
+            if(saved.status==='rejected'){tx.delete(subRef);return {already:true,balance:0,removed:0};}
             const counterSnap=await tx.get(counterRef);
             const userSnap=userRef?await tx.get(userRef):null;
             const removed=saved.status==='approved'?Math.max(0,Number(saved.rewardGems)||0):0;
             const oldBalance=Math.max(0,Number(userSnap?.exists()?userSnap.data().gems:0)||0);
             const balance=Math.max(0,oldBalance-removed);
-            tx.update(subRef,{status:'rejected',problemId,rejectedAt:now,rejectedBy:admin?.id||'',rejectedRewardGems:removed,rewardGems:0,authorGems:balance});
+            tx.delete(subRef);
             if(counterSnap.exists()){
               const count=Math.max(0,Number(counterSnap.data().approvedCount)||0);
               tx.set(counterRef,{problemId,approvedCount:Math.max(0,count-(saved.status==='approved'?1:0)),lastChangedAt:now,updatedAt:now},{merge:true});
