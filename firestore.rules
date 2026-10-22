@@ -92,7 +92,7 @@ service cloud.firestore {
     }
 
     match /publicProfiles/{uid} {
-      allow read: if isAdmin() || verifiedAccount(request.auth.uid);
+      allow read: if isAdmin() || signedIn();
       allow create, update: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow delete: if isAdmin() || (verifiedAccount(uid) && request.auth.uid == uid);
     }
