@@ -148,11 +148,12 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
   try{
     const {db,auth}=await import('/karp-firebase.js');
     const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const {onAuthStateChanged}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
     const currentRef=fs.doc(db,'dailyProblem','current');
     fs.onSnapshot(currentRef,snapshot=>{problem=snapshot.exists()?snapshot.data():{statementEn:'',statementAz:''};renderProblem();},error=>{console.error('Daily Problem could not load:',error);statementEl.innerHTML='<div class="daily-empty">Could not load the problem. Please refresh the page.</div>';});
     const approvedQuery=fs.query(fs.collection(db,'dailyProblemSubmissions'),fs.where('status','==','approved'));
     fs.onSnapshot(approvedQuery,snapshot=>{approvedItems=snapshot.docs.map(x=>({id:x.id,...x.data()}));renderSolutions();},error=>{console.error('Daily Problem solutions could not load:',error);approvedEl.innerHTML='<div class="daily-empty">Could not load solutions. Please refresh the page.</div>';});
-    fs.onAuthStateChanged(auth,async user=>{
+    onAuthStateChanged(auth,async user=>{
       currentUser=user||null;
       authIsReady=true;authReadyResolve();
       userProfile={};
