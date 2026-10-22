@@ -586,14 +586,25 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Every published Daily Problem is kept for the past-problem archive.
+    match /dailyProblems/{problemId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Approval-order reward counter: only administrators can access this bookkeeping.
+    match /dailyProblemRewards/{problemId} {
+      allow read, write: if isAdmin();
+    }
+
     // Community solutions are private while pending/rejected and public only after approval.
     match /dailyProblemSubmissions/{submissionId} {
       allow read: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid)
         || resource.data.status == 'approved';
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['uid','displayName','email','photoURL','language','solution','status','createdAt'])
-        && request.resource.data.keys().hasAll(['uid','displayName','email','language','solution','status','createdAt'])
+        && request.resource.data.keys().hasOnly(['uid','displayName','email','photoURL','language','solution','status','createdAt','problemId'])
+        && request.resource.data.keys().hasAll(['uid','displayName','email','solution','status','createdAt'])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.displayName is string
         && request.resource.data.displayName.size() > 0
@@ -601,7 +612,8 @@ service cloud.firestore {
         && request.resource.data.email is string
         && request.resource.data.email.size() <= 200
         && (!request.resource.data.keys().hasAny(['photoURL']) || (request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 2000))
-        && request.resource.data.language in ['ENG','AZE']
+        && (!request.resource.data.keys().hasAny(['language']) || request.resource.data.language in ['ENG','AZE'])
+        && (!request.resource.data.keys().hasAny(['problemId']) || (request.resource.data.problemId is string && request.resource.data.problemId.size() <= 200))
         && request.resource.data.solution is string
         && request.resource.data.solution.size() > 0
         && request.resource.data.solution.size() <= 50000
