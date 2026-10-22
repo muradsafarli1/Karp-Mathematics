@@ -29,7 +29,7 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/friendships/$(friendshipId(a,b))).data.status == 'accepted';
     }
     function conversationMember(data) {
-      return verifiedAccount(request.auth.uid) && data.members is list && request.auth.uid in data.members;
+      return signedIn() && data.members is list && request.auth.uid in data.members;
     }
 
     match /users/{uid} {
@@ -104,7 +104,7 @@ service cloud.firestore {
 
     match /friendRequests/{requestId} {
       allow read: if isAdmin() || signedIn();
-      allow create: if verifiedAccount(request.auth.uid)
+      allow create: if signedIn()
         && request.resource.data.fromUid == request.auth.uid
         && request.resource.data.toUid != request.auth.uid
         && request.resource.data.status == 'pending'
@@ -157,9 +157,9 @@ service cloud.firestore {
     }
 
     match /conversations/{conversationId} {
-      allow read: if isAdmin() || (verifiedAccount(request.auth.uid) && resource.data.members is list && request.auth.uid in resource.data.members);
+      allow read: if isAdmin() || (signedIn() && resource.data.members is list && request.auth.uid in resource.data.members);
       allow create: if isAdmin()
-        || (verifiedAccount(request.auth.uid)
+        || (signedIn()
           && request.resource.data.status == 'accepted'
           && request.resource.data.members is list
           && request.resource.data.members.size() >= 2
