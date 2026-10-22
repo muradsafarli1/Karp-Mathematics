@@ -428,6 +428,7 @@ document.querySelectorAll('.chat-tab').forEach(b=>b.onclick=async()=>{document.q
 au.onAuthStateChanged(auth,async u=>{
   if(unsubIncoming){unsubIncoming();unsubIncoming=null}
   if(unsubOutgoing){unsubOutgoing();unsubOutgoing=null}
+  if(unsubConv){unsubConv();unsubConv=null}
   if(unsubMsg){unsubMsg();unsubMsg=null}
   user=u||null;updateChatNav(user);
   if(!user){
