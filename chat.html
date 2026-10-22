@@ -37,10 +37,10 @@
 <div class="chat-left-tools"><input id="chatSearch" class="chat-search" placeholder="Search conversations"><button class="icon-btn" id="newChat" title="New chat">＋</button></div>
 <div class="chat-tabs"><button class="chat-tab active" data-list="chats">Chats</button><button class="chat-tab" data-list="friends">Friends</button><button class="chat-tab" data-list="requests">Requests</button></div>
 <div class="chat-list" id="chatList"></div></aside>
-<section class="chat-main"><div class="chat-head"><button class="icon-btn" id="backMobile" style="display:none">‹</button><div class="chat-avatar" id="headAvatar">K</div><div class="chat-head-copy"><div class="chat-head-name" id="headName">KARP Messages</div><div class="chat-head-status" id="headStatus">Private conversations for KARP members</div></div><div class="chat-head-actions"><button class="text-btn" id="inviteBtn">Invite</button><button class="text-btn" id="infoBtn">Info</button></div></div>
+<section class="chat-main"><div class="chat-head"><button class="icon-btn" id="backMobile" style="display:none">‹</button><div class="chat-avatar" id="headAvatar">K</div><div class="chat-head-copy"><div class="chat-head-name" id="headName">KARP</div><div class="chat-head-status" id="headStatus">Private conversations</div></div><div class="chat-head-actions"><button class="text-btn" id="inviteBtn">Invite</button><button class="text-btn" id="infoBtn">Info</button></div></div>
 <div class="chat-messages" id="messages"><div class="empty-chat"><div><strong>Your messages</strong>Select a conversation or start a new one.</div></div></div>
 <div class="chat-composer"><textarea id="composer" placeholder="Write a message…" disabled></textarea><button class="send-btn" id="send" disabled>➤</button></div></section>
-<aside class="chat-right" id="details"><div class="empty-chat"><div><strong>KARP Messages</strong>Choose a conversation to see its details.</div></div></aside>
+<aside class="chat-right" id="details"><div class="empty-chat"><div><strong>KARP</strong>Choose a conversation to see its details.</div></div></aside>
 </div></main>
 <div class="modal-back" id="modal"><div class="chat-modal"><div class="modal-head"><strong id="modalTitle">New chat</strong><button class="icon-btn" id="modalClose">×</button></div><div class="modal-body" id="modalBody"></div><div class="modal-foot" id="modalFoot"></div></div></div>
 <script>
@@ -141,7 +141,7 @@ document.querySelectorAll('.chat-tab').forEach(b=>b.onclick=async()=>{document.q
 au.onAuthStateChanged(auth,async u=>{
   if(unsubIncoming){unsubIncoming();unsubIncoming=null}
   if(unsubOutgoing){unsubOutgoing();unsubOutgoing=null}
-  user=u||null;updateChatNav(user);if(!verified()){document.getElementById('composer').disabled=true;document.getElementById('send').disabled=true;document.getElementById('chatList').innerHTML='<div class="empty-chat"><div><strong>Sign in to Messages</strong>Create or verify your KARP account to connect with other members.</div></div>';return}await loadProfile();await loadFriends();await loadRequests();await loadConversations();await renderList()});
+  user=u||null;updateChatNav(user);if(!verified()){document.getElementById('composer').disabled=true;document.getElementById('send').disabled=true;document.getElementById('chatList').innerHTML='<div class="empty-chat"><div><strong>Sign in to KARP</strong>Create or verify your KARP account to connect with other members.</div></div>';return}await loadProfile();await loadFriends();await loadRequests();await loadConversations();await renderList()});
 })();
 </script>
 </body></html>
