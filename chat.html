@@ -295,10 +295,19 @@ function renderMessages(){
 }
 async function deleteMessage(messageId){
   if(!requireUser()||!selected||!messageId)return;
-  const m=messages.find(x=>x.id===messageId);
+  const index=messages.findIndex(x=>x.id===messageId);
+  const m=messages[index];
   if(!m||m.senderId!==user.uid)return;
   try{
     await deleteDoc(doc(db,'conversations',selected.id,'messages',messageId));
+    if(index===messages.length-1){
+      const previous=messages[index-1];
+      await updateDoc(doc(db,'conversations',selected.id),{
+        lastMessage:previous?.text?String(previous.text).slice(0,180):'',
+        lastSenderId:previous?.senderId||'',
+        updatedAt:new Date().toISOString()
+      }).catch(()=>{});
+    }
   }catch(e){alert(e.message||'Could not delete message.')}
 }
 
@@ -317,7 +326,7 @@ async function sendMessage(){
       updatedAt:new Date().toISOString()
     };
     (selected.members||[]).filter(uid=>uid!==user.uid).forEach(uid=>{
-      updateData['unread_'+uid]=increment(Number(selected['unread_'+uid]||0)+1);
+      updateData['unread_'+uid]=increment(1);
     });
     await updateDoc(doc(db,'conversations',selected.id),updateData);
   }catch(err){
