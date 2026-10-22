@@ -948,10 +948,10 @@ function __usersVisitBuckets(visits,activity,period,now=Date.now()){
     for(let d=new Date(start);d<=today;d.setDate(d.getDate()+1)){const key=__usersVisitDateKey(d.getTime());buckets.push({key,label:d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}),title:__usersDayLabel(key),count:pairs.get(key)?.size||0})}
   }else if(mode==='monthly'){
     const start=new Date('2026-10-01T00:00:00+04:00'),today=new Date(todayKey+'T00:00:00+04:00');
-    for(let d=new Date(start.getFullYear(),start.getMonth(),1);d<=today;d.setMonth(d.getMonth()+1)){const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');let count=0;for(const [k,set] of pairs)if(k.startsWith(key))count+=set.size;buckets.push({key,label:d.toLocaleDateString('en-GB',{month:'short',year:'numeric'}),title:d.toLocaleDateString('en-GB',{month:'long',year:'numeric'}),count})}
+    for(let d=new Date(start.getFullYear(),start.getMonth(),1);d<=today;d.setMonth(d.getMonth()+1)){const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),set=new Set();for(const [k,ids] of pairs)if(k.startsWith(key))ids.forEach(id=>set.add(id));buckets.push({key,label:d.toLocaleDateString('en-GB',{month:'short',year:'numeric'}),title:d.toLocaleDateString('en-GB',{month:'long',year:'numeric'}),count:set.size})}
   }else{
     const year=Number(todayKey.slice(0,4));
-    for(let y=2026;y<=year;y++){let count=0;for(const [k,set] of pairs)if(k.startsWith(String(y)+'-'))count+=set.size;buckets.push({key:String(y),label:String(y),title:String(y),count})}
+    for(let y=2026;y<=year;y++){const set=new Set();for(const [k,ids] of pairs)if(k.startsWith(String(y)+'-'))ids.forEach(id=>set.add(id));buckets.push({key:String(y),label:String(y),title:String(y),count:set.size})}
   }
   const todayEntries=(visits||[]).filter(v=>String(v.dateKey||'')===todayKey).length;
   return {buckets,todayCount:pairs.get(todayKey)?.size||0,todayEntries};
