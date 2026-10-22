@@ -106,6 +106,8 @@ service cloud.firestore {
       allow read: if isAdmin() || signedIn();
       allow create: if signedIn()
         && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid is string
+        && request.resource.data.toUid.size() > 0
         && request.resource.data.toUid != request.auth.uid
         && request.resource.data.status == 'pending';
       allow update: if isAdmin()
@@ -137,15 +139,24 @@ service cloud.firestore {
         || (signedIn()
           && request.resource.data.status == 'accepted'
           && request.resource.data.members is list
-          && request.auth.uid in request.resource.data.members
           && request.resource.data.members.size() == 2
           && request.resource.data.members[0] != request.resource.data.members[1]
+          && request.auth.uid in request.resource.data.members
+          && request.resource.data.requestId is string
           && exists(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId))
-          && get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.status == 'accepted'
+          && get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.fromUid is string
+          && get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.toUid is string
+          && get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.fromUid in request.resource.data.members
           && get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.toUid in request.resource.data.members
-          && get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.fromUid in request.resource.data.members);
+          && (
+            (get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.status == 'pending'
+              && get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.toUid == request.auth.uid)
+            ||
+            (get(/databases/$(database)/documents/friendRequests/$(request.resource.data.requestId)).data.status == 'accepted'
+              && request.auth.uid in request.resource.data.members)
+          ));
       allow update: if isAdmin()
-        || (verifiedAccount(request.auth.uid)
+        || (signedIn()
           && resource.data.members is list
           && request.auth.uid in resource.data.members
           && request.resource.data.members == resource.data.members
