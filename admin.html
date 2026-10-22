@@ -1147,7 +1147,7 @@ async function renderDailyProblemAdmin(){
       const status=String(item.status||'pending');
       const gems=Number(item.rewardGems||0);
       const actions=status==='pending'
-        ?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:15px"><button class="btn primary" type="button" data-daily-status="approved" data-daily-id="'+esc(item.id)+'" data-daily-problem-id="'+esc(item.problemId)+'">Approve & award Gems</button><button class="btn danger" type="button" data-daily-status="rejected" data-daily-id="'+esc(item.id)+'" data-daily-problem-id="'+esc(item.problemId)+'">Reject</button></div>'
+        ?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:15px"><button class="btn primary" type="button" data-daily-status="approved" data-daily-id="'+esc(item.id)+'" data-daily-problem-id="'+esc(item.problemId)+'">Publish & award Gems</button><button class="btn danger" type="button" data-daily-status="rejected" data-daily-id="'+esc(item.id)+'" data-daily-problem-id="'+esc(item.problemId)+'">Reject</button></div>'
         :'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:11px;color:'+statusColor(status)+';font-weight:800">'+(status==='approved'?'Published':status==='rejected'?'Rejected':'Status: '+esc(status))+(gems>0?' · Awarded '+gems+' Gems':'')+'</div>'+(status==='approved'?'<div style="margin-top:12px"><button class="btn danger" type="button" data-daily-status="rejected" data-daily-id="'+esc(item.id)+'" data-daily-problem-id="'+esc(item.problemId)+'">Reject published solution</button></div>':'');
       return '<article class="bigcard" style="margin:10px 0;padding:18px;background:#f8f9f6;color:#22252a"><div style="display:flex;align-items:center;gap:11px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">'+avatar(item)+'<div style="min-width:0"><div style="font-size:13px;font-weight:800;color:#263b5b;overflow-wrap:anywhere">'+esc(item.displayName||'KARP Member')+'</div><div style="font-size:10px;color:#737781;overflow-wrap:anywhere">'+esc(item.email||'No email')+' · '+esc(timeLabel(item.createdAt))+'</div></div></div><span style="display:inline-flex;align-items:center;gap:4px;border:1px solid #d6d9d4;border-radius:7px;padding:5px 8px;font-size:10px;font-weight:800;color:'+statusColor(status)+'">'+esc(status.toUpperCase())+'</span></div><div style="margin-top:15px;background:#fff;border:1px solid #e0e2dd;border-radius:10px;padding:16px;font-size:14px;line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(item.solution||'')+'</div>'+actions+'</article>';
     };
@@ -1212,6 +1212,14 @@ async function renderDailyProblemAdmin(){
       const id=button.dataset.dailyId,status=button.dataset.dailyStatus,problemId=String(button.dataset.dailyProblemId||currentProblemId);
       if(!id||!['approved','rejected'].includes(status))return;
       if(status==='rejected'&&!confirm('Reject this solution?'))return;
+      let chosenGems=0;
+      if(status==='approved'){
+        const entered=window.prompt('How many Gems should this solution receive? Enter a whole number from 0 to 1000000.','5');
+        if(entered===null)return;
+        const value=entered.trim();
+        if(!/^\d+$/.test(value)||!Number.isSafeInteger(Number(value))||Number(value)>1000000){toast('Enter a whole number from 0 to 1000000.');return;}
+        chosenGems=Number(value);
+      }
       button.disabled=true;
       try{
         const subRef=doc(db,'dailyProblemSubmissions',id);
@@ -1263,7 +1271,7 @@ async function renderDailyProblemAdmin(){
             const counterSnap=await tx.get(counterRef);
             const userSnap=await tx.get(userRef);
             const count=counterSnap.exists()?Math.max(0,Number(counterSnap.data().approvedCount)||0):seedCount;
-            const gems=Math.max(0,5-count);
+            const gems=chosenGems;
             const balance=Math.max(0,Number(userSnap.exists()?userSnap.data().gems:0)||0)+gems;
             tx.update(subRef,{status:'approved',problemId,approvedAt:now,approvedBy:admin?.id||'',rewardGems:gems,authorGems:balance});
             tx.set(counterRef,{problemId,approvedCount:count+1,lastApprovedAt:now,updatedAt:now},{merge:true});
