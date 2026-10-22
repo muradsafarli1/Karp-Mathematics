@@ -1176,6 +1176,10 @@ async function renderDailyProblemAdmin(){
         const next={...data,problemId:id,date:problem.date||now,createdAt:problem.createdAt||now,updatedAt:now,updatedBy:admin?.id||'',isCurrent:true};
         await setDoc(doc(db,'dailyProblem','current'),next,{merge:true});
         await setDoc(doc(db,'dailyProblems',id),next,{merge:true});
+        if(id!==currentProblemId){
+          const needsMigration=submissionSnap.docs.map(x=>({id:x.id,...x.data()})).filter(x=>!x.problemId||String(x.problemId)===currentProblemId);
+          for(let i=0;i<needsMigration.length;i+=350){const slice=needsMigration.slice(i,i+350);await Promise.all(slice.map(x=>updateDoc(doc(db,'dailyProblemSubmissions',x.id),{problemId:id})));}
+        }
         toast('Current Daily Problem saved.');await renderDailyProblemAdmin();
       }catch(e){toast('Could not save Daily Problem: '+(e.message||'Check Firestore rules.'));saveButton.disabled=false}
     };
@@ -1190,8 +1194,7 @@ async function renderDailyProblemAdmin(){
         if(nonEmptyCurrent){
           const oldRecord={...problem,problemId:oldId,date:problem.date||problem.createdAt||problem.updatedAt||now,isCurrent:false,archivedAt:now};
           await setDoc(doc(db,'dailyProblems',oldId),oldRecord,{merge:true});
-          const orphaned=submissions.filter(x=>!x.id.startsWith('')&&!x.dataProblemId&&!x.problemId);
-          const rawSubmissions=submissionSnap.docs.map(x=>({id:x.id,...x.data()})).filter(x=>!x.problemId);
+          const rawSubmissions=submissionSnap.docs.map(x=>({id:x.id,...x.data()})).filter(x=>!x.problemId||String(x.problemId)===currentProblemId);
           for(let i=0;i<rawSubmissions.length;i+=350){
             const slice=rawSubmissions.slice(i,i+350);
             await Promise.all(slice.map(x=>updateDoc(doc(db,'dailyProblemSubmissions',x.id),{problemId:oldId})));
