@@ -128,7 +128,7 @@ service cloud.firestore {
     }
 
     match /friendships/{friendshipId} {
-      allow read: if isAdmin() || (verifiedAccount(request.auth.uid) && resource.data.members is list && request.auth.uid in resource.data.members);
+      allow read: if isAdmin() || (signedIn() && resource.data.members is list && request.auth.uid in resource.data.members);
       allow create: if isAdmin()
         || (verifiedAccount(request.auth.uid)
           && request.resource.data.status == 'accepted'
