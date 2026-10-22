@@ -746,8 +746,12 @@ function __usersTimestamp(v){
   const p=Date.parse(String(v||''));return Number.isFinite(p)?p:0;
 }
 function __usersOnline(p,now=Date.now()){
+  if(!p?.online)return false;
   const last=__usersTimestamp(p?.lastSeen);
-  return !!p?.online&&last>0&&last<=now+5000&&(now-last)<=45000;
+  const expires=__usersTimestamp(p?.expiresAt);
+  // Prefer the explicit server heartbeat lease; lastSeen is a fallback for
+  // older presence documents and for small server-timestamp delays.
+  return (expires>now-3000)||(last>0&&last<=now+5000&&(now-last)<=45000);
 }
 function __usersDuration(p,now=Date.now(),extra=0){
   const stored=Math.max(0,Math.floor(Number(p?.totalActiveSeconds||0)));
