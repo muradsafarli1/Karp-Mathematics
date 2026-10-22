@@ -12,10 +12,12 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
 <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
 .daily-page{width:min(calc(100% - 42px),900px);margin:0 auto;padding:42px 0 80px;color:#17191c}
-.daily-problem-toolbar{display:flex;justify-content:flex-end;align-items:center;padding:0 0 13px}
-.daily-lang-switch{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto;padding:3px;border:1px solid #d0d3ce;border-radius:10px;background:#f0f1ee}
-.daily-lang-switch button{border:0;border-radius:7px;padding:8px 12px;background:transparent;color:#777d83;font-size:11px;font-weight:800;letter-spacing:.5px;cursor:pointer}
-.daily-lang-switch button.active{background:#263b5b;color:#fff;box-shadow:0 2px 5px rgba(24,38,60,.14)}
+.daily-past-section{margin-top:38px;padding-top:23px;border-top:1px solid #dedfdb;text-align:center}
+.daily-past-toggle-wrap{display:flex;justify-content:center;align-items:center}
+.daily-past-link{border:0;background:transparent;color:#596b84;font-size:12px;font-weight:800;padding:8px 12px;cursor:pointer}
+.daily-past-link:hover{text-decoration:underline;text-underline-offset:4px}
+.daily-past-list{display:flex;flex-direction:column;gap:10px;margin-top:14px;text-align:left}
+.daily-past-list[hidden]{display:none!important}
 .daily-statement{font-size:19px;line-height:1.95;color:#202329;white-space:pre-wrap;overflow-wrap:anywhere;padding:4px 0 24px;min-height:54px;width:100%}
 .daily-statement mjx-container,.daily-message-body mjx-container,.daily-history-statement mjx-container{max-width:100%;overflow-x:auto;overflow-y:hidden}
 .daily-empty{color:#777d83;font-size:13px;line-height:1.8;text-align:center;padding:24px 6px}
@@ -25,7 +27,7 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
 .daily-community-head h2{font-family:"Space Grotesk",sans-serif;font-size:20px;letter-spacing:-.45px;font-weight:750;margin:0;color:#17191c}
 .daily-count{font-size:10px;color:#737781;white-space:nowrap}
 .daily-solutions{display:flex;flex-direction:column;align-items:flex-start;gap:14px;width:100%}
-.daily-solutions[hidden],.daily-form[hidden],.daily-history-details[hidden],.daily-history-solutions[hidden],.daily-submit-notice[hidden],.daily-reward-overlay[hidden]{display:none!important}
+.daily-solutions[hidden],.daily-form[hidden],.daily-history-details[hidden],.daily-history-solutions[hidden],.daily-past-list[hidden],.daily-submit-notice[hidden],.daily-reward-overlay[hidden]{display:none!important}
 .daily-message{width:100%;max-width:100%;box-sizing:border-box;padding:15px 17px 14px;background:#eef0ec;border:1px solid #e0e3dd;border-radius:4px 15px 15px 15px;color:#24272b}
 .daily-message.pending{background:#f6f7f4;border-style:dashed;border-color:#bfc7bb}
 .daily-message-head{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
@@ -52,10 +54,7 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
 .daily-form-status{font-size:12px;color:#8d3838;margin-top:12px;line-height:1.6}
 .daily-submit-notice{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid #e0e3dd;background:#f3f4f1;border-radius:12px;font-size:12px;line-height:1.6;color:#363b3d;margin-top:16px}
 .daily-submit-notice strong{display:block;font-size:12px;color:#263b5b;margin-bottom:2px}
-.daily-past-section{margin-top:38px;padding-top:23px;border-top:1px solid #dedfdb}
-.daily-past-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-.daily-past-head h2{font-family:"Space Grotesk",sans-serif;font-size:16px;margin:0;font-weight:750;letter-spacing:-.2px}
-.daily-past-list{display:flex;flex-direction:column;gap:10px}
+
 .daily-history-item{border:1px solid #e0e2dd;border-radius:12px;background:#f7f8f5;overflow:hidden}
 .daily-history-date{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;border:0;background:transparent;text-align:left;padding:15px 17px;color:#263b5b;font-weight:800;font-size:13px;cursor:pointer}
 .daily-history-date:hover{background:#eff1ec}
@@ -76,7 +75,7 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
 @keyframes dailyRewardPop{0%{opacity:0;transform:translateY(14px) scale(.86)}100%{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes dailyGemPulse{from{transform:scale(.95) rotate(-7deg)}to{transform:scale(1.07) rotate(7deg)}}
 @keyframes dailyConfettiFall{0%{opacity:0;transform:translate3d(0,-10px,0) rotate(0)}8%{opacity:1}100%{opacity:.95;transform:translate3d(var(--drift),560px,0) rotate(690deg)}}
-@media(max-width:620px){.daily-page{padding-top:28px}.daily-statement{font-size:17px}.daily-community-head h2{font-size:18px}.daily-lang-switch button{padding:8px 10px}.daily-textarea{min-height:260px}.daily-add-solution .daily-primary-btn{width:100%}.daily-message{padding:13px}.daily-reward-card{padding:35px 20px 23px}}
+@media(max-width:620px){.daily-page{padding-top:28px}.daily-statement{font-size:17px}.daily-community-head h2{font-size:18px}.daily-textarea{min-height:260px}.daily-add-solution .daily-primary-btn{width:100%}.daily-message{padding:13px}.daily-reward-card{padding:35px 20px 23px}}
 @media(prefers-reduced-motion:reduce){.daily-reward-card,.daily-reward-gem,.daily-confetti i{animation:none!important;opacity:1!important}}
 </style>
 </head>
@@ -85,21 +84,19 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
 (async function initDailyProblem(){
   const body=[
     '<main class="daily-page">',
-    '<section class="daily-problem-section"><div class="daily-statement" id="daily-problem-statement"><div class="daily-empty">Loading the daily problem…</div></div><div class="daily-problem-toolbar"><div class="daily-lang-switch" id="daily-lang-switch" role="group" aria-label="Problem language"><button type="button" data-daily-lang="en" class="active">ENG</button><button type="button" data-daily-lang="az">AZE</button></div></div></section>',
+    '<section class="daily-problem-section"><div class="daily-statement" id="daily-problem-statement"><div class="daily-empty">Loading the daily problem…</div></div></section>',
     '<hr class="daily-rule">',
     '<section class="daily-community"><div class="daily-community-head"><h2>Community Solutions</h2><span class="daily-count" id="daily-solution-count">0 solutions</span></div>',
-    '<button class="daily-current-toggle" id="daily-toggle-current-solutions" type="button" aria-expanded="false">Show solutions</button>',
-    '<div class="daily-solutions" id="daily-approved-solutions" hidden><div class="daily-empty">No approved solutions yet. Be the first to contribute.</div></div>',
+    '<div class="daily-solutions" id="daily-approved-solutions"><div class="daily-empty">No solutions yet.</div></div>',
     '<div class="daily-add-solution"><button class="daily-primary-btn" id="daily-add-solution" type="button">＋ Add Solution</button></div>',
     '<form class="daily-form" id="daily-solution-form" hidden><label class="daily-label" for="daily-solution-input">Write your solution</label><textarea class="daily-textarea" id="daily-solution-input" maxlength="50000" required placeholder="Write your proof here. Use \\( ... \\) for inline mathematics and \\[ ... \\] for displayed equations."></textarea><div class="daily-form-actions"><button class="daily-primary-btn" id="daily-submit-solution" type="submit">Submit solution</button><button class="daily-secondary-btn" id="daily-cancel-solution" type="button">Cancel</button></div><div class="daily-form-status" id="daily-form-status" role="status" aria-live="polite"></div></form>',
     '<div class="daily-submit-notice" id="daily-submit-notice" hidden></div></section>',
-    '<section class="daily-past-section"><div class="daily-past-head"><h2>See past problems</h2><button class="daily-current-toggle" id="daily-toggle-past" type="button" aria-expanded="false">Show history</button></div><div class="daily-past-list" id="daily-past-list" hidden><div class="daily-empty">No past problems yet.</div></div></section>',
+    '<section class="daily-past-section"><div class="daily-past-toggle-wrap"><button class="daily-past-link" id="daily-toggle-past" type="button" aria-expanded="false">See past problems →</button></div><div class="daily-past-list" id="daily-past-list" hidden><div class="daily-empty">No past problems yet.</div></div></section>',
     '</main>',
     '<div class="daily-reward-overlay" id="daily-reward-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="daily-reward-title"><div class="daily-reward-card"><div class="daily-confetti" id="daily-confetti"></div><div class="daily-reward-gem">💎</div><h2 id="daily-reward-title">Congratulations!</h2><p id="daily-reward-copy">Your solution was selected.</p><button type="button" class="daily-primary-btn" id="daily-reward-close">Continue</button></div></div>'
   ].join('');
   shell('Daily Problem','Daily Problem',body);
   const statementEl=document.getElementById('daily-problem-statement');
-  const languageSwitchEl=document.getElementById('daily-lang-switch');
   const form=document.getElementById('daily-solution-form');
   const addButton=document.getElementById('daily-add-solution');
   const cancelButton=document.getElementById('daily-cancel-solution');
@@ -107,23 +104,21 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
   const submitButton=document.getElementById('daily-submit-solution');
   const statusEl=document.getElementById('daily-form-status');
   const approvedEl=document.getElementById('daily-approved-solutions');
-  const countEl=document.getElementById('daily-solution-count');
   const pendingNoticeEl=document.getElementById('daily-submit-notice');
-  const currentToggle=document.getElementById('daily-toggle-current-solutions');
   const pastToggle=document.getElementById('daily-toggle-past');
   const pastEl=document.getElementById('daily-past-list');
   const rewardOverlay=document.getElementById('daily-reward-overlay');
   const rewardCopy=document.getElementById('daily-reward-copy');
   const confettiEl=document.getElementById('daily-confetti');
   const safe=value=>String(value==null?'':value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  let language='en',problem={statementEn:'',statementAz:''},currentProblemId='legacy-current',currentUser=null,userProfile={},approvedItems=[],ownSubmissions=[],historyProblems=[],pendingUnsubscribe=null,currentSolutionsOpen=false,pastOpen=false;
+  let problem={statementEn:'',statementAz:''},currentProblemId='legacy-current',currentUser=null,userProfile={},approvedItems=[],ownSubmissions=[],historyProblems=[],pendingUnsubscribe=null,pastOpen=false;
   let authIsReady=false,authReadyResolve;
   const authReadyPromise=new Promise(resolve=>{authReadyResolve=resolve;});
   const problemIdOf=item=>String(item?.problemId||'legacy-current');
   function dateObject(value){const d=value?new Date(value):null;return d&&!Number.isNaN(d.getTime())?d:new Date();}
   function dateHeading(value){return dateObject(value).toLocaleDateString('en-GB',{timeZone:'Asia/Baku',day:'numeric',month:'long',year:'numeric'});}
   function dateTime(value){const d=value?new Date(value):null;return d&&!Number.isNaN(d.getTime())?d.toLocaleString('en-GB',{timeZone:'Asia/Baku',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}):'';}
-  function currentStatement(){return language==='az'?(problem.statementAz||problem.statementEn):(problem.statementEn||problem.statementAz);}
+  function currentStatement(){return problem.statementEn||problem.statementAz;}
   async function compactAvatar(value){
     const source=String(value||'');
     if(!source)return '';
@@ -187,39 +182,30 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
   }
   function renderCurrentSolutions(){
     const items=itemsForProblem(currentProblemId);
-    const approvedCount=items.filter(x=>x.status==='approved').length;
-    countEl.textContent=approvedCount+(approvedCount===1?' solution':' solutions');
     if(!items.length)approvedEl.innerHTML='<div class="daily-empty">No solutions yet. Submit a proof to start the discussion.</div>';
     else approvedEl.innerHTML=items.map(solutionMessage).join('');
+    approvedEl.hidden=false;
     wireAvatarFallbacks(approvedEl);
-    approvedEl.hidden=!currentSolutionsOpen;
-    currentToggle.textContent=(currentSolutionsOpen?'Hide solutions':'Show solutions')+' ('+approvedCount+')';
-    currentToggle.setAttribute('aria-expanded',currentSolutionsOpen?'true':'false');
     typeset(approvedEl);
   }
   function renderPastProblems(){
     const past=historyProblems.filter(item=>String(item.id)!==String(currentProblemId)&&item.isCurrent!==true).sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||'')));
-    pastToggle.textContent=(pastOpen?'Hide history':'Show history')+(past.length?' ('+past.length+')':'');
+    pastToggle.textContent=pastOpen?'Hide past problems ↑':'See past problems →';
     pastToggle.setAttribute('aria-expanded',pastOpen?'true':'false');
     pastEl.hidden=!pastOpen;
     if(!past.length){pastEl.innerHTML='<div class="daily-empty">No past problems yet.</div>';return;}
     pastEl.innerHTML=past.map(item=>{
       const id=String(item.id);
       const isOpen=!!item._open;
-      const showSolutions=!!item._solutionsOpen;
       const solutions=itemsForProblem(id).filter(x=>x.status==='approved');
-      const text=language==='az'?(item.statementAz||item.statementEn):(item.statementEn||item.statementAz);
+      const text=item.statementEn||item.statementAz;
       const stamp=item.date||item.createdAt||item.updatedAt;
-      return '<article class="daily-history-item"><button type="button" class="daily-history-date" data-history-id="'+safe(id)+'"><span>'+safe(dateHeading(stamp))+'</span><small>'+(isOpen?'Hide problem':'Open problem')+'　⌄</small></button><div class="daily-history-details" '+(isOpen?'':'hidden')+'><div class="daily-history-statement">'+(text?safe(text).replace(/\n/g,'<br>'):'No statement saved for this date.')+'</div><div class="daily-history-actions"><button type="button" class="daily-history-toggle" data-history-solutions="'+safe(id)+'">'+(showSolutions?'Hide solutions':'Show solutions')+' ('+solutions.length+')</button></div><div class="daily-history-solutions" '+(showSolutions?'':'hidden')+'>'+ (solutions.length?solutions.map(solutionMessage).join(''):'<div class="daily-history-message">No approved solutions yet.</div>')+'</div></div></article>';
+      return '<article class="daily-history-item"><button type="button" class="daily-history-date" data-history-id="'+safe(id)+'"><span>'+safe(dateHeading(stamp))+'</span><small>'+(isOpen?'Hide problem':'Open problem')+'　⌄</small></button><div class="daily-history-details" '+(isOpen?'':'hidden')+'><div class="daily-history-statement">'+(text?safe(text).replace(/\n/g,'<br>'):'No statement saved for this date.')+'</div><div class="daily-history-solutions">'+(solutions.length?solutions.map(solutionMessage).join(''):'<div class="daily-history-message">No approved solutions yet.</div>')+'</div></div></article>';
     }).join('');
     wireAvatarFallbacks(pastEl);
     pastEl.querySelectorAll('[data-history-id]').forEach(button=>button.onclick=()=>{
       const item=historyProblems.find(x=>String(x.id)===button.dataset.historyId);if(!item)return;
       item._open=!item._open;renderPastProblems();
-    });
-    pastEl.querySelectorAll('[data-history-solutions]').forEach(button=>button.onclick=()=>{
-      const item=historyProblems.find(x=>String(x.id)===button.dataset.historySolutions);if(!item)return;
-      item._solutionsOpen=!item._solutionsOpen;renderPastProblems();typeset(pastEl);
     });
     typeset(pastEl);
   }
@@ -270,17 +256,6 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
     confettiEl.innerHTML='';
     setTimeout(maybeCelebrateRewards,100);
   }
-  try{language=localStorage.getItem('karp_daily_problem_lang')==='az'?'az':'en'}catch(e){}
-  languageSwitchEl.querySelectorAll('button').forEach(button=>{
-    button.classList.toggle('active',button.dataset.dailyLang===language);
-    button.addEventListener('click',()=>{
-      language=button.dataset.dailyLang==='az'?'az':'en';
-      try{localStorage.setItem('karp_daily_problem_lang',language)}catch(e){}
-      languageSwitchEl.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x.dataset.dailyLang===language));
-      renderProblem();renderPastProblems();
-    });
-  });
-  currentToggle.addEventListener('click',()=>{currentSolutionsOpen=!currentSolutionsOpen;renderCurrentSolutions();});
   pastToggle.addEventListener('click',()=>{pastOpen=!pastOpen;renderPastProblems();});
   document.getElementById('daily-reward-close').addEventListener('click',closeCelebration);
   rewardOverlay.addEventListener('click',event=>{if(event.target===rewardOverlay)closeCelebration();});
