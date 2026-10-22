@@ -124,6 +124,25 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
   function dateHeading(value){return dateObject(value).toLocaleDateString('en-GB',{timeZone:'Asia/Baku',day:'numeric',month:'long',year:'numeric'});}
   function dateTime(value){const d=value?new Date(value):null;return d&&!Number.isNaN(d.getTime())?d.toLocaleString('en-GB',{timeZone:'Asia/Baku',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}):'';}
   function currentStatement(){return language==='az'?(problem.statementAz||problem.statementEn):(problem.statementEn||problem.statementAz);}
+  async function compactAvatar(value){
+    const source=String(value||'');
+    if(!source)return '';
+    if(source.length<=11000)return source;
+    if(!source.startsWith('data:image/'))return '';
+    try{
+      const image=await new Promise((resolve,reject)=>{
+        const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=source;
+      });
+      const maxSide=64,scale=Math.min(1,maxSide/Math.max(image.naturalWidth||image.width,image.naturalHeight||image.height));
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,Math.round((image.naturalWidth||image.width)*scale));
+      canvas.height=Math.max(1,Math.round((image.naturalHeight||image.height)*scale));
+      const context=canvas.getContext('2d');context.drawImage(image,0,0,canvas.width,canvas.height);
+      let quality=.52,url=canvas.toDataURL('image/jpeg',quality);
+      while(url.length>11000&&quality>.16){quality-=.08;url=canvas.toDataURL('image/jpeg',quality);}
+      return url.length<=12000?url:'';
+    }catch(error){console.warn('Could not compact profile avatar for Daily Problem:',error);return '';}
+  }
   function avatarMarkup(name,photoURL){
     const initials=String(name||'K').trim().split(/\s+/).slice(0,2).map(part=>part.charAt(0)).join('').toUpperCase()||'K';
     return '<span class="daily-avatar">'+(photoURL?'<img src="'+safe(photoURL)+'" alt="">':safe(initials))+'</span>';
@@ -272,7 +291,7 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
       try{const profileSnap=await fs.getDoc(fs.doc(db,'users',currentUser.uid));if(profileSnap.exists())profile=profileSnap.data()||{};}catch(e){}
       userProfile=profile;
       const displayName=String(profile.name||currentUser.displayName||(currentUser.email||'').split('@')[0]||'KARP Member').trim().slice(0,100)||'KARP Member';
-      const photoURL=String(profile.photoURL||currentUser.photoURL||'').slice(0,2000);
+      const photoURL=await compactAvatar(profile.photoURL||currentUser.photoURL||'');
       const submission={uid:currentUser.uid,displayName,email:String(currentUser.email||'').slice(0,200),photoURL,solution,status:'pending',problemId:currentProblemId,createdAt:new Date().toISOString()};
       const submissionRef=await fs.addDoc(fs.collection(db,'dailyProblemSubmissions'),submission);
       input.value='';toggleEditor(false);setPendingNotice(submission);
