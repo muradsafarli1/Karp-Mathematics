@@ -5,73 +5,97 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KARP — Daily Problem</title>
 <link rel="stylesheet" href="/style.css">
-<script src="/app.js?v=daily-problem-1"></script>
+<script src="/app.js?v=daily-problem-2"></script>
 <script>
 window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]],processEnvironments:true,processEscapes:true},svg:{fontCache:"global"},startup:{typeset:false}};
 </script>
 <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
-
-.daily-page{width:min(calc(100% - 42px),900px);margin:0 auto;padding:47px 0 80px;color:#17191c}
-.daily-problem-toolbar{display:flex;justify-content:flex-end;align-items:center;padding:0 0 14px;border-bottom:1px solid #dedfdb}
+.daily-page{width:min(calc(100% - 42px),900px);margin:0 auto;padding:42px 0 80px;color:#17191c}
+.daily-problem-toolbar{display:flex;justify-content:flex-end;align-items:center;padding:0 0 13px}
 .daily-lang-switch{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto;padding:3px;border:1px solid #d0d3ce;border-radius:10px;background:#f0f1ee}
 .daily-lang-switch button{border:0;border-radius:7px;padding:8px 12px;background:transparent;color:#777d83;font-size:11px;font-weight:800;letter-spacing:.5px;cursor:pointer}
 .daily-lang-switch button.active{background:#263b5b;color:#fff;box-shadow:0 2px 5px rgba(24,38,60,.14)}
-.daily-statement{font-size:19px;line-height:1.95;color:#202329;white-space:pre-wrap;overflow-wrap:anywhere;padding:23px 0 29px;min-height:54px}
-.daily-statement mjx-container{max-width:100%;overflow-x:auto;overflow-y:hidden}
+.daily-statement{font-size:19px;line-height:1.95;color:#202329;white-space:pre-wrap;overflow-wrap:anywhere;padding:4px 0 24px;min-height:54px;width:100%}
+.daily-statement mjx-container,.daily-message-body mjx-container,.daily-history-statement mjx-container{max-width:100%;overflow-x:auto;overflow-y:hidden}
 .daily-empty{color:#777d83;font-size:13px;line-height:1.8;text-align:center;padding:24px 6px}
 .daily-rule{height:1px;background:#dedfdb;border:0;margin:0}
-.daily-community{padding-top:27px}
-.daily-community-head{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:18px}
+.daily-community{padding-top:26px}
+.daily-community-head{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:14px}
 .daily-community-head h2{font-family:"Space Grotesk",sans-serif;font-size:20px;letter-spacing:-.45px;font-weight:750;margin:0;color:#17191c}
 .daily-count{font-size:10px;color:#737781;white-space:nowrap}
-.daily-solutions{display:flex;flex-direction:column;align-items:flex-start;gap:14px}
-.daily-message{width:fit-content;max-width:min(86%,760px);padding:14px 16px 13px;background:#eef0ec;border:1px solid #e0e3dd;border-radius:4px 15px 15px 15px;color:#24272b}
+.daily-solutions{display:flex;flex-direction:column;align-items:flex-start;gap:14px;width:100%}
+.daily-solutions[hidden],.daily-form[hidden],.daily-history-details[hidden],.daily-history-solutions[hidden],.daily-submit-notice[hidden],.daily-reward-overlay[hidden]{display:none!important}
+.daily-message{width:100%;max-width:100%;box-sizing:border-box;padding:15px 17px 14px;background:#eef0ec;border:1px solid #e0e3dd;border-radius:4px 15px 15px 15px;color:#24272b}
 .daily-message.pending{background:#f6f7f4;border-style:dashed;border-color:#bfc7bb}
-.daily-message-head{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
-.daily-message-author{display:flex;align-items:center;gap:9px;min-width:0}
-.daily-avatar{width:31px;height:31px;border-radius:50%;background:#263b5b;color:#fff;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 31px;font-size:11px;font-weight:800}
-.daily-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.daily-message-head{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
+.daily-message-author{display:flex;align-items:center;gap:10px;min-width:0}
+.daily-avatar{display:inline-flex!important;align-items:center;justify-content:center;width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;max-width:38px!important;max-height:38px!important;aspect-ratio:1/1;flex:0 0 38px!important;overflow:hidden!important;border-radius:50%!important;background:#263b5b;color:#fff;font-size:11px;font-weight:800;line-height:1}
+.daily-avatar img{display:block!important;width:100%!important;height:100%!important;min-width:100%!important;min-height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center!important;border:0!important;border-radius:50%!important}
 .daily-message-name{font-size:12px;font-weight:800;color:#263b5b;overflow-wrap:anywhere}
 .daily-message-meta{font-size:10px;color:#747b78}
-.daily-message-language{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.6px;border:1px solid #ccd3c7;border-radius:5px;padding:3px 5px;margin-left:5px;color:#626c61}
-.daily-message-status{font-size:10px;font-weight:750;color:#6f765f;margin-left:5px}
-.daily-message-body{font-size:14px;line-height:1.9;white-space:pre-wrap;overflow-wrap:anywhere}
-.daily-message-body mjx-container{max-width:100%;overflow-x:auto;overflow-y:hidden}
-.daily-add-solution{margin-top:22px}
+.daily-gem-badge{display:inline-flex;align-items:center;gap:4px;margin-left:8px;padding:4px 7px;border-radius:999px;background:#f7f1dd;border:1px solid #e6d9ad;color:#785e19;font-size:10px;font-weight:850;white-space:nowrap}
+.daily-message-status{font-size:10px;font-weight:750;color:#6f765f;margin-top:3px}
+.daily-message-body{font-size:14px;line-height:1.9;white-space:pre-wrap;overflow-wrap:anywhere;width:100%}
+.daily-current-toggle,.daily-history-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 12px;border:1px solid #d5d8d2;border-radius:9px;background:#f5f6f3;color:#30353b;font-size:11px;font-weight:750;cursor:pointer}
+.daily-current-toggle:hover,.daily-history-toggle:hover{background:#ebede8}
+.daily-add-solution{margin-top:18px}
 .daily-primary-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;background:#263b5b;border:1px solid #263b5b;border-radius:10px;color:#fff;font-size:12px;font-weight:750;text-decoration:none;cursor:pointer;white-space:nowrap;transition:background .15s ease}
 .daily-primary-btn:hover{background:#1d2f4a}
 .daily-primary-btn:disabled{opacity:.55;cursor:wait}
 .daily-secondary-btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border:1px solid #d0d3ce;border-radius:10px;background:#f8f9f7;color:#30343a;font-size:12px;font-weight:700;cursor:pointer}
-.daily-form{margin-top:18px;padding-top:0;border:0}
-.daily-form[hidden]{display:none!important}
+.daily-form{display:block;width:100%;max-width:100%;box-sizing:border-box;margin-top:17px;padding:0;border:0}
 .daily-label{display:block;font-size:12px;font-weight:800;color:#30343a;margin:0 0 9px}
-.daily-textarea{display:block;width:100%;min-height:230px;resize:vertical;border:1px solid #d0d3ce;border-radius:12px;background:#fafbf9;color:#17191c;padding:15px;font:13px/1.8 "Inter",system-ui,sans-serif;outline:none;box-sizing:border-box}
+.daily-textarea{display:block;width:100%!important;max-width:100%!important;min-height:330px;resize:vertical;border:1px solid #d0d3ce;border-radius:12px;background:#fafbf9;color:#17191c;padding:17px;font:14px/1.85 "Inter",system-ui,sans-serif;outline:none;box-sizing:border-box}
 .daily-textarea:focus{border-color:#8d9bb0;box-shadow:0 0 0 3px rgba(38,59,91,.08)}
-.daily-hint{font-size:11px;line-height:1.7;color:#777d83;margin:9px 0 15px}
-.daily-form-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.daily-form-status{font-size:12px;color:#526d5b;margin-top:12px;line-height:1.6}
+.daily-form-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.daily-form-status{font-size:12px;color:#8d3838;margin-top:12px;line-height:1.6}
 .daily-submit-notice{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid #e0e3dd;background:#f3f4f1;border-radius:12px;font-size:12px;line-height:1.6;color:#363b3d;margin-top:16px}
-.daily-submit-notice[hidden]{display:none!important}
 .daily-submit-notice strong{display:block;font-size:12px;color:#263b5b;margin-bottom:2px}
-@media(max-width:620px){.daily-page{padding-top:29px}.daily-statement{font-size:17px;padding:20px 0 24px}.daily-community-head h2{font-size:18px}.daily-message{width:auto;max-width:94%}.daily-lang-switch button{padding:8px 10px}.daily-add-solution .daily-primary-btn{width:100%}}
-
+.daily-past-section{margin-top:38px;padding-top:23px;border-top:1px solid #dedfdb}
+.daily-past-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.daily-past-head h2{font-family:"Space Grotesk",sans-serif;font-size:16px;margin:0;font-weight:750;letter-spacing:-.2px}
+.daily-past-list{display:flex;flex-direction:column;gap:10px}
+.daily-history-item{border:1px solid #e0e2dd;border-radius:12px;background:#f7f8f5;overflow:hidden}
+.daily-history-date{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;border:0;background:transparent;text-align:left;padding:15px 17px;color:#263b5b;font-weight:800;font-size:13px;cursor:pointer}
+.daily-history-date:hover{background:#eff1ec}
+.daily-history-date small{font-size:10px;font-weight:600;color:#787d81}
+.daily-history-details{padding:0 17px 17px}
+.daily-history-statement{font-size:14px;line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere;color:#292d32;padding:7px 0 12px}
+.daily-history-solutions{display:flex;flex-direction:column;gap:11px;margin-top:13px}
+.daily-history-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.daily-history-message{font-size:12px;color:#6f747b}
+.daily-reward-overlay{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(13,18,26,.72);backdrop-filter:blur(8px)}
+.daily-reward-card{position:relative;width:min(480px,100%);overflow:hidden;background:#f8f8f4;border:1px solid #e5dfc9;border-radius:22px;padding:39px 28px 27px;text-align:center;box-shadow:0 24px 90px rgba(0,0,0,.32);animation:dailyRewardPop .48s cubic-bezier(.18,.8,.2,1) both}
+.daily-reward-gem{font-size:48px;line-height:1;margin-bottom:15px;animation:dailyGemPulse 1.1s ease-in-out infinite alternate}
+.daily-reward-card h2{font-family:"Space Grotesk",sans-serif;font-size:27px;letter-spacing:-.9px;margin:0 0 10px;color:#263b5b}
+.daily-reward-card p{margin:0 auto 22px;color:#5f666c;font-size:13px;line-height:1.75;max-width:340px}
+.daily-reward-card strong{color:#82631c}
+.daily-confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.daily-confetti i{position:absolute;top:-15px;left:var(--x);width:7px;height:13px;border-radius:2px;background:hsl(var(--h),78%,62%);opacity:0;animation:dailyConfettiFall var(--d) cubic-bezier(.18,.62,.4,1) var(--delay) forwards}
+@keyframes dailyRewardPop{0%{opacity:0;transform:translateY(14px) scale(.86)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes dailyGemPulse{from{transform:scale(.95) rotate(-7deg)}to{transform:scale(1.07) rotate(7deg)}}
+@keyframes dailyConfettiFall{0%{opacity:0;transform:translate3d(0,-10px,0) rotate(0)}8%{opacity:1}100%{opacity:.95;transform:translate3d(var(--drift),560px,0) rotate(690deg)}}
+@media(max-width:620px){.daily-page{padding-top:28px}.daily-statement{font-size:17px}.daily-community-head h2{font-size:18px}.daily-lang-switch button{padding:8px 10px}.daily-textarea{min-height:260px}.daily-add-solution .daily-primary-btn{width:100%}.daily-message{padding:13px}.daily-reward-card{padding:35px 20px 23px}}
+@media(prefers-reduced-motion:reduce){.daily-reward-card,.daily-reward-gem,.daily-confetti i{animation:none!important;opacity:1!important}}
 </style>
 </head>
 <body>
 <script>
 (async function initDailyProblem(){
-  const body = [
+  const body=[
     '<main class="daily-page">',
-    '<section class="daily-problem-section"><div class="daily-problem-toolbar"><div class="daily-lang-switch" id="daily-lang-switch" role="group" aria-label="Problem language"><button type="button" data-daily-lang="en" class="active">ENG</button><button type="button" data-daily-lang="az">AZE</button></div></div>',
-    '<div class="daily-statement" id="daily-problem-statement"><div class="daily-empty">Loading the daily problem…</div></div></section>',
+    '<section class="daily-problem-section"><div class="daily-statement" id="daily-problem-statement"><div class="daily-empty">Loading the daily problem…</div></div><div class="daily-problem-toolbar"><div class="daily-lang-switch" id="daily-lang-switch" role="group" aria-label="Problem language"><button type="button" data-daily-lang="en" class="active">ENG</button><button type="button" data-daily-lang="az">AZE</button></div></div></section>',
     '<hr class="daily-rule">',
     '<section class="daily-community"><div class="daily-community-head"><h2>Community Solutions</h2><span class="daily-count" id="daily-solution-count">0 solutions</span></div>',
-    '<div class="daily-solutions" id="daily-approved-solutions"><div class="daily-empty">No approved solutions yet. Be the first to contribute.</div></div>',
+    '<button class="daily-current-toggle" id="daily-toggle-current-solutions" type="button" aria-expanded="false">Show solutions</button>',
+    '<div class="daily-solutions" id="daily-approved-solutions" hidden><div class="daily-empty">No approved solutions yet. Be the first to contribute.</div></div>',
     '<div class="daily-add-solution"><button class="daily-primary-btn" id="daily-add-solution" type="button">＋ Add Solution</button></div>',
     '<form class="daily-form" id="daily-solution-form" hidden><label class="daily-label" for="daily-solution-input">Write your solution</label><textarea class="daily-textarea" id="daily-solution-input" maxlength="50000" required placeholder="Write your proof here. Use \\( ... \\) for inline mathematics and \\[ ... \\] for displayed equations."></textarea><div class="daily-form-actions"><button class="daily-primary-btn" id="daily-submit-solution" type="submit">Submit solution</button><button class="daily-secondary-btn" id="daily-cancel-solution" type="button">Cancel</button></div><div class="daily-form-status" id="daily-form-status" role="status" aria-live="polite"></div></form>',
     '<div class="daily-submit-notice" id="daily-submit-notice" hidden></div></section>',
-    '</main>'
+    '<section class="daily-past-section"><div class="daily-past-head"><h2>See past problems</h2><button class="daily-current-toggle" id="daily-toggle-past" type="button" aria-expanded="false">Show history</button></div><div class="daily-past-list" id="daily-past-list" hidden><div class="daily-empty">No past problems yet.</div></div></section>',
+    '</main>',
+    '<div class="daily-reward-overlay" id="daily-reward-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="daily-reward-title"><div class="daily-reward-card"><div class="daily-confetti" id="daily-confetti"></div><div class="daily-reward-gem">💎</div><h2 id="daily-reward-title">Congratulations!</h2><p id="daily-reward-copy">Your solution was selected.</p><button type="button" class="daily-primary-btn" id="daily-reward-close">Continue</button></div></div>'
   ].join('');
   shell('Daily Problem','Daily Problem',body);
   const statementEl=document.getElementById('daily-problem-statement');
@@ -84,21 +108,26 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
   const statusEl=document.getElementById('daily-form-status');
   const approvedEl=document.getElementById('daily-approved-solutions');
   const countEl=document.getElementById('daily-solution-count');
-  const noticeEl=document.getElementById('daily-submit-notice');
+  const pendingNoticeEl=document.getElementById('daily-submit-notice');
+  const currentToggle=document.getElementById('daily-toggle-current-solutions');
+  const pastToggle=document.getElementById('daily-toggle-past');
+  const pastEl=document.getElementById('daily-past-list');
+  const rewardOverlay=document.getElementById('daily-reward-overlay');
+  const rewardCopy=document.getElementById('daily-reward-copy');
+  const confettiEl=document.getElementById('daily-confetti');
   const safe=value=>String(value==null?'':value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  let language='en',problem={statementEn:'',statementAz:''},currentUser=null,userProfile={},approvedItems=[],ownPendingItems=[],pendingUnsubscribe=null;
+  let language='en',problem={statementEn:'',statementAz:''},currentProblemId='legacy-current',currentUser=null,userProfile={},approvedItems=[],ownSubmissions=[],historyProblems=[],pendingUnsubscribe=null,currentSolutionsOpen=false,pastOpen=false;
   let authIsReady=false,authReadyResolve;
   const authReadyPromise=new Promise(resolve=>{authReadyResolve=resolve;});
-  try{language=localStorage.getItem('karp_daily_problem_lang')==='az'?'az':'en'}catch(e){}
-  languageSwitchEl.querySelectorAll('button').forEach(button=>{
-    button.classList.toggle('active',button.dataset.dailyLang===language);
-    button.addEventListener('click',()=>{
-      language=button.dataset.dailyLang==='az'?'az':'en';
-      try{localStorage.setItem('karp_daily_problem_lang',language)}catch(e){}
-      languageSwitchEl.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x.dataset.dailyLang===language));
-      renderProblem();
-    });
-  });
+  const problemIdOf=item=>String(item?.problemId||'legacy-current');
+  function dateObject(value){const d=value?new Date(value):null;return d&&!Number.isNaN(d.getTime())?d:new Date();}
+  function dateHeading(value){return dateObject(value).toLocaleDateString('en-GB',{timeZone:'Asia/Baku',day:'numeric',month:'long',year:'numeric'});}
+  function dateTime(value){const d=value?new Date(value):null;return d&&!Number.isNaN(d.getTime())?d.toLocaleString('en-GB',{timeZone:'Asia/Baku',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}):'';}
+  function currentStatement(){return language==='az'?(problem.statementAz||problem.statementEn):(problem.statementEn||problem.statementAz);}
+  function avatarMarkup(name,photoURL){
+    const initials=String(name||'K').trim().split(/\s+/).slice(0,2).map(part=>part.charAt(0)).join('').toUpperCase()||'K';
+    return '<span class="daily-avatar">'+(photoURL?'<img src="'+safe(photoURL)+'" alt="">':safe(initials))+'</span>';
+  }
   async function typeset(root,attempt=0){
     if(!root)return;
     try{
@@ -108,34 +137,63 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
     }catch(e){console.warn('Daily Problem math rendering failed:',e);}
   }
   function renderProblem(){
-    const value=language==='az'?(problem.statementAz||problem.statementEn):(problem.statementEn||problem.statementAz);
+    const value=currentStatement();
     statementEl.innerHTML=value?safe(value).replace(/\n/g,'<br>'):'<div class="daily-empty">Today’s problem has not been added yet.</div>';
     typeset(statementEl);
   }
-  function avatarMarkup(name,photoURL){
-    const initials=String(name||'K').trim().split(/\s+/).slice(0,2).map(part=>part.charAt(0)).join('').toUpperCase()||'K';
-    return '<span class="daily-avatar">'+(photoURL?'<img src="'+safe(photoURL)+'" alt="">':safe(initials))+'</span>';
+  function solutionMessage(item){
+    const name=item.displayName||'KARP Member';
+    const dateLabel=dateTime(item.createdAt);
+    const gems=Number(item.authorGems||0);
+    const pending=item.status==='pending';
+    return '<article class="daily-message '+(pending?'pending':'')+'"><div class="daily-message-head"><div class="daily-message-author">'+avatarMarkup(name,item.photoURL||'')+'<div><span class="daily-message-name">'+safe(name)+'</span>'+(gems>0?'<span class="daily-gem-badge">💎 '+gems+' Gems</span>':'')+(pending?'<div class="daily-message-status">Sent · awaiting approval</div>':'')+'</div></div><time class="daily-message-meta">'+safe(dateLabel)+'</time></div><div class="daily-message-body">'+safe(item.solution||'').replace(/\n/g,'<br>')+'</div></article>';
   }
-  function renderSolutions(){
-    const items=[...approvedItems,...ownPendingItems.filter(x=>x.status==='pending'&&!approvedItems.some(a=>a.id===x.id))];
-    items.sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
-    countEl.textContent=items.length+(items.length===1?' solution':' solutions');
-    if(!items.length){approvedEl.innerHTML='<div class="daily-empty">No solutions yet. Submit a proof to start the discussion.</div>';return;}
-    approvedEl.innerHTML=items.map(item=>{
-      const date=item.createdAt?new Date(item.createdAt):null;
-      const dateLabel=date&&!Number.isNaN(date.getTime())?date.toLocaleString('en-GB',{timeZone:'Asia/Baku',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}):'';
-      const lang=String(item.language||'ENG').toUpperCase()==='AZE'?'AZE':'ENG';
-      const pending=item.status==='pending';
-      const name=item.displayName||'KARP Member';
-      return '<article class="daily-message '+(pending?'pending':'')+'"><div class="daily-message-head"><div class="daily-message-author">'+avatarMarkup(name,item.photoURL||'')+'<div><span class="daily-message-name">'+safe(name)+'</span><span class="daily-message-language">'+lang+'</span>'+(pending?'<div class="daily-message-status">Sent · awaiting approval</div>':'')+'</div></div><time class="daily-message-meta">'+safe(dateLabel)+'</time></div><div class="daily-message-body">'+safe(item.solution||'').replace(/\n/g,'<br>')+'</div></article>';
-    }).join('');
+  function itemsForProblem(id){
+    const approved=approvedItems.filter(x=>problemIdOf(x)===String(id));
+    const pending=ownSubmissions.filter(x=>x.status==='pending'&&problemIdOf(x)===String(id)&&!approved.some(a=>a.id===x.id));
+    return [...approved,...pending].sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
+  }
+  function renderCurrentSolutions(){
+    const items=itemsForProblem(currentProblemId);
+    const approvedCount=items.filter(x=>x.status==='approved').length;
+    countEl.textContent=approvedCount+(approvedCount===1?' solution':' solutions');
+    if(!items.length)approvedEl.innerHTML='<div class="daily-empty">No solutions yet. Submit a proof to start the discussion.</div>';
+    else approvedEl.innerHTML=items.map(solutionMessage).join('');
+    approvedEl.hidden=!currentSolutionsOpen;
+    currentToggle.textContent=(currentSolutionsOpen?'Hide solutions':'Show solutions')+' ('+approvedCount+')';
+    currentToggle.setAttribute('aria-expanded',currentSolutionsOpen?'true':'false');
     typeset(approvedEl);
   }
+  function renderPastProblems(){
+    const past=historyProblems.filter(item=>String(item.id)!==String(currentProblemId)&&item.isCurrent!==true).sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||'')));
+    pastToggle.textContent=(pastOpen?'Hide history':'Show history')+(past.length?' ('+past.length+')':'');
+    pastToggle.setAttribute('aria-expanded',pastOpen?'true':'false');
+    pastEl.hidden=!pastOpen;
+    if(!past.length){pastEl.innerHTML='<div class="daily-empty">No past problems yet.</div>';return;}
+    pastEl.innerHTML=past.map(item=>{
+      const id=String(item.id);
+      const isOpen=!!item._open;
+      const showSolutions=!!item._solutionsOpen;
+      const solutions=itemsForProblem(id).filter(x=>x.status==='approved');
+      const text=language==='az'?(item.statementAz||item.statementEn):(item.statementEn||item.statementAz);
+      const stamp=item.date||item.createdAt||item.updatedAt;
+      return '<article class="daily-history-item"><button type="button" class="daily-history-date" data-history-id="'+safe(id)+'"><span>'+safe(dateHeading(stamp))+'</span><small>'+(isOpen?'Hide problem':'Open problem')+'　⌄</small></button><div class="daily-history-details" '+(isOpen?'':'hidden')+'><div class="daily-history-statement">'+(text?safe(text).replace(/\n/g,'<br>'):'No statement saved for this date.')+'</div><div class="daily-history-actions"><button type="button" class="daily-history-toggle" data-history-solutions="'+safe(id)+'">'+(showSolutions?'Hide solutions':'Show solutions')+' ('+solutions.length+')</button></div><div class="daily-history-solutions" '+(showSolutions?'':'hidden')+'>'+ (solutions.length?solutions.map(solutionMessage).join(''):'<div class="daily-history-message">No approved solutions yet.</div>')+'</div></div></article>';
+    }).join('');
+    pastEl.querySelectorAll('[data-history-id]').forEach(button=>button.onclick=()=>{
+      const item=historyProblems.find(x=>String(x.id)===button.dataset.historyId);if(!item)return;
+      item._open=!item._open;renderPastProblems();
+    });
+    pastEl.querySelectorAll('[data-history-solutions]').forEach(button=>button.onclick=()=>{
+      const item=historyProblems.find(x=>String(x.id)===button.dataset.historySolutions);if(!item)return;
+      item._solutionsOpen=!item._solutionsOpen;renderPastProblems();typeset(pastEl);
+    });
+    typeset(pastEl);
+  }
   function setPendingNotice(item){
-    if(!item){noticeEl.hidden=true;noticeEl.innerHTML='';return;}
+    if(!item){pendingNoticeEl.hidden=true;pendingNoticeEl.innerHTML='';return;}
     const name=item.displayName||currentUser?.displayName||(currentUser?.email||'').split('@')[0]||'KARP Member';
-    noticeEl.innerHTML=avatarMarkup(name,item.photoURL||currentUser?.photoURL||userProfile.photoURL||'')+'<div><strong>Solution sent</strong>Your solution has been submitted successfully. Please wait for an administrator to approve it.</div>';
-    noticeEl.hidden=false;
+    pendingNoticeEl.innerHTML=avatarMarkup(name,item.photoURL||currentUser?.photoURL||userProfile.photoURL||'')+'<div><strong>Solution sent</strong>Your solution has been submitted successfully. Please wait for an administrator to approve it.</div>';
+    pendingNoticeEl.hidden=false;
   }
   function toggleEditor(open){
     form.hidden=!open;
@@ -145,31 +203,54 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
       setTimeout(()=>input.focus({preventScroll:true}),80);
     }
   }
-  try{
-    const {db,auth}=await import('/karp-firebase.js');
-    const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-    const {onAuthStateChanged}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
-    const currentRef=fs.doc(db,'dailyProblem','current');
-    fs.onSnapshot(currentRef,snapshot=>{problem=snapshot.exists()?snapshot.data():{statementEn:'',statementAz:''};renderProblem();},error=>{console.error('Daily Problem could not load:',error);statementEl.innerHTML='<div class="daily-empty">Could not load the problem. Please refresh the page.</div>';});
-    const approvedQuery=fs.query(fs.collection(db,'dailyProblemSubmissions'),fs.where('status','==','approved'));
-    fs.onSnapshot(approvedQuery,snapshot=>{approvedItems=snapshot.docs.map(x=>({id:x.id,...x.data()}));renderSolutions();},error=>{console.error('Daily Problem solutions could not load:',error);approvedEl.innerHTML='<div class="daily-empty">Could not load solutions. Please refresh the page.</div>';});
-    onAuthStateChanged(auth,async user=>{
-      currentUser=user||null;
-      authIsReady=true;authReadyResolve();
-      userProfile={};
-      if(pendingUnsubscribe){pendingUnsubscribe();pendingUnsubscribe=null;}
-      ownPendingItems=[];
-      if(!currentUser){renderSolutions();return;}
-      try{const p=await fs.getDoc(fs.doc(db,'users',currentUser.uid));if(p.exists())userProfile=p.data()||{};}catch(e){}
-      const mine=fs.query(fs.collection(db,'dailyProblemSubmissions'),fs.where('uid','==',currentUser.uid));
-      pendingUnsubscribe=fs.onSnapshot(mine,snapshot=>{
-        ownPendingItems=snapshot.docs.map(x=>({id:x.id,...x.data()})).filter(x=>x.status==='pending');
-        const newest=ownPendingItems.slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')))[0];
-        if(newest)setPendingNotice(newest);else{noticeEl.hidden=true;noticeEl.innerHTML='';}
-        renderSolutions();
-      },error=>console.warn('Could not load personal Daily Problem submission status:',error));
+  function showGemCelebration(item){
+    const gems=Math.max(0,Number(item.rewardGems)||0);
+    if(!gems)return;
+    rewardCopy.innerHTML='Your solution was selected! You earned <strong>'+gems+' Gems</strong>. Your gems are saved permanently in your account.';
+    const pieces=[];
+    for(let i=0;i<44;i++){
+      const x=(i*37+11)%100;
+      const h=(i*47+23)%360;
+      const delay=((i*13)%75)/100;
+      const dur=1.9+((i*17)%12)/10;
+      const drift=((i%2===0)?1:-1)*(20+(i*19)%95);
+      pieces.push('<i style="--x:'+x+'%;--h:'+h+';--delay:'+delay+'s;--d:'+dur+'s;--drift:'+drift+'px"></i>');
+    }
+    confettiEl.innerHTML=pieces.join('');
+    rewardOverlay.hidden=false;
+    document.getElementById('daily-reward-close').focus();
+  }
+  function maybeCelebrateRewards(){
+    if(!currentUser)return;
+    for(const item of ownSubmissions){
+      const gems=Number(item.rewardGems)||0;
+      if(item.status!=='approved'||gems<=0)continue;
+      let key='karp_daily_gem_seen_'+currentUser.uid+'_'+item.id,seen=false;
+      try{seen=localStorage.getItem(key)==='1';if(!seen)localStorage.setItem(key,'1')}catch(e){}
+      if(!seen){showGemCelebration(item);return;}
+    }
+  }
+  function closeCelebration(){
+    rewardOverlay.hidden=true;
+    confettiEl.innerHTML='';
+    setTimeout(maybeCelebrateRewards,100);
+  }
+  try{language=localStorage.getItem('karp_daily_problem_lang')==='az'?'az':'en'}catch(e){}
+  languageSwitchEl.querySelectorAll('button').forEach(button=>{
+    button.classList.toggle('active',button.dataset.dailyLang===language);
+    button.addEventListener('click',()=>{
+      language=button.dataset.dailyLang==='az'?'az':'en';
+      try{localStorage.setItem('karp_daily_problem_lang',language)}catch(e){}
+      languageSwitchEl.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x.dataset.dailyLang===language));
+      renderProblem();renderPastProblems();
     });
-    addButton.addEventListener('click',async()=>{
+  });
+  currentToggle.addEventListener('click',()=>{currentSolutionsOpen=!currentSolutionsOpen;renderCurrentSolutions();});
+  pastToggle.addEventListener('click',()=>{pastOpen=!pastOpen;renderPastProblems();});
+  document.getElementById('daily-reward-close').addEventListener('click',closeCelebration);
+  rewardOverlay.addEventListener('click',event=>{if(event.target===rewardOverlay)closeCelebration();});
+  addButton.addEventListener('click',async()=>{
+    try{
       if(!authIsReady)await authReadyPromise;
       if(!currentUser){
         if(typeof showAuthPrompt==='function')showAuthPrompt('Sign in to submit a solution','Sign in or create an account before submitting your proof.');
@@ -177,32 +258,68 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
         return;
       }
       toggleEditor(form.hidden);
-    });
-    cancelButton.addEventListener('click',()=>{toggleEditor(false);statusEl.textContent='';});
-    form.addEventListener('submit',async event=>{
-      event.preventDefault();
-      const solution=input.value.trim();
-      if(!solution){statusEl.textContent='Please enter your solution first.';return;}
-      if(!currentUser){statusEl.textContent='Please sign in before submitting.';return;}
-      submitButton.disabled=true;submitButton.textContent='Submitting…';statusEl.textContent='';
-      try{
-        let profile=userProfile||{};
-        try{const profileSnap=await fs.getDoc(fs.doc(db,'users',currentUser.uid));if(profileSnap.exists())profile=profileSnap.data()||{};}catch(e){}
-        userProfile=profile;
-        const displayName=String(profile.name||currentUser.displayName||(currentUser.email||'').split('@')[0]||'KARP Member').trim().slice(0,100)||'KARP Member';
-        const photoURL=String(profile.photoURL||currentUser.photoURL||'').slice(0,2000);
-        const submission={uid:currentUser.uid,displayName,email:String(currentUser.email||'').slice(0,200),photoURL,language:language==='az'?'AZE':'ENG',solution,status:'pending',createdAt:new Date().toISOString()};
-        const submissionRef=await fs.addDoc(fs.collection(db,'dailyProblemSubmissions'),submission);
-        input.value='';toggleEditor(false);setPendingNotice(submission);noticeEl.dataset.submitted='yes';
-        ownPendingItems.push({id:submissionRef.id,...submission});renderSolutions();
-        addButton.textContent='＋ Add Another Solution';
-        if(typeof toast==='function')toast('Solution sent for admin review.');
-      }catch(error){console.error('Daily Problem submission failed:',error);statusEl.textContent='Could not submit your solution. Please try again.';}
-      finally{submitButton.disabled=false;submitButton.textContent='Submit solution';}
+    }catch(e){console.error('Could not open solution editor:',e);statusEl.textContent='Could not open the editor. Please refresh the page.';}
+  });
+  cancelButton.addEventListener('click',()=>{toggleEditor(false);statusEl.textContent='';});
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const solution=input.value.trim();
+    if(!solution){statusEl.textContent='Please enter your solution first.';return;}
+    if(!currentUser){statusEl.textContent='Please sign in before submitting.';return;}
+    submitButton.disabled=true;submitButton.textContent='Submitting…';statusEl.textContent='';
+    try{
+      let profile=userProfile||{};
+      try{const profileSnap=await fs.getDoc(fs.doc(db,'users',currentUser.uid));if(profileSnap.exists())profile=profileSnap.data()||{};}catch(e){}
+      userProfile=profile;
+      const displayName=String(profile.name||currentUser.displayName||(currentUser.email||'').split('@')[0]||'KARP Member').trim().slice(0,100)||'KARP Member';
+      const photoURL=String(profile.photoURL||currentUser.photoURL||'').slice(0,2000);
+      const submission={uid:currentUser.uid,displayName,email:String(currentUser.email||'').slice(0,200),photoURL,solution,status:'pending',problemId:currentProblemId,createdAt:new Date().toISOString()};
+      const submissionRef=await fs.addDoc(fs.collection(db,'dailyProblemSubmissions'),submission);
+      input.value='';toggleEditor(false);setPendingNotice(submission);
+      ownSubmissions.push({id:submissionRef.id,...submission});
+      renderCurrentSolutions();
+      addButton.textContent='＋ Add Another Solution';
+      if(typeof toast==='function')toast('Solution sent for admin review.');
+    }catch(error){console.error('Daily Problem submission failed:',error);statusEl.textContent='Could not submit your solution. Please try again.';}
+    finally{submitButton.disabled=false;submitButton.textContent='Submit solution';}
+  });
+  let db,auth,fs;
+  try{
+    ({db,auth}=await import('/karp-firebase.js'));
+    fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const {onAuthStateChanged}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
+    fs.onSnapshot(fs.doc(db,'dailyProblem','current'),snapshot=>{
+      problem=snapshot.exists()?snapshot.data():{statementEn:'',statementAz:''};
+      currentProblemId=String(problem.problemId||'legacy-current');
+      renderProblem();renderCurrentSolutions();renderPastProblems();
+    },error=>{console.error('Daily Problem could not load:',error);statementEl.innerHTML='<div class="daily-empty">Could not load the problem. Please refresh the page.</div>';});
+    fs.onSnapshot(fs.collection(db,'dailyProblems'),snapshot=>{
+      historyProblems=snapshot.docs.map(x=>({id:x.id,...x.data()}));
+      renderPastProblems();
+    },error=>{console.error('Past Daily Problems could not load:',error);pastEl.innerHTML='<div class="daily-empty">Could not load past problems.</div>';});
+    const approvedQuery=fs.query(fs.collection(db,'dailyProblemSubmissions'),fs.where('status','==','approved'));
+    fs.onSnapshot(approvedQuery,snapshot=>{
+      approvedItems=snapshot.docs.map(x=>({id:x.id,...x.data()}));
+      renderCurrentSolutions();renderPastProblems();
+    },error=>{console.error('Daily Problem solutions could not load:',error);approvedEl.innerHTML='<div class="daily-empty">Could not load solutions. Please refresh the page.</div>';});
+    onAuthStateChanged(auth,async user=>{
+      currentUser=user||null;authIsReady=true;authReadyResolve();
+      if(pendingUnsubscribe){pendingUnsubscribe();pendingUnsubscribe=null;}
+      userProfile={};ownSubmissions=[];
+      if(!currentUser){setPendingNotice(null);renderCurrentSolutions();renderPastProblems();return;}
+      try{const p=await fs.getDoc(fs.doc(db,'users',currentUser.uid));if(p.exists())userProfile=p.data()||{};}catch(e){}
+      const mine=fs.query(fs.collection(db,'dailyProblemSubmissions'),fs.where('uid','==',currentUser.uid));
+      pendingUnsubscribe=fs.onSnapshot(mine,snapshot=>{
+        ownSubmissions=snapshot.docs.map(x=>({id:x.id,...x.data()}));
+        const pending=ownSubmissions.filter(x=>x.status==='pending').sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+        setPendingNotice(pending[0]||null);
+        renderCurrentSolutions();renderPastProblems();maybeCelebrateRewards();
+      },error=>console.warn('Could not load personal Daily Problem submissions:',error));
     });
   }catch(error){
     console.error('Daily Problem initialization failed:',error);
     statementEl.innerHTML='<div class="daily-empty">Daily Problem is temporarily unavailable. Please refresh the page.</div>';
+    addButton.disabled=true;
   }
 })();
 </script>
