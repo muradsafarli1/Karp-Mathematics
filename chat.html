@@ -37,7 +37,7 @@
 <div class="chat-left-tools"><input id="chatSearch" class="chat-search" placeholder="Search conversations"><button class="icon-btn" id="newChat" title="New chat">＋</button></div>
 <div class="chat-tabs"><button class="chat-tab active" data-list="chats">Chats</button><button class="chat-tab" data-list="friends">Friends</button><button class="chat-tab" data-list="requests">Requests</button></div>
 <div class="chat-list" id="chatList"></div></aside>
-<section class="chat-main"><div class="chat-head"><button class="icon-btn" id="backMobile" style="display:none">‹</button><div class="chat-avatar" id="headAvatar">K</div><div class="chat-head-copy"><div class="chat-head-name" id="headName">KARP</div><div class="chat-head-status" id="headStatus">Private conversations</div></div><div class="chat-head-actions"><button class="text-btn" id="inviteBtn">Invite</button></div></div>
+<section class="chat-main"><div class="chat-head"><button class="icon-btn" id="backMobile" style="display:none">‹</button><div class="chat-avatar" id="headAvatar">K</div><div class="chat-head-copy"><div class="chat-head-name" id="headName">KARP</div></div><div class="chat-head-actions"><button class="text-btn" id="inviteBtn">Invite</button></div></div>
 <div class="chat-messages" id="messages"><div class="empty-chat"><div><strong>Your messages</strong>Select a conversation or start a new one.</div></div></div>
 <div class="chat-composer"><textarea id="composer" placeholder="Write a message…" disabled></textarea><button class="send-btn" id="send" disabled>➤</button></div></section>
 </div></main>
@@ -242,7 +242,7 @@ async function conversationPeople(){const ids=[];conversations.forEach(c=>c.memb
 let people=new Map();
 async function renderList(){const list=document.getElementById('chatList');people=await conversationPeople();const q=(document.getElementById('chatSearch').value||'').trim().toLowerCase();let html='';
 if(listMode==='requests'){html=incoming.length?incoming.map(r=>{const p=people.get(r.fromUid)||{};return '<div class="contact" style="margin:8px"><div>'+avatar(p.name||'K',p.photoURL)+'</div><div class="contact-main"><strong>'+esc(p.name||p.email||'Member')+'</strong></div><div class="contact-actions"><button class="text-btn primary" data-accept="'+r.id+'">Accept</button><button class="text-btn" data-reject="'+r.id+'">Decline</button></div></div>'}).join(''):'<div class="empty-chat"><div>No pending requests.</div></div>'}
-else if(listMode==='friends'){const arr=friends.map(f=>{const id=f.members.find(x=>x!==user.uid),p=people.get(id)||{};return{id,p}}).filter(x=>!q||String(x.p.name||'').toLowerCase().includes(q));html=arr.length?arr.map(x=>'<div class="chat-row" data-person="'+x.id+'">'+avatar(x.p.name,x.p.photoURL)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.p.name||'Member')+'</span></div><div class="chat-row-preview">Tap to message</div></div></div>').join(''):'<div class="empty-chat"><div>No friends yet.<br>Use ＋ to find KARP members.</div></div>'}
+else if(listMode==='friends'){const arr=friends.map(f=>{const id=f.members.find(x=>x!==user.uid),p=people.get(id)||{};return{id,p}}).filter(x=>!q||String(x.p.name||'').toLowerCase().includes(q));html=arr.length?arr.map(x=>'<div class="chat-row" data-person="'+x.id+'">'+avatar(x.p.name,x.p.photoURL)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.p.name||'Member')+'</span></div></div></div>').join(''):'<div class="empty-chat"><div>No friends yet.<br>Use ＋ to find KARP members.</div></div>'}
 else{
   const chatItems=[];
   const seen=new Set();
@@ -273,7 +273,7 @@ else{
   });
   html=chatItems.length?chatItems.map(x=>x.kind==='conversation'
     ? '<div class="chat-row '+(selected?.id===x.id?'active':'')+'" data-conv="'+x.id+'">'+avatar(x.name,x.url)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.name)+'</span><span class="chat-row-meta"><span class="chat-row-time">'+esc(fmt(x.data.updatedAt||x.data.createdAt))+'</span>'+(x.unread?'<span class="chat-unread">'+esc(x.unread>99?'99+':x.unread)+'</span>':'')+'</span></div><div class="chat-row-preview">'+esc(x.data.lastMessage||'No messages yet')+'</div></div></div>'
-    : '<div class="chat-row" data-person="'+x.personId+'">'+avatar(x.name,x.url)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.name)+'</span></div><div class="chat-row-preview">Start conversation</div></div></div>'
+    : '<div class="chat-row" data-person="'+x.personId+'">'+avatar(x.name,x.url)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.name)+'</span></div></div></div>'
   ).join(''):'<div class="empty-chat"><div><strong>No conversations</strong>Start a new chat with a KARP friend.</div></div>';
 }
 list.innerHTML=html;
@@ -292,8 +292,7 @@ async function openConversation(id){
   document.getElementById('headName').textContent=headDisplayName;
   const headAvatar=document.getElementById('headAvatar');
   if(headAvatar){headAvatar.innerHTML=(c.type==='direct'&&p?.photoURL?'<img src="'+esc(p.photoURL)+'" alt="">':esc(String(headDisplayName||'K').trim().split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase()||'K'));}
-  document.getElementById('headStatus').textContent=c.type==='group'?((c.members?.length||0)+' members'):'Private conversation';
-  document.getElementById('composer').disabled=false;
+    document.getElementById('composer').disabled=false;
   document.getElementById('send').disabled=false;
   document.getElementById('chat-window').classList.remove('mobile-list');
   const mq=window.matchMedia('(max-width:700px)');
@@ -313,7 +312,7 @@ async function openConversation(id){
 function renderMessages(){
   const e=document.getElementById('messages');
   if(!messages.length){
-    e.innerHTML='<div class="empty-chat"><div><strong>No messages yet</strong>Start the conversation.</div></div>';
+    e.innerHTML='<div class="empty-chat"><div><strong>No messages yet</strong></div></div>';
     return;
   }
   const first=messages[0];
