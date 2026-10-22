@@ -72,7 +72,36 @@ const closeModal=()=>document.getElementById('modal').classList.remove('open');
 document.getElementById('modalClose').onclick=closeModal;document.getElementById('modal').onclick=e=>{if(e.target.id==='modal')closeModal()};
 function requireUser(){if(!signedIn()){window.showAuthPrompt?.('Sign in to KARP','Sign in to send messages and connect with KARP members.');return false}return true}
 async function loadProfile(){if(!user)return;try{const s=await getDoc(doc(db,'publicProfiles',user.uid));if(s.exists())meProfile=s.data()||{};else{meProfile={uid:user.uid,name:displayName(),nameLower:displayName().toLowerCase(),photoURL:photo()};await setDoc(doc(db,'publicProfiles',user.uid),{...meProfile,updatedAt:new Date().toISOString()},{merge:true})}}catch(e){console.warn(e)}}
-async function loadFriends(){if(!user)return;try{const s=await getDocs(query(collection(db,'friendships'),where('members','array-contains',user.uid)));friends=s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.status==='accepted'&&Array.isArray(x.members)&&x.members.includes(user.uid));}catch(e){console.warn('friends',e);friends=[]}}
+async function loadFriends(){
+  if(!user)return;
+  const uid=user.uid;
+  const map=new Map();
+  try{
+    const s=await getDocs(query(collection(db,'friendships'),where('members','array-contains',uid)));
+    s.docs.forEach(d=>{
+      const x={id:d.id,...d.data()};
+      if(x.status==='accepted'&&Array.isArray(x.members)&&x.members.includes(uid))map.set(d.id,x);
+    });
+  }catch(e){console.warn('friendship list read',e)}
+
+  // Accepted requests are the source of truth for the connection as well.
+  // This keeps the contact visible even if a friendship document was delayed or missing.
+  try{
+    const [inSnap,outSnap]=await Promise.all([
+      getDocs(query(collection(db,'friendRequests'),where('toUid','==',uid))),
+      getDocs(query(collection(db,'friendRequests'),where('fromUid','==',uid)))
+    ]);
+    [...inSnap.docs,...outSnap.docs].forEach(d=>{
+      const r={id:d.id,...d.data()};
+      if(r.status!=='accepted'||!r.fromUid||!r.toUid||r.fromUid===r.toUid)return;
+      const members=[r.fromUid,r.toUid].sort();
+      const fid=members.join('_');
+      if(!map.has(fid))map.set(fid,{id:fid,members,status:'accepted',requestId:r.id,createdAt:r.createdAt||new Date().toISOString()});
+    });
+  }catch(e){console.warn('accepted request friend fallback',e)}
+
+  friends=[...map.values()];
+}
 async function loadRequests(){
   if(!user)return;
   if(unsubIncoming){unsubIncoming();unsubIncoming=null}
@@ -208,7 +237,26 @@ list.querySelectorAll('[data-accept]').forEach(x=>x.onclick=()=>acceptRequest(x.
 list.querySelectorAll('[data-reject]').forEach(x=>x.onclick=()=>rejectRequest(x.dataset.reject));
 }
 async function openConversation(id){const c=conversations.find(x=>x.id===id);if(!c)return;selected=c;if(unsubMsg)unsubMsg();document.getElementById('headName').textContent=c.type==='group'?c.name:(people.get(otherId(c))?.name||'KARP Member');const p=c.type==='direct'?people.get(otherId(c)):null;document.getElementById('headAvatar').outerHTML=avatar(c.type==='group'?c.name:(p?.name||'K'),c.type==='direct'?p?.photoURL:'','chat-avatar');document.getElementById('headStatus').textContent=c.type==='group'?((c.members?.length||0)+' members'):'Private conversation';document.getElementById('composer').disabled=false;document.getElementById('send').disabled=false;document.getElementById('chat-window').classList.remove('mobile-list');const mq=window.matchMedia('(max-width:700px)');if(mq.matches)document.getElementById('backMobile').style.display='grid';unsubMsg=onSnapshot(query(collection(db,'conversations',id,'messages'),orderBy('createdAt','asc'),limit(500)),s=>{messages=s.docs.map(d=>({id:d.id,...d.data()}));renderMessages()});}
-function renderMessages(){const e=document.getElementById('messages');if(!messages.length){e.innerHTML='<div class="empty-chat"><div><strong>No messages yet</strong>Start the conversation.</div></div>';return}let last='';e.innerHTML=messages.map(m=>{const d=m.createdAt?.toDate?m.createdAt.toDate():new Date(m.createdAt||Date.now()),day=d.toLocaleDateString([], {day:'numeric',month:'long',year:'numeric'}),divider=day!==last?(last=day?'<div class="day-divider">'+esc(day)+'</div>':''):'';return divider+'<div class="msg '+(m.senderId===user.uid?'mine':'')+'">'+(selected?.type==='group'&&m.senderId!==user.uid?'<div class="msg-author">'+esc(m.senderName||'KARP Member')+'</div>':'')+'<div class="msg-text">'+esc(m.text||'')+'</div><div class="msg-meta">'+esc(fmt(m.createdAt))+'</div></div>'}).join('');e.scrollTop=e.scrollHeight}
+function renderMessages(){
+  const e=document.getElementById('messages');
+  if(!messages.length){
+    e.innerHTML='<div class="empty-chat"><div><strong>No messages yet</strong>Start the conversation.</div></div>';
+    return;
+  }
+  // Show exactly one date at the top of the conversation.
+  const first=messages[0];
+  const firstDate=first.createdAt?.toDate?first.createdAt.toDate():new Date(first.createdAt||Date.now());
+  const dateLabel=Number.isNaN(firstDate.getTime())?'':firstDate.toLocaleDateString([], {day:'numeric',month:'long',year:'numeric'});
+  e.innerHTML=(dateLabel?'<div class="day-divider conversation-date">'+esc(dateLabel)+'</div>':'')+
+    messages.map(m=>{
+      return '<div class="msg '+(m.senderId===user.uid?'mine':'')+'">'+
+        (selected?.type==='group'&&m.senderId!==user.uid?'<div class="msg-author">'+esc(m.senderName||'KARP Member')+'</div>':'')+
+        '<div class="msg-text">'+esc(m.text||'')+'</div>'+
+        '<div class="msg-meta">'+esc(fmt(m.createdAt))+'</div>'+
+      '</div>';
+    }).join('');
+  e.scrollTop=e.scrollHeight;
+}
 
 async function sendMessage(){if(!requireUser()||!selected)return;const e=document.getElementById('composer'),text=e.value.trim();if(!text)return;e.value='';try{await addDoc(collection(db,'conversations',selected.id,'messages'),{senderId:user.uid,senderName:displayName(),senderPhoto:photo(),text,createdAt:serverTimestamp()});await updateDoc(doc(db,'conversations',selected.id),{lastMessage:text.slice(0,180),lastSenderId:user.uid,updatedAt:new Date().toISOString()})}catch(err){e.value=text;alert(err.message||'Could not send message.')} }
 document.getElementById('send').onclick=sendMessage;document.getElementById('composer').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}};document.getElementById('chatSearch').oninput=renderList;
