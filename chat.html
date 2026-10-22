@@ -58,12 +58,12 @@ function updateChatNav(u){
     box.innerHTML='<a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a>';
     return;
   }
-  const name=String(u.displayName||u.email||'KARP Member').trim();
+  const name=String(u.displayName||u.email||'Member').trim();
   const initial=esc(name.charAt(0).toUpperCase()||'K');
   const img=u.photoURL?'<img src="'+esc(u.photoURL)+'" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover">':'<span style="width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#e8edf2;color:#263b5b;font-weight:900">'+initial+'</span>';
   box.innerHTML='<a href="/account.html" aria-label="Account" title="Account" style="display:flex;align-items:center">'+img+'</a>';
 }
-const displayName=()=>String(meProfile.name||user?.displayName||(user?.email||'').split('@')[0]||'KARP Member').slice(0,100);
+const displayName=()=>String(meProfile.name||user?.displayName||(user?.email||'').split('@')[0]||'Member').slice(0,100);
 const photo=()=>String(meProfile.photoURL||user?.photoURL||'');
 const avatar=(name,url,cls='chat-avatar')=>'<span class="'+cls+'">'+(url?'<img src="'+esc(url)+'" alt="">':esc(String(name||'K').trim().split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase()||'K'))+'</span>';
 const fmt=v=>{if(!v)return'';const d=v?.toDate?v.toDate():new Date(v);if(Number.isNaN(d.getTime()))return'';const n=new Date(),same=d.toDateString()===n.toDateString();return same?d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString([], {day:'2-digit',month:'short'})};
@@ -242,7 +242,7 @@ async function conversationPeople(){const ids=[];conversations.forEach(c=>c.memb
 let people=new Map();
 async function renderList(){const list=document.getElementById('chatList');people=await conversationPeople();const q=(document.getElementById('chatSearch').value||'').trim().toLowerCase();let html='';
 if(listMode==='requests'){html=incoming.length?incoming.map(r=>{const p=people.get(r.fromUid)||{};return '<div class="contact" style="margin:8px"><div>'+avatar(p.name||'K',p.photoURL)+'</div><div class="contact-main"><strong>'+esc(p.name||p.email||'Member')+'</strong></div><div class="contact-actions"><button class="text-btn primary" data-accept="'+r.id+'">Accept</button><button class="text-btn" data-reject="'+r.id+'">Decline</button></div></div>'}).join(''):'<div class="empty-chat"><div>No pending requests.</div></div>'}
-else if(listMode==='friends'){const arr=friends.map(f=>{const id=f.members.find(x=>x!==user.uid),p=people.get(id)||{};return{id,p}}).filter(x=>!q||String(x.p.name||'').toLowerCase().includes(q));html=arr.length?arr.map(x=>'<div class="chat-row" data-person="'+x.id+'">'+avatar(x.p.name,x.p.photoURL)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.p.name||'KARP Member')+'</span></div><div class="chat-row-preview">Tap to message</div></div></div>').join(''):'<div class="empty-chat"><div>No friends yet.<br>Use ＋ to find KARP members.</div></div>'}
+else if(listMode==='friends'){const arr=friends.map(f=>{const id=f.members.find(x=>x!==user.uid),p=people.get(id)||{};return{id,p}}).filter(x=>!q||String(x.p.name||'').toLowerCase().includes(q));html=arr.length?arr.map(x=>'<div class="chat-row" data-person="'+x.id+'">'+avatar(x.p.name,x.p.photoURL)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.p.name||'Member')+'</span></div><div class="chat-row-preview">Tap to message</div></div></div>').join(''):'<div class="empty-chat"><div>No friends yet.<br>Use ＋ to find KARP members.</div></div>'}
 else{
   const chatItems=[];
   const seen=new Set();
@@ -261,7 +261,7 @@ else{
     const other=f.members?.find(x=>x!==user.uid);
     if(!other||seen.has(other))return;
     const p=people.get(other)||{};
-    const name=p.name||'KARP Member';
+    const name=p.name||'Member';
     if(!q||name.toLowerCase().includes(q)){
       chatItems.push({kind:'friend',id:other,personId:other,data:null,name,url:p.photoURL});
     }
@@ -287,9 +287,11 @@ async function openConversation(id){
   if(!c)return;
   selected=c;
   if(unsubMsg)unsubMsg();
-  document.getElementById('headName').textContent=c.type==='group'?c.name:(people.get(otherId(c))?.name||'KARP Member');
   const p=c.type==='direct'?people.get(otherId(c)):null;
-  document.getElementById('headAvatar').outerHTML=avatar(c.type==='group'?c.name:(p?.name||'K'),c.type==='direct'?p?.photoURL:'','chat-avatar');
+  const headDisplayName=c.type==='group'?c.name:(p?.name||p?.email||'Member');
+  document.getElementById('headName').textContent=headDisplayName;
+  const headAvatar=document.getElementById('headAvatar');
+  if(headAvatar){headAvatar.innerHTML=(c.type==='direct'&&p?.photoURL?'<img src="'+esc(p.photoURL)+'" alt="">':esc(String(headDisplayName||'K').trim().split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase()||'K'));}
   document.getElementById('headStatus').textContent=c.type==='group'?((c.members?.length||0)+' members'):'Private conversation';
   document.getElementById('composer').disabled=false;
   document.getElementById('send').disabled=false;
