@@ -996,7 +996,7 @@ function __usersRenderAccountCreationPanel(users,period,now){
   const subtitle=mode==='daily'?'New accounts per day · from 1 Oct 2026':mode==='monthly'?'New accounts per month · from Oct 2026':'New accounts per year · from 2026';
   return '<section class="users-panel users-trend" aria-label="New account registrations"><div class="users-trend-head"><div><div class="users-trend-title">New Accounts</div><div class="users-trend-subtitle">'+esc(subtitle)+'</div></div><div class="users-trend-periods">'+buttons+'</div></div><div class="users-trend-summary"><span>Registered today</span><strong>'+esc(String(data.todayCount))+'</strong></div>'+(max?'<div class="users-trend-chart" style="grid-template-columns:repeat('+b.length+',minmax(0,1fr))">'+graph+'</div>':'<div class="users-trend-empty">No account registrations recorded in this period.</div>')+'</section>';
 }
-\nfunction __usersRenderTrendPanel(records,period,now){
+function __usersRenderTrendPanel(records,period,now){
   const mode=period==='weekly'||period==='monthly'?period:'daily';
   const buckets=__usersTrendBuckets(records,mode,now);
   const total=buckets.reduce((sum,b)=>sum+b.seconds,0);
