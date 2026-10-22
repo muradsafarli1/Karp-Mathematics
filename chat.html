@@ -179,11 +179,18 @@ async function ensureDirectConversation(otherUid){
   const members=[user.uid,otherUid].sort();
   const id=members.join('_');
 
-  // If the accepted request exists but the friendship record is missing,
-  // materialize the friendship first. The conversation rule then has a concrete
-  // friendship document to verify.
-  const existingFriend=friends.some(f=>f.status==='accepted'&&f.id===id&&Array.isArray(f.members)&&members.every(x=>f.members.includes(x)));
-  if(!existingFriend){
+  // Do not trust the local friends array here: it can contain a synthetic entry
+  // built from accepted requests. Verify the real Firestore friendship document.
+  const friendshipSnap=await getDocs(query(
+    collection(db,'friendships'),
+    where('members','array-contains',user.uid)
+  ));
+  const realFriend=friendshipSnap.docs.find(d=>{
+    const data=d.data()||{};
+    return d.id===id&&data.status==='accepted'&&Array.isArray(data.members)&&members.every(x=>data.members.includes(x));
+  });
+
+  if(!realFriend){
     const [inSnap,outSnap]=await Promise.all([
       getDocs(query(collection(db,'friendRequests'),where('toUid','==',user.uid))),
       getDocs(query(collection(db,'friendRequests'),where('fromUid','==',user.uid)))
@@ -203,11 +210,12 @@ async function ensureDirectConversation(otherUid){
       requestId:accepted.id,
       createdAt
     },{merge:true});
-    const localFriend={id,members,status:'accepted',requestId:accepted.id,createdAt};
-    const fi=friends.findIndex(x=>x.id===id);
-    if(fi>=0)friends[fi]={...friends[fi],...localFriend};
-    else friends.push(localFriend);
   }
+
+  const localFriend={id,members,status:'accepted'};
+  const fi=friends.findIndex(x=>x.id===id);
+  if(fi>=0)friends[fi]={...friends[fi],...localFriend};
+  else friends.push(localFriend);
 
   await setDoc(doc(db,'conversations',id),{
     type:'direct',
