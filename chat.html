@@ -52,6 +52,18 @@ const {collection,doc,getDoc,getDocs,query,where,orderBy,limit,onSnapshot,addDoc
 let user=null,meProfile={},conversations=[],friends=[],incoming=[],outgoing=[],selected=null,messages=[],unsubConv=null,unsubMsg=null,listMode='chats';
 const esc=window.escapeHtml||((x)=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
 const verified=()=>!!user&&user.emailVerified===true;
+function updateChatNav(u){
+  const box=document.getElementById('nav-actions');
+  if(!box)return;
+  if(!u){
+    box.innerHTML='<a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a>';
+    return;
+  }
+  const name=String(u.displayName||u.email||'KARP Member').trim();
+  const initial=esc(name.charAt(0).toUpperCase()||'K');
+  const img=u.photoURL?'<img src="'+esc(u.photoURL)+'" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover">':'<span style="width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#e8edf2;color:#263b5b;font-weight:900">'+initial+'</span>';
+  box.innerHTML='<a href="/account.html" aria-label="Account" title="Account" style="display:flex;align-items:center">'+img+'</a>';
+}
 const displayName=()=>String(meProfile.name||user?.displayName||(user?.email||'').split('@')[0]||'KARP Member').slice(0,100);
 const photo=()=>String(meProfile.photoURL||user?.photoURL||'');
 const avatar=(name,url,cls='chat-avatar')=>'<span class="'+cls+'">'+(url?'<img src="'+esc(url)+'" alt="">':esc(String(name||'K').trim().split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase()||'K'))+'</span>';
@@ -93,7 +105,7 @@ function invite(){const url=location.origin+'/signup.html?invite='+encodeURIComp
 function openGroup(initial=[]){if(!requireUser())return;const friendIds=[...new Set(friends.flatMap(f=>f.members||[]).filter(id=>id!==user.uid))];modal('New group','<input id="groupName" class="modal-search" placeholder="Group name"><div class="group-picks">'+friendIds.map(id=>{const p=people.get(id)||{};return '<label class="group-pick">'+avatar(p.name,p.photoURL)+'<span style="font-size:10px;font-weight:750">'+esc(p.name||'KARP Member')+'</span><input type="checkbox" value="'+id+'" '+(initial.includes(id)?'checked':'')+'></label>'}).join('')+'</div>','<button class="text-btn" id="groupCancel">Cancel</button><button class="text-btn primary" id="groupCreate">Create group</button>');document.getElementById('groupCancel').onclick=closeModal;document.getElementById('groupCreate').onclick=async()=>{const name=document.getElementById('groupName').value.trim();const ids=[...document.querySelectorAll('.group-pick input:checked')].map(x=>x.value);if(!name||!ids.length)return;const members=[user.uid,...ids];try{const r=await addDoc(collection(db,'conversations'),{type:'group',status:'accepted',members,createdBy:user.uid,name,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),lastMessage:''});closeModal();await loadConversations();await renderList();openConversation(r.id)}catch(e){alert(e.message||'Could not create group.')}}}
 document.getElementById('newChat').onclick=openNewChat;document.getElementById('inviteBtn').onclick=invite;document.getElementById('infoBtn').onclick=()=>{if(selected){const p=selected.type==='direct'?people.get(otherId(selected)):null;renderDetails(selected,p)}else invite()};document.getElementById('profileBtn').onclick=()=>{if(!verified())return requireUser();modal('Your KARP profile','<div class="profile-card" style="border:0">'+avatar(displayName(),photo())+'<div class="profile-name">'+esc(displayName())+'</div><div class="profile-sub">'+esc(user.email||'')+'</div></div>','<button class="text-btn" id="closeProfile">Close</button>');document.getElementById('closeProfile').onclick=closeModal};document.getElementById('backMobile').onclick=()=>document.getElementById('chat-window').classList.add('mobile-list');
 document.querySelectorAll('.chat-tab').forEach(b=>b.onclick=async()=>{document.querySelectorAll('.chat-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');listMode=b.dataset.list;await renderList()});
-au.onAuthStateChanged(auth,async u=>{user=u||null;if(!verified()){document.getElementById('composer').disabled=true;document.getElementById('send').disabled=true;document.getElementById('chatList').innerHTML='<div class="empty-chat"><div><strong>Sign in to Messages</strong>Create or verify your KARP account to connect with other members.</div></div>';return}await loadProfile();await loadFriends();await loadRequests();await loadConversations();await renderList()});
+au.onAuthStateChanged(auth,async u=>{user=u||null;updateChatNav(user);if(!verified()){document.getElementById('composer').disabled=true;document.getElementById('send').disabled=true;document.getElementById('chatList').innerHTML='<div class="empty-chat"><div><strong>Sign in to Messages</strong>Create or verify your KARP account to connect with other members.</div></div>';return}await loadProfile();await loadFriends();await loadRequests();await loadConversations();await renderList()});
 })();
 </script>
 </body></html>
