@@ -249,6 +249,25 @@ async function acceptRequest(id){
     }
     stage='creating the private conversation';
     await ensureDirectConversation(r.fromUid);
+
+    // Update the local UI immediately; Firestore listeners will reconcile it afterward.
+    const localFriend={id:fid,members,status:'accepted',requestId:id,createdAt:now};
+    const friendIndex=friends.findIndex(x=>x.id===fid);
+    if(friendIndex>=0)friends[friendIndex]={...friends[friendIndex],...localFriend};
+    else friends.unshift(localFriend);
+
+    const localConversation={
+      id:fid,
+      type:'direct',
+      status:'accepted',
+      members,
+      updatedAt:now,
+      lastMessage:''
+    };
+    const conversationIndex=conversations.findIndex(x=>x.id===fid);
+    if(conversationIndex>=0)conversations[conversationIndex]={...conversations[conversationIndex],...localConversation};
+    else conversations.unshift(localConversation);
+
     stage='marking the invitation as accepted';
     await updateDoc(doc(db,'friendRequests',id),{status:'accepted',respondedAt:now});
     stage='refreshing contacts and conversations';
