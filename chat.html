@@ -128,15 +128,20 @@ async function repairAcceptedRelationships(){
     });
     const known=new Set(friends.map(f=>f.id));
     for(const r of accepted.values()){
+      if(!user||user.uid!==uid)return;
       const members=[r.fromUid,r.toUid].sort();
       const fid=members.join('_');
-      if(known.has(fid))continue;
+      if(!known.has(fid)){
+        try{
+          await setDoc(doc(db,'friendships',fid),{
+            members,status:'accepted',requestId:r.id,createdAt:r.createdAt||new Date().toISOString()
+          },{merge:true});
+          known.add(fid);
+        }catch(e){console.warn('repair accepted KARP friendship',r.id,e);continue}
+      }
       try{
-        await setDoc(doc(db,'friendships',fid),{
-          members,status:'accepted',requestId:r.id,createdAt:r.createdAt||new Date().toISOString()
-        },{merge:true});
-        known.add(fid);
-      }catch(e){console.warn('repair accepted KARP friendship',r.id,e)}
+        await ensureDirectConversation(r.fromUid===uid?r.toUid:r.fromUid);
+      }catch(e){console.warn('repair accepted KARP conversation',r.id,e)}
     }
   }catch(e){console.warn('scan accepted KARP requests',e)}
 }
@@ -171,17 +176,19 @@ async function acceptRequest(id){
   let stage='saving the friendship record';
   try{
     const existingFriend=friends.find(f=>f.id===fid&&f.status==='accepted'&&Array.isArray(f.members)&&members.every(x=>f.members.includes(x)));
-    // Persist the relationship first. The request remains pending if this write is rejected.
     if(!existingFriend){
       await setDoc(doc(db,'friendships',fid),{members,status:'accepted',requestId:id,createdAt:now},{merge:true});
     }
+    stage='creating the private conversation';
+    await ensureDirectConversation(r.fromUid);
     stage='marking the invitation as accepted';
     await updateDoc(doc(db,'friendRequests',id),{status:'accepted',respondedAt:now});
-    stage='refreshing the friends and requests lists';
-    await Promise.all([loadFriends(),refreshRequestsFromServer()]);
-    listMode='friends';
-    document.querySelectorAll('.chat-tab').forEach(b=>b.classList.toggle('active',b.dataset.list==='friends'));
+    stage='refreshing contacts and conversations';
+    await Promise.all([loadFriends(),loadConversations(),refreshRequestsFromServer()]);
+    listMode='chats';
+    document.querySelectorAll('.chat-tab').forEach(b=>b.classList.toggle('active',b.dataset.list==='chats'));
     await renderList();
+    await openConversation(fid);
   }catch(e){
     console.error('accept request failed during '+stage,e);
     alert('Could not complete the connection ('+stage+'). Details: '+(e.message||'Missing or insufficient permissions.'));
@@ -224,7 +231,7 @@ au.onAuthStateChanged(auth,async u=>{
   await loadRequests();
   await loadConversations();
   await repairAcceptedRelationships();
-  await loadFriends();
+  await Promise.all([loadFriends(),loadConversations()]);
   await renderList();
 });
 })();
