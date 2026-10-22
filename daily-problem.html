@@ -161,7 +161,7 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
       pendingUnsubscribe=fs.onSnapshot(mine,snapshot=>{
         ownPendingItems=snapshot.docs.map(x=>({id:x.id,...x.data()})).filter(x=>x.status==='pending');
         const newest=ownPendingItems.slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')))[0];
-        if(newest)setPendingNotice(newest);else if(!noticeEl.dataset.submitted){noticeEl.hidden=true;}
+        if(newest)setPendingNotice(newest);else{noticeEl.hidden=true;noticeEl.innerHTML='';}
         renderSolutions();
       },error=>console.warn('Could not load personal Daily Problem submission status:',error));
     });
