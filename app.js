@@ -1004,7 +1004,7 @@ async function __writeKarpPresence(online=true){
     if(active&&__karpPresence.timeOwner)__karpRenewTimeOwner();
     const delta=__karpConsumeElapsed(active),payload={
       uid:u.uid,visitorId:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',photoURL:u.photoURL||'',
-      online:active,visible:document.visibilityState==='visible',lastSeen:serverTimestamp(),expiresAt:Timestamp.fromMillis(active?Date.now()+25000:0),
+      online:active,visible:document.visibilityState==='visible',lastSeen:serverTimestamp(),expiresAt:Timestamp.fromMillis(active?Date.now()+35000:0),
       sessionStartedAt:__karpPresence.sessionStartedAt,firstSeenAt:__karpPresence.firstSeenAt,
       deviceType:device.deviceType,browser:device.browser,os:device.os,screen:device.screen,language:device.language,platform:device.platform,
       activity:__karpPresence.activity||{page:'KARP',label:'Browsing'},...(delta>0?{totalActiveSeconds:increment(delta),lastActiveSeconds:delta}:{})
@@ -1383,7 +1383,7 @@ function richMarkdown(value=''){
   return escapeHtml(source).replace(/\n/g,'<br>');
 }
 
-function nav(active){const links=[['Problems','/problems.html'],['Contests','/contests.html'],['Exams','/exams.html'],['Daily Problem','/daily-problem.html'],['Mocks','/mock.html'],['Books','/books.html'],['Videos','/videos.html'],['Journal','/journal.html'],['Meetings','/meetings.html']];const toolsMenu='<div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/canvas.html"><span>KARP Canvas</span><small>Draw, write and collect ideas</small></a><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a></div></div>';return `<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks">${links.map(x=>`<a class="${active===x[0]?'active':''}" href="${x[1]}">${x[0]}</a>`).join('')}${toolsMenu}<a class="${active==='About'?'active':''}" href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header>`}
+function nav(active){const links=[['Problems','/problems.html'],['Contests','/contests.html'],['Exams','/exams.html'],['Daily Problem','/daily-problem.html'],['Mocks','/mock.html'],['Books','/books.html'],['Videos','/videos.html'],['Journal','/journal.html'],['Meetings','/meetings.html'],['Chat','/chat.html']];const toolsMenu='<div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/canvas.html"><span>KARP Canvas</span><small>Draw, write and collect ideas</small></a><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a></div></div>';return `<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks">${links.map(x=>`<a class="${active===x[0]?'active':''}" href="${x[1]}">${x[0]}</a>`).join('')}${toolsMenu}<a class="${active==='About'?'active':''}" href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header>`}
 function ensureDailyProblemNav(){
   const navEl=document.querySelector('.navlinks');
   if(!navEl||navEl.querySelector('a[href="/daily-problem.html"]'))return;
