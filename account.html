@@ -42,10 +42,11 @@
 <script>
 (async()=>{
   const u=await requireUser(); if(!u)return;
+  let gemCount=Math.max(0,Number(u.gems)||0);
   try{
     const {db}=await fb();
     const {doc,setDoc,getDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-    let gemCount=Math.max(0,Number(u.gems)||0);
+    gemCount=Math.max(0,Number(u.gems)||0);
     try{const accountDoc=await getDoc(doc(db,'users',u.id));if(accountDoc.exists())gemCount=Math.max(0,Number(accountDoc.data()?.gems)||0);}catch(e){console.warn('Could not load gem balance:',e)}
     const now=new Date().toISOString();
     await setDoc(doc(db,'publicProfiles',u.id),{uid:u.id,name:u.name||'KARP Member',nameLower:String(u.name||'KARP Member').trim().toLowerCase(),photoURL:u.photoURL||'',updatedAt:now},{merge:true});
