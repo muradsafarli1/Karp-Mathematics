@@ -274,6 +274,20 @@ body.users-analytics-fullscreen .admin .wrap{padding-top:26px!important}
 .users-detail-info{display:grid;grid-template-columns:100px minmax(0,1fr);gap:9px 12px;padding:13px;font-size:10px}.users-detail-info span{color:#858b92}.users-detail-info strong{overflow-wrap:anywhere}.users-detail-empty{padding:20px 13px;color:#777e85;font-size:10px}
 @media(max-width:800px){.users-search-head{align-items:flex-start;flex-direction:column}.users-search-input{width:100%}.users-detail-kpis{grid-template-columns:1fr 1fr}.users-detail-grid{grid-template-columns:1fr}}
 </style><style>
+
+/* Unique visitor analytics — starts 1 Oct 2026 */
+.users-visits{padding:20px 22px}
+.users-visits-summary{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:18px;padding-top:13px;border-top:1px solid #e7e9ea}
+.users-visits-summary span{font-size:10px;color:#777e85}.users-visits-summary strong{font-size:22px;font-weight:800;letter-spacing:-.6px}
+.users-visits-chart{height:220px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;align-items:end;margin-top:18px}
+.users-visits-day{height:100%;min-width:0;display:grid;grid-template-rows:18px minmax(0,1fr) 24px;gap:7px;text-align:center}
+.users-visits-value{font-size:9px;font-weight:800;color:#626871;align-self:end;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.users-visits-space{height:100%;display:flex;align-items:flex-end;justify-content:center;border-bottom:1px solid #e2e4e6;background:linear-gradient(to top,#f7f8f8,transparent 85%)}
+.users-visits-bar{width:min(38px,68%);border-radius:4px 4px 0 0;background:#6f7881;min-height:0;transition:height .2s ease}
+.users-visits-label{font-size:9px;color:#777d84;white-space:nowrap}
+.users-visits-note{margin-top:12px;font-size:9px;line-height:1.55;color:#858b91}
+@media(max-width:620px){.users-visits{padding:15px!important}.users-visits-chart{gap:5px;height:175px}.users-visits-label{font-size:8px}.users-visits-value{font-size:8px}}
+
 /* Daily / weekly / monthly active-time chart for the Users dashboard */
 .users-trend-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .users-trend-periods{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
@@ -731,7 +745,7 @@ async function saveBookAdmin(){
   }catch(e){toast(e.message||'Could not save the book.');button.disabled=false;if(status)status.textContent='Save failed.'}
 }
 let __usersAnalytics={
-  unsubUsers:null,unsubPresence:null,unsubActivity:null,users:[],presence:[],activity:[],activityError:'',activityLoading:true,
+  unsubUsers:null,unsubPresence:null,unsubActivity:null,unsubVisits:null,users:[],presence:[],activity:[],visits:[],activityError:'',activityLoading:true,
   db:null,adminUid:null,started:false,timer:null,searchTerm:'',selectedId:null,detailPeriod:'month',trendPeriod:'daily'
 };
 const __usersVisitorLimit=15;
@@ -920,6 +934,36 @@ function __usersFormatTrendValue(seconds){
   if(n>=60)return Math.round(n/60)+'m';
   return n>0?Math.round(n)+'s':'–';
 }
+function __usersVisitDateKey(ms){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Baku',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms))}
+function __usersBuildVisitPairs(visits,activity){
+  const pairs=new Map(),known=new Set();
+  (visits||[]).forEach(v=>{const id=String(v.visitorId||v.uid||v.guestId||''),key=String(v.dateKey||'');if(!id||!key)return;known.add(id+'|'+key);if(!pairs.has(key))pairs.set(key,new Set());pairs.get(key).add(id)});
+  (activity||[]).forEach(r=>{const id=String(r.visitorId||r.uid||r.guestId||''),t=__usersTimestamp(r.timestamp);if(!id||!t)return;const key=__usersVisitDateKey(t),pair=id+'|'+key;if(known.has(pair))return;if(!pairs.has(key))pairs.set(key,new Set());pairs.get(key).add(id)});
+  return pairs;
+}
+function __usersVisitBuckets(visits,activity,period,now=Date.now()){
+  const pairs=__usersBuildVisitPairs(visits,activity),todayKey=__usersVisitDateKey(now),mode=['daily','monthly','yearly'].includes(period)?period:'daily',buckets=[];
+  if(mode==='daily'){
+    const start=new Date('2026-10-01T00:00:00+04:00'),today=new Date(todayKey+'T00:00:00+04:00');
+    for(let d=new Date(start);d<=today;d.setDate(d.getDate()+1)){const key=__usersVisitDateKey(d.getTime());buckets.push({key,label:d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}),title:__usersDayLabel(key),count:pairs.get(key)?.size||0})}
+  }else if(mode==='monthly'){
+    const start=new Date('2026-10-01T00:00:00+04:00'),today=new Date(todayKey+'T00:00:00+04:00');
+    for(let d=new Date(start.getFullYear(),start.getMonth(),1);d<=today;d.setMonth(d.getMonth()+1)){const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');let count=0;for(const [k,set] of pairs)if(k.startsWith(key))count+=set.size;buckets.push({key,label:d.toLocaleDateString('en-GB',{month:'short',year:'numeric'}),title:d.toLocaleDateString('en-GB',{month:'long',year:'numeric'}),count})}
+  }else{
+    const year=Number(todayKey.slice(0,4));
+    for(let y=2026;y<=year;y++){let count=0;for(const [k,set] of pairs)if(k.startsWith(String(y)+'-'))count+=set.size;buckets.push({key:String(y),label:String(y),title:String(y),count})}
+  }
+  const todayEntries=(visits||[]).filter(v=>String(v.dateKey||'')===todayKey).length;
+  return {buckets,todayCount:pairs.get(todayKey)?.size||0,todayEntries};
+}
+function __usersRenderVisitPanel(visits,activity,period,now){
+  const mode=['daily','monthly','yearly'].includes(period)?period:'daily',data=__usersVisitBuckets(visits,activity,mode,now),buckets=data.buckets,max=Math.max(0,...buckets.map(b=>b.count));
+  const buttons=[['daily','Daily'],['monthly','Monthly'],['yearly','Yearly']].map(([v,l])=>'<button type="button" class="users-period-button '+(mode===v?'active':'')+'" data-users-visits-period="'+v+'">'+l+'</button>').join('');
+  const graph=buckets.map(b=>{const h=max&&b.count?Math.max(3,Math.round(b.count/max*100)):0;return '<div class="users-visits-day" title="'+__usersEscapeAttr(b.title+' · '+b.count+' unique visitor'+(b.count===1?'':'s'))+'"><div class="users-visits-value">'+esc(b.count?String(b.count):'–')+'</div><div class="users-visits-space"><div class="users-visits-bar" style="height:'+h+'%"></div></div><div class="users-visits-label">'+esc(b.label)+'</div></div>'}).join('');
+  const subtitle=mode==='daily'?'Unique visitors per day · 1 Oct 2026 to today':mode==='monthly'?'Unique visitors per month · from Oct 2026':'Unique visitors per year · from 2026';
+  return '<section class="users-panel users-visits" aria-label="Unique website visitors"><div class="users-trend-head"><div><div class="users-trend-title">Website Visitors</div><div class="users-trend-subtitle">'+esc(subtitle)+'</div></div><div class="users-trend-periods">'+buttons+'</div></div><div class="users-visits-summary"><span>Today · unique visitors</span><strong>'+esc(String(data.todayCount))+'</strong></div>'+(max?'<div class="users-visits-chart" style="grid-template-columns:repeat('+buckets.length+',minmax(0,1fr))">'+graph+'</div>':'<div class="users-trend-empty">No visitor records are available yet.</div>')+'<div class="users-visits-note">A visitor is counted once per calendar day. Historical days use recorded visits, with existing active-time records used as a fallback so the chart can start from 1 Oct 2026.</div></section>';
+}
+
 function __usersRenderTrendPanel(records,period,now){
   const mode=period==='weekly'||period==='monthly'?period:'daily';
   const buckets=__usersTrendBuckets(records,mode,now);
@@ -982,9 +1026,9 @@ function __usersRender(){
   const liveRows=onlineVisitors.slice(0,__usersLiveLimit).map(p=>{const x=__usersIdentity(p,userMap);return '<div class="users-live-row"><div><div class="users-live-who"><span class="visitor-online"></span>'+esc(x.name)+'</div><div class="users-live-meta">'+esc(x.email==='-'?'Anonymous visitor':x.email)+'</div></div><div><div class="users-live-status users-live-green">Online now · '+esc(__usersFormatDuration(activeTotal(p)))+'</div><div class="users-live-meta">'+esc(__usersLocationLabel(p))+'</div></div><div class="users-device">'+esc(__usersDeviceLabel(p))+'</div><div class="users-live-meta">'+esc(__usersDate(p.lastSeen))+'</div></div>'}).join('');
   const detail=selected?__usersRenderDetail(selected,userMap):'';
   m.innerHTML='<div class="users-dashboard"><div class="users-dashboard-head"><div><div class="users-dashboard-kicker">KARP · ADMIN ANALYTICS</div><h2>Users & Activity</h2><p>Accurate current presence, preserved active time, searchable visitors and per-user daily history.</p></div><div class="users-dashboard-head-actions"><div class="users-dashboard-live"><span class="users-dashboard-live-dot"></span>Live · '+esc(new Date(now).toLocaleTimeString())+'</div><button type="button" class="users-dashboard-back" id="users-back-to-admin">&lt;- Admin sections</button></div></div>'+
-    '<div class="users-kpis users-primary-metrics"><div class="users-kpi"><strong>'+users.length+'</strong><span>Registered accounts</span><small>All registered accounts remain searchable</small></div><div class="users-kpi"><strong>'+onlineAccounts+'</strong><span>Accounts online now</span><small>20-second stale cutoff</small></div><div class="users-kpi"><strong>'+onlineGuests+'</strong><span>Anonymous online now</span><small>20-second stale cutoff</small></div><div class="users-kpi"><strong>'+onlineVisitors.length+'</strong><span>Total online now</span><small>Server-timestamp presence</small></div></div>'+
+    '<div class="users-kpis users-primary-metrics"><div class="users-kpi"><strong>'+users.length+'</strong><span>Registered accounts</span><small>Today: '+__usersVisitBuckets(__usersAnalytics.visits,__usersAnalytics.activity,'daily',now).todayCount+' unique visitors</small></div><div class="users-kpi"><strong>'+onlineAccounts+'</strong><span>Accounts online now</span><small>20-second stale cutoff</small></div><div class="users-kpi"><strong>'+onlineGuests+'</strong><span>Anonymous online now</span><small>20-second stale cutoff</small></div><div class="users-kpi"><strong>'+onlineVisitors.length+'</strong><span>Total online now</span><small>Today: '+__usersVisitBuckets(__usersAnalytics.visits,__usersAnalytics.activity,'daily',now).todayCount+' unique visitors entered</small></div></div>'+
     '<div class="users-time-overview"><section class="users-time-card users-time-card-total"><div><div class="users-time-card-label">TOTAL TRACKED ACTIVE TIME</div><div class="users-time-card-value">'+esc(__usersFormatDuration(totalActive))+'</div></div><div class="users-time-card-note">Existing cumulative totals are preserved. New active time is added without resetting previous data.</div></section><section class="users-time-card"><div><div class="users-time-card-label">TODAY</div><div class="users-time-card-value">'+esc(__usersFormatDuration(todayActivity))+'</div></div><div class="users-time-card-note">Active time recorded today. Use the Daily, Weekly and Monthly graph below to compare activity over time.</div></section></div>'+
-    __usersRenderTrendPanel(activity,__usersAnalytics.trendPeriod||'daily',now)+'<section class="users-panel users-search-panel"><div class="users-search-head"><div><strong>Search visitors and accounts</strong><span>'+((visitorMatches.length)+' visitors · '+users.filter(u=>!search||[u.name,u.email,u.id,u.role].join(' ').toLowerCase().includes(search)).length)+' accounts match</span></div><input id="users-search" class="users-search-input" type="search" placeholder="Search name, email, or visitor ID..." value="'+__usersEscapeAttr(__usersAnalytics.searchTerm)+'"></div></section>'+
+    __usersRenderVisitPanel(__usersAnalytics.visits||[],activity,__usersAnalytics.visitPeriod||'daily',now)+__usersRenderTrendPanel(activity,__usersAnalytics.trendPeriod||'daily',now)+'<section class="users-panel users-search-panel"><div class="users-search-head"><div><strong>Search visitors and accounts</strong><span>'+((visitorMatches.length)+' visitors · '+users.filter(u=>!search||[u.name,u.email,u.id,u.role].join(' ').toLowerCase().includes(search)).length)+' accounts match</span></div><input id="users-search" class="users-search-input" type="search" placeholder="Search name, email, or visitor ID..." value="'+__usersEscapeAttr(__usersAnalytics.searchTerm)+'"></div></section>'+
     '<section class="users-panel"><div class="users-panel-head"><strong>Live visitors</strong><span>Showing '+Math.min(__usersLiveLimit,onlineVisitors.length)+' of '+onlineVisitors.length+' · maximum 15</span></div><div class="users-live-list">'+(liveRows||'<div class="users-note">No one is online right now.</div>')+'</div></section>'+
     '<section class="users-panel"><div class="users-panel-head"><strong>Tracked visitors</strong><span>'+shownVisitors.length+(search?' matching':' · last 15')+'</span></div><div class="users-table-wrap"><table class="table users-dashboard-table"><thead><tr><th>Status</th><th>Visitor</th><th>Email</th><th>Device</th><th>Current / last page</th><th>Active time</th><th>First seen</th><th>Last seen</th></tr></thead><tbody>'+(visitorRows||'<tr><td colspan="8" class="visitor-empty">No visitors match the search.</td></tr>')+'</tbody></table></div></section>'+
     '<section class="users-panel"><div class="users-panel-head"><strong>All registered accounts</strong><span>'+users.filter(u=>!search||[u.name,u.email,u.id,u.role].join(' ').toLowerCase().includes(search)).length+' shown</span></div><div class="users-table-wrap"><table class="table users-dashboard-table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Role</th><th>Created</th><th>Last login</th><th>Last seen</th><th>Last logout</th><th>Current / last activity</th><th>Device</th><th>Total active time</th></tr></thead><tbody>'+(accountRows||'<tr><td colspan="11" class="visitor-empty">No accounts match the search.</td></tr>')+'</tbody></table></div></section>'+
@@ -998,6 +1042,7 @@ function __usersRender(){
   const back=document.getElementById('users-back-to-admin');if(back)back.onclick=__usersExitDashboard;
 }
 function __usersDestroyLive(){
+  if(__usersAnalytics.unsubVisits){__usersAnalytics.unsubVisits();__usersAnalytics.unsubVisits=null}
   if(__usersAnalytics.unsubActivity){__usersAnalytics.unsubActivity();__usersAnalytics.unsubActivity=null}
   if(__usersAnalytics.unsubUsers){__usersAnalytics.unsubUsers();__usersAnalytics.unsubUsers=null}
   if(__usersAnalytics.unsubPresence){__usersAnalytics.unsubPresence();__usersAnalytics.unsubPresence=null}
@@ -1008,9 +1053,11 @@ function __usersStartLive(db,adminUid){
   __usersAnalytics.db=db;__usersAnalytics.adminUid=adminUid||null;
   if(__usersAnalytics.started)return;
   __usersAnalytics.started=true;
-  import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js').then(({collection,onSnapshot})=>{
+  import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js').then(({collection,onSnapshot,query,where})=>{
     __usersAnalytics.unsubUsers=onSnapshot(collection(db,'users'),snap=>{__usersAnalytics.users=snap.docs.map(x=>({id:x.id,...x.data()}));__usersRender()},err=>console.warn('Users listener failed:',err));
     __usersAnalytics.unsubPresence=onSnapshot(collection(db,'presence'),snap=>{__usersAnalytics.presence=snap.docs.map(x=>({id:x.id,...x.data()}));__usersRender()},err=>console.warn('Presence listener failed:',err));
+    const visitsQuery=query(collection(db,'visitorVisits'),where('dateKey','>=','2026-10-01'));
+    __usersAnalytics.unsubVisits=onSnapshot(visitsQuery,snap=>{__usersAnalytics.visits=snap.docs.map(x=>({id:x.id,...x.data()}));__usersRender()},err=>console.warn('Visitor visits listener failed:',err));
     __usersLoadActivity(db,true);
     __usersAnalytics.timer=setInterval(__usersRender,10000);
   }).catch(err=>{console.warn('Could not start Users analytics:',err);__usersAnalytics.started=false});
