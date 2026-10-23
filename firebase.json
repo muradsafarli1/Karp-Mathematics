@@ -137,10 +137,6 @@
       {
         "source": "/book",
         "destination": "/book.html"
-      },
-      {
-        "source": "/canvas",
-        "destination": "/canvas.html"
       }
     ],
     "redirects": [
