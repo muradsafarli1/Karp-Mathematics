@@ -175,9 +175,9 @@ async function repairAcceptedRelationships(){
           known.add(fid);
         }catch(e){console.warn('repair accepted KARP friendship; will try the accepted request fallback',r.id,e)}
       }
-      try{
-        await ensureDirectConversation(r.fromUid===uid?r.toUid:r.fromUid);
-      }catch(e){console.warn('repair accepted KARP conversation',r.id,e)}
+      // Leave conversation creation lazy. Selecting this friend or accepting
+      // the request creates/repairs the direct chat; rewriting every accepted
+      // conversation at every login caused unnecessary Firestore traffic.
     }
   }catch(e){console.warn('scan accepted KARP requests',e)}
 }
