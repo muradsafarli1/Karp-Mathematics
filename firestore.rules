@@ -28,6 +28,23 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/friendships/$(makeFriendshipId(a,b)))
         && get(/databases/$(database)/documents/friendships/$(makeFriendshipId(a,b))).data.status == 'accepted';
     }
+    // A legacy/missing friendship document must not block a pair whose
+    // original request was accepted. Both participants are still verified.
+    function hasAcceptedFriendRequest(requestId,a,b) {
+      return requestId is string
+        && requestId.size() > 0
+        && exists(/databases/$(database)/documents/friendRequests/$(requestId))
+        && get(/databases/$(database)/documents/friendRequests/$(requestId)).data.status == 'accepted'
+        && get(/databases/$(database)/documents/friendRequests/$(requestId)).data.fromUid is string
+        && get(/databases/$(database)/documents/friendRequests/$(requestId)).data.toUid is string
+        && (
+          (get(/databases/$(database)/documents/friendRequests/$(requestId)).data.fromUid == a
+            && get(/databases/$(database)/documents/friendRequests/$(requestId)).data.toUid == b)
+          ||
+          (get(/databases/$(database)/documents/friendRequests/$(requestId)).data.fromUid == b
+            && get(/databases/$(database)/documents/friendRequests/$(requestId)).data.toUid == a)
+        );
+    }
     function conversationMember(data) {
       return signedIn() && data.members is list && request.auth.uid in data.members;
     }
@@ -178,7 +195,10 @@ service cloud.firestore {
             (request.resource.data.type == 'direct'
               && request.resource.data.members.size() == 2
               && conversationId == makeFriendshipId(request.resource.data.members[0],request.resource.data.members[1])
-              && isFriend(request.resource.data.members[0],request.resource.data.members[1]))
+              && (
+                isFriend(request.resource.data.members[0],request.resource.data.members[1])
+                || hasAcceptedFriendRequest(request.resource.data.friendRequestId,request.resource.data.members[0],request.resource.data.members[1])
+              ))
             ||
             (request.resource.data.type == 'group'
               && request.resource.data.createdBy == request.auth.uid
@@ -193,14 +213,29 @@ service cloud.firestore {
           ));
       allow update: if isAdmin()
         || (
-          request.resource.data.type == resource.data.type
+          signedIn()
+          && request.resource.data.type == resource.data.type
           && (
             (request.resource.data.type == 'direct'
               && request.resource.data.status == 'accepted'
               && request.resource.data.members is list
               && request.resource.data.members.size() == 2
+              && conversationId == makeFriendshipId(request.resource.data.members[0],request.resource.data.members[1])
               && request.auth.uid in request.resource.data.members
-              && isFriend(request.resource.data.members[0],request.resource.data.members[1]))
+              && (
+                // Existing members can update read receipts, unread counts,
+                // and previews even if an old friendship record is missing.
+                (conversationMember(resource.data)
+                  && resource.data.members.size() == 2
+                  && request.resource.data.members[0] in resource.data.members
+                  && request.resource.data.members[1] in resource.data.members
+                  && resource.data.members[0] in request.resource.data.members
+                  && resource.data.members[1] in request.resource.data.members)
+                // Repair a stale/missing conversation only for a pair with an
+                // accepted friendship or an independently verified request.
+                || isFriend(request.resource.data.members[0],request.resource.data.members[1])
+                || hasAcceptedFriendRequest(request.resource.data.friendRequestId,request.resource.data.members[0],request.resource.data.members[1])
+              ))
             ||
             (request.resource.data.type != 'direct'
               && conversationMember(resource.data)
