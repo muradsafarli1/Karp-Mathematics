@@ -1303,7 +1303,7 @@ async function renderDailyProblemAdmin(){
       const input=window.prompt('Set the final Gems reward for this published solution. The balance will be adjusted by the difference.',''+Number(item.rewardGems||0));
       if(input===null)return;
       const value=input.trim();
-      if(!/^\\d+$/.test(value)||!Number.isSafeInteger(Number(value))||Number(value)>1000000){toast('Enter a whole number from 0 to 1000000.');return;}
+      if(!/^\d+$/.test(value)||!Number.isSafeInteger(Number(value))||Number(value)>1000000){toast('Enter a whole number from 0 to 1000000.');return;}
       const nextGems=Number(value);
       const userId=String(item.uid||'');
       if(!userId){toast('This solution has no linked member account.');return;}
@@ -1321,7 +1321,7 @@ async function renderDailyProblemAdmin(){
           const previousBalance=Math.max(0,Number(userSnap.data().gems)||0);
           const balance=Math.max(0,previousBalance+nextGems-previousGems);
           tx.update(subRef,{rewardGems:nextGems,authorGems:balance,rewardEditedAt:now,rewardEditedBy:admin?.id||''});
-          if(balance!==previousBalance)tx.update(userRef,{gems:balance,lastDailyProblemRewardEdited:{submissionId:id,problemId:String(saved.problemId||problemId),previousGems,newGems:nextGems,editedAt:now,editedBy:admin?.id||''}});
+          if(balance!==previousBalance)tx.update(userRef,{gems:balance,lastDailyProblemRewardEdited:{submissionId:id,problemId:String(saved.problemId||item.problemId||currentProblemId),previousGems,newGems:nextGems,editedAt:now,editedBy:admin?.id||''}});
           return {balance,previousGems};
         });
         const older=submissions.filter(x=>x.uid===userId&&x.id!==id&&x.status==='approved');
