@@ -468,9 +468,12 @@ async function startDirect(uid){
   }catch(e){
     console.error('start direct chat failed while verifying the accepted friendship or repairing the direct conversation:',e);
     const denied=e?.code==='permission-denied'||String(e?.message||'').toLowerCase().includes('insufficient permissions');
-    alert(denied
-      ?'KARP could not finish opening this private chat because Firestore rejected the conversation repair. The conversation remains private; deploy the latest Firestore rules and reload the page.'
-      :chatErrorMessage(e,'Could not start chat.'));
+    if(denied){
+      const step=String(e?.karpStage||'opening the private conversation');
+      alert('KARP could not open this private chat while '+step+'. Check that Hosting and Firestore rules have both been deployed. The exact error is recorded in the browser console.');
+    }else{
+      alert(chatErrorMessage(e,'Could not start chat.'));
+    }
   }
 }
 async function acceptRequest(id){
