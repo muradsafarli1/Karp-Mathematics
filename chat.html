@@ -250,6 +250,28 @@ async function ensureDirectConversation(otherUid){
     }
   }
 
+  // A few legacy friendships lack requestId. Fetch it when possible, without
+  // making this auxiliary lookup a blocker if the friendship itself is valid.
+  if(!friendRequestId){
+    try{
+      const [inSnap,outSnap]=await stage('checking the accepted invitation reference',async()=>{
+        return await Promise.all([
+          getDocs(query(collection(db,'friendRequests'),where('toUid','==',user.uid))),
+          getDocs(query(collection(db,'friendRequests'),where('fromUid','==',user.uid)))
+        ]);
+      });
+      const accepted=[...inSnap.docs,...outSnap.docs].map(d=>({id:d.id,...d.data()})).find(r=>
+        r.status==='accepted'&&(
+          (r.fromUid===user.uid&&r.toUid===otherUid)
+          ||(r.toUid===user.uid&&r.fromUid===otherUid)
+        )
+      );
+      if(accepted)friendRequestId=accepted.id;
+    }catch(requestLookupError){
+      console.warn('Could not resolve the legacy friendship request ID; the accepted friendship rule will still be used:',requestLookupError);
+    }
+  }
+
   const now=new Date().toISOString();
   const patch={
     type:'direct',
@@ -459,9 +481,13 @@ async function startDirect(uid){
   }
   try{
     const id=await ensureDirectConversation(uid);
-    const local={id,type:'direct',status:'accepted',members:[user.uid,uid].sort(),updatedAt:new Date().toISOString(),lastMessage:''};
     const existingIndex=conversations.findIndex(x=>x.id===id);
-    if(existingIndex>=0)conversations[existingIndex]={...conversations[existingIndex],...local};
+    const existing=existingIndex>=0?conversations[existingIndex]:{};
+    const local={...existing,id,type:'direct',status:'accepted',members:[user.uid,uid].sort(),
+      createdAt:existing.createdAt||new Date().toISOString(),
+      updatedAt:existing.updatedAt||new Date().toISOString(),
+      lastMessage:existing.lastMessage||''};
+    if(existingIndex>=0)conversations[existingIndex]={...existing,...local};
     else conversations.unshift(local);
     await renderList();
     await openConversation(id);
