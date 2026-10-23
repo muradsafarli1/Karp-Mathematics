@@ -1112,7 +1112,7 @@ async function renderDailyProblemAdmin(){
   const m=document.getElementById('main');if(!m)return;
   try{
     const {db}=await fb();
-    const {doc,getDoc,setDoc,collection,getDocs,updateDoc,runTransaction}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const {doc,getDoc,setDoc,collection,getDocs,updateDoc,deleteDoc,runTransaction}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
     const [problemSnap,problemListSnap,submissionSnap]=await Promise.all([
       getDoc(doc(db,'dailyProblem','current')),
       getDocs(collection(db,'dailyProblems')),
@@ -1152,7 +1152,7 @@ async function renderDailyProblemAdmin(){
       const gems=Number(item.rewardGems||0);
       const actions=status==='pending'
         ?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:15px"><button class="btn primary" type="button" data-daily-status="approved" data-daily-id="'+esc(item.id)+'" data-daily-problem-id="'+esc(item.problemId)+'">Publish & award Gems</button><button class="btn danger" type="button" data-daily-status="rejected" data-daily-id="'+esc(item.id)+'" data-daily-problem-id="'+esc(item.problemId)+'">Reject</button></div>'
-        :'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:11px;color:'+statusColor(status)+';font-weight:800">'+(status==='approved'?'Published':status==='rejected'?'Rejected':'Status: '+esc(status))+(gems>0?' · Awarded '+gems+' Gems':'')+'</div>'+(status==='approved'?'<div style="margin-top:12px"><button class="btn danger" type="button" data-daily-status="rejected" data-daily-id="'+esc(item.id)+'" data-daily-problem-id="'+esc(item.problemId)+'">Reject published solution</button></div>':'');
+        :'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:11px;color:'+statusColor(status)+';font-weight:800">'+(status==='approved'?'Published':status==='rejected'?'Rejected':'Status: '+esc(status))+(gems>0?' · Awarded '+gems+' Gems':'')+'</div>'+(status==='approved'?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn" type="button" data-edit-daily-gems="'+esc(item.id)+'" data-daily-problem-id="'+esc(item.problemId)+'">Edit Gems</button><button class="btn danger" type="button" data-daily-status="rejected" data-daily-id="'+esc(item.id)+'" data-daily-problem-id="'+esc(item.problemId)+'">Delete published solution</button></div>':'');
       return '<article class="bigcard" style="margin:10px 0;padding:18px;background:#f8f9f6;color:#22252a"><div style="display:flex;align-items:center;gap:11px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">'+avatar(item)+'<div style="min-width:0"><div style="font-size:13px;font-weight:800;color:#263b5b;overflow-wrap:anywhere">'+esc(item.displayName||'KARP Member')+'</div><div style="font-size:10px;color:#737781;overflow-wrap:anywhere">'+esc(item.email||'No email')+' · '+esc(timeLabel(item.createdAt))+'</div></div></div><span style="display:inline-flex;align-items:center;gap:4px;border:1px solid #d6d9d4;border-radius:7px;padding:5px 8px;font-size:10px;font-weight:800;color:'+statusColor(status)+'">'+esc(status.toUpperCase())+'</span></div><div style="margin-top:15px;background:#fff;border:1px solid #e0e2dd;border-radius:10px;padding:16px;font-size:14px;line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(item.solution||'')+'</div>'+actions+'</article>';
     };
     const nonEmptyCurrent=!!String(problem.statementEn||'').trim()||!!String(problem.statementAz||'').trim();
@@ -1160,7 +1160,7 @@ async function renderDailyProblemAdmin(){
     const historyMarkup=allPast.length?allPast.map(item=>{
       const related=submissions.filter(s=>s.problemId===String(item.id));
       const statement=[String(item.statementEn||'').trim(),String(item.statementAz||'').trim()].filter(Boolean).join('\n\n');
-      return '<details class="bigcard" style="margin:12px 0;padding:18px"><summary style="cursor:pointer;font-weight:800;color:#263b5b;font-size:14px">'+esc(dayLabel(item.date||item.createdAt||item.updatedAt))+' <span style="font-size:10px;color:#777;font-weight:600">· '+related.length+' submissions</span></summary><div style="margin-top:16px;padding:14px;border:1px solid #dedfd9;border-radius:10px;background:#f7f8f5;color:#24272b;font-size:13px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(statement||'No statement saved.')+'</div><div style="margin-top:18px;font-weight:800;color:#30343a;font-size:12px">Solutions for '+esc(dayLabel(item.date||item.createdAt||item.updatedAt))+'</div>'+(related.length?related.map(submissionCard).join(''):'<p style="font-size:12px;color:#777">No solutions submitted for this problem.</p>')+'</details>';
+      return '<div class="bigcard" style="margin:12px 0;padding:18px"><div style="display:flex;align-items:flex-start;gap:10px"><details style="flex:1;min-width:0"><summary style="cursor:pointer;font-weight:800;color:#263b5b;font-size:14px">'+esc(dayLabel(item.date||item.createdAt||item.updatedAt))+' <span style="font-size:10px;color:#777;font-weight:600">· '+related.length+' submissions</span></summary><div style="margin-top:16px;padding:14px;border:1px solid #dedfd9;border-radius:10px;background:#f7f8f5;color:#24272b;font-size:13px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(statement||'No statement saved.')+'</div><div style="margin-top:18px;font-weight:800;color:#30343a;font-size:12px">Solutions for '+esc(dayLabel(item.date||item.createdAt||item.updatedAt))+'</div>'+(related.length?related.map(submissionCard).join(''):'<p style="font-size:12px;color:#777">No solutions submitted for this problem.</p>')+'</details><button type="button" class="btn danger" data-delete-daily-problem="'+esc(item.id)+'" style="flex:0 0 auto;align-self:flex-start;margin-top:2px;padding:7px 10px;font-size:10px">Delete</button></div></div>';
     }).join(''):'<div class="bigcard"><p>No past problems yet. Once you publish a new Daily Problem, the previous one will appear here automatically.</p></div>';
     m.innerHTML='<div class="admin-head"><div><h2>Daily Problem</h2><span class="admin-count">Create daily problems, preserve history and review solutions</span></div><span class="tag">'+pending+' pending review</span></div>'+
       '<div class="bigcard" style="margin-bottom:20px"><h3 style="margin-top:0">Current Problem · '+esc(dayLabel(problem.date||problem.createdAt||problem.updatedAt))+'</h3><p>Save edits to this problem, or publish a new day to preserve the current problem in the history.</p><label for="daily-admin-statement-en" style="display:block;font-size:11px;font-weight:800;color:#34383d;margin:10px 0 7px">English (ENG)</label><textarea id="daily-admin-statement-en" rows="7" style="display:block;width:100%;box-sizing:border-box;margin:0 0 16px;padding:14px;border:1px solid #d5d8d2;border-radius:10px;background:#fbfcfa;color:#17191c;font:13px/1.8 system-ui;resize:vertical">'+esc(problem.statementEn||'')+'</textarea><label for="daily-admin-statement-az" style="display:block;font-size:11px;font-weight:800;color:#34383d;margin:10px 0 7px">Azerbaijani (AZE)</label><textarea id="daily-admin-statement-az" rows="7" style="display:block;width:100%;box-sizing:border-box;margin:0 0 16px;padding:14px;border:1px solid #d5d8d2;border-radius:10px;background:#fbfcfa;color:#17191c;font:13px/1.8 system-ui;resize:vertical">'+esc(problem.statementAz||'')+'</textarea><div style="display:flex;gap:9px;flex-wrap:wrap"><button type="button" class="btn" id="daily-admin-save">Save Current Problem</button><button type="button" class="btn primary" id="daily-admin-publish">＋ Publish New Daily Problem</button></div></div>'+
@@ -1292,6 +1292,94 @@ async function renderDailyProblemAdmin(){
         }
         await renderDailyProblemAdmin();
       }catch(e){toast('Could not update solution: '+(e.message||'Check Firestore rules.'));button.disabled=false}
+    });
+
+    // Edit an already-awarded reward by applying only the difference to the
+    // member's balance. The transaction prevents double-crediting on retries.
+    m.querySelectorAll('[data-edit-daily-gems]').forEach(button=>button.onclick=async()=>{
+      const id=button.dataset.editDailyGems;
+      const item=submissions.find(x=>x.id===id);
+      if(!item||item.status!=='approved')return;
+      const input=window.prompt('Set the final Gems reward for this published solution. The balance will be adjusted by the difference.',''+Number(item.rewardGems||0));
+      if(input===null)return;
+      const value=input.trim();
+      if(!/^\\d+$/.test(value)||!Number.isSafeInteger(Number(value))||Number(value)>1000000){toast('Enter a whole number from 0 to 1000000.');return;}
+      const nextGems=Number(value);
+      const userId=String(item.uid||'');
+      if(!userId){toast('This solution has no linked member account.');return;}
+      button.disabled=true;
+      try{
+        const subRef=doc(db,'dailyProblemSubmissions',id),userRef=doc(db,'users',userId),now=new Date().toISOString();
+        const result=await runTransaction(db,async tx=>{
+          const snap=await tx.get(subRef);
+          if(!snap.exists())throw new Error('This solution no longer exists.');
+          const saved=snap.data();
+          if(saved.status!=='approved')throw new Error('Only published solutions can have their Gems edited.');
+          const userSnap=await tx.get(userRef);
+          if(!userSnap.exists())throw new Error('The member account could not be found.');
+          const previousGems=Math.max(0,Number(saved.rewardGems)||0);
+          const previousBalance=Math.max(0,Number(userSnap.data().gems)||0);
+          const balance=Math.max(0,previousBalance+nextGems-previousGems);
+          tx.update(subRef,{rewardGems:nextGems,authorGems:balance,rewardEditedAt:now,rewardEditedBy:admin?.id||''});
+          if(balance!==previousBalance)tx.update(userRef,{gems:balance,lastDailyProblemRewardEdited:{submissionId:id,problemId:String(saved.problemId||problemId),previousGems,newGems:nextGems,editedAt:now,editedBy:admin?.id||''}});
+          return {balance,previousGems};
+        });
+        const older=submissions.filter(x=>x.uid===userId&&x.id!==id&&x.status==='approved');
+        await Promise.all(older.map(x=>updateDoc(doc(db,'dailyProblemSubmissions',x.id),{authorGems:result.balance}).catch(e=>console.warn('Could not refresh solution gem badge:',e))));
+        toast('Gems updated: '+result.previousGems+' → '+nextGems+'. Member balance adjusted.');
+        await renderDailyProblemAdmin();
+      }catch(e){toast('Could not edit Gems: '+(e.message||'Check Firestore rules.'));button.disabled=false}
+    });
+
+    // Delete an archived problem and its submissions. Any still-recorded
+    // Daily Problem rewards are subtracted from their recipients first.
+    m.querySelectorAll('[data-delete-daily-problem]').forEach(button=>button.onclick=async()=>{
+      const id=button.dataset.deleteDailyProblem;
+      const archived=allPast.find(x=>String(x.id)===String(id));
+      if(!archived)return;
+      const related=submissions.filter(x=>String(x.problemId||currentProblemId)===String(id));
+      const approvedCount=related.filter(x=>x.status==='approved').length;
+      if(!confirm('Delete this past Daily Problem and its '+related.length+' submissions? '+approvedCount+' published solutions may have awarded Gems; those recorded rewards will be removed from member balances. This cannot be undone.'))return;
+      button.disabled=true;
+      try{
+        const deletedIds=new Set(related.map(x=>x.id)),affectedUsers=new Set();
+        for(const item of related){
+          const subRef=doc(db,'dailyProblemSubmissions',item.id);
+          const result=await runTransaction(db,async tx=>{
+            const snap=await tx.get(subRef);
+            if(!snap.exists())return {exists:false};
+            const saved=snap.data();
+            const userId=String(saved.uid||'');
+            const counterRef=doc(db,'dailyProblemRewards',String(saved.problemId||id));
+            const userRef=userId?doc(db,'users',userId):null;
+            const counterSnap=await tx.get(counterRef);
+            const userSnap=userRef?await tx.get(userRef):null;
+            const isApproved=saved.status==='approved';
+            const removed=isApproved?Math.max(0,Number(saved.rewardGems)||0):0;
+            const balance=userSnap?.exists()?Math.max(0,Number(userSnap.data().gems)||0):0;
+            tx.delete(subRef);
+            if(counterSnap.exists()&&isApproved){
+              const count=Math.max(0,Number(counterSnap.data().approvedCount)||0);
+              tx.set(counterRef,{problemId:String(saved.problemId||id),approvedCount:Math.max(0,count-1),lastChangedAt:new Date().toISOString(),updatedAt:new Date().toISOString()},{merge:true});
+            }
+            if(userRef&&userSnap?.exists()&&removed>0){
+              tx.update(userRef,{gems:Math.max(0,balance-removed),lastDailyProblemRewardReversed:{submissionId:item.id,problemId:String(saved.problemId||id),gems:removed,reversedAt:new Date().toISOString(),reason:'past-problem-deleted'}});
+            }
+            return {exists:true,uid:userId,removed};
+          });
+          if(result.exists&&result.removed>0&&result.uid)affectedUsers.add(result.uid);
+        }
+        for(const uid of affectedUsers){
+          const account=await getDoc(doc(db,'users',uid));
+          const balance=account.exists()?Math.max(0,Number(account.data().gems)||0):0;
+          const remaining=submissions.filter(x=>x.uid===uid&&x.status==='approved'&&!deletedIds.has(x.id));
+          await Promise.all(remaining.map(x=>updateDoc(doc(db,'dailyProblemSubmissions',x.id),{authorGems:balance}).catch(e=>console.warn('Could not refresh remaining gem badge:',e))));
+        }
+        await deleteDoc(doc(db,'dailyProblemRewards',id));
+        await deleteDoc(doc(db,'dailyProblems',id));
+        toast('Past Daily Problem, its solutions, and recorded rewards were deleted.');
+        await renderDailyProblemAdmin();
+      }catch(e){console.error('Past Daily Problem deletion failed:',e);toast('Could not finish deleting this problem: '+(e.message||'Some records may already have been removed; refresh and retry.'));button.disabled=false}
     });
     if(window.MathJax&&window.MathJax.typesetPromise){
       try{if(window.MathJax.startup?.promise)await window.MathJax.startup.promise;await window.MathJax.typesetPromise([m])}catch(e){console.warn('Daily Problem admin math rendering failed:',e)}
