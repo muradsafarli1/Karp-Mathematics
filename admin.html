@@ -1137,7 +1137,8 @@ async function renderDailyProblemAdmin(){
     const newId=()=> 'daily-'+dayKey().replace(/-/g,'')+'-'+(typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID().slice(0,8):Math.random().toString(36).slice(2,10));
     const currentProblemId=String(problem.problemId||'legacy-current');
     const historyProblems=problemListSnap.docs.map(x=>({id:x.id,...x.data()}));
-    const submissions=submissionSnap.docs.map(x=>({id:x.id,...x.data(),problemId:String(x.data().problemId||currentProblemId)})).filter(x=>String(x.status||'pending')!=='rejected').sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+    const allSubmissions=submissionSnap.docs.map(x=>({id:x.id,...x.data(),problemId:String(x.data().problemId||currentProblemId)}));
+    const submissions=allSubmissions.filter(x=>String(x.status||'pending')!=='rejected').sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
     const pending=submissions.filter(x=>(x.status||'pending')==='pending').length;
     const currentItems=submissions.filter(x=>x.problemId===currentProblemId);
     const statusColor=status=>status==='approved'?'#276749':status==='rejected'?'#9b2c2c':'#805b10';
@@ -1343,7 +1344,7 @@ async function renderDailyProblemAdmin(){
       const id=button.dataset.deleteDailyProblem;
       const archived=allPast.find(x=>String(x.id)===String(id));
       if(!archived)return;
-      const related=submissions.filter(x=>String(x.problemId||currentProblemId)===String(id));
+      const related=allSubmissions.filter(x=>String(x.problemId||currentProblemId)===String(id));
       const approvedCount=related.filter(x=>x.status==='approved').length;
       if(!confirm('Delete this past Daily Problem and its '+related.length+' submissions? '+approvedCount+' published solutions may have awarded Gems; those recorded rewards will be removed from member balances. This cannot be undone.'))return;
       button.disabled=true;
