@@ -258,6 +258,11 @@ async function ensureDirectConversation(otherUid){
   if(conversationReadable&&!conversationExists){
     const now=new Date().toISOString();
     Object.assign(conversationPatch,{createdAt:now,updatedAt:now,lastMessage:''});
+  }else if(!conversationReadable){
+    // This path covers both a missing document that cannot be read under
+    // member-only rules and a legacy document with stale members. Timestamp
+    // it for sorting, but leave its existing lastMessage untouched.
+    conversationPatch.updatedAt=new Date().toISOString();
   }
   await setDoc(conversationRef,conversationPatch,{merge:true});
   return id;
