@@ -741,7 +741,72 @@ async function openNewChat(){
   input.focus({preventScroll:true});
   await searchPeople('');
 }
-async function searchPeople(term){const box=document.getElementById('peopleResults');if(!box)return;try{const s=await getDocs(query(collection(db,'publicProfiles'),limit(200)));const q=term.trim().toLowerCase();const arr=s.docs.map(d=>({uid:d.id,...d.data()})).filter(p=>p.uid!==user.uid&&(!q||String(p.name||'').toLowerCase().includes(q))).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'en',{sensitivity:'base'})).slice(0,50);searchPresenceIds=new Set(arr.map(p=>p.uid));syncPresenceListeners(trackedPersonIds());const friendIds=new Set(friends.flatMap(f=>f.members||[]));box.innerHTML=arr.length?arr.map(p=>{const isFriend=friendIds.has(p.uid),pendingIn=incoming.some(r=>r.fromUid===p.uid),pendingOut=outgoing.some(r=>r.toUid===p.uid);return '<div class="contact">'+personAvatar(p.name,p.photoURL,p.uid)+'<div class="contact-main"><strong>'+esc(p.name||'Member')+'</strong></div><div class="contact-actions">'+(isFriend?'<button class="text-btn primary" data-open-person="'+p.uid+'">Message</button>':pendingIn?'<button class="text-btn" data-accept="'+(incoming.find(r=>r.fromUid===p.uid)?.id||'')+'">Accept</button>':pendingOut?'<button class="text-btn">Invited</button>':'<button class="text-btn primary" data-add="'+p.uid+'">Connect</button>')+'</div></div>'}).join(''):'<div style="padding:18px;text-align:center;font-size:10px;color:#7b8289">No members found.</div>';box.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>sendRequest(b.dataset.add));box.querySelectorAll('[data-open-person]').forEach(b=>{closeModal();startDirect(b.dataset.openPerson)});box.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>{closeModal();acceptRequest(b.dataset.accept)})}catch(e){box.innerHTML='<div style="font-size:10px;color:#9b2c2c">Could not load members.</div>'}}
+let publicMembersCache=null,publicMembersPromise=null;
+async function getPublicMembers(){
+  if(publicMembersCache)return publicMembersCache;
+  if(!publicMembersPromise){
+    publicMembersPromise=getDocs(collection(db,'publicProfiles')).then(s=>{
+      publicMembersCache=s.docs.map(d=>({uid:d.id,...d.data()}));
+      return publicMembersCache;
+    }).catch(error=>{
+      publicMembersPromise=null;
+      throw error;
+    });
+  }
+  return publicMembersPromise;
+}
+async function searchPeople(term){
+  const box=document.getElementById('peopleResults');
+  if(!box)return;
+  const search=String(term||'').trim().toLowerCase();
+  box.innerHTML='<div style="padding:12px 2px;font-size:10px;color:#7b8289">Loading members…</div>';
+  try{
+    const all=await getPublicMembers();
+    if(!document.getElementById('peopleResults'))return;
+    const arr=all.filter(p=>p.uid!==user.uid&&(!search||String(p.name||'').toLowerCase().includes(search)))
+      .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'en',{sensitivity:'base'}))
+      .slice(0,60);
+    searchPresenceIds=new Set(arr.map(p=>p.uid));
+    syncPresenceListeners(trackedPersonIds());
+    const friendIds=new Set(friends.flatMap(f=>f.members||[]));
+    box.innerHTML=arr.length?arr.map(p=>{
+      const isFriend=friendIds.has(p.uid);
+      const pendingIn=incoming.some(r=>r.fromUid===p.uid);
+      const pendingOut=outgoing.some(r=>r.toUid===p.uid);
+      const action=isFriend
+        ?'<button type="button" class="text-btn primary" data-open-person="'+p.uid+'">Message</button>'
+        :pendingIn
+          ?'<button type="button" class="text-btn primary" data-accept="'+(incoming.find(r=>r.fromUid===p.uid)?.id||'')+'">Accept</button>'
+          :pendingOut
+            ?'<button type="button" class="text-btn" disabled>Request sent</button>'
+            :'<button type="button" class="text-btn primary" data-add="'+p.uid+'">Connect</button>';
+      return '<div class="contact">'+personAvatar(p.name,p.photoURL,p.uid)+'<div class="contact-main"><strong>'+esc(p.name||'Member')+'</strong><small>'+(isFriend?'Connected':pendingIn?'Wants to connect':pendingOut?'Invitation pending':'KARP member')+'</small></div><div class="contact-actions">'+action+'</div></div>';
+    }).join(''):'<div style="padding:18px;text-align:center;font-size:10px;color:#7b8289">'+(search?'No members match that name.':'No other KARP members were found.')+'</div>';
+    box.querySelectorAll('[data-add]').forEach(button=>button.onclick=async()=>{
+      button.disabled=true;button.textContent='Sending…';
+      try{
+        await sendRequest(button.dataset.add);
+        await searchPeople(document.getElementById('peopleSearch')?.value||'');
+      }catch(error){
+        console.error('KARP connection request could not be sent:',error);
+        button.disabled=false;button.textContent='Connect';
+        const note=document.createElement('div');
+        note.style.cssText='font-size:10px;color:#9b2c2c;padding:6px 2px';
+        note.textContent='Could not send the request. '+(error?.message||'Please try again.');
+        box.prepend(note);
+      }
+    });
+    box.querySelectorAll('[data-open-person]').forEach(button=>button.onclick=()=>{closeModal();startDirect(button.dataset.openPerson)});
+    box.querySelectorAll('[data-accept]').forEach(button=>button.onclick=async()=>{
+      closeModal();
+      await acceptRequest(button.dataset.accept);
+    });
+  }catch(error){
+    console.error('KARP member directory failed to load:',error);
+    box.innerHTML='<div style="padding:12px 2px;font-size:10px;line-height:1.6;color:#9b2c2c">Could not load the member list. '+esc(error?.message||'Please refresh the page and try again.')+'</div><button type="button" class="text-btn" id="retryPeopleSearch">Retry</button>';
+    document.getElementById('retryPeopleSearch')?.addEventListener('click',()=>{publicMembersCache=null;publicMembersPromise=null;searchPeople(document.getElementById('peopleSearch')?.value||'')});
+  }
+}
 async function sendRequest(uid){
   if(!requireUser()||!uid||uid===user.uid)return;
   if(outgoing.some(r=>r.toUid===uid)){await searchPeople(document.getElementById('peopleSearch')?.value||'');return}
