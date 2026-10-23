@@ -316,18 +316,32 @@ function isPersonOnline(uid){
 }
 function presenceText(uid){
   const online=isPersonOnline(uid);
-  return '<span class="chat-row-presence '+(online?'online':'offline')+'">'+(online?'Online':'Offline')+'</span>';
+  return '<span data-presence-label="'+esc(uid)+'" class="chat-row-presence '+(online?'online':'offline')+'">'+(online?'Online':'Offline')+'</span>';
 }
 function personAvatar(name,url,uid){
   const online=isPersonOnline(uid);
-  return '<span class="presence-avatar-wrap" title="'+(online?'Online':'Offline')+'">'+avatar(name,url)+'<span class="presence-dot '+(online?'online':'offline')+'" aria-label="'+(online?'Online':'Offline')+'" title="'+(online?'Online':'Offline')+'"></span></span>';
+  return '<span class="presence-avatar-wrap" data-presence-uid="'+esc(uid)+'" title="'+(online?'Online':'Offline')+'">'+avatar(name,url)+'<span class="presence-dot '+(online?'online':'offline')+'" aria-label="'+(online?'Online':'Offline')+'" title="'+(online?'Online':'Offline')+'"></span></span>';
+}
+function updatePresenceDom(){
+  document.querySelectorAll('.presence-avatar-wrap[data-presence-uid]').forEach(el=>{
+    const online=isPersonOnline(el.dataset.presenceUid);
+    el.title=online?'Online':'Offline';
+    const dot=el.querySelector('.presence-dot');
+    if(dot){dot.classList.toggle('online',online);dot.classList.toggle('offline',!online);dot.title=online?'Online':'Offline';dot.setAttribute('aria-label',online?'Online':'Offline');}
+  });
+  document.querySelectorAll('[data-presence-label]').forEach(el=>{
+    const online=isPersonOnline(el.dataset.presenceLabel);
+    el.textContent=online?'Online':'Offline';
+    el.classList.toggle('online',online);el.classList.toggle('offline',!online);
+  });
+  updateSelectedPresence();
 }
 function schedulePresenceRender(){
   if(presenceRenderTimer)clearTimeout(presenceRenderTimer);
-  presenceRenderTimer=setTimeout(()=>{
-    if(user)renderList().catch(e=>console.warn('refresh online status',e));
-    updateSelectedPresence();
-  },60);
+  presenceRenderTimer=setTimeout(updatePresenceDom,60);
+}
+if(!window.__karpChatPresenceTicker){
+  window.__karpChatPresenceTicker=setInterval(()=>{if(user)updatePresenceDom();},15000);
 }
 function syncPresenceListeners(ids){
   if(!user)return;
@@ -736,6 +750,11 @@ au.onAuthStateChanged(auth,async u=>{
   if(unsubOutgoing){unsubOutgoing();unsubOutgoing=null}
   if(unsubConv){unsubConv();unsubConv=null}
   if(unsubMsg){unsubMsg();unsubMsg=null}
+  for(const unsubscribe of presenceUnsubs.values())unsubscribe();
+  presenceUnsubs.clear();presenceByUid.clear();
+  for(const unsubscribe of unreadMessageUnsubs.values())unsubscribe();
+  unreadMessageUnsubs.clear();liveUnreadByConversation.clear();unreadInitialized.clear();persistedUnreadByConversation.clear();
+  conversations=[];friends=[];incoming=[];outgoing=[];selected=null;messages=[];
   user=u||null;updateChatNav(user);
   if(!user){
     meProfile={};conversations=[];friends=[];incoming=[];outgoing=[];selected=null;messages=[];
