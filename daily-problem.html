@@ -176,9 +176,19 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
     return '<article class="daily-message '+(pending?'pending':'')+'"><div class="daily-message-head"><div class="daily-message-author">'+avatarMarkup(name,item.photoURL||'')+'<div><span class="daily-message-name">'+safe(name)+'</span>'+(gems>0?'<span class="daily-gem-badge">💎 '+gems+' Gems</span>':'')+(pending?'<div class="daily-message-status">Sent · awaiting approval</div>':'')+'</div></div><time class="daily-message-meta">'+safe(dateLabel)+'</time></div><div class="daily-message-body">'+safe(item.solution||'').replace(/\n/g,'<br>')+'</div></article>';
   }
   function itemsForProblem(id){
-    const approved=approvedItems.filter(x=>problemIdOf(x)===String(id));
-    const pending=ownSubmissions.filter(x=>x.status==='pending'&&problemIdOf(x)===String(id)&&!approved.some(a=>a.id===x.id));
-    return [...approved,...pending].sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
+    // A submission may briefly arrive from the live approved query and the
+    // user's own query at almost the same time. Merge by document ID so it is
+    // rendered exactly once, even before a full page refresh.
+    const itemsById=new Map();
+    for(const item of approvedItems){
+      if(problemIdOf(item)===String(id))itemsById.set(item.id,item);
+    }
+    for(const item of ownSubmissions){
+      if(item.status==='pending'&&problemIdOf(item)===String(id)&&!itemsById.has(item.id)){
+        itemsById.set(item.id,item);
+      }
+    }
+    return [...itemsById.values()].sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
   }
   function renderCurrentSolutions(){
     const items=itemsForProblem(currentProblemId);
@@ -289,7 +299,7 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
       const submission={uid:currentUser.uid,displayName,email:String(currentUser.email||'').slice(0,200),photoURL,solution,status:'pending',problemId:currentProblemId,createdAt:new Date().toISOString()};
       const submissionRef=await fs.addDoc(fs.collection(db,'dailyProblemSubmissions'),submission);
       input.value='';toggleEditor(false);setPendingNotice(submission);
-      ownSubmissions.push({id:submissionRef.id,...submission});
+      ownSubmissions=[...ownSubmissions.filter(x=>x.id!==submissionRef.id),{id:submissionRef.id,...submission}];
       renderCurrentSolutions();
       addButton.textContent='＋ Add Another Solution';
       if(typeof toast==='function')toast('Solution sent for admin review.');
