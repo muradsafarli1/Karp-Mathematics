@@ -19,6 +19,7 @@
 .chat-list{overflow:auto;flex:1}.chat-row{display:flex;gap:11px;padding:12px 14px;border-bottom:1px solid #f0f1f0;cursor:pointer}.chat-row:hover,.chat-row.active{background:#f6f7f6}.chat-avatar{width:43px;height:43px;min-width:43px;border-radius:50%;overflow:hidden;background:#e7eaeb;color:#263b5b;display:grid;place-items:center;font-size:11px;font-weight:900}.chat-avatar img{width:100%;height:100%;object-fit:cover}.chat-row-main{min-width:0;flex:1}.chat-row-top{display:flex;justify-content:space-between;gap:7px}.chat-row-name{font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-row-time{font-size:8px;color:#90969b;white-space:nowrap}.chat-row-preview{margin-top:4px;font-size:9px;color:#7b8289;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-row-meta{display:flex;align-items:center;gap:5px;white-space:nowrap}.chat-unread{display:inline-grid;place-items:center;min-width:17px;height:17px;border-radius:99px;background:var(--wa-accent);color:#fff;font-size:8px;font-weight:900;padding:0 5px}.msg-delete{position:absolute;right:4px;top:4px;width:22px;height:22px;border:0;border-radius:6px;background:rgba(255,255,255,.94);color:#777d82;font-size:14px;line-height:22px;display:none;cursor:pointer;padding:0}.msg:hover .msg-delete{display:block}.msg-delete:hover{background:#eef0ef;color:#333}
 .chat-main{display:grid;grid-template-rows:64px minmax(0,1fr) 64px;min-width:0;min-height:0;background:#f3f5f3;overflow:hidden}
 .chat-head{display:flex;align-items:center;gap:11px;padding:0 18px;background:#fff;border-bottom:1px solid var(--wa-line)}.chat-head-copy{min-width:0;flex:1}.chat-head-name{font-size:12px;font-weight:850}.chat-head-status{font-size:9px;color:#7b8289;margin-top:3px}.chat-head-actions{display:flex;gap:6px}
+.presence-avatar-wrap{position:relative;display:inline-flex;flex:0 0 43px;width:43px;height:43px;align-items:center;justify-content:center}.presence-avatar-wrap .chat-avatar{flex:0 0 43px}.presence-dot{position:absolute;right:0;bottom:0;width:11px;height:11px;border-radius:50%;border:2px solid #fff;background:#aeb4ba;z-index:2}.presence-dot.online{background:#28a36a}.chat-row-presence{font-size:8px;font-weight:800;white-space:nowrap}.chat-row-presence.online{color:#238553}.chat-row-presence.offline{color:#8d9398}.contact .presence-row{font-size:8px;margin-top:3px}
 .chat-messages{overflow-y:auto;overflow-x:hidden;min-height:0;padding:24px clamp(28px,7vw,110px);display:flex;flex-direction:column;gap:9px;overscroll-behavior:contain;scroll-behavior:auto;background:linear-gradient(rgba(243,245,243,.96),rgba(243,245,243,.96)),radial-gradient(circle at 20% 20%,#e9ecea 1px,transparent 1px);background-size:auto,18px 18px}
 .day-divider{align-self:center;margin:8px 0 10px;padding:5px 9px;border-radius:8px;background:#fff;border:1px solid #e3e6e3;color:#838a90;font-size:8px;font-weight:800}
 .msg{max-width:min(72%,620px);padding:8px 10px;border-radius:10px;background:#fff;border:1px solid #e1e4e1;box-shadow:0 1px 1px rgba(0,0,0,.02);align-self:flex-start;position:relative}.msg.mine{align-self:flex-end;background:#e8edf2;border-color:#dce3e9}.msg-author{font-size:8px;color:#263b5b;font-weight:850;margin-bottom:3px}.msg-text{font-size:10px;line-height:1.6;color:#30363c;white-space:pre-wrap;overflow-wrap:anywhere}.msg-meta{font-size:7px;color:#8c9297;text-align:right;margin-top:4px}
@@ -38,7 +39,7 @@
 <div class="chat-left-tools"><input id="chatSearch" class="chat-search" placeholder="Search conversations"><button class="icon-btn" id="newChat" title="New chat">＋</button></div>
 <div class="chat-tabs"><button class="chat-tab active" data-list="chats">Chats</button><button class="chat-tab" data-list="friends">Friends</button><button class="chat-tab" data-list="requests">Requests</button></div>
 <div class="chat-list" id="chatList"></div></aside>
-<section class="chat-main"><div class="chat-head"><button class="icon-btn" id="backMobile" style="display:none">‹</button><div class="chat-avatar" id="headAvatar">K</div><div class="chat-head-copy"><div class="chat-head-name" id="headName">KARP</div></div><div class="chat-head-actions"><button class="text-btn" id="inviteBtn">Invite</button></div></div>
+<section class="chat-main"><div class="chat-head"><button class="icon-btn" id="backMobile" style="display:none">‹</button><div class="chat-avatar" id="headAvatar">K</div><div class="chat-head-copy"><div class="chat-head-name" id="headName">KARP</div><div class="chat-head-status" id="headPresence"></div></div><div class="chat-head-actions"><button class="text-btn" id="inviteBtn">Invite</button></div></div>
 <div class="chat-messages" id="messages"><div class="empty-chat"><div><strong>Your messages</strong>Select a conversation or start a new one.</div></div></div>
 <div class="chat-composer"><textarea id="composer" placeholder="Write a message…" disabled></textarea><button class="send-btn" id="send" disabled>➤</button></div></section>
 </div></main>
@@ -50,6 +51,8 @@ const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-fires
 const au=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
 const {collection,doc,getDoc,getDocs,query,where,orderBy,limit,limitToLast,onSnapshot,addDoc,setDoc,updateDoc,deleteDoc,increment,serverTimestamp}=fs;
 let user=null,meProfile={},conversations=[],friends=[],incoming=[],outgoing=[],selected=null,messages=[],unsubConv=null,unsubMsg=null,unsubIncoming=null,unsubOutgoing=null,listMode='chats',sendingMessage=false;
+const presenceUnsubs=new Map(),presenceByUid=new Map(),unreadMessageUnsubs=new Map(),liveUnreadByConversation=new Map(),unreadInitialized=new Set(),persistedUnreadByConversation=new Map();
+let presenceRenderTimer=null;
 const esc=window.escapeHtml||((x)=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
 const signedIn=()=>!!user;
 function updateChatNav(u){
@@ -59,7 +62,7 @@ function updateChatNav(u){
     box.innerHTML='<a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a>';
     return;
   }
-  const name=String(meProfile.name||u.displayName||u.email||'Member').trim();
+  const name=String(meProfile.name||u.displayName||'Member').trim();
   const initial=esc(name.charAt(0).toUpperCase()||'K');
   // KARP's saved profile photo is authoritative here; Firebase Auth photoURL
   // may be the user's Google/Gmail avatar rather than the KARP account image.
@@ -67,7 +70,7 @@ function updateChatNav(u){
   const img=profilePhoto?'<img src="'+esc(profilePhoto)+'" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover">':'<span style="width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#e8edf2;color:#263b5b;font-weight:900">'+initial+'</span>';
   box.innerHTML='<a href="/account.html" aria-label="Account" title="Account" style="display:flex;align-items:center">'+img+'</a>';
 }
-const displayName=()=>String(meProfile.name||user?.displayName||(user?.email||'').split('@')[0]||'Member').slice(0,100);
+const displayName=()=>String(meProfile.name||user?.displayName||'KARP Member').slice(0,100);
 const photo=()=>String(meProfile.photoURL||'');
 const avatar=(name,url,cls='chat-avatar')=>'<span class="'+cls+'">'+(url?'<img src="'+esc(url)+'" alt="">':esc(String(name||'K').trim().split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase()||'K'))+'</span>';
 const fmt=v=>{if(!v)return'';const d=v?.toDate?v.toDate():new Date(v);if(Number.isNaN(d.getTime()))return'';const n=new Date(),same=d.toDateString()===n.toDateString();return same?d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString([], {day:'2-digit',month:'short'})};
@@ -300,61 +303,194 @@ async function ensureDirectConversation(otherUid){
   return id;
 }
 
+function presenceExpiryMillis(value){
+  if(value?.toMillis)return value.toMillis();
+  if(value?.toDate)return value.toDate().getTime();
+  if(typeof value==='number')return value;
+  const parsed=Date.parse(value||'');
+  return Number.isFinite(parsed)?parsed:0;
+}
+function isPersonOnline(uid){
+  const p=presenceByUid.get(uid);
+  return !!p?.online&&presenceExpiryMillis(p.expiresAt)>Date.now();
+}
+function presenceText(uid){
+  const online=isPersonOnline(uid);
+  return '<span class="chat-row-presence '+(online?'online':'offline')+'">'+(online?'Online':'Offline')+'</span>';
+}
+function personAvatar(name,url,uid){
+  const online=isPersonOnline(uid);
+  return '<span class="presence-avatar-wrap" title="'+(online?'Online':'Offline')+'">'+avatar(name,url)+'<span class="presence-dot '+(online?'online':'offline')+'" aria-label="'+(online?'Online':'Offline')+'" title="'+(online?'Online':'Offline')+'"></span></span>';
+}
+function schedulePresenceRender(){
+  if(presenceRenderTimer)clearTimeout(presenceRenderTimer);
+  presenceRenderTimer=setTimeout(()=>{
+    if(user)renderList().catch(e=>console.warn('refresh online status',e));
+    updateSelectedPresence();
+  },60);
+}
+function syncPresenceListeners(ids){
+  if(!user)return;
+  const wanted=new Set(ids.filter(id=>id&&id!==user.uid));
+  for(const [uid,unsubscribe] of presenceUnsubs){
+    if(!wanted.has(uid)){unsubscribe();presenceUnsubs.delete(uid);presenceByUid.delete(uid);}
+  }
+  for(const uid of wanted){
+    if(presenceUnsubs.has(uid))continue;
+    const unsubscribe=onSnapshot(doc(db,'chatPresence',uid),snap=>{
+      presenceByUid.set(uid,snap.exists()?snap.data():null);
+      schedulePresenceRender();
+    },error=>{
+      presenceByUid.set(uid,null);
+      console.warn('KARP chat presence listener failed:',error);
+      schedulePresenceRender();
+    });
+    presenceUnsubs.set(uid,unsubscribe);
+  }
+}
+function updateSelectedPresence(){
+  const status=document.getElementById('headPresence');
+  if(!status)return;
+  const uid=selected?.type==='direct'?otherId(selected):'';
+  if(!uid){status.textContent=selected?.type==='group'?'Group conversation':'';status.style.color='';return;}
+  const online=isPersonOnline(uid);
+  status.textContent=online?'Online':'Offline';
+  status.style.color=online?'#238553':'#7b8289';
+}
+function syncUnreadMessageListeners(){
+  if(!user)return;
+  const activeIds=new Set(conversations.map(c=>c.id));
+  for(const [id,unsubscribe] of unreadMessageUnsubs){
+    if(!activeIds.has(id)){
+      unsubscribe();unreadMessageUnsubs.delete(id);liveUnreadByConversation.delete(id);
+      unreadInitialized.delete(id);persistedUnreadByConversation.delete(id);
+    }
+  }
+  for(const c of conversations){
+    const id=c.id;
+    const persisted=Math.max(0,Number(c['unread_'+user.uid]||0));
+    if(!liveUnreadByConversation.has(id))liveUnreadByConversation.set(id,persisted);
+    if(!persistedUnreadByConversation.has(id))persistedUnreadByConversation.set(id,persisted);
+    if(unreadMessageUnsubs.has(id))continue;
+    const messageQuery=query(collection(db,'conversations',id,'messages'),orderBy('createdAt','desc'),limit(1));
+    const unsubscribe=onSnapshot(messageQuery,snap=>{
+      const latest=conversations.find(item=>item.id===id);
+      if(!unreadInitialized.has(id)){
+        unreadInitialized.add(id);
+        if(!liveUnreadByConversation.has(id))liveUnreadByConversation.set(id,Math.max(0,Number(latest?.['unread_'+user.uid]||0)));
+        return;
+      }
+      if(selected?.id===id){liveUnreadByConversation.set(id,0);return;}
+      let count=Math.max(Number(liveUnreadByConversation.get(id)||0),Number(latest?.['unread_'+user.uid]||0));
+      for(const change of snap.docChanges()){
+        if(change.type!=='added')continue;
+        const message=change.doc.data()||{};
+        if(message.senderId&&message.senderId!==user.uid)count++;
+      }
+      if(count!==Number(liveUnreadByConversation.get(id)||0)){
+        liveUnreadByConversation.set(id,count);
+        schedulePresenceRender();
+      }
+    },error=>console.warn('KARP unread-message listener failed:',id,error));
+    unreadMessageUnsubs.set(id,unsubscribe);
+  }
+}
 async function loadConversations(){
   if(!user)return;
-  if(unsubConv){unsubConv();unsubConv=null}
+  if(unsubConv){unsubConv();unsubConv=null;}
   const q=query(collection(db,'conversations'),where('members','array-contains',user.uid));
   unsubConv=onSnapshot(q,s=>{
-    conversations=s.docs.map(d=>({id:d.id,...d.data()}))
-      .sort((a,b)=>Date.parse(b.updatedAt||b.createdAt||0)-Date.parse(a.updatedAt||a.createdAt||0));
+    const next=s.docs.map(d=>({id:d.id,...d.data()}));
+    next.forEach(c=>{
+      const id=c.id,current=Math.max(0,Number(c['unread_'+user.uid]||0));
+      const previous=persistedUnreadByConversation.get(id);
+      if(previous!==undefined&&current<previous)liveUnreadByConversation.set(id,current);
+      else if(!liveUnreadByConversation.has(id))liveUnreadByConversation.set(id,current);
+      persistedUnreadByConversation.set(id,current);
+    });
+    conversations=next.sort((a,b)=>Date.parse(b.updatedAt||b.createdAt||0)-Date.parse(a.updatedAt||a.createdAt||0));
+    syncUnreadMessageListeners();
+    updateSelectedPresence();
     renderList().catch(e=>console.warn('render conversations',e));
   },e=>console.error('conversation listener',e));
 }
 async function hydratePeople(ids){const map=new Map();await Promise.all([...new Set(ids.filter(Boolean))].map(async id=>{try{const s=await getDoc(doc(db,'publicProfiles',id));if(s.exists())map.set(id,{uid:id,...s.data()})}catch{}}));return map}
 function otherId(c){return c.type==='direct'?c.members.find(x=>x!==user.uid)||'':''}
-async function conversationPeople(){const ids=[];conversations.forEach(c=>c.members?.forEach(id=>{if(id!==user.uid)ids.push(id)}));friends.forEach(f=>f.members?.forEach(id=>{if(id!==user.uid)ids.push(id)}));incoming.forEach(r=>{if(r.fromUid&&r.fromUid!==user.uid)ids.push(r.fromUid)});outgoing.forEach(r=>{if(r.toUid&&r.toUid!==user.uid)ids.push(r.toUid)});return hydratePeople(ids)}
-let people=new Map();
-async function renderList(){const list=document.getElementById('chatList');people=await conversationPeople();const q=(document.getElementById('chatSearch').value||'').trim().toLowerCase();let html='';
-if(listMode==='requests'){html=incoming.length?incoming.map(r=>{const p=people.get(r.fromUid)||{};return '<div class="contact" style="margin:8px"><div>'+avatar(p.name||'K',p.photoURL)+'</div><div class="contact-main"><strong>'+esc(p.name||p.email||'Member')+'</strong></div><div class="contact-actions"><button class="text-btn primary" data-accept="'+r.id+'">Accept</button><button class="text-btn" data-reject="'+r.id+'">Decline</button></div></div>'}).join(''):'<div class="empty-chat"><div>No pending requests.</div></div>'}
-else if(listMode==='friends'){const arr=friends.map(f=>{const id=f.members.find(x=>x!==user.uid),p=people.get(id)||{};return{id,p}}).filter(x=>!q||String(x.p.name||'').toLowerCase().includes(q));html=arr.length?arr.map(x=>'<div class="chat-row" data-person="'+x.id+'">'+avatar(x.p.name,x.p.photoURL)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.p.name||'Member')+'</span></div></div></div>').join(''):'<div class="empty-chat"><div>No friends yet.<br>Use ＋ to find KARP members.</div></div>'}
-else{
-  const chatItems=[];
-  const seen=new Set();
-  conversations.forEach(c=>{
-    const other=c.type==='direct'?otherId(c):'';
-    if(c.type==='direct'&&other)seen.add(other);
-    const p=c.type==='direct'?people.get(other):null;
-    const name=c.type==='group'?c.name:(p?.name||p?.email||'Member');
-    if(!q||name.toLowerCase().includes(q)){
-      chatItems.push({kind:'conversation',id:c.id,personId:other,data:c,name,url:c.type==='group'?'':p?.photoURL,unread:Number(c['unread_'+user.uid]||0)});
-    }
-  });
-  // A friendship is itself enough to show the person in Chats even if the conversation
-  // document has not appeared yet or an older conversation record is missing.
-  friends.forEach(f=>{
-    const other=f.members?.find(x=>x!==user.uid);
-    if(!other||seen.has(other))return;
-    const p=people.get(other)||{};
-    const name=p.name||'Member';
-    if(!q||name.toLowerCase().includes(q)){
-      chatItems.push({kind:'friend',id:other,personId:other,data:null,name,url:p.photoURL});
-    }
-  });
-  chatItems.sort((a,b)=>{
-    const ta=a.data?.updatedAt||a.data?.createdAt||'';
-    const tb=b.data?.updatedAt||b.data?.createdAt||'';
-    return Date.parse(tb||0)-Date.parse(ta||0);
-  });
-  html=chatItems.length?chatItems.map(x=>x.kind==='conversation'
-    ? '<div class="chat-row '+(selected?.id===x.id?'active':'')+'" data-conv="'+x.id+'">'+avatar(x.name,x.url)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.name)+'</span><span class="chat-row-meta"><span class="chat-row-time">'+esc(fmt(x.data.updatedAt||x.data.createdAt))+'</span>'+(x.unread?'<span class="chat-unread">'+esc(x.unread>99?'99+':x.unread)+'</span>':'')+'</span></div><div class="chat-row-preview">'+esc(x.data.lastMessage||'No messages yet')+'</div></div></div>'
-    : '<div class="chat-row" data-person="'+x.personId+'">'+avatar(x.name,x.url)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.name)+'</span></div></div></div>'
-  ).join(''):'<div class="empty-chat"><div><strong>No conversations</strong>Start a new chat with a KARP friend.</div></div>';
+async function conversationPeople(){
+  const ids=[];
+  conversations.forEach(c=>c.members?.forEach(id=>{if(id!==user.uid)ids.push(id)}));
+  friends.forEach(f=>f.members?.forEach(id=>{if(id!==user.uid)ids.push(id)}));
+  incoming.forEach(r=>{if(r.fromUid&&r.fromUid!==user.uid)ids.push(r.fromUid)});
+  outgoing.forEach(r=>{if(r.toUid&&r.toUid!==user.uid)ids.push(r.toUid)});
+  syncPresenceListeners(ids);
+  return hydratePeople(ids);
 }
-list.innerHTML=html;
-list.querySelectorAll('[data-conv]').forEach(x=>x.onclick=()=>openConversation(x.dataset.conv));
-list.querySelectorAll('[data-person]').forEach(x=>x.onclick=()=>startDirect(x.dataset.person));
-list.querySelectorAll('[data-accept]').forEach(x=>x.onclick=()=>acceptRequest(x.dataset.accept));
-list.querySelectorAll('[data-reject]').forEach(x=>x.onclick=()=>rejectRequest(x.dataset.reject));
+let people=new Map();
+async function renderList(){
+  const list=document.getElementById('chatList');
+  if(!list||!user)return;
+  people=await conversationPeople();
+  const q=(document.getElementById('chatSearch').value||'').trim().toLowerCase();
+  let html='';
+  if(listMode==='requests'){
+    html=incoming.length?incoming.map(r=>{
+      const p=people.get(r.fromUid)||{};
+      return '<div class="contact" style="margin:8px"><div>'+personAvatar(p.name||'K',p.photoURL,r.fromUid)+'</div><div class="contact-main"><strong>'+esc(p.name||'Member')+'</strong><div class="presence-row">'+presenceText(r.fromUid)+'</div></div><div class="contact-actions"><button class="text-btn primary" data-accept="'+r.id+'">Accept</button><button class="text-btn" data-reject="'+r.id+'">Decline</button></div></div>';
+    }).join(''):'<div class="empty-chat"><div>No pending requests.</div></div>';
+  }else if(listMode==='friends'){
+    const arr=friends.map(f=>{
+      const id=f.members.find(x=>x!==user.uid),p=people.get(id)||{};
+      return{id,p};
+    }).filter(x=>!q||String(x.p.name||'').toLowerCase().includes(q));
+    html=arr.length?arr.map(x=>
+      '<div class="chat-row" data-person="'+x.id+'">'+personAvatar(x.p.name,x.p.photoURL,x.id)+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.p.name||'Member')+'</span>'+presenceText(x.id)+'</div></div></div>'
+    ).join(''):'<div class="empty-chat"><div>No friends yet.<br>Use ＋ to find KARP members.</div></div>';
+  }else{
+    const chatItems=[];
+    const seen=new Set();
+    conversations.forEach(c=>{
+      const other=c.type==='direct'?otherId(c):'';
+      if(c.type==='direct'&&other)seen.add(other);
+      const p=c.type==='direct'?people.get(other):null;
+      const name=c.type==='group'?c.name:(p?.name||'Member');
+      if(!q||name.toLowerCase().includes(q)){
+        const stored=Number(c['unread_'+user.uid]||0);
+        const live=Number(liveUnreadByConversation.get(c.id)||0);
+        chatItems.push({
+          kind:'conversation',id:c.id,personId:other,data:c,name,
+          url:c.type==='group'?'':p?.photoURL,
+          unread:selected?.id===c.id?0:Math.max(stored,live)
+        });
+      }
+    });
+    friends.forEach(f=>{
+      const other=f.members?.find(x=>x!==user.uid);
+      if(!other||seen.has(other))return;
+      const p=people.get(other)||{};
+      const name=p.name||'Member';
+      if(!q||name.toLowerCase().includes(q)){
+        chatItems.push({kind:'friend',id:other,personId:other,data:null,name,url:p.photoURL,unread:0});
+      }
+    });
+    chatItems.sort((a,b)=>{
+      const ta=a.data?.updatedAt||a.data?.createdAt||'';
+      const tb=b.data?.updatedAt||b.data?.createdAt||'';
+      return Date.parse(tb||0)-Date.parse(ta||0);
+    });
+    html=chatItems.length?chatItems.map(x=>{
+      const picture=x.personId?personAvatar(x.name,x.url,x.personId):avatar(x.name,x.url);
+      const meta=x.personId?presenceText(x.personId):'';
+      if(x.kind==='conversation'){
+        return '<div class="chat-row '+(selected?.id===x.id?'active':'')+'" data-conv="'+x.id+'">'+picture+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.name)+'</span>'+meta+'<span class="chat-row-meta"><span class="chat-row-time">'+esc(fmt(x.data.updatedAt||x.data.createdAt))+'</span>'+(x.unread?'<span class="chat-unread" aria-label="'+esc(x.unread)+' unread messages" title="'+esc(x.unread)+' unread messages">'+esc(x.unread>99?'99+':x.unread)+'</span>':'')+'</span></div><div class="chat-row-preview">'+esc(x.data.lastMessage||'No messages yet')+'</div></div></div>';
+      }
+      return '<div class="chat-row" data-person="'+x.personId+'">'+picture+'<div class="chat-row-main"><div class="chat-row-top"><span class="chat-row-name">'+esc(x.name)+'</span>'+meta+'</div></div></div>';
+    }).join(''):'<div class="empty-chat"><div><strong>No conversations</strong>Start a new chat with a KARP friend.</div></div>';
+  }
+  list.innerHTML=html;
+  list.querySelectorAll('[data-conv]').forEach(x=>x.onclick=()=>openConversation(x.dataset.conv));
+  list.querySelectorAll('[data-person]').forEach(x=>x.onclick=()=>startDirect(x.dataset.person));
+  list.querySelectorAll('[data-accept]').forEach(x=>x.onclick=()=>acceptRequest(x.dataset.accept));
+  list.querySelectorAll('[data-reject]').forEach(x=>x.onclick=()=>rejectRequest(x.dataset.reject));
 }
 async function openConversation(id){
   const c=conversations.find(x=>x.id===id);
@@ -362,8 +498,10 @@ async function openConversation(id){
   selected=c;
   if(unsubMsg)unsubMsg();
   const p=c.type==='direct'?people.get(otherId(c)):null;
-  const headDisplayName=c.type==='group'?c.name:(p?.name||p?.email||'Member');
+  const headDisplayName=c.type==='group'?c.name:(p?.name||'Member');
   document.getElementById('headName').textContent=headDisplayName;
+  updateSelectedPresence();
+  liveUnreadByConversation.set(id,0);
   const headAvatar=document.getElementById('headAvatar');
   if(headAvatar){headAvatar.innerHTML=(c.type==='direct'&&p?.photoURL?'<img src="'+esc(p.photoURL)+'" alt="">':esc(String(headDisplayName||'K').trim().split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase()||'K'));}
     document.getElementById('composer').disabled=false;
@@ -574,7 +712,7 @@ async function acceptRequest(id){
 }
 async function rejectRequest(id){const r=incoming.find(x=>x.id===id);if(!r)return;try{await updateDoc(doc(db,'friendRequests',id),{status:'rejected',respondedAt:new Date().toISOString()});await refreshRequestsFromServer()}catch(e){console.error('reject request',e);alert(chatErrorMessage(e,'Could not decline request.'))}}
 async function openNewChat(){if(!requireUser())return;modal('New conversation','<input id="peopleSearch" class="modal-search" placeholder="Search KARP members by name…"><div id="peopleResults"><div style="font-size:10px;color:#7b8289">Search for a member to connect.</div></div>');const input=document.getElementById('peopleSearch');let timer;input.oninput=()=>{clearTimeout(timer);timer=setTimeout(()=>searchPeople(input.value),180)};input.focus();searchPeople('')}
-async function searchPeople(term){const box=document.getElementById('peopleResults');if(!box)return;try{const s=await getDocs(query(collection(db,'publicProfiles'),limit(200)));const q=term.trim().toLowerCase();const arr=s.docs.map(d=>({uid:d.id,...d.data()})).filter(p=>p.uid!==user.uid&&(!q||String(p.name||'').toLowerCase().includes(q)||String(p.email||'').toLowerCase().includes(q))).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'en',{sensitivity:'base'})).slice(0,50);const friendIds=new Set(friends.flatMap(f=>f.members||[]));box.innerHTML=arr.length?arr.map(p=>{const isFriend=friendIds.has(p.uid),pendingIn=incoming.some(r=>r.fromUid===p.uid),pendingOut=outgoing.some(r=>r.toUid===p.uid);return '<div class="contact">'+avatar(p.name,p.photoURL)+'<div class="contact-main"><strong>'+esc(p.name||p.email||'Member')+'</strong></div><div class="contact-actions">'+(isFriend?'<button class="text-btn primary" data-open-person="'+p.uid+'">Message</button>':pendingIn?'<button class="text-btn" data-accept="'+(incoming.find(r=>r.fromUid===p.uid)?.id||'')+'">Accept</button>':pendingOut?'<button class="text-btn">Invited</button>':'<button class="text-btn primary" data-add="'+p.uid+'">Connect</button>')+'</div></div>'}).join(''):'<div style="padding:18px;text-align:center;font-size:10px;color:#7b8289">No members found.</div>';box.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>sendRequest(b.dataset.add));box.querySelectorAll('[data-open-person]').forEach(b=>{closeModal();startDirect(b.dataset.openPerson)});box.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>{closeModal();acceptRequest(b.dataset.accept)})}catch(e){box.innerHTML='<div style="font-size:10px;color:#9b2c2c">Could not load members.</div>'}}
+async function searchPeople(term){const box=document.getElementById('peopleResults');if(!box)return;try{const s=await getDocs(query(collection(db,'publicProfiles'),limit(200)));const q=term.trim().toLowerCase();const arr=s.docs.map(d=>({uid:d.id,...d.data()})).filter(p=>p.uid!==user.uid&&(!q||String(p.name||'').toLowerCase().includes(q))).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'en',{sensitivity:'base'})).slice(0,50);const friendIds=new Set(friends.flatMap(f=>f.members||[]));box.innerHTML=arr.length?arr.map(p=>{const isFriend=friendIds.has(p.uid),pendingIn=incoming.some(r=>r.fromUid===p.uid),pendingOut=outgoing.some(r=>r.toUid===p.uid);return '<div class="contact">'+personAvatar(p.name,p.photoURL,p.uid)+'<div class="contact-main"><strong>'+esc(p.name||'Member')+'</strong></div><div class="contact-actions">'+(isFriend?'<button class="text-btn primary" data-open-person="'+p.uid+'">Message</button>':pendingIn?'<button class="text-btn" data-accept="'+(incoming.find(r=>r.fromUid===p.uid)?.id||'')+'">Accept</button>':pendingOut?'<button class="text-btn">Invited</button>':'<button class="text-btn primary" data-add="'+p.uid+'">Connect</button>')+'</div></div>'}).join(''):'<div style="padding:18px;text-align:center;font-size:10px;color:#7b8289">No members found.</div>';box.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>sendRequest(b.dataset.add));box.querySelectorAll('[data-open-person]').forEach(b=>{closeModal();startDirect(b.dataset.openPerson)});box.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>{closeModal();acceptRequest(b.dataset.accept)})}catch(e){box.innerHTML='<div style="font-size:10px;color:#9b2c2c">Could not load members.</div>'}}
 async function sendRequest(uid){
   if(!requireUser()||!uid||uid===user.uid)return;
   if(outgoing.some(r=>r.toUid===uid)){await searchPeople(document.getElementById('peopleSearch')?.value||'');return}
@@ -590,8 +728,8 @@ async function sendRequest(uid){
   await refreshRequestsFromServer().catch(e=>console.warn('refresh after sending request',e));
 }
 function invite(){const url=location.origin+'/signup.html?invite='+encodeURIComponent(user?.uid||'');navigator.clipboard?.writeText(url).then(()=>alert('Invite link copied.')).catch(()=>window.prompt('Copy this invite link:',url))}
-function openGroup(initial=[]){if(!requireUser())return;const friendIds=[...new Set(friends.flatMap(f=>f.members||[]).filter(id=>id!==user.uid))];modal('New group','<input id="groupName" class="modal-search" placeholder="Group name"><div class="group-picks">'+friendIds.map(id=>{const p=people.get(id)||{};return '<label class="group-pick">'+avatar(p.name,p.photoURL)+'<span style="font-size:10px;font-weight:750">'+esc(p.name||p.email||'Member')+'</span><input type="checkbox" value="'+id+'" '+(initial.includes(id)?'checked':'')+'></label>'}).join('')+'</div>','<button class="text-btn" id="groupCancel">Cancel</button><button class="text-btn primary" id="groupCreate">Create group</button>');document.getElementById('groupCancel').onclick=closeModal;document.getElementById('groupCreate').onclick=async()=>{const name=document.getElementById('groupName').value.trim();const ids=[...document.querySelectorAll('.group-pick input:checked')].map(x=>x.value);if(!name||!ids.length)return;const members=[user.uid,...ids];try{const r=await addDoc(collection(db,'conversations'),{type:'group',status:'accepted',members,createdBy:user.uid,name,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),lastMessage:''});closeModal();await loadConversations();await renderList();openConversation(r.id)}catch(e){console.error('Could not create group:',e);alert(chatErrorMessage(e,'Could not create group.'))}}}
-document.getElementById('newChat').onclick=openNewChat;document.getElementById('inviteBtn').onclick=invite;document.getElementById('profileBtn').onclick=()=>{if(!signedIn())return requireUser();modal('Your KARP profile','<div class="profile-card" style="border:0">'+avatar(displayName(),photo())+'<div class="profile-name">'+esc(displayName())+'</div><div class="profile-sub">'+esc(user.email||'')+'</div></div>','<button class="text-btn" id="closeProfile">Close</button>');document.getElementById('closeProfile').onclick=closeModal};document.getElementById('backMobile').onclick=()=>document.getElementById('chat-window').classList.add('mobile-list');
+function openGroup(initial=[]){if(!requireUser())return;const friendIds=[...new Set(friends.flatMap(f=>f.members||[]).filter(id=>id!==user.uid))];modal('New group','<input id="groupName" class="modal-search" placeholder="Group name"><div class="group-picks">'+friendIds.map(id=>{const p=people.get(id)||{};return '<label class="group-pick">'+personAvatar(p.name,p.photoURL,p.uid)+'<span style="font-size:10px;font-weight:750">'+esc(p.name||'Member')+'</span><input type="checkbox" value="'+id+'" '+(initial.includes(id)?'checked':'')+'></label>'}).join('')+'</div>','<button class="text-btn" id="groupCancel">Cancel</button><button class="text-btn primary" id="groupCreate">Create group</button>');document.getElementById('groupCancel').onclick=closeModal;document.getElementById('groupCreate').onclick=async()=>{const name=document.getElementById('groupName').value.trim();const ids=[...document.querySelectorAll('.group-pick input:checked')].map(x=>x.value);if(!name||!ids.length)return;const members=[user.uid,...ids];try{const r=await addDoc(collection(db,'conversations'),{type:'group',status:'accepted',members,createdBy:user.uid,name,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),lastMessage:''});closeModal();await loadConversations();await renderList();openConversation(r.id)}catch(e){console.error('Could not create group:',e);alert(chatErrorMessage(e,'Could not create group.'))}}}
+document.getElementById('newChat').onclick=openNewChat;document.getElementById('inviteBtn').onclick=invite;document.getElementById('profileBtn').onclick=()=>{if(!signedIn())return requireUser();modal('Your KARP profile','<div class="profile-card" style="border:0">'+avatar(displayName(),photo())+'<div class="profile-name">'+esc(displayName())+'</div><div class="profile-sub">KARP member</div></div>','<button class="text-btn" id="closeProfile">Close</button>');document.getElementById('closeProfile').onclick=closeModal};document.getElementById('backMobile').onclick=()=>document.getElementById('chat-window').classList.add('mobile-list');
 document.querySelectorAll('.chat-tab').forEach(b=>b.onclick=async()=>{document.querySelectorAll('.chat-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');listMode=b.dataset.list;await renderList()});
 au.onAuthStateChanged(auth,async u=>{
   if(unsubIncoming){unsubIncoming();unsubIncoming=null}
