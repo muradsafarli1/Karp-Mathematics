@@ -52,6 +52,7 @@ const au=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.
 const {collection,doc,getDoc,getDocs,query,where,orderBy,limit,limitToLast,onSnapshot,addDoc,setDoc,updateDoc,deleteDoc,increment,serverTimestamp}=fs;
 let user=null,meProfile={},conversations=[],friends=[],incoming=[],outgoing=[],selected=null,messages=[],unsubConv=null,unsubMsg=null,unsubIncoming=null,unsubOutgoing=null,listMode='chats',sendingMessage=false;
 const presenceUnsubs=new Map(),presenceByUid=new Map(),unreadMessageUnsubs=new Map(),liveUnreadByConversation=new Map(),unreadInitialized=new Set(),persistedUnreadByConversation=new Map();
+let searchPresenceIds=new Set();
 let presenceRenderTimer=null;
 const esc=window.escapeHtml||((x)=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
 const signedIn=()=>!!user;
@@ -75,7 +76,7 @@ const photo=()=>String(meProfile.photoURL||'');
 const avatar=(name,url,cls='chat-avatar')=>'<span class="'+cls+'">'+(url?'<img src="'+esc(url)+'" alt="">':esc(String(name||'K').trim().split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase()||'K'))+'</span>';
 const fmt=v=>{if(!v)return'';const d=v?.toDate?v.toDate():new Date(v);if(Number.isNaN(d.getTime()))return'';const n=new Date(),same=d.toDateString()===n.toDateString();return same?d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString([], {day:'2-digit',month:'short'})};
 const modal=(title,body,foot='')=>{document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;document.getElementById('modalFoot').innerHTML=foot;document.getElementById('modal').classList.add('open')};
-const closeModal=()=>document.getElementById('modal').classList.remove('open');
+const closeModal=()=>{document.getElementById('modal').classList.remove('open');searchPresenceIds.clear();if(user)syncPresenceListeners(trackedPersonIds());};
 document.getElementById('modalClose').onclick=closeModal;document.getElementById('modal').onclick=e=>{if(e.target.id==='modal')closeModal()};
 function requireUser(){if(!signedIn()){window.showAuthPrompt?.('Sign in to KARP','Sign in to send messages and connect with KARP members.');return false}return true}
 function chatErrorMessage(error,fallback='This action could not be completed.'){
@@ -345,7 +346,7 @@ if(!window.__karpChatPresenceTicker){
 }
 function syncPresenceListeners(ids){
   if(!user)return;
-  const wanted=new Set(ids.filter(id=>id&&id!==user.uid));
+  const wanted=new Set([...ids,...searchPresenceIds].filter(id=>id&&id!==user.uid));
   for(const [uid,unsubscribe] of presenceUnsubs){
     if(!wanted.has(uid)){unsubscribe();presenceUnsubs.delete(uid);presenceByUid.delete(uid);}
   }
@@ -430,12 +431,16 @@ async function loadConversations(){
 }
 async function hydratePeople(ids){const map=new Map();await Promise.all([...new Set(ids.filter(Boolean))].map(async id=>{try{const s=await getDoc(doc(db,'publicProfiles',id));if(s.exists())map.set(id,{uid:id,...s.data()})}catch{}}));return map}
 function otherId(c){return c.type==='direct'?c.members.find(x=>x!==user.uid)||'':''}
-async function conversationPeople(){
+function trackedPersonIds(){
   const ids=[];
-  conversations.forEach(c=>c.members?.forEach(id=>{if(id!==user.uid)ids.push(id)}));
-  friends.forEach(f=>f.members?.forEach(id=>{if(id!==user.uid)ids.push(id)}));
-  incoming.forEach(r=>{if(r.fromUid&&r.fromUid!==user.uid)ids.push(r.fromUid)});
-  outgoing.forEach(r=>{if(r.toUid&&r.toUid!==user.uid)ids.push(r.toUid)});
+  conversations.forEach(c=>c.members?.forEach(id=>{if(id!==user?.uid)ids.push(id)}));
+  friends.forEach(f=>f.members?.forEach(id=>{if(id!==user?.uid)ids.push(id)}));
+  incoming.forEach(r=>{if(r.fromUid&&r.fromUid!==user?.uid)ids.push(r.fromUid)});
+  outgoing.forEach(r=>{if(r.toUid&&r.toUid!==user?.uid)ids.push(r.toUid)});
+  return [...new Set(ids)];
+}
+async function conversationPeople(){
+  const ids=trackedPersonIds();
   syncPresenceListeners(ids);
   return hydratePeople(ids);
 }
@@ -726,7 +731,7 @@ async function acceptRequest(id){
 }
 async function rejectRequest(id){const r=incoming.find(x=>x.id===id);if(!r)return;try{await updateDoc(doc(db,'friendRequests',id),{status:'rejected',respondedAt:new Date().toISOString()});await refreshRequestsFromServer()}catch(e){console.error('reject request',e);alert(chatErrorMessage(e,'Could not decline request.'))}}
 async function openNewChat(){if(!requireUser())return;modal('New conversation','<input id="peopleSearch" class="modal-search" placeholder="Search KARP members by name…"><div id="peopleResults"><div style="font-size:10px;color:#7b8289">Search for a member to connect.</div></div>');const input=document.getElementById('peopleSearch');let timer;input.oninput=()=>{clearTimeout(timer);timer=setTimeout(()=>searchPeople(input.value),180)};input.focus();searchPeople('')}
-async function searchPeople(term){const box=document.getElementById('peopleResults');if(!box)return;try{const s=await getDocs(query(collection(db,'publicProfiles'),limit(200)));const q=term.trim().toLowerCase();const arr=s.docs.map(d=>({uid:d.id,...d.data()})).filter(p=>p.uid!==user.uid&&(!q||String(p.name||'').toLowerCase().includes(q))).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'en',{sensitivity:'base'})).slice(0,50);const friendIds=new Set(friends.flatMap(f=>f.members||[]));box.innerHTML=arr.length?arr.map(p=>{const isFriend=friendIds.has(p.uid),pendingIn=incoming.some(r=>r.fromUid===p.uid),pendingOut=outgoing.some(r=>r.toUid===p.uid);return '<div class="contact">'+personAvatar(p.name,p.photoURL,p.uid)+'<div class="contact-main"><strong>'+esc(p.name||'Member')+'</strong></div><div class="contact-actions">'+(isFriend?'<button class="text-btn primary" data-open-person="'+p.uid+'">Message</button>':pendingIn?'<button class="text-btn" data-accept="'+(incoming.find(r=>r.fromUid===p.uid)?.id||'')+'">Accept</button>':pendingOut?'<button class="text-btn">Invited</button>':'<button class="text-btn primary" data-add="'+p.uid+'">Connect</button>')+'</div></div>'}).join(''):'<div style="padding:18px;text-align:center;font-size:10px;color:#7b8289">No members found.</div>';box.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>sendRequest(b.dataset.add));box.querySelectorAll('[data-open-person]').forEach(b=>{closeModal();startDirect(b.dataset.openPerson)});box.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>{closeModal();acceptRequest(b.dataset.accept)})}catch(e){box.innerHTML='<div style="font-size:10px;color:#9b2c2c">Could not load members.</div>'}}
+async function searchPeople(term){const box=document.getElementById('peopleResults');if(!box)return;try{const s=await getDocs(query(collection(db,'publicProfiles'),limit(200)));const q=term.trim().toLowerCase();const arr=s.docs.map(d=>({uid:d.id,...d.data()})).filter(p=>p.uid!==user.uid&&(!q||String(p.name||'').toLowerCase().includes(q))).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'en',{sensitivity:'base'})).slice(0,50);searchPresenceIds=new Set(arr.map(p=>p.uid));syncPresenceListeners(trackedPersonIds());const friendIds=new Set(friends.flatMap(f=>f.members||[]));box.innerHTML=arr.length?arr.map(p=>{const isFriend=friendIds.has(p.uid),pendingIn=incoming.some(r=>r.fromUid===p.uid),pendingOut=outgoing.some(r=>r.toUid===p.uid);return '<div class="contact">'+personAvatar(p.name,p.photoURL,p.uid)+'<div class="contact-main"><strong>'+esc(p.name||'Member')+'</strong></div><div class="contact-actions">'+(isFriend?'<button class="text-btn primary" data-open-person="'+p.uid+'">Message</button>':pendingIn?'<button class="text-btn" data-accept="'+(incoming.find(r=>r.fromUid===p.uid)?.id||'')+'">Accept</button>':pendingOut?'<button class="text-btn">Invited</button>':'<button class="text-btn primary" data-add="'+p.uid+'">Connect</button>')+'</div></div>'}).join(''):'<div style="padding:18px;text-align:center;font-size:10px;color:#7b8289">No members found.</div>';box.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>sendRequest(b.dataset.add));box.querySelectorAll('[data-open-person]').forEach(b=>{closeModal();startDirect(b.dataset.openPerson)});box.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>{closeModal();acceptRequest(b.dataset.accept)})}catch(e){box.innerHTML='<div style="font-size:10px;color:#9b2c2c">Could not load members.</div>'}}
 async function sendRequest(uid){
   if(!requireUser()||!uid||uid===user.uid)return;
   if(outgoing.some(r=>r.toUid===uid)){await searchPeople(document.getElementById('peopleSearch')?.value||'');return}
