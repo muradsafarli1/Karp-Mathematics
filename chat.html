@@ -430,6 +430,14 @@ async function sendMessage(){
     sendingMessage=false;
     e.disabled=!user||!selected;
     sendButton.disabled=!user||!selected;
+    // Disabling the textarea while sending causes the browser to drop focus.
+    // Restore it as soon as it is enabled so consecutive messages need no
+    // extra click. Do not steal focus if the user switched conversations.
+    requestAnimationFrame(()=>{
+      if(user&&selected?.id===conversation.id&&!e.disabled){
+        e.focus({preventScroll:true});
+      }
+    });
   }
 }
 document.getElementById('send').onclick=sendMessage;document.getElementById('composer').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}};document.getElementById('chatSearch').oninput=renderList;
