@@ -171,7 +171,8 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
   function solutionMessage(item){
     const name=item.displayName||'KARP Member';
     const dateLabel=dateTime(item.createdAt);
-    const gems=Number(item.authorGems||0);
+    // Show the reward for this particular solution, not the member's lifetime balance.
+    const gems=Number(item.rewardGems||0);
     const pending=item.status==='pending';
     return '<article class="daily-message '+(pending?'pending':'')+'"><div class="daily-message-head"><div class="daily-message-author">'+avatarMarkup(name,item.photoURL||'')+'<div><span class="daily-message-name">'+safe(name)+'</span>'+(gems>0?'<span class="daily-gem-badge">💎 '+gems+' Gems</span>':'')+(pending?'<div class="daily-message-status">Sent · awaiting approval</div>':'')+'</div></div><time class="daily-message-meta">'+safe(dateLabel)+'</time></div><div class="daily-message-body">'+safe(item.solution||'').replace(/\n/g,'<br>')+'</div></article>';
   }
