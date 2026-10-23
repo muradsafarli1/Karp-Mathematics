@@ -1215,7 +1215,13 @@ async function renderDailyProblemAdmin(){
     m.querySelectorAll('[data-daily-status]').forEach(button=>button.onclick=async()=>{
       const id=button.dataset.dailyId,status=button.dataset.dailyStatus,problemId=String(button.dataset.dailyProblemId||currentProblemId);
       if(!id||!['approved','rejected'].includes(status))return;
-      if(status==='rejected'&&!confirm('Reject this solution?'))return;
+      if(status==='rejected'){
+        const target=submissions.find(x=>x.id===id);
+        const question=target?.status==='approved'
+          ?'Delete this published solution? Any Gems awarded for it will be removed from the member balance.'
+          :'Reject and delete this pending solution?';
+        if(!confirm(question))return;
+      }
       let chosenGems=0;
       if(status==='approved'){
         const entered=window.prompt('How many Gems should this solution receive? Enter a whole number from 0 to 1000000.','5');
