@@ -7,7 +7,7 @@
 <script src="/app.js?v=20261022chat3"></script>
 <style>
 :root{--wa-bg:#f5f6f4;--wa-panel:#fff;--wa-line:#e5e7e5;--wa-soft:#f0f2f0;--wa-ink:#17191c;--wa-muted:#7b8289;--wa-accent:#263b5b}
-.chat-app{height:calc(100vh - 72px);min-height:0;background:var(--wa-bg);padding:0;box-sizing:border-box}
+.chat-app{height:calc(100vh - 72px);min-height:0;background:var(--wa-bg);padding:0;box-sizing:border-box}\n.chat-top .navlinks{gap:clamp(8px,1vw,14px);font-size:12px}
 .chat-window{height:100%;width:100%;max-width:none;margin:0;display:grid;grid-template-columns:360px minmax(0,1fr);border:0;border-radius:0;overflow:hidden;background:#fff;box-shadow:none}
 .chat-left{border-right:1px solid var(--wa-line);display:flex;flex-direction:column;min-width:0;background:#fff}
 .chat-brand{height:64px;padding:0 18px;border-bottom:1px solid var(--wa-line);display:flex;align-items:center;justify-content:space-between}
@@ -31,7 +31,7 @@
 </style>
 </head>
 <body>
-<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/daily-problem.html">Daily Problem</a><a href="/mock.html">Mocks</a><a href="/books.html">Books</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a class="active" href="/chat.html">Chat</a><a href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header>
+<header class="top chat-top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/daily-problem.html">Daily Problem</a><a href="/mock.html">Mocks</a><a href="/books.html">Books</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a class="active" href="/chat.html">Chat</a><div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a></div></div><a href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header>
 <main class="chat-app"><div class="chat-window" id="chat-window">
 <aside class="chat-left"><div class="chat-brand"><div><strong>Messages</strong></div><button class="icon-btn" id="profileBtn" title="Profile">⋯</button></div>
 <div class="chat-left-tools"><input id="chatSearch" class="chat-search" placeholder="Search conversations"><button class="icon-btn" id="newChat" title="New chat">＋</button></div>
@@ -47,7 +47,7 @@
 const {db,auth}=await import('/karp-firebase.js');
 const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
 const au=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
-const {collection,doc,getDoc,getDocs,query,where,orderBy,limit,onSnapshot,addDoc,setDoc,updateDoc,deleteDoc,increment,serverTimestamp}=fs;
+const {collection,doc,getDoc,getDocs,query,where,orderBy,limit,limitToLast,onSnapshot,addDoc,setDoc,updateDoc,deleteDoc,increment,serverTimestamp}=fs;
 let user=null,meProfile={},conversations=[],friends=[],incoming=[],outgoing=[],selected=null,messages=[],unsubConv=null,unsubMsg=null,unsubIncoming=null,unsubOutgoing=null,listMode='chats',sendingMessage=false;
 const esc=window.escapeHtml||((x)=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
 const signedIn=()=>!!user;
@@ -58,13 +58,16 @@ function updateChatNav(u){
     box.innerHTML='<a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a>';
     return;
   }
-  const name=String(u.displayName||u.email||'Member').trim();
+  const name=String(meProfile.name||u.displayName||u.email||'Member').trim();
   const initial=esc(name.charAt(0).toUpperCase()||'K');
-  const img=u.photoURL?'<img src="'+esc(u.photoURL)+'" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover">':'<span style="width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#e8edf2;color:#263b5b;font-weight:900">'+initial+'</span>';
+  // KARP's saved profile photo is authoritative here; Firebase Auth photoURL
+  // may be the user's Google/Gmail avatar rather than the KARP account image.
+  const profilePhoto=String(meProfile.photoURL||'').trim();
+  const img=profilePhoto?'<img src="'+esc(profilePhoto)+'" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover">':'<span style="width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#e8edf2;color:#263b5b;font-weight:900">'+initial+'</span>';
   box.innerHTML='<a href="/account.html" aria-label="Account" title="Account" style="display:flex;align-items:center">'+img+'</a>';
 }
 const displayName=()=>String(meProfile.name||user?.displayName||(user?.email||'').split('@')[0]||'Member').slice(0,100);
-const photo=()=>String(meProfile.photoURL||user?.photoURL||'');
+const photo=()=>String(meProfile.photoURL||'');
 const avatar=(name,url,cls='chat-avatar')=>'<span class="'+cls+'">'+(url?'<img src="'+esc(url)+'" alt="">':esc(String(name||'K').trim().split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase()||'K'))+'</span>';
 const fmt=v=>{if(!v)return'';const d=v?.toDate?v.toDate():new Date(v);if(Number.isNaN(d.getTime()))return'';const n=new Date(),same=d.toDateString()===n.toDateString();return same?d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString([], {day:'2-digit',month:'short'})};
 const modal=(title,body,foot='')=>{document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;document.getElementById('modalFoot').innerHTML=foot;document.getElementById('modal').classList.add('open')};
@@ -372,7 +375,7 @@ async function openConversation(id){
     await updateDoc(doc(db,'conversations',id),{['unread_'+user.uid]:0});
   }catch(e){console.warn('mark conversation read',e)}
   conversations=conversations.map(x=>x.id===id?{...x,['unread_'+user.uid]:0}:x);
-  unsubMsg=onSnapshot(query(collection(db,'conversations',id,'messages'),orderBy('createdAt','asc'),limit(500)),s=>{
+  // Keep the newest 500 messages. An ascending limit(500) returns the oldest\n  // messages and can make every later message appear missing in busy chats.\n  unsubMsg=onSnapshot(query(collection(db,'conversations',id,'messages'),orderBy('createdAt','asc'),limitToLast(500)),s=>{
     messages=s.docs.map(d=>({id:d.id,...d.data()}));
     renderMessages();
     updateDoc(doc(db,'conversations',id),{['unread_'+user.uid]:0}).catch(()=>{});
@@ -600,6 +603,7 @@ au.onAuthStateChanged(auth,async u=>{
     return;
   }
   await loadProfile();
+  updateChatNav(user); // Re-render after the KARP profile (not Google Auth) photo has loaded.
   await loadFriends();
   await loadRequests();
   await loadConversations();
