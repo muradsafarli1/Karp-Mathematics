@@ -36,7 +36,7 @@
 <header class="top chat-top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/daily-problem.html">Daily Problem</a><a href="/mock.html">Mocks</a><a href="/books.html">Books</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a class="active" href="/chat.html">Chat</a><div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a></div></div><a href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header>
 <main class="chat-app"><div class="chat-window" id="chat-window">
 <aside class="chat-left"><div class="chat-brand"><div><strong>Messages</strong></div><button class="icon-btn" id="profileBtn" title="Profile">⋯</button></div>
-<div class="chat-left-tools"><input id="chatSearch" class="chat-search" placeholder="Search conversations"><button class="icon-btn" id="newChat" title="New chat">＋</button></div>
+<div class="chat-left-tools"><input id="chatSearch" class="chat-search" placeholder="Search conversations"><button type="button" class="icon-btn" id="newChat" title="New chat" aria-label="New conversation">＋</button></div>
 <div class="chat-tabs"><button class="chat-tab active" data-list="chats">Chats</button><button class="chat-tab" data-list="friends">Friends</button><button class="chat-tab" data-list="requests">Requests</button></div>
 <div class="chat-list" id="chatList"></div></aside>
 <section class="chat-main"><div class="chat-head"><button class="icon-btn" id="backMobile" style="display:none">‹</button><div class="chat-avatar" id="headAvatar">K</div><div class="chat-head-copy"><div class="chat-head-name" id="headName">KARP</div><div class="chat-head-status" id="headPresence"></div></div><div class="chat-head-actions"><button class="text-btn" id="inviteBtn">Invite</button></div></div>
@@ -730,7 +730,17 @@ async function acceptRequest(id){
   }
 }
 async function rejectRequest(id){const r=incoming.find(x=>x.id===id);if(!r)return;try{await updateDoc(doc(db,'friendRequests',id),{status:'rejected',respondedAt:new Date().toISOString()});await refreshRequestsFromServer()}catch(e){console.error('reject request',e);alert(chatErrorMessage(e,'Could not decline request.'))}}
-async function openNewChat(){if(!requireUser())return;modal('New conversation','<input id="peopleSearch" class="modal-search" placeholder="Search KARP members by name…"><div id="peopleResults"><div style="font-size:10px;color:#7b8289">Search for a member to connect.</div></div>');const input=document.getElementById('peopleSearch');let timer;input.oninput=()=>{clearTimeout(timer);timer=setTimeout(()=>searchPeople(input.value),180)};input.focus();searchPeople('')}
+async function openNewChat(){
+  if(!requireUser())return;
+  modal('New conversation','<input id="peopleSearch" class="modal-search" placeholder="Search KARP members by name…" autocomplete="off"><div id="peopleResults"><div style="padding:12px 2px;font-size:10px;color:#7b8289">Loading KARP members…</div></div>','<button type="button" class="text-btn" id="newChatClose">Close</button>');
+  const input=document.getElementById('peopleSearch');
+  let timer=null;
+  input.oninput=()=>{clearTimeout(timer);timer=setTimeout(()=>searchPeople(input.value),180)};
+  input.onkeydown=e=>{if(e.key==='Escape')closeModal()};
+  document.getElementById('newChatClose').onclick=closeModal;
+  input.focus({preventScroll:true});
+  await searchPeople('');
+}
 async function searchPeople(term){const box=document.getElementById('peopleResults');if(!box)return;try{const s=await getDocs(query(collection(db,'publicProfiles'),limit(200)));const q=term.trim().toLowerCase();const arr=s.docs.map(d=>({uid:d.id,...d.data()})).filter(p=>p.uid!==user.uid&&(!q||String(p.name||'').toLowerCase().includes(q))).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'en',{sensitivity:'base'})).slice(0,50);searchPresenceIds=new Set(arr.map(p=>p.uid));syncPresenceListeners(trackedPersonIds());const friendIds=new Set(friends.flatMap(f=>f.members||[]));box.innerHTML=arr.length?arr.map(p=>{const isFriend=friendIds.has(p.uid),pendingIn=incoming.some(r=>r.fromUid===p.uid),pendingOut=outgoing.some(r=>r.toUid===p.uid);return '<div class="contact">'+personAvatar(p.name,p.photoURL,p.uid)+'<div class="contact-main"><strong>'+esc(p.name||'Member')+'</strong></div><div class="contact-actions">'+(isFriend?'<button class="text-btn primary" data-open-person="'+p.uid+'">Message</button>':pendingIn?'<button class="text-btn" data-accept="'+(incoming.find(r=>r.fromUid===p.uid)?.id||'')+'">Accept</button>':pendingOut?'<button class="text-btn">Invited</button>':'<button class="text-btn primary" data-add="'+p.uid+'">Connect</button>')+'</div></div>'}).join(''):'<div style="padding:18px;text-align:center;font-size:10px;color:#7b8289">No members found.</div>';box.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>sendRequest(b.dataset.add));box.querySelectorAll('[data-open-person]').forEach(b=>{closeModal();startDirect(b.dataset.openPerson)});box.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>{closeModal();acceptRequest(b.dataset.accept)})}catch(e){box.innerHTML='<div style="font-size:10px;color:#9b2c2c">Could not load members.</div>'}}
 async function sendRequest(uid){
   if(!requireUser()||!uid||uid===user.uid)return;
@@ -748,7 +758,19 @@ async function sendRequest(uid){
 }
 function invite(){const url=location.origin+'/signup.html?invite='+encodeURIComponent(user?.uid||'');navigator.clipboard?.writeText(url).then(()=>alert('Invite link copied.')).catch(()=>window.prompt('Copy this invite link:',url))}
 function openGroup(initial=[]){if(!requireUser())return;const friendIds=[...new Set(friends.flatMap(f=>f.members||[]).filter(id=>id!==user.uid))];modal('New group','<input id="groupName" class="modal-search" placeholder="Group name"><div class="group-picks">'+friendIds.map(id=>{const p=people.get(id)||{};return '<label class="group-pick">'+personAvatar(p.name,p.photoURL,p.uid)+'<span style="font-size:10px;font-weight:750">'+esc(p.name||'Member')+'</span><input type="checkbox" value="'+id+'" '+(initial.includes(id)?'checked':'')+'></label>'}).join('')+'</div>','<button class="text-btn" id="groupCancel">Cancel</button><button class="text-btn primary" id="groupCreate">Create group</button>');document.getElementById('groupCancel').onclick=closeModal;document.getElementById('groupCreate').onclick=async()=>{const name=document.getElementById('groupName').value.trim();const ids=[...document.querySelectorAll('.group-pick input:checked')].map(x=>x.value);if(!name||!ids.length)return;const members=[user.uid,...ids];try{const r=await addDoc(collection(db,'conversations'),{type:'group',status:'accepted',members,createdBy:user.uid,name,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),lastMessage:''});closeModal();await loadConversations();await renderList();openConversation(r.id)}catch(e){console.error('Could not create group:',e);alert(chatErrorMessage(e,'Could not create group.'))}}}
-document.getElementById('newChat').onclick=openNewChat;document.getElementById('inviteBtn').onclick=invite;document.getElementById('profileBtn').onclick=()=>{if(!signedIn())return requireUser();modal('Your KARP profile','<div class="profile-card" style="border:0">'+avatar(displayName(),photo())+'<div class="profile-name">'+esc(displayName())+'</div><div class="profile-sub">KARP member</div></div>','<button class="text-btn" id="closeProfile">Close</button>');document.getElementById('closeProfile').onclick=closeModal};document.getElementById('backMobile').onclick=()=>document.getElementById('chat-window').classList.add('mobile-list');
+const newChatButton=document.getElementById('newChat');
+newChatButton.type='button';
+newChatButton.addEventListener('click',async event=>{
+  event.preventDefault();event.stopPropagation();
+  try{await openNewChat()}
+  catch(error){
+    console.error('Could not open KARP new conversation dialog:',error);
+    const message=esc(error?.message||'Please refresh the page and try again.');
+    modal('New conversation','<div style="padding:12px 2px;font-size:11px;line-height:1.6;color:#8b3434">Could not load the member list. '+message+'</div>','<button type="button" class="text-btn" id="newChatErrorClose">Close</button>');
+    document.getElementById('newChatErrorClose').onclick=closeModal;
+  }
+});
+document.getElementById('inviteBtn').onclick=invite;document.getElementById('profileBtn').onclick=()=>{if(!signedIn())return requireUser();modal('Your KARP profile','<div class="profile-card" style="border:0">'+avatar(displayName(),photo())+'<div class="profile-name">'+esc(displayName())+'</div><div class="profile-sub">KARP member</div></div>','<button class="text-btn" id="closeProfile">Close</button>');document.getElementById('closeProfile').onclick=closeModal};document.getElementById('backMobile').onclick=()=>document.getElementById('chat-window').classList.add('mobile-list');
 document.querySelectorAll('.chat-tab').forEach(b=>b.onclick=async()=>{document.querySelectorAll('.chat-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');listMode=b.dataset.list;await renderList()});
 au.onAuthStateChanged(auth,async u=>{
   if(unsubIncoming){unsubIncoming();unsubIncoming=null}
