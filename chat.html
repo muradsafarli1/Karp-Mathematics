@@ -222,14 +222,31 @@ async function ensureDirectConversation(otherUid){
   // The security rule now permits only an accepted friendship to create or
   // repair this exact two-person direct conversation. This also repairs older
   // conversation documents whose member metadata became stale.
-  await setDoc(doc(db,'conversations',id),{
+  const conversationRef=doc(db,'conversations',id);
+  let conversationReadable=true,conversationExists=false;
+  try{
+    const existingConversation=await getDoc(conversationRef);
+    conversationExists=existingConversation.exists();
+  }catch(readError){
+    // A legacy conversation may no longer pass its old membership read rule.
+    // The update rule validates the accepted pair and lets us repair its
+    // member list without reading or exposing the old document.
+    conversationReadable=false;
+    console.warn('Repairing unreadable legacy direct conversation metadata:',readError);
+  }
+  const conversationPatch={
     type:'direct',
     status:'accepted',
     members,
-    ...(friendRequestId?{friendRequestId}:{}),
-    updatedAt:new Date().toISOString(),
-    lastMessage:''
-  },{merge:true});
+    ...(friendRequestId?{friendRequestId}:{})
+  };
+  // Initialise timestamps only for a genuinely new document. Never clear a
+  // real last message or bump old chats to the top during login repair.
+  if(conversationReadable&&!conversationExists){
+    const now=new Date().toISOString();
+    Object.assign(conversationPatch,{createdAt:now,updatedAt:now,lastMessage:''});
+  }
+  await setDoc(conversationRef,conversationPatch,{merge:true});
   return id;
 }
 async function loadConversations(){
@@ -369,34 +386,32 @@ async function sendMessage(){
       senderId:user.uid,senderName:displayName(),senderPhoto:photo(),text,createdAt:serverTimestamp()
     });
     e.value='';
+    const updateData={
+      lastMessage:text.slice(0,180),
+      lastSenderId:user.uid,
+      updatedAt:new Date().toISOString()
+    };
+    (conversation.members||[]).filter(uid=>uid!==user.uid).forEach(uid=>{
+      updateData['unread_'+uid]=increment(1);
+    });
+    try{
+      await updateDoc(doc(db,'conversations',conversation.id),updateData);
+    }catch(metadataError){
+      // The message is already saved and visible in the live message stream.
+      // Do not restore the text or report a false send failure, which caused
+      // users to resend messages that had already been stored.
+      console.warn('Message sent, but conversation preview/unread metadata did not update:',metadataError);
+    }
   }catch(err){
     console.error('KARP message write failed:',err);
-    e.value=text;
     const denied=err?.code==='permission-denied'||String(err?.message||'').toLowerCase().includes('insufficient permissions');
     alert(denied
       ?'This conversation could not accept the message. Refresh the page, reopen the conversation, and try again.'
       :'Message was not sent. '+(err?.message||'Please try again.'));
-    return;
   }finally{
     sendingMessage=false;
     e.disabled=!user||!selected;
     sendButton.disabled=!user||!selected;
-  }
-  const updateData={
-    lastMessage:text.slice(0,180),
-    lastSenderId:user.uid,
-    updatedAt:new Date().toISOString()
-  };
-  (conversation.members||[]).filter(uid=>uid!==user.uid).forEach(uid=>{
-    updateData['unread_'+uid]=increment(1);
-  });
-  try{
-    await updateDoc(doc(db,'conversations',conversation.id),updateData);
-  }catch(err){
-    // The message is already saved and visible in the live message stream.
-    // Do not restore the text or report a false send failure, which caused
-    // users to resend messages that had already been stored.
-    console.warn('Message sent, but conversation preview/unread metadata did not update:',err);
   }
 }
 document.getElementById('send').onclick=sendMessage;document.getElementById('composer').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}};document.getElementById('chatSearch').oninput=renderList;
