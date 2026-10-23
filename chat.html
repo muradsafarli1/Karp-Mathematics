@@ -185,6 +185,14 @@ async function ensureDirectConversation(otherUid){
   if(!user||!otherUid||otherUid===user.uid)throw new Error('Invalid conversation members.');
   const members=[user.uid,otherUid].sort();
   const id=members.join('_');
+  // The realtime conversation list is already permission-checked by its
+  // members-array query. Reuse a valid existing direct chat instead of
+  // rewriting its document every time someone opens the Friends tab.
+  const existingLocal=conversations.find(c=>
+    c.id===id&&c.type==='direct'&&c.status==='accepted'
+    &&Array.isArray(c.members)&&members.every(member=>c.members.includes(member))
+  );
+  if(existingLocal)return id;
 
   // Do not trust the local friends array here: it can contain a synthetic entry
   // built from accepted requests. Verify the real Firestore friendship document.
@@ -459,8 +467,11 @@ async function startDirect(uid){
     await renderList();
     await openConversation(id);
   }catch(e){
-    console.error('start direct chat',e);
-    alert(chatErrorMessage(e,'Could not start chat.'));
+    console.error('start direct chat failed while verifying the accepted friendship or repairing the direct conversation:',e);
+    const denied=e?.code==='permission-denied'||String(e?.message||'').toLowerCase().includes('insufficient permissions');
+    alert(denied
+      ?'KARP could not finish opening this private chat because Firestore rejected the conversation repair. The conversation remains private; deploy the latest Firestore rules and reload the page.'
+      :chatErrorMessage(e,'Could not start chat.'));
   }
 }
 async function acceptRequest(id){
