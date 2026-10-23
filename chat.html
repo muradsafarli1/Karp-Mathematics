@@ -71,6 +71,13 @@ const modal=(title,body,foot='')=>{document.getElementById('modalTitle').textCon
 const closeModal=()=>document.getElementById('modal').classList.remove('open');
 document.getElementById('modalClose').onclick=closeModal;document.getElementById('modal').onclick=e=>{if(e.target.id==='modal')closeModal()};
 function requireUser(){if(!signedIn()){window.showAuthPrompt?.('Sign in to KARP','Sign in to send messages and connect with KARP members.');return false}return true}
+function chatErrorMessage(error,fallback='This action could not be completed.'){
+  const message=String(error?.message||''),code=String(error?.code||'').toLowerCase(),lower=message.toLowerCase();
+  if(code==='permission-denied'||lower.includes('missing or insufficient permissions')||lower.includes('permission-denied')||lower.includes('permission denied')){
+    return 'This action could not be completed. Refresh the page and try again.';
+  }
+  return message||fallback;
+}
 async function loadProfile(){if(!user)return;try{const s=await getDoc(doc(db,'publicProfiles',user.uid));if(s.exists())meProfile=s.data()||{};else{meProfile={uid:user.uid,name:displayName(),nameLower:displayName().toLowerCase(),photoURL:photo()};await setDoc(doc(db,'publicProfiles',user.uid),{...meProfile,updatedAt:new Date().toISOString()},{merge:true})}}catch(e){console.warn(e)}}
 async function loadFriends(){
   if(!user)return;
@@ -369,7 +376,7 @@ async function deleteMessage(messageId){
         updatedAt:new Date().toISOString()
       }).catch(()=>{});
     }
-  }catch(e){alert(e.message||'Could not delete message.')}
+  }catch(e){console.error('Could not delete message:',e);alert(chatErrorMessage(e,'Could not delete message.'))}
 }
 
 async function sendMessage(){
@@ -434,7 +441,7 @@ async function startDirect(uid){
     await openConversation(id);
   }catch(e){
     console.error('start direct chat',e);
-    alert(e.message||'Could not start chat.');
+    alert(chatErrorMessage(e,'Could not start chat.'));
   }
 }
 async function acceptRequest(id){
@@ -491,10 +498,11 @@ async function acceptRequest(id){
     await openConversation(fid);
   }catch(e){
     console.error('accept request failed during '+stage,e);
-    alert('Could not complete the connection ('+stage+'). Details: '+(e.message||'Missing or insufficient permissions.'));
+    console.error('Could not complete connection during '+stage+':',e);
+    alert('Could not complete the connection ('+stage+'). '+chatErrorMessage(e,'Please refresh and try again.'));
   }
 }
-async function rejectRequest(id){const r=incoming.find(x=>x.id===id);if(!r)return;try{await updateDoc(doc(db,'friendRequests',id),{status:'rejected',respondedAt:new Date().toISOString()});await refreshRequestsFromServer()}catch(e){console.error('reject request',e);alert(e.message||'Could not decline request.')}}
+async function rejectRequest(id){const r=incoming.find(x=>x.id===id);if(!r)return;try{await updateDoc(doc(db,'friendRequests',id),{status:'rejected',respondedAt:new Date().toISOString()});await refreshRequestsFromServer()}catch(e){console.error('reject request',e);alert(chatErrorMessage(e,'Could not decline request.'))}}
 async function openNewChat(){if(!requireUser())return;modal('New conversation','<input id="peopleSearch" class="modal-search" placeholder="Search KARP members by name…"><div id="peopleResults"><div style="font-size:10px;color:#7b8289">Search for a member to connect.</div></div>');const input=document.getElementById('peopleSearch');let timer;input.oninput=()=>{clearTimeout(timer);timer=setTimeout(()=>searchPeople(input.value),180)};input.focus();searchPeople('')}
 async function searchPeople(term){const box=document.getElementById('peopleResults');if(!box)return;try{const s=await getDocs(query(collection(db,'publicProfiles'),limit(200)));const q=term.trim().toLowerCase();const arr=s.docs.map(d=>({uid:d.id,...d.data()})).filter(p=>p.uid!==user.uid&&(!q||String(p.name||'').toLowerCase().includes(q)||String(p.email||'').toLowerCase().includes(q))).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'en',{sensitivity:'base'})).slice(0,50);const friendIds=new Set(friends.flatMap(f=>f.members||[]));box.innerHTML=arr.length?arr.map(p=>{const isFriend=friendIds.has(p.uid),pendingIn=incoming.some(r=>r.fromUid===p.uid),pendingOut=outgoing.some(r=>r.toUid===p.uid);return '<div class="contact">'+avatar(p.name,p.photoURL)+'<div class="contact-main"><strong>'+esc(p.name||p.email||'Member')+'</strong></div><div class="contact-actions">'+(isFriend?'<button class="text-btn primary" data-open-person="'+p.uid+'">Message</button>':pendingIn?'<button class="text-btn" data-accept="'+(incoming.find(r=>r.fromUid===p.uid)?.id||'')+'">Accept</button>':pendingOut?'<button class="text-btn">Invited</button>':'<button class="text-btn primary" data-add="'+p.uid+'">Connect</button>')+'</div></div>'}).join(''):'<div style="padding:18px;text-align:center;font-size:10px;color:#7b8289">No members found.</div>';box.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>sendRequest(b.dataset.add));box.querySelectorAll('[data-open-person]').forEach(b=>{closeModal();startDirect(b.dataset.openPerson)});box.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>{closeModal();acceptRequest(b.dataset.accept)})}catch(e){box.innerHTML='<div style="font-size:10px;color:#9b2c2c">Could not load members.</div>'}}
 async function sendRequest(uid){
@@ -505,14 +513,14 @@ async function sendRequest(uid){
     await setDoc(doc(db,'friendRequests',id),{fromUid:user.uid,toUid:uid,status:'pending',createdAt:new Date().toISOString()});
   }catch(e){
     console.error('send KARP connection request',e);
-    alert('Could not send the connection request: '+(e.message||'Permission denied'));
+    alert('Could not send the connection request: '+chatErrorMessage(e,'Please try again.'));
     return;
   }
   // A successful write is already persisted; refresh failures must not show a false send-error.
   await refreshRequestsFromServer().catch(e=>console.warn('refresh after sending request',e));
 }
 function invite(){const url=location.origin+'/signup.html?invite='+encodeURIComponent(user?.uid||'');navigator.clipboard?.writeText(url).then(()=>alert('Invite link copied.')).catch(()=>window.prompt('Copy this invite link:',url))}
-function openGroup(initial=[]){if(!requireUser())return;const friendIds=[...new Set(friends.flatMap(f=>f.members||[]).filter(id=>id!==user.uid))];modal('New group','<input id="groupName" class="modal-search" placeholder="Group name"><div class="group-picks">'+friendIds.map(id=>{const p=people.get(id)||{};return '<label class="group-pick">'+avatar(p.name,p.photoURL)+'<span style="font-size:10px;font-weight:750">'+esc(p.name||p.email||'Member')+'</span><input type="checkbox" value="'+id+'" '+(initial.includes(id)?'checked':'')+'></label>'}).join('')+'</div>','<button class="text-btn" id="groupCancel">Cancel</button><button class="text-btn primary" id="groupCreate">Create group</button>');document.getElementById('groupCancel').onclick=closeModal;document.getElementById('groupCreate').onclick=async()=>{const name=document.getElementById('groupName').value.trim();const ids=[...document.querySelectorAll('.group-pick input:checked')].map(x=>x.value);if(!name||!ids.length)return;const members=[user.uid,...ids];try{const r=await addDoc(collection(db,'conversations'),{type:'group',status:'accepted',members,createdBy:user.uid,name,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),lastMessage:''});closeModal();await loadConversations();await renderList();openConversation(r.id)}catch(e){alert(e.message||'Could not create group.')}}}
+function openGroup(initial=[]){if(!requireUser())return;const friendIds=[...new Set(friends.flatMap(f=>f.members||[]).filter(id=>id!==user.uid))];modal('New group','<input id="groupName" class="modal-search" placeholder="Group name"><div class="group-picks">'+friendIds.map(id=>{const p=people.get(id)||{};return '<label class="group-pick">'+avatar(p.name,p.photoURL)+'<span style="font-size:10px;font-weight:750">'+esc(p.name||p.email||'Member')+'</span><input type="checkbox" value="'+id+'" '+(initial.includes(id)?'checked':'')+'></label>'}).join('')+'</div>','<button class="text-btn" id="groupCancel">Cancel</button><button class="text-btn primary" id="groupCreate">Create group</button>');document.getElementById('groupCancel').onclick=closeModal;document.getElementById('groupCreate').onclick=async()=>{const name=document.getElementById('groupName').value.trim();const ids=[...document.querySelectorAll('.group-pick input:checked')].map(x=>x.value);if(!name||!ids.length)return;const members=[user.uid,...ids];try{const r=await addDoc(collection(db,'conversations'),{type:'group',status:'accepted',members,createdBy:user.uid,name,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),lastMessage:''});closeModal();await loadConversations();await renderList();openConversation(r.id)}catch(e){console.error('Could not create group:',e);alert(chatErrorMessage(e,'Could not create group.'))}}}
 document.getElementById('newChat').onclick=openNewChat;document.getElementById('inviteBtn').onclick=invite;document.getElementById('profileBtn').onclick=()=>{if(!signedIn())return requireUser();modal('Your KARP profile','<div class="profile-card" style="border:0">'+avatar(displayName(),photo())+'<div class="profile-name">'+esc(displayName())+'</div><div class="profile-sub">'+esc(user.email||'')+'</div></div>','<button class="text-btn" id="closeProfile">Close</button>');document.getElementById('closeProfile').onclick=closeModal};document.getElementById('backMobile').onclick=()=>document.getElementById('chat-window').classList.add('mobile-list');
 document.querySelectorAll('.chat-tab').forEach(b=>b.onclick=async()=>{document.querySelectorAll('.chat-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');listMode=b.dataset.list;await renderList()});
 au.onAuthStateChanged(auth,async u=>{
