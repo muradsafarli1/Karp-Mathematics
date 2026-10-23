@@ -185,96 +185,95 @@ async function ensureDirectConversation(otherUid){
   if(!user||!otherUid||otherUid===user.uid)throw new Error('Invalid conversation members.');
   const members=[user.uid,otherUid].sort();
   const id=members.join('_');
-  // The realtime conversation list is already permission-checked by its
-  // members-array query. Reuse a valid existing direct chat instead of
-  // rewriting its document every time someone opens the Friends tab.
-  const existingLocal=conversations.find(c=>
-    c.id===id&&c.type==='direct'&&c.status==='accepted'
-    &&Array.isArray(c.members)&&members.every(member=>c.members.includes(member))
-  );
-  if(existingLocal)return id;
-
-  // Do not trust the local friends array here: it can contain a synthetic entry
-  // built from accepted requests. Verify the real Firestore friendship document.
-  const friendshipSnap=await getDocs(query(
-    collection(db,'friendships'),
-    where('members','array-contains',user.uid)
-  ));
-  const realFriend=friendshipSnap.docs.find(d=>{
-    const data=d.data()||{};
-    return d.id===id&&data.status==='accepted'&&Array.isArray(data.members)&&members.every(x=>data.members.includes(x));
+  const stage=(name,fn)=>Promise.resolve().then(fn).catch(error=>{
+    try{error.karpStage=name}catch{}
+    console.error('KARP private-chat step failed: '+name,error);
+    throw error;
   });
-  let friendRequestId=String(realFriend?.data()?.requestId||'');
 
-  if(!realFriend){
-    const [inSnap,outSnap]=await Promise.all([
-      getDocs(query(collection(db,'friendRequests'),where('toUid','==',user.uid))),
-      getDocs(query(collection(db,'friendRequests'),where('fromUid','==',user.uid)))
-    ]);
-    const accepted=[...inSnap.docs,...outSnap.docs]
-      .map(d=>({id:d.id,...d.data()}))
-      .find(r=>r.status==='accepted'&&(
-        (r.fromUid===user.uid&&r.toUid===otherUid) ||
-        (r.toUid===user.uid&&r.fromUid===otherUid)
-      ));
+  // Use the accepted relationship already verified by loadFriends(). This
+  // avoids querying the entire friendships collection again when opening a chat.
+  let friend=friends.find(item=>
+    item.status==='accepted'
+    &&item.id===id
+    &&Array.isArray(item.members)
+    &&members.every(member=>item.members.includes(member))
+  );
+  let friendRequestId=String(friend?.requestId||'');
+
+  // If no cached accepted relationship exists, verify the accepted request
+  // directly. The document is included in the direct-conversation write so
+  // the Firestore rule can validate the exact pair even if a legacy friendship
+  // document was not saved correctly.
+  if(!friend){
+    const requests=await stage('checking the accepted connection',async()=>{
+      const [inSnap,outSnap]=await Promise.all([
+        getDocs(query(collection(db,'friendRequests'),where('toUid','==',user.uid))),
+        getDocs(query(collection(db,'friendRequests'),where('fromUid','==',user.uid)))
+      ]);
+      return [...inSnap.docs,...outSnap.docs].map(d=>({id:d.id,...d.data()}));
+    });
+    const accepted=requests.find(r=>r.status==='accepted'&&(
+      (r.fromUid===user.uid&&r.toUid===otherUid)
+      ||(r.toUid===user.uid&&r.fromUid===otherUid)
+    ));
     if(!accepted)throw new Error('This member is not connected to you yet.');
     friendRequestId=accepted.id;
+    friend={id,members,status:'accepted',requestId:accepted.id,createdAt:accepted.createdAt||new Date().toISOString()};
+    friends=[...friends.filter(item=>item.id!==id),friend];
+  }
 
-    const createdAt=accepted.createdAt||new Date().toISOString();
-    try{
-      await setDoc(doc(db,'friendships',id),{
-        members,
-        status:'accepted',
-        requestId:accepted.id,
-        createdAt
-      },{merge:true});
-    }catch(friendshipError){
-      // The accepted request itself is independently verified by Firestore
-      // rules, so a stale friendship record must not block private chat repair.
-      console.warn('Could not repair friendship document; continuing with accepted request:',friendshipError);
+  const conversationRef=doc(db,'conversations',id);
+  let existing=null,readSucceeded=false;
+  try{
+    existing=await stage('reading the private conversation',()=>getDoc(conversationRef));
+    readSucceeded=true;
+  }catch(error){
+    // A legacy document with stale member metadata may not be readable under
+    // member-only rules. The following write can repair it only when the
+    // request is accepted or the friendship is accepted.
+    if(error?.code!=='permission-denied')throw error;
+  }
+  if(existing?.exists()){
+    const saved=existing.data()||{};
+    const valid=saved.type==='direct'
+      &&saved.status==='accepted'
+      &&Array.isArray(saved.members)
+      &&saved.members.length===2
+      &&members.every(member=>saved.members.includes(member));
+    if(valid){
+      const at=conversations.findIndex(item=>item.id===id);
+      const local={id,...saved};
+      if(at>=0)conversations[at]={...conversations[at],...local};
+      else conversations.unshift(local);
+      return id;
     }
   }
 
-  const localFriend={id,members,status:'accepted'};
-  const fi=friends.findIndex(x=>x.id===id);
-  if(fi>=0)friends[fi]={...friends[fi],...localFriend};
-  else friends.push(localFriend);
-
-  // The security rule now permits only an accepted friendship to create or
-  // repair this exact two-person direct conversation. This also repairs older
-  // conversation documents whose member metadata became stale.
-  const conversationRef=doc(db,'conversations',id);
-  let conversationReadable=true,conversationExists=false;
-  try{
-    const existingConversation=await getDoc(conversationRef);
-    conversationExists=existingConversation.exists();
-  }catch(readError){
-    // A legacy conversation may no longer pass its old membership read rule.
-    // The update rule validates the accepted pair and lets us repair its
-    // member list without reading or exposing the old document.
-    conversationReadable=false;
-    console.warn('Repairing unreadable legacy direct conversation metadata:',readError);
-  }
-  const conversationPatch={
+  const now=new Date().toISOString();
+  const patch={
     type:'direct',
     status:'accepted',
     members,
     ...(friendRequestId?{friendRequestId}:{})
   };
-  // Initialise timestamps only for a genuinely new document. Never clear a
-  // real last message or bump old chats to the top during login repair.
-  if(conversationReadable&&!conversationExists){
-    const now=new Date().toISOString();
-    Object.assign(conversationPatch,{createdAt:now,updatedAt:now,lastMessage:''});
-  }else if(!conversationReadable){
-    // This path covers both a missing document that cannot be read under
-    // member-only rules and a legacy document with stale members. Timestamp
-    // it for sorting, but leave its existing lastMessage untouched.
-    conversationPatch.updatedAt=new Date().toISOString();
+  if(readSucceeded&&!existing?.exists()){
+    patch.createdAt=now;
+    patch.updatedAt=now;
+    patch.lastMessage='';
+  }else if(!readSucceeded){
+    patch.updatedAt=now;
   }
-  await setDoc(conversationRef,conversationPatch,{merge:true});
+  await stage('saving the private conversation',()=>setDoc(conversationRef,patch,{merge:true}));
+
+  const previous=existing?.exists()?existing.data()||{}:{};
+  const local={...previous,...patch,id};
+  const at=conversations.findIndex(item=>item.id===id);
+  if(at>=0)conversations[at]={...conversations[at],...local};
+  else conversations.unshift(local);
   return id;
 }
+
 async function loadConversations(){
   if(!user)return;
   if(unsubConv){unsubConv();unsubConv=null}
