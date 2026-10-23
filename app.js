@@ -1010,6 +1010,12 @@ async function __writeKarpPresence(online=true){
       activity:__karpPresence.activity||{page:'KARP',label:'Browsing'},...(delta>0?{totalActiveSeconds:increment(delta),lastActiveSeconds:delta}:{})
     };
     await setDoc(doc(__karpPresence.db,'presence',u.uid),payload,{merge:true});
+    try{
+      await setDoc(doc(__karpPresence.db,'chatPresence',u.uid),{
+        uid:u.uid,online:active,lastSeen:serverTimestamp(),
+        expiresAt:Timestamp.fromMillis(active?Date.now()+35000:0)
+      },{merge:true});
+    }catch(chatPresenceError){console.warn('KARP chat online status update failed:',chatPresenceError)}
     if(accountSessionJustStarted){
       await __karpLogVisit({db:__karpPresence.db,fs:__karpPresence.fs,visitorId:u.uid,uid:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',device,sessionId:__karpPresence.sessionId,sessionStartedAt:__karpPresence.sessionStartedAt});
     }
