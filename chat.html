@@ -48,7 +48,7 @@ const {db,auth}=await import('/karp-firebase.js');
 const fs=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
 const au=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
 const {collection,doc,getDoc,getDocs,query,where,orderBy,limit,onSnapshot,addDoc,setDoc,updateDoc,deleteDoc,increment,serverTimestamp}=fs;
-let user=null,meProfile={},conversations=[],friends=[],incoming=[],outgoing=[],selected=null,messages=[],unsubConv=null,unsubMsg=null,unsubIncoming=null,unsubOutgoing=null,listMode='chats';
+let user=null,meProfile={},conversations=[],friends=[],incoming=[],outgoing=[],selected=null,messages=[],unsubConv=null,unsubMsg=null,unsubIncoming=null,unsubOutgoing=null,listMode='chats',sendingMessage=false;
 const esc=window.escapeHtml||((x)=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
 const signedIn=()=>!!user;
 function updateChatNav(u){
@@ -189,6 +189,7 @@ async function ensureDirectConversation(otherUid){
     const data=d.data()||{};
     return d.id===id&&data.status==='accepted'&&Array.isArray(data.members)&&members.every(x=>data.members.includes(x));
   });
+  let friendRequestId=String(realFriend?.data()?.requestId||'');
 
   if(!realFriend){
     const [inSnap,outSnap]=await Promise.all([
@@ -202,6 +203,7 @@ async function ensureDirectConversation(otherUid){
         (r.toUid===user.uid&&r.fromUid===otherUid)
       ));
     if(!accepted)throw new Error('This member is not connected to you yet.');
+    friendRequestId=accepted.id;
 
     const createdAt=accepted.createdAt||new Date().toISOString();
     await setDoc(doc(db,'friendships',id),{
@@ -224,6 +226,7 @@ async function ensureDirectConversation(otherUid){
     type:'direct',
     status:'accepted',
     members,
+    ...(friendRequestId?{friendRequestId}:{}),
     updatedAt:new Date().toISOString(),
     lastMessage:''
   },{merge:true});
@@ -353,26 +356,47 @@ async function deleteMessage(messageId){
 }
 
 async function sendMessage(){
-  if(!requireUser()||!selected)return;
-  const e=document.getElementById('composer'),text=e.value.trim();
+  if(!requireUser()||!selected||sendingMessage)return;
+  const e=document.getElementById('composer'),sendButton=document.getElementById('send'),text=e.value.trim();
   if(!text)return;
-  e.value='';
+  const conversation=selected;
+  sendingMessage=true;
+  e.disabled=true;sendButton.disabled=true;
   try{
-    await addDoc(collection(db,'conversations',selected.id,'messages'),{
+    // Write the message first. Only this write determines whether the send
+    // itself succeeded; updating preview/unread metadata is a separate step.
+    await addDoc(collection(db,'conversations',conversation.id,'messages'),{
       senderId:user.uid,senderName:displayName(),senderPhoto:photo(),text,createdAt:serverTimestamp()
     });
-    const updateData={
-      lastMessage:text.slice(0,180),
-      lastSenderId:user.uid,
-      updatedAt:new Date().toISOString()
-    };
-    (selected.members||[]).filter(uid=>uid!==user.uid).forEach(uid=>{
-      updateData['unread_'+uid]=increment(1);
-    });
-    await updateDoc(doc(db,'conversations',selected.id),updateData);
+    e.value='';
   }catch(err){
+    console.error('KARP message write failed:',err);
     e.value=text;
-    alert(err.message||'Could not send message.');
+    const denied=err?.code==='permission-denied'||String(err?.message||'').toLowerCase().includes('insufficient permissions');
+    alert(denied
+      ?'This conversation could not accept the message. Refresh the page, reopen the conversation, and try again.'
+      :'Message was not sent. '+(err?.message||'Please try again.'));
+    return;
+  }finally{
+    sendingMessage=false;
+    e.disabled=!user||!selected;
+    sendButton.disabled=!user||!selected;
+  }
+  const updateData={
+    lastMessage:text.slice(0,180),
+    lastSenderId:user.uid,
+    updatedAt:new Date().toISOString()
+  };
+  (conversation.members||[]).filter(uid=>uid!==user.uid).forEach(uid=>{
+    updateData['unread_'+uid]=increment(1);
+  });
+  try{
+    await updateDoc(doc(db,'conversations',conversation.id),updateData);
+  }catch(err){
+    // The message is already saved and visible in the live message stream.
+    // Do not restore the text or report a false send failure, which caused
+    // users to resend messages that had already been stored.
+    console.warn('Message sent, but conversation preview/unread metadata did not update:',err);
   }
 }
 document.getElementById('send').onclick=sendMessage;document.getElementById('composer').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}};document.getElementById('chatSearch').oninput=renderList;
