@@ -329,8 +329,11 @@ async function api(path, opts = {}) {
     const meeting=meetingSnap.data()||{},start=Date.parse(String(meeting.startAt||meeting.date||'')),end=start+Number(meeting.durationMinutes||120)*60000;
     if(Number.isNaN(start)||Date.now()<start||Date.now()>=end) throw new Error('Attendance can only be recorded during the scheduled meeting time.');
     const attendanceRef=doc(db,'meetings',ma[1],'attendance',uid);
-    await setDoc(attendanceRef,{userId:uid,userName:user.name||'',userEmail:user.email||'',enteredAt:new Date().toISOString()},{merge:true});
-    return {ok:true,attended:true};
+    const existingAttendance=await getDoc(attendanceRef);
+    if(!existingAttendance.exists()){
+      await setDoc(attendanceRef,{userId:uid,userName:user.name||'',userEmail:user.email||'',enteredAt:new Date().toISOString()});
+    }
+    return {ok:true,attended:true,alreadyRecorded:existingAttendance.exists()};
   }
   const mr=path.match(/^\/api\/meetings\/([^/]+)\/register$/);
   if(mr&&method==='POST'){
