@@ -52,13 +52,13 @@
           ?'<a class="btn primary" href="'+escapeHtml(x.meetingUrl)+'" target="_blank" rel="noopener noreferrer">Enter Meeting →</a>'
           :'<button class="btn primary" data-register-id="'+escapeHtml(x.id)+'">Register →</button>';
       }
-      if(st==='ENDED')return'<button class="btn" type="button" disabled>Meeting ended</button>';
+      if(st==='ENDED')return (x.lessonUrl||x.meetingUrl)?'<a class="btn primary" href="'+escapeHtml(x.lessonUrl||x.meetingUrl)+'" target="_blank" rel="noopener noreferrer">Open lesson ↗</a>':'<button class="btn" type="button" disabled>Meeting ended</button>';
       if(registered)return'<button class="btn" type="button" disabled>Registered</button>';
       return'<button class="btn primary" data-register-id="'+escapeHtml(x.id)+'">Register →</button>';
     }
     function card(x){
       const st=statusOf(x);
-      return '<article class="meeting-card" data-meeting-id="'+escapeHtml(x.id)+'">'+
+      return '<article class="meeting-card" data-meeting-id="'+escapeHtml(x.id)+'" data-meeting-status="'+st+'" data-lesson-url="'+escapeHtml(st==='ENDED'?(x.lessonUrl||x.meetingUrl||''):'')+'">'+
         '<div class="meeting-cover">'+(x.coverImage?'<img src="'+escapeHtml(x.coverImage)+'" alt="">':'')+'<span class="meeting-status">'+st+'</span></div>'+
         '<div class="meeting-body"><div class="meeting-topic">'+escapeHtml(topicOf(x)||'KARP Meeting')+'</div><h2>'+escapeHtml(titleOf(x))+'</h2><p>'+escapeHtml(descOf(x))+'</p>'+
         '<div class="meeting-meta"><span><strong>'+escapeHtml(timeText(x))+'</strong></span><span>'+escapeHtml(duration(x)+' min')+'</span><span>'+escapeHtml(String(x.registrationCount||0))+' registered</span></div>'+
@@ -94,6 +94,12 @@
       });
     }
     bindRegisterButtons();
+    document.querySelectorAll('.meeting-card[data-meeting-status="ENDED"][data-lesson-url]').forEach(card=>{
+      card.style.cursor='pointer';card.setAttribute('role','link');card.setAttribute('tabindex','0');
+      const openLesson=event=>{if(event.target.closest('a,button'))return;const url=card.dataset.lessonUrl;if(url)window.open(url,'_blank','noopener,noreferrer')};
+      card.addEventListener('click',openLesson);
+      card.addEventListener('keydown',event=>{if((event.key==='Enter'||event.key===' ')&&!event.target.closest('a,button')){event.preventDefault();const url=card.dataset.lessonUrl;if(url)window.open(url,'_blank','noopener,noreferrer')}});
+    });
     bindLanguageSwitch(()=>location.reload());
     setInterval(refreshCards,15000);
   }catch(e){console.error(e);document.body.innerHTML='<div class="error-page"><h1>Unable to load meetings</h1><p>'+escapeHtml(e.message||'')+'</p><a href="/">← Back to KARP</a></div>'}
