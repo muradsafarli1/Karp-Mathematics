@@ -3,7 +3,7 @@
   position:relative!important;
   background:#fff!important;
   background-color:#fff!important;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='500' viewBox='0 0 900 500'%3E%3Cg font-family='Cambria Math,STIX Two Math,Times New Roman,serif' font-size='30' text-anchor='middle'%3E%3Ctext x='55' y='60' fill='%233867e8' fill-opacity='.28'%3E∑%3C/text%3E%3Ctext x='170' y='145' fill='%237c4dff' fill-opacity='.26'%3E∫%3C/text%3E%3Ctext x='300' y='65' fill='%23d946ef' fill-opacity='.24'%3Eπ%3C/text%3E%3Ctext x='440' y='155' fill='%231796d2' fill-opacity='.27'%3E√%3C/text%3E%3Ctext x='585' y='65' fill='%23dca94f' fill-opacity='.27'%3E∞%3C/text%3E%3Ctext x='745' y='145' fill='%23109169' fill-opacity='.25'%3E∆%3C/text%3E%3Ctext x='850' y='55' fill='%233867e8' fill-opacity='.24'%3Eα%3C/text%3E%3Ctext x='65' y='275' fill='%23d946ef' fill-opacity='.24'%3E∇%3C/text%3E%3Ctext x='205' y='350' fill='%231796d2' fill-opacity='.25'%3E∂%3C/text%3E%3Ctext x='350' y='265' fill='%237c4dff' fill-opacity='.27'%3Eθ%3C/text%3E%3Ctext x='495' y='365' fill='%23dca94f' fill-opacity='.25'%3Eλ%3C/text%3E%3Ctext x='640' y='275' fill='%233867e8' fill-opacity='.25'%3Eσ%3C/text%3E%3Ctext x='790' y='360' fill='%23d946ef' fill-opacity='.23'%3Eφ%3C/text%3E%3Ctext x='880' y='245' fill='%231796d2' fill-opacity='.25'%3Ex²%3C/text%3E%3C/g%3E%3C/svg%3E")!important;
+  background-image:radial-gradient(circle at 50% 46%,rgba(124,77,255,.10) 0,rgba(217,70,239,.07) 18%,rgba(23,150,210,.06) 34%,rgba(255,255,255,0) 60%),radial-gradient(circle at 20% 52%,rgba(56,103,232,.10) 0,rgba(255,255,255,0) 38%),radial-gradient(circle at 80% 52%,rgba(217,70,239,.10) 0,rgba(255,255,255,0) 38%),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='500' viewBox='0 0 900 500'%3E%3Cg font-family='Cambria Math,STIX Two Math,Times New Roman,serif' font-size='30' text-anchor='middle'%3E%3Ctext x='55' y='60' fill='%233867e8' fill-opacity='.28'%3E∑%3C/text%3E%3Ctext x='170' y='145' fill='%237c4dff' fill-opacity='.26'%3E∫%3C/text%3E%3Ctext x='300' y='65' fill='%23d946ef' fill-opacity='.24'%3Eπ%3C/text%3E%3Ctext x='440' y='155' fill='%231796d2' fill-opacity='.27'%3E√%3C/text%3E%3Ctext x='585' y='65' fill='%23dca94f' fill-opacity='.27'%3E∞%3C/text%3E%3Ctext x='745' y='145' fill='%23109169' fill-opacity='.25'%3E∆%3C/text%3E%3Ctext x='850' y='55' fill='%233867e8' fill-opacity='.24'%3Eα%3C/text%3E%3Ctext x='65' y='275' fill='%23d946ef' fill-opacity='.24'%3E∇%3C/text%3E%3Ctext x='205' y='350' fill='%231796d2' fill-opacity='.25'%3E∂%3C/text%3E%3Ctext x='350' y='265' fill='%237c4dff' fill-opacity='.27'%3Eθ%3C/text%3E%3Ctext x='495' y='365' fill='%23dca94f' fill-opacity='.25'%3Eλ%3C/text%3E%3Ctext x='640' y='275' fill='%233867e8' fill-opacity='.25'%3Eσ%3C/text%3E%3Ctext x='790' y='360' fill='%23d946ef' fill-opacity='.23'%3Eφ%3C/text%3E%3Ctext x='880' y='245' fill='%231796d2' fill-opacity='.25'%3Ex²%3C/text%3E%3C/g%3E%3C/svg%3E")!important;
   background-repeat:repeat!important;
   background-size:900px 500px!important;
   border-bottom:1px solid #e5e7ea!important;
@@ -11,7 +11,7 @@
 }
 
 /* No old gradient/orb layers. */
-.hero::before,.hero::after,.hero .orb,.hero .noise,.hero-shapes{
+.hero::before,.hero::after,.hero .orb,.hero .noise{
   display:none!important;
   content:none!important;
   background:none!important;
@@ -122,4 +122,49 @@
   .hero .cta,.hero .journal-announcement-wrap,.hero .micro{
     animation:none!important;opacity:1!important;transform:none!important;
   }
+}
+
+/* Restore the original colorful mathematical artwork across the full hero. */
+.hero-shapes{
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:0!important;
+  pointer-events:none!important;
+  overflow:hidden!important;
+  opacity:1!important;
+}
+.hero-shape-art{
+  width:100%!important;
+  height:100%!important;
+  display:block!important;
+}
+.hero-shape-art .math-symbol{
+  font-family:"Cambria Math","STIX Two Math","Times New Roman",serif!important;
+  font-size:34px!important;
+  font-weight:500!important;
+  fill:rgba(56,103,232,.48);
+  paint-order:stroke;
+  stroke:rgba(255,255,255,.15);
+  stroke-width:.5px;
+}
+.hero-shape-art .math-violet{fill:rgba(124,77,255,.62)!important}
+.hero-shape-art .math-blue{fill:rgba(56,103,232,.58)!important}
+.hero-shape-art .math-cyan{fill:rgba(23,150,210,.62)!important}
+.hero-shape-art .math-pink{fill:rgba(217,70,239,.56)!important}
+.hero-shape-art .math-gold{fill:rgba(186,135,46,.62)!important}
+.hero-shape-art .math-green{fill:rgba(16,145,105,.58)!important}
+.hero-shape-art .math-drift{transform-box:fill-box;transform-origin:center;animation:karpMathDrift 17s ease-in-out infinite}
+.hero .hero-inner{position:relative!important;z-index:3!important}
+html[data-theme="light"] .hero h1.karp-wordmark{
+  background:none!important;
+  background-image:none!important;
+  -webkit-background-clip:border-box!important;
+  background-clip:border-box!important;
+  -webkit-text-fill-color:transparent!important;
+  color:transparent!important;
+  animation:none!important;
+}
+@media(max-width:620px){
+  .hero-shape-art .math-symbol{font-size:30px!important}
 }
