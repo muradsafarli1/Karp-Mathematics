@@ -108,6 +108,214 @@
 @media(prefers-reduced-motion:reduce){
   .hero .homepage-action-card,.hero .homepage-action-arrow{transition:none!important}
 }
+</style><style id="homepage-boxes-final">
+/* Final homepage cards: independent of the generic CTA/button styles. */
+.hero .homepage-action-cards{
+  position:relative!important;
+  z-index:4!important;
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-items:stretch!important;
+  width:min(calc(100% - 42px),820px)!important;
+  max-width:820px!important;
+  margin:42px auto 0!important;
+  padding:0!important;
+  gap:16px!important;
+  opacity:1!important;
+  visibility:visible!important;
+  animation:karpHomepageCardsIn .55s ease-out 2.82s both!important;
+}
+.hero .homepage-action-card{
+  position:relative!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  min-width:0!important;
+  min-height:148px!important;
+  padding:21px 24px 20px!important;
+  overflow:hidden!important;
+  text-align:left!important;
+  text-decoration:none!important;
+  white-space:normal!important;
+  border:1px solid #d9deeb!important;
+  border-radius:14px!important;
+  background:#fff!important;
+  color:#17191c!important;
+  box-shadow:0 8px 25px rgba(31,46,79,.075)!important;
+  transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease!important;
+}
+.hero .homepage-action-card-primary{
+  border-color:#d0d9f7!important;
+  background:linear-gradient(135deg,#edf3ff 0%,#f7f0ff 54%,#eefaff 100%)!important;
+}
+.hero .homepage-action-card:hover{
+  transform:translateY(-4px)!important;
+  border-color:#8298df!important;
+  box-shadow:0 15px 32px rgba(31,46,79,.13)!important;
+}
+.hero .homepage-action-label{
+  display:block!important;
+  color:#5e6e96!important;
+  font-size:9px!important;
+  font-weight:900!important;
+  letter-spacing:1.45px!important;
+  line-height:1.4!important;
+  text-transform:uppercase!important;
+}
+.hero .homepage-action-title{
+  display:block!important;
+  margin:17px 32px 6px 0!important;
+  color:#17191c!important;
+  font-family:"Space Grotesk",sans-serif!important;
+  font-size:clamp(23px,2.6vw,30px)!important;
+  font-weight:700!important;
+  line-height:1.08!important;
+  letter-spacing:-1px!important;
+}
+.hero .homepage-action-description{
+  display:block!important;
+  max-width:340px!important;
+  margin:0 20px 0 0!important;
+  color:#606978!important;
+  font-size:12px!important;
+  font-weight:500!important;
+  line-height:1.55!important;
+  letter-spacing:0!important;
+  text-transform:none!important;
+}
+.hero .homepage-action-arrow{
+  position:absolute!important;
+  top:17px!important;
+  right:20px!important;
+  color:#435ba8!important;
+  font-size:21px!important;
+  line-height:1!important;
+  transition:transform .2s ease!important;
+}
+.hero .homepage-action-card:hover .homepage-action-arrow{transform:translate(2px,-2px)!important}
+
+/* A separate, full-width registration box immediately under the two cards. */
+.hero .journal-announcement-wrap{
+  position:relative!important;
+  z-index:4!important;
+  display:block!important;
+  width:min(calc(100% - 42px),820px)!important;
+  max-width:820px!important;
+  margin:16px auto 0!important;
+  opacity:1!important;
+  visibility:visible!important;
+  animation:karpHomepageCardsIn .55s ease-out 2.98s both!important;
+}
+.hero .journal-announcement{
+  display:grid!important;
+  grid-template-columns:44px minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:16px!important;
+  width:100%!important;
+  min-height:78px!important;
+  padding:15px 19px!important;
+  border:1px solid #d8deec!important;
+  border-radius:14px!important;
+  background:linear-gradient(110deg,#fff 0%,#f5f7ff 58%,#f5fbff 100%)!important;
+  color:#17191c!important;
+  text-align:left!important;
+  box-shadow:0 8px 25px rgba(31,46,79,.065)!important;
+  transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease!important;
+}
+.hero .journal-announcement:hover{
+  transform:translateY(-2px)!important;
+  border-color:#9eafe2!important;
+  box-shadow:0 13px 29px rgba(31,46,79,.11)!important;
+}
+.hero .exam-announcement-icon{
+  display:grid!important;
+  place-items:center!important;
+  width:42px!important;
+  height:42px!important;
+  border:1px solid #dbe3fb!important;
+  border-radius:12px!important;
+  background:#eaf0ff!important;
+  color:#385ca8!important;
+  font-size:23px!important;
+  line-height:1!important;
+}
+.hero .journal-announcement-text{min-width:0!important}
+.hero .journal-announcement-eyebrow{
+  display:block!important;
+  margin:0 0 4px!important;
+  color:#5f70a0!important;
+  font-size:9px!important;
+  font-weight:900!important;
+  letter-spacing:1.5px!important;
+  line-height:1.3!important;
+}
+.hero .journal-announcement h2{
+  display:block!important;
+  margin:0!important;
+  color:#17191c!important;
+  font-family:"Space Grotesk",sans-serif!important;
+  font-size:clamp(14px,1.7vw,18px)!important;
+  font-weight:700!important;
+  line-height:1.3!important;
+  letter-spacing:-.35px!important;
+}
+.hero .journal-announcement p{
+  display:block!important;
+  margin:4px 0 0!important;
+  color:#656d7b!important;
+  font-size:11px!important;
+  line-height:1.4!important;
+}
+.hero .journal-announcement-action{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:8px!important;
+  white-space:nowrap!important;
+  padding:10px 12px!important;
+  border:1px solid #d5dcec!important;
+  border-radius:8px!important;
+  background:#fff!important;
+  color:#2f4f9c!important;
+  font-size:11px!important;
+  font-weight:800!important;
+}
+.hero .journal-announcement-action span{font-size:16px!important;line-height:1!important}
+@keyframes karpHomepageCardsIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:620px){
+  .hero .homepage-action-cards{
+    grid-template-columns:1fr!important;
+    width:calc(100% - 42px)!important;
+    gap:10px!important;
+    margin-top:28px!important;
+  }
+  .hero .homepage-action-card{
+    min-height:122px!important;
+    padding:17px 19px 16px!important;
+  }
+  .hero .homepage-action-title{margin-top:11px!important;font-size:24px!important}
+  .hero .homepage-action-arrow{right:17px!important;top:15px!important}
+  .hero .journal-announcement-wrap{
+    width:calc(100% - 42px)!important;
+    margin-top:12px!important;
+  }
+  .hero .journal-announcement{
+    grid-template-columns:36px minmax(0,1fr)!important;
+    gap:11px!important;
+    min-height:0!important;
+    padding:13px!important;
+  }
+  .hero .exam-announcement-icon{width:35px!important;height:35px!important;border-radius:10px!important;font-size:20px!important}
+  .hero .journal-announcement h2{font-size:13px!important}
+  .hero .journal-announcement p{font-size:10px!important}
+  .hero .journal-announcement-action{grid-column:2!important;justify-self:start!important;padding:7px 10px!important;margin-top:3px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .hero .homepage-action-cards,.hero .journal-announcement-wrap{animation:none!important;opacity:1!important;transform:none!important}
+  .hero .homepage-action-card,.hero .journal-announcement{transition:none!important}
+}
 </style></head><body><header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks home-nav"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/daily-problem.html">Daily Problem</a><a href="/mock.html">Mocks</a><a href="/books.html">Books</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a href="/chat.html">Chat</a><div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a></div></div><a href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header><main><section class="hero"><div class="noise"></div><div class="orb"></div><div class="hero-shapes" aria-hidden="true"><svg class="hero-shape-art" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" focusable="false">
 <g class="drift-a">
   <circle class="geo blue" cx="135" cy="208" r="35"/>
@@ -178,4 +386,4 @@
   <text class="math-symbol math-blue" x="905" y="205">lim</text>
   <text class="math-symbol math-gold" x="1090" y="735">a²+b²</text>
   <text class="math-symbol math-green" x="290" y="750">x ∈ ℝ</text>
-</g></svg></div><div class="hero-inner"><h1 class="karp-wordmark" aria-label="KARP"><span class="karp-hero-letter karp-hero-k" aria-hidden="true">K</span><span class="karp-hero-letter karp-hero-a" aria-hidden="true">A</span><span class="karp-hero-letter karp-hero-r" aria-hidden="true">R</span><span class="karp-hero-letter karp-hero-p" aria-hidden="true">P</span></h1><div class="cta homepage-action-cards"><a class="homepage-action-card homepage-action-card-primary" href="/problems.html"><span class="homepage-action-label">PRACTICE &amp; DISCOVER</span><strong class="homepage-action-title">Explore Problems</strong><span class="homepage-action-description">Challenge yourself with olympiad problems.</span><span class="homepage-action-arrow" aria-hidden="true">↗</span></a><a class="homepage-action-card" href="/about.html"><span class="homepage-action-label">GET TO KNOW KARP</span><strong class="homepage-action-title">About KARP</strong><span class="homepage-action-description">Learn about our mission and community.</span><span class="homepage-action-arrow" aria-hidden="true">↗</span></a></div><section class="journal-announcement-wrap"><a class="journal-announcement" href="/exams.html" aria-label="Register for an upcoming exam"><div class="journal-announcement-text"><h2>Don't forget to register for an upcoming exam!</h2><p>Explore upcoming exams and register on the Exams page.</p></div><span class="journal-announcement-arrow">→</span></a></section><div class="micro"><a href="/problems.html">Problems</a><span> · </span><a href="/contests.html">Contests</a><span> · </span><a href="/exams.html">Exams</a></div></div></section></main><footer class="footer"><div class="wrap footgrid"><div><div class="brand">KARP</div><div class="small">Olympiad mathematics for serious problem solvers.</div></div><div class="footlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/daily-problem.html">Daily Problem</a><a href="/mock.html">Mocks</a><a href="/books.html">Books</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a href="/chat.html">Chat</a><a href="/geogebra.html">Tools</a><a href="/about.html">About Us</a></div></div></footer><script>updateNavUser();</script></body></html>
+</g></svg></div><div class="hero-inner"><h1 class="karp-wordmark" aria-label="KARP"><span class="karp-hero-letter karp-hero-k" aria-hidden="true">K</span><span class="karp-hero-letter karp-hero-a" aria-hidden="true">A</span><span class="karp-hero-letter karp-hero-r" aria-hidden="true">R</span><span class="karp-hero-letter karp-hero-p" aria-hidden="true">P</span></h1><div class="homepage-action-cards"><a class="homepage-action-card homepage-action-card-primary" href="/problems.html"><span class="homepage-action-label">PRACTICE &amp; DISCOVER</span><strong class="homepage-action-title">Explore Problems</strong><span class="homepage-action-description">Challenge yourself with olympiad problems.</span><span class="homepage-action-arrow" aria-hidden="true">↗</span></a><a class="homepage-action-card" href="/about.html"><span class="homepage-action-label">GET TO KNOW KARP</span><strong class="homepage-action-title">About KARP</strong><span class="homepage-action-description">Learn about our mission and community.</span><span class="homepage-action-arrow" aria-hidden="true">↗</span></a></div><section class="journal-announcement-wrap"><a class="journal-announcement" href="/exams.html" aria-label="Register for an upcoming exam"><div class="exam-announcement-icon" aria-hidden="true">↗</div><div class="journal-announcement-text"><span class="journal-announcement-eyebrow">UPCOMING EXAM</span><h2>Don't forget to register for an upcoming exam!</h2><p>Visit the Exams page to see available exams and register.</p></div><span class="journal-announcement-action">View Exams <span aria-hidden="true">→</span></span></a></section><div class="micro"><a href="/problems.html">Problems</a><span> · </span><a href="/contests.html">Contests</a><span> · </span><a href="/exams.html">Exams</a></div></div></section></main><footer class="footer"><div class="wrap footgrid"><div><div class="brand">KARP</div><div class="small">Olympiad mathematics for serious problem solvers.</div></div><div class="footlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/daily-problem.html">Daily Problem</a><a href="/mock.html">Mocks</a><a href="/books.html">Books</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a href="/chat.html">Chat</a><a href="/geogebra.html">Tools</a><a href="/about.html">About Us</a></div></div></footer><script>updateNavUser();</script></body></html>
