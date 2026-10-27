@@ -500,11 +500,7 @@ service cloud.firestore {
           && request.auth.uid == uid
           && request.resource.data.userId == request.auth.uid
           && get(/databases/$(database)/documents/meetings/$(id)/registrations/$(uid)).data.userId == request.auth.uid;
-        allow update: if signedIn()
-          && request.auth.uid == uid
-          && request.resource.data.userId == resource.data.userId
-          && request.resource.data.enteredAt == resource.data.enteredAt;
-        allow delete: if isAdmin();
+        allow update, delete: if isAdmin();
       }
     }
 
