@@ -1,7 +1,7 @@
 /* KARP homepage — exact soft light-blue surface */
 .hero{
-  background:#8ec5ff!important;
-  background-color:#c8dcfd!important;
+  background:#4da3ff!important;
+  background-color:#4da3ff!important;
   background-image:none!important;
   border-bottom:1px solid rgba(170,198,235,.7)!important;
   isolation:isolate!important;
@@ -30,3 +30,21 @@
 @media(max-width:620px){
   .hero h1.karp-wordmark{transform:translateY(-22px)!important}
 }
+
+
+/* Homepage subtitle directly beneath KARP. */
+.hero .karp-subtitle{
+  margin-top:-24px!important;
+  margin-bottom:0!important;
+  text-align:center!important;
+  font-family:Georgia,"Times New Roman",serif!important;
+  font-size:clamp(18px,2.2vw,28px)!important;
+  font-style:italic!important;
+  font-weight:500!important;
+  letter-spacing:.2px!important;
+  color:#ffffff!important;
+  opacity:.96!important;
+  position:relative!important;
+  z-index:3!important;
+}
+@media(max-width:620px){.hero .karp-subtitle{margin-top:-12px!important;font-size:19px!important}}
