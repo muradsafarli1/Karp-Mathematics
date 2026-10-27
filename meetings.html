@@ -49,7 +49,7 @@
       const st=statusOf(x),registered=!!x.registeredByCurrentUser;
       if(st==='LIVE NOW'){
         return registered&&x.meetingUrl
-          ?'<a class="btn primary" href="'+escapeHtml(x.meetingUrl)+'" target="_blank" rel="noopener noreferrer">Enter Meeting →</a>'
+          ?'<a class="btn primary" href="'+escapeHtml(x.meetingUrl)+'" data-enter-meeting-id="'+escapeHtml(x.id)+'" target="_blank" rel="noopener noreferrer">Enter Meeting →</a>'
           :'<button class="btn primary" data-register-id="'+escapeHtml(x.id)+'">Register →</button>';
       }
       if(st==='ENDED')return (x.lessonUrl||x.meetingUrl)?'<a class="btn primary" href="'+escapeHtml(x.lessonUrl||x.meetingUrl)+'" target="_blank" rel="noopener noreferrer">Open lesson ↗</a>':'<button class="btn" type="button" disabled>Meeting ended</button>';
@@ -92,8 +92,20 @@
         }
         if(note)note.textContent=countdown(x);
       });
+      bindEnterButtons();
     }
     bindRegisterButtons();
+    function bindEnterButtons(){
+      document.querySelectorAll('[data-enter-meeting-id]').forEach(link=>{
+        link.onclick=async event=>{
+          event.preventDefault();
+          const url=link.href,tab=window.open('about:blank','_blank');
+          try{await api('/api/meetings/'+encodeURIComponent(link.dataset.enterMeetingId)+'/attend',{method:'POST'});if(tab)tab.location.href=url;else window.location.href=url}
+          catch(e){if(tab)tab.close();toast(e.message||'Could not record attendance.');}
+        };
+      });
+    }
+    bindEnterButtons();
     document.querySelectorAll('.meeting-card[data-meeting-status="ENDED"][data-lesson-url]').forEach(card=>{
       card.style.cursor='pointer';card.setAttribute('role','link');card.setAttribute('tabindex','0');
       const openLesson=event=>{if(event.target.closest('a,button'))return;const url=card.dataset.lessonUrl;if(url)window.open(url,'_blank','noopener,noreferrer')};
