@@ -168,3 +168,32 @@ html[data-theme="light"] .hero h1.karp-wordmark{
 @media(max-width:620px){
   .hero-shape-art .math-symbol{font-size:30px!important}
 }
+
+
+/* Final restoration: colorful K-A-R-P animation, exactly as the original hero. */
+.hero h1.karp-wordmark .karp-hero-letter{
+  -webkit-text-fill-color:transparent!important;
+  color:transparent!important;
+  background-clip:text!important;
+  -webkit-background-clip:text!important;
+  text-shadow:none!important;
+}
+.hero h1.karp-wordmark .karp-hero-k{
+  background-image:linear-gradient(135deg,#3867e8 5%,#7c4dff 54%,#1796d2 100%)!important;
+  animation:karpLiveK 1.85s cubic-bezier(.16,.78,.22,1) .02s both,karpLiveSettle .45s ease-out 2.82s both!important;
+}
+.hero h1.karp-wordmark .karp-hero-a{
+  background-image:linear-gradient(135deg,#3867e8 4%,#149fd1 100%)!important;
+  animation:karpLiveLetter .68s cubic-bezier(.16,.78,.22,1) 1.52s both!important;
+}
+.hero h1.karp-wordmark .karp-hero-r{
+  background-image:linear-gradient(135deg,#7c4dff 4%,#c04feb 100%)!important;
+  animation:karpLiveLetter .68s cubic-bezier(.16,.78,.22,1) 1.81s both!important;
+}
+.hero h1.karp-wordmark .karp-hero-p{
+  background-image:linear-gradient(135deg,#d946ef 0%,#ed83bb 58%,#dca94f 100%)!important;
+  animation:karpLiveLetter .68s cubic-bezier(.16,.78,.22,1) 2.10s both!important;
+}
+.hero .cta{opacity:0!important;animation:karpLiveContent .62s ease-out 2.82s both!important}
+.hero .journal-announcement-wrap{opacity:0!important;animation:karpLiveContent .62s ease-out 3s both!important}
+.hero .micro{opacity:0!important;animation:karpLiveContent .62s ease-out 3.12s both!important}
