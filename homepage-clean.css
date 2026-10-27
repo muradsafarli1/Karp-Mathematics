@@ -1,85 +1,62 @@
-/* FINAL KARP HOMEPAGE OVERRIDE — white surface, mathematics only */
+/* KARP homepage — balanced white canvas with colorful mathematics */
 .hero{
   position:relative!important;
   background:#fff!important;
   background-color:#fff!important;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='760' height='420' viewBox='0 0 760 420'%3E%3Cg fill='%235d6f82' fill-opacity='.12' font-family='Cambria Math,STIX Two Math,Times New Roman,serif' font-size='27'%3E%3Ctext x='35' y='55'%3E∑%3C/text%3E%3Ctext x='155' y='105'%3E∫%3C/text%3E%3Ctext x='285' y='50'%3Eπ%3C/text%3E%3Ctext x='420' y='125'%3E√%3C/text%3E%3Ctext x='570' y='60'%3E∞%3C/text%3E%3Ctext x='690' y='145'%3E∆%3C/text%3E%3Ctext x='80' y='205'%3E∇%3C/text%3E%3Ctext x='220' y='255'%3E∂%3C/text%3E%3Ctext x='350' y='190'%3Eθ%3C/text%3E%3Ctext x='505' y='275'%3Eλ%3C/text%3E%3Ctext x='650' y='220'%3Eσ%3C/text%3E%3Ctext x='25' y='350'%3Eφ%3C/text%3E%3Ctext x='145' y='385'%3Ex²%3C/text%3E%3Ctext x='300' y='335'%3Ef(x)%3C/text%3E%3Ctext x='450' y='395'%3E∞%3C/text%3E%3Ctext x='590' y='345'%3Eα%3C/text%3E%3Ctext x='720' y='400'%3Eβ%3C/text%3E%3C/g%3E%3C/svg%3E")!important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='500' viewBox='0 0 900 500'%3E%3Cg font-family='Cambria Math,STIX Two Math,Times New Roman,serif' font-size='30' text-anchor='middle'%3E%3Ctext x='55' y='60' fill='%233867e8' fill-opacity='.28'%3E∑%3C/text%3E%3Ctext x='170' y='145' fill='%237c4dff' fill-opacity='.26'%3E∫%3C/text%3E%3Ctext x='300' y='65' fill='%23d946ef' fill-opacity='.24'%3Eπ%3C/text%3E%3Ctext x='440' y='155' fill='%231796d2' fill-opacity='.27'%3E√%3C/text%3E%3Ctext x='585' y='65' fill='%23dca94f' fill-opacity='.27'%3E∞%3C/text%3E%3Ctext x='745' y='145' fill='%23109169' fill-opacity='.25'%3E∆%3C/text%3E%3Ctext x='850' y='55' fill='%233867e8' fill-opacity='.24'%3Eα%3C/text%3E%3Ctext x='65' y='275' fill='%23d946ef' fill-opacity='.24'%3E∇%3C/text%3E%3Ctext x='205' y='350' fill='%231796d2' fill-opacity='.25'%3E∂%3C/text%3E%3Ctext x='350' y='265' fill='%237c4dff' fill-opacity='.27'%3Eθ%3C/text%3E%3Ctext x='495' y='365' fill='%23dca94f' fill-opacity='.25'%3Eλ%3C/text%3E%3Ctext x='640' y='275' fill='%233867e8' fill-opacity='.25'%3Eσ%3C/text%3E%3Ctext x='790' y='360' fill='%23d946ef' fill-opacity='.23'%3Eφ%3C/text%3E%3Ctext x='880' y='245' fill='%231796d2' fill-opacity='.25'%3Ex²%3C/text%3E%3C/g%3E%3C/svg%3E")!important;
   background-repeat:repeat!important;
-  background-size:760px 420px!important;
+  background-size:900px 500px!important;
   border-bottom:1px solid #e5e7ea!important;
   isolation:isolate!important;
 }
 
-/* Remove every old homepage light-gradient/shape layer. */
-.hero::before,
-.hero::after{
+/* No old gradient/orb layers. */
+.hero::before,.hero::after,.hero .orb,.hero .noise,.hero-shapes{
   display:none!important;
   content:none!important;
   background:none!important;
   animation:none!important;
 }
-.hero .orb,
-.hero .noise,
-.hero-shapes{
-  display:none!important;
-  background:none!important;
-  animation:none!important;
-}
 
-/* Restore the original sequential K-A-R-P entrance exactly. */
-.hero h1.karp-wordmark,
-html[data-theme="light"] .hero h1.karp-wordmark{
-  display:flex!important;
-  justify-content:center!important;
-  align-items:center!important;
-  gap:0!important;
-  width:100%!important;
-  margin:0!important;
+/* Preserve the original colorful KARP letters and sequential entrance. */
+.hero h1.karp-wordmark{
   background:none!important;
   background-image:none!important;
-  background-size:auto!important;
-  -webkit-background-clip:border-box!important;
-  background-clip:border-box!important;
   -webkit-text-fill-color:initial!important;
-  color:#263b5b!important;
+  color:inherit!important;
   animation:none!important;
   text-shadow:none!important;
   filter:none!important;
   position:relative!important;
-  isolation:isolate!important;
+  z-index:3!important;
   transform:translateY(-30px)!important;
 }
-.hero h1.karp-wordmark .karp-hero-letter,
-.hero h1.karp-wordmark .karp-hero-letter.karp-hero-k,
-.hero h1.karp-wordmark .karp-hero-letter.karp-hero-a,
-.hero h1.karp-wordmark .karp-hero-letter.karp-hero-r,
-.hero h1.karp-wordmark .karp-hero-letter.karp-hero-p{
+.hero h1.karp-wordmark .karp-hero-letter{
   position:relative!important;
   display:inline-block!important;
   opacity:0!important;
   filter:blur(7px)!important;
   transform:translateY(36px) scale(.83)!important;
   line-height:.88!important;
-  letter-spacing:inherit!important;
-  background:none!important;
-  background-image:none!important;
-  background-clip:border-box!important;
-  -webkit-background-clip:border-box!important;
-  -webkit-text-fill-color:#263b5b!important;
-  color:#263b5b!important;
-  text-shadow:none!important;
   will-change:transform,opacity,filter!important;
+  -webkit-text-fill-color:transparent!important;
+  background-clip:text!important;
+  -webkit-background-clip:text!important;
 }
 .hero h1.karp-wordmark .karp-hero-k{
+  background-image:linear-gradient(135deg,#3867e8 5%,#7c4dff 54%,#1796d2 100%)!important;
   animation:karpCleanK 1.85s cubic-bezier(.16,.78,.22,1) .02s both!important;
 }
 .hero h1.karp-wordmark .karp-hero-a{
+  background-image:linear-gradient(135deg,#3867e8 4%,#149fd1 100%)!important;
   animation:karpCleanLetter .68s cubic-bezier(.16,.78,.22,1) 1.52s both!important;
 }
 .hero h1.karp-wordmark .karp-hero-r{
+  background-image:linear-gradient(135deg,#7c4dff 4%,#c04feb 100%)!important;
   animation:karpCleanLetter .68s cubic-bezier(.16,.78,.22,1) 1.81s both!important;
 }
 .hero h1.karp-wordmark .karp-hero-p{
+  background-image:linear-gradient(135deg,#d946ef 0%,#ed83bb 58%,#dca94f 100%)!important;
   animation:karpCleanLetter .68s cubic-bezier(.16,.78,.22,1) 2.10s both!important;
 }
 @keyframes karpCleanK{
@@ -94,7 +71,7 @@ html[data-theme="light"] .hero h1.karp-wordmark{
   100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
 }
 
-/* Subtitle and buttons. */
+/* Subtitle and controls keep their existing dark/elegant appearance. */
 .hero .karp-subtitle{
   margin-top:-24px!important;
   margin-bottom:0!important;
@@ -111,14 +88,20 @@ html[data-theme="light"] .hero h1.karp-wordmark{
 }
 .hero .cta{
   margin-top:38px!important;
+  position:relative!important;
+  z-index:3!important;
   opacity:0!important;
   animation:karpCleanContent .62s ease-out 2.82s both!important;
 }
 .hero .journal-announcement-wrap{
+  position:relative!important;
+  z-index:3!important;
   opacity:0!important;
   animation:karpCleanContent .62s ease-out 3s both!important;
 }
 .hero .micro{
+  position:relative!important;
+  z-index:3!important;
   opacity:0!important;
   animation:karpCleanContent .62s ease-out 3.12s both!important;
 }
@@ -130,17 +113,13 @@ html[data-theme="light"] .hero h1.karp-wordmark{
   .hero h1.karp-wordmark{transform:translateY(-22px)!important}
   .hero .karp-subtitle{margin-top:-12px!important;font-size:19px!important}
   .hero .cta{margin-top:28px!important}
+  .hero{background-size:600px 360px!important}
 }
 @media(prefers-reduced-motion:reduce){
   .hero h1.karp-wordmark .karp-hero-letter{
-    animation:none!important;
-    opacity:1!important;
-    filter:none!important;
-    transform:none!important;
+    animation:none!important;opacity:1!important;filter:none!important;transform:none!important;
   }
   .hero .cta,.hero .journal-announcement-wrap,.hero .micro{
-    animation:none!important;
-    opacity:1!important;
-    transform:none!important;
+    animation:none!important;opacity:1!important;transform:none!important;
   }
 }
