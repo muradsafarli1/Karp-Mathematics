@@ -1,0 +1,27 @@
+/* KARP homepage — clean blue moving surface */
+.hero{
+  background:linear-gradient(115deg,#dfeaff 0%,#e7f0ff 34%,#eef5ff 66%,#f7fbff 100%)!important;
+  background-size:220% 100%!important;
+  background-position:0% 50%!important;
+  border-bottom:1px solid rgba(190,210,235,.65)!important;
+  isolation:isolate!important;
+  animation:karpPureBlueFlow 14s ease-in-out infinite alternate!important;
+}
+.hero::before,
+.hero::after,
+.hero .orb,
+.hero .noise,
+.hero-shapes{
+  display:none!important;
+  animation:none!important;
+}
+.hero-inner{
+  z-index:2!important;
+}
+@keyframes karpPureBlueFlow{
+  0%{background-position:0% 50%}
+  100%{background-position:100% 50%}
+}
+@media(prefers-reduced-motion:reduce){
+  .hero{animation:none!important;background-position:50% 50%!important}
+}
