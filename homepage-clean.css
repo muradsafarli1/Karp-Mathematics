@@ -1,11 +1,9 @@
-/* KARP homepage — pure monochromatic blue surface */
+/* KARP homepage — exact soft light-blue surface */
 .hero{
-  background:linear-gradient(112deg,#cfe0fb 0%,#c6dbfa 50%,#d2e3fb 100%)!important;
-  background-size:180% 100%!important;
-  background-position:0% 50%!important;
-  border-bottom:1px solid rgba(175,201,235,.75)!important;
+  background:#c8dcfd!important;
+  background-image:none!important;
+  border-bottom:1px solid rgba(170,198,235,.7)!important;
   isolation:isolate!important;
-  animation:karpPureBlueFlow 12s ease-in-out infinite alternate!important;
 }
 .hero::before,
 .hero::after,
@@ -13,19 +11,13 @@
 .hero .noise,
 .hero-shapes{
   display:none!important;
+  background:none!important;
   animation:none!important;
 }
 .hero-inner{
   z-index:2!important;
-  transform:translateY(34px)!important;
-}
-@keyframes karpPureBlueFlow{
-  0%{background-position:0% 50%}
-  100%{background-position:100% 50%}
+  transform:translateY(30px)!important;
 }
 @media(max-width:620px){
-  .hero-inner{transform:translateY(24px)!important}
-}
-@media(prefers-reduced-motion:reduce){
-  .hero{animation:none!important;background-position:50% 50%!important}
+  .hero-inner{transform:translateY(22px)!important}
 }
