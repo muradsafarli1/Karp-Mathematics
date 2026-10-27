@@ -1,9 +1,9 @@
-/* KARP homepage — exact soft light-blue surface */
+/* KARP homepage — clean, bright translucent blue surface */
 .hero{
-  background:#4da3ff!important;
-  background-color:#4da3ff!important;
+  background:#72b7f5!important;
+  background-color:#72b7f5!important;
   background-image:none!important;
-  border-bottom:1px solid rgba(170,198,235,.7)!important;
+  border-bottom:1px solid rgba(170,198,235,.65)!important;
   isolation:isolate!important;
 }
 .hero::before,
@@ -31,7 +31,6 @@
   .hero h1.karp-wordmark{transform:translateY(-22px)!important}
 }
 
-
 /* Homepage subtitle directly beneath KARP. */
 .hero .karp-subtitle{
   margin-top:-24px!important;
@@ -47,4 +46,18 @@
   position:relative!important;
   z-index:3!important;
 }
-@media(max-width:620px){.hero .karp-subtitle{margin-top:-12px!important;font-size:19px!important}}
+
+/* Bring the buttons slightly closer to the subtitle. */
+.hero .cta{
+  margin-top:38px!important;
+}
+
+@media(max-width:620px){
+  .hero .karp-subtitle{
+    margin-top:-12px!important;
+    font-size:19px!important;
+  }
+  .hero .cta{
+    margin-top:28px!important;
+  }
+}
