@@ -1,13 +1,50 @@
-/* KARP homepage — clean, bright translucent blue surface */
+/* KARP homepage — pure white mathematical canvas */
 .hero{
-  background:#72b7f5!important;
-  background-color:#72b7f5!important;
+  background:#fff!important;
+  background-color:#fff!important;
   background-image:none!important;
-  border-bottom:1px solid rgba(170,198,235,.65)!important;
+  border-bottom:1px solid #e7e8eb!important;
   isolation:isolate!important;
 }
-.hero::before,
-.hero::after,
+
+/* Scatter only mathematical notation across the white hero. */
+.hero::before{
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:0!important;
+  pointer-events:none!important;
+  overflow:hidden!important;
+  content:"∑   ∫   π   √   ∞   ≈   ∆   ∇   ∂   θ   λ   μ   σ   φ   α   β   γ   x²   y²   aₙ   f(x)   lim   →   ↔   ⟂   ∈   ⊂   ∃   ∀   ½   ‖   |x|   det   max   min   sin   cos   tan   eˣ   log   Σ   ∫   π   √   ∞   Δ   ∇   ∂   θ   λ   σ   φ   α   β   x²   y²   f(x)   →   ≠   ≤   ≥   ∝   ∩   ∪   ∅   ∞   ∑   ∫   π   √   ∆   θ   λ   μ   σ   φ   xⁿ   a+b   ab   f'(x)   lim   →   ⟂   ∈   ∀   ∃";
+  font-family:"Cambria Math","STIX Two Math","Times New Roman",serif!important;
+  font-size:clamp(20px,2.6vw,38px)!important;
+  line-height:3.8!important;
+  letter-spacing:18px!important;
+  word-spacing:30px!important;
+  white-space:normal!important;
+  color:rgba(82,102,126,.13)!important;
+  opacity:1!important;
+  transform:rotate(-4deg) scale(1.12)!important;
+}
+
+.hero::after{
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:0!important;
+  pointer-events:none!important;
+  content:"∮   ∞   π   ∆   √   ∑   ∫   α   β   γ   θ   φ   ω   x²   y²   z²   a²+b²   f(x)   lim   →   ≡   ≠   ≤   ≥   ∈   ∉   ⊥   ∥   ∇   ∂   Σ   Π   ∫   √   ∞   π   Δ   λ   μ   σ   xₙ   yₙ   |x|   det   sin   cos   tan   log   eˣ   ∑   ∫   π   √   ∞   ∆   θ   λ   μ   φ   α   β   γ   x²   y²   f(x)   →   ↔   ⊂   ⊃   ∩   ∪   ∀   ∃";
+  font-family:"Cambria Math","STIX Two Math","Times New Roman",serif!important;
+  font-size:clamp(16px,2.1vw,30px)!important;
+  line-height:4.8!important;
+  letter-spacing:24px!important;
+  word-spacing:40px!important;
+  white-space:normal!important;
+  color:rgba(38,59,91,.075)!important;
+  transform:translate(35px,25px) rotate(5deg) scale(1.14)!important;
+}
+
+/* Remove the old decorative orb/noise artwork. */
 .hero .orb,
 .hero .noise,
 .hero-shapes{
@@ -15,12 +52,26 @@
   background:none!important;
   animation:none!important;
 }
+
+/* Keep content above the mathematical background. */
 .hero-inner{
   z-index:2!important;
   transform:none!important;
 }
 @media(max-width:620px){
   .hero-inner{transform:none!important}
+  .hero::before{
+    font-size:24px!important;
+    line-height:4.1!important;
+    letter-spacing:12px!important;
+    word-spacing:20px!important;
+  }
+  .hero::after{
+    font-size:20px!important;
+    line-height:5!important;
+    letter-spacing:16px!important;
+    word-spacing:26px!important;
+  }
 }
 
 /* Keep the KARP wordmark vertically centered instead of sitting too low. */
@@ -47,17 +98,11 @@
   z-index:3!important;
 }
 
-/* Bring the buttons slightly closer to the subtitle. */
+/* Slightly reduce the gap between subtitle and buttons. */
 .hero .cta{
   margin-top:38px!important;
 }
-
 @media(max-width:620px){
-  .hero .karp-subtitle{
-    margin-top:-12px!important;
-    font-size:19px!important;
-  }
-  .hero .cta{
-    margin-top:28px!important;
-  }
+  .hero .karp-subtitle{margin-top:-12px!important;font-size:19px!important}
+  .hero .cta{margin-top:28px!important}
 }
