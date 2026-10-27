@@ -319,6 +319,19 @@ async function api(path, opts = {}) {
     if(!(live&&registered)) delete meeting.meetingUrl;
     return {meeting,registered};
   }
+  const ma=path.match(/^\/api\/meetings\/([^/]+)\/attend$/);
+  if(ma&&method==='POST'){
+    if(!user||!uid) throw new Error('Sign in before entering this meeting.');
+    const meetingRef=doc(db,'meetings',ma[1]),regRef=doc(db,'meetings',ma[1],'registrations',uid);
+    const [meetingSnap,regSnap]=await Promise.all([getDoc(meetingRef),getDoc(regRef)]);
+    if(!meetingSnap.exists()||meetingSnap.data()?.published===false) throw new Error('Meeting not found.');
+    if(!regSnap.exists()) throw new Error('Register for this meeting before entering.');
+    const meeting=meetingSnap.data()||{},start=Date.parse(String(meeting.startAt||meeting.date||'')),end=start+Number(meeting.durationMinutes||120)*60000;
+    if(Number.isNaN(start)||Date.now()<start||Date.now()>=end) throw new Error('Attendance can only be recorded during the scheduled meeting time.');
+    const attendanceRef=doc(db,'meetings',ma[1],'attendance',uid);
+    await setDoc(attendanceRef,{userId:uid,userName:user.name||'',userEmail:user.email||'',enteredAt:new Date().toISOString()},{merge:true});
+    return {ok:true,attended:true};
+  }
   const mr=path.match(/^\/api\/meetings\/([^/]+)\/register$/);
   if(mr&&method==='POST'){
     if(!user) throw new Error('Authentication required');
@@ -527,7 +540,7 @@ async function api(path, opts = {}) {
       if(type==='meetings'){
         const meetings=[];
         for(const x of snap.docs){
-          const rs=await getDocs(collection(db,'meetings',x.id,'registrations'));
+          const [rs,attendanceSnap]=await Promise.all([getDocs(collection(db,'meetings',x.id,'registrations')),getDocs(collection(db,'meetings',x.id,'attendance'))]);
           const actualCount=rs.size;
           if(Number(x.data()?.registrationCount||0)!==actualCount){
             await updateDoc(x.ref,{registrationCount:actualCount});
@@ -536,6 +549,8 @@ async function api(path, opts = {}) {
             id:x.id,
             ...x.data(),
             registrationCount:actualCount,
+            attendanceCount:attendanceSnap.size,
+            attendance:attendanceSnap.docs.map(r=>({id:r.id,...r.data()})).sort((a,b)=>String(b.enteredAt||'').localeCompare(String(a.enteredAt||''))),
             registrations:rs.docs.map(r=>({id:r.id,...r.data()}))
               .sort((a,b)=>String(b.registeredAt||'').localeCompare(String(a.registeredAt||'')))
           });
