@@ -1,50 +1,23 @@
-/* KARP homepage — pure white mathematical canvas */
+/* FINAL KARP HOMEPAGE OVERRIDE — white surface, mathematics only */
 .hero{
+  position:relative!important;
   background:#fff!important;
   background-color:#fff!important;
-  background-image:none!important;
-  border-bottom:1px solid #e7e8eb!important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='760' height='420' viewBox='0 0 760 420'%3E%3Cg fill='%235d6f82' fill-opacity='.12' font-family='Cambria Math,STIX Two Math,Times New Roman,serif' font-size='27'%3E%3Ctext x='35' y='55'%3E∑%3C/text%3E%3Ctext x='155' y='105'%3E∫%3C/text%3E%3Ctext x='285' y='50'%3Eπ%3C/text%3E%3Ctext x='420' y='125'%3E√%3C/text%3E%3Ctext x='570' y='60'%3E∞%3C/text%3E%3Ctext x='690' y='145'%3E∆%3C/text%3E%3Ctext x='80' y='205'%3E∇%3C/text%3E%3Ctext x='220' y='255'%3E∂%3C/text%3E%3Ctext x='350' y='190'%3Eθ%3C/text%3E%3Ctext x='505' y='275'%3Eλ%3C/text%3E%3Ctext x='650' y='220'%3Eσ%3C/text%3E%3Ctext x='25' y='350'%3Eφ%3C/text%3E%3Ctext x='145' y='385'%3Ex²%3C/text%3E%3Ctext x='300' y='335'%3Ef(x)%3C/text%3E%3Ctext x='450' y='395'%3E∞%3C/text%3E%3Ctext x='590' y='345'%3Eα%3C/text%3E%3Ctext x='720' y='400'%3Eβ%3C/text%3E%3C/g%3E%3C/svg%3E")!important;
+  background-repeat:repeat!important;
+  background-size:760px 420px!important;
+  border-bottom:1px solid #e5e7ea!important;
   isolation:isolate!important;
 }
 
-/* Scatter only mathematical notation across the white hero. */
-.hero::before{
-  display:block!important;
-  position:absolute!important;
-  inset:0!important;
-  z-index:0!important;
-  pointer-events:none!important;
-  overflow:hidden!important;
-  content:"∑   ∫   π   √   ∞   ≈   ∆   ∇   ∂   θ   λ   μ   σ   φ   α   β   γ   x²   y²   aₙ   f(x)   lim   →   ↔   ⟂   ∈   ⊂   ∃   ∀   ½   ‖   |x|   det   max   min   sin   cos   tan   eˣ   log   Σ   ∫   π   √   ∞   Δ   ∇   ∂   θ   λ   σ   φ   α   β   x²   y²   f(x)   →   ≠   ≤   ≥   ∝   ∩   ∪   ∅   ∞   ∑   ∫   π   √   ∆   θ   λ   μ   σ   φ   xⁿ   a+b   ab   f'(x)   lim   →   ⟂   ∈   ∀   ∃";
-  font-family:"Cambria Math","STIX Two Math","Times New Roman",serif!important;
-  font-size:clamp(20px,2.6vw,38px)!important;
-  line-height:3.8!important;
-  letter-spacing:18px!important;
-  word-spacing:30px!important;
-  white-space:normal!important;
-  color:rgba(82,102,126,.13)!important;
-  opacity:1!important;
-  transform:rotate(-4deg) scale(1.12)!important;
-}
-
+/* Remove every old homepage light-gradient/shape layer. */
+.hero::before,
 .hero::after{
-  display:block!important;
-  position:absolute!important;
-  inset:0!important;
-  z-index:0!important;
-  pointer-events:none!important;
-  content:"∮   ∞   π   ∆   √   ∑   ∫   α   β   γ   θ   φ   ω   x²   y²   z²   a²+b²   f(x)   lim   →   ≡   ≠   ≤   ≥   ∈   ∉   ⊥   ∥   ∇   ∂   Σ   Π   ∫   √   ∞   π   Δ   λ   μ   σ   xₙ   yₙ   |x|   det   sin   cos   tan   log   eˣ   ∑   ∫   π   √   ∞   ∆   θ   λ   μ   φ   α   β   γ   x²   y²   f(x)   →   ↔   ⊂   ⊃   ∩   ∪   ∀   ∃";
-  font-family:"Cambria Math","STIX Two Math","Times New Roman",serif!important;
-  font-size:clamp(16px,2.1vw,30px)!important;
-  line-height:4.8!important;
-  letter-spacing:24px!important;
-  word-spacing:40px!important;
-  white-space:normal!important;
-  color:rgba(38,59,91,.075)!important;
-  transform:translate(35px,25px) rotate(5deg) scale(1.14)!important;
+  display:none!important;
+  content:none!important;
+  background:none!important;
+  animation:none!important;
 }
-
-/* Remove the old decorative orb/noise artwork. */
 .hero .orb,
 .hero .noise,
 .hero-shapes{
@@ -53,36 +26,75 @@
   animation:none!important;
 }
 
-/* Keep content above the mathematical background. */
-.hero-inner{
-  z-index:2!important;
-  transform:none!important;
-}
-@media(max-width:620px){
-  .hero-inner{transform:none!important}
-  .hero::before{
-    font-size:24px!important;
-    line-height:4.1!important;
-    letter-spacing:12px!important;
-    word-spacing:20px!important;
-  }
-  .hero::after{
-    font-size:20px!important;
-    line-height:5!important;
-    letter-spacing:16px!important;
-    word-spacing:26px!important;
-  }
-}
-
-/* Keep the KARP wordmark vertically centered instead of sitting too low. */
-.hero h1.karp-wordmark{
+/* Restore the original sequential K-A-R-P entrance exactly. */
+.hero h1.karp-wordmark,
+html[data-theme="light"] .hero h1.karp-wordmark{
+  display:flex!important;
+  justify-content:center!important;
+  align-items:center!important;
+  gap:0!important;
+  width:100%!important;
+  margin:0!important;
+  background:none!important;
+  background-image:none!important;
+  background-size:auto!important;
+  -webkit-background-clip:border-box!important;
+  background-clip:border-box!important;
+  -webkit-text-fill-color:initial!important;
+  color:#263b5b!important;
+  animation:none!important;
+  text-shadow:none!important;
+  filter:none!important;
+  position:relative!important;
+  isolation:isolate!important;
   transform:translateY(-30px)!important;
 }
-@media(max-width:620px){
-  .hero h1.karp-wordmark{transform:translateY(-22px)!important}
+.hero h1.karp-wordmark .karp-hero-letter,
+.hero h1.karp-wordmark .karp-hero-letter.karp-hero-k,
+.hero h1.karp-wordmark .karp-hero-letter.karp-hero-a,
+.hero h1.karp-wordmark .karp-hero-letter.karp-hero-r,
+.hero h1.karp-wordmark .karp-hero-letter.karp-hero-p{
+  position:relative!important;
+  display:inline-block!important;
+  opacity:0!important;
+  filter:blur(7px)!important;
+  transform:translateY(36px) scale(.83)!important;
+  line-height:.88!important;
+  letter-spacing:inherit!important;
+  background:none!important;
+  background-image:none!important;
+  background-clip:border-box!important;
+  -webkit-background-clip:border-box!important;
+  -webkit-text-fill-color:#263b5b!important;
+  color:#263b5b!important;
+  text-shadow:none!important;
+  will-change:transform,opacity,filter!important;
+}
+.hero h1.karp-wordmark .karp-hero-k{
+  animation:karpCleanK 1.85s cubic-bezier(.16,.78,.22,1) .02s both!important;
+}
+.hero h1.karp-wordmark .karp-hero-a{
+  animation:karpCleanLetter .68s cubic-bezier(.16,.78,.22,1) 1.52s both!important;
+}
+.hero h1.karp-wordmark .karp-hero-r{
+  animation:karpCleanLetter .68s cubic-bezier(.16,.78,.22,1) 1.81s both!important;
+}
+.hero h1.karp-wordmark .karp-hero-p{
+  animation:karpCleanLetter .68s cubic-bezier(.16,.78,.22,1) 2.10s both!important;
+}
+@keyframes karpCleanK{
+  0%{opacity:0;transform:translateY(66vh) scale(2.5);filter:blur(12px)}
+  18%{opacity:1;filter:blur(0)}
+  64%{opacity:1;transform:translateY(-8px) scale(1.025);filter:blur(0)}
+  82%,100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+}
+@keyframes karpCleanLetter{
+  0%{opacity:0;transform:translateY(40px) scale(.72);filter:blur(9px)}
+  68%{opacity:1;filter:blur(0)}
+  100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
 }
 
-/* Homepage subtitle directly beneath KARP. */
+/* Subtitle and buttons. */
 .hero .karp-subtitle{
   margin-top:-24px!important;
   margin-bottom:0!important;
@@ -97,12 +109,38 @@
   position:relative!important;
   z-index:3!important;
 }
-
-/* Slightly reduce the gap between subtitle and buttons. */
 .hero .cta{
   margin-top:38px!important;
+  opacity:0!important;
+  animation:karpCleanContent .62s ease-out 2.82s both!important;
+}
+.hero .journal-announcement-wrap{
+  opacity:0!important;
+  animation:karpCleanContent .62s ease-out 3s both!important;
+}
+.hero .micro{
+  opacity:0!important;
+  animation:karpCleanContent .62s ease-out 3.12s both!important;
+}
+@keyframes karpCleanContent{
+  0%{opacity:0;transform:translateY(9px)}
+  100%{opacity:1;transform:translateY(0)}
 }
 @media(max-width:620px){
+  .hero h1.karp-wordmark{transform:translateY(-22px)!important}
   .hero .karp-subtitle{margin-top:-12px!important;font-size:19px!important}
   .hero .cta{margin-top:28px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .hero h1.karp-wordmark .karp-hero-letter{
+    animation:none!important;
+    opacity:1!important;
+    filter:none!important;
+    transform:none!important;
+  }
+  .hero .cta,.hero .journal-announcement-wrap,.hero .micro{
+    animation:none!important;
+    opacity:1!important;
+    transform:none!important;
+  }
 }
