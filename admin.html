@@ -1630,6 +1630,10 @@ async function render(){
           ((x.registrations||[]).length
             ? '<div class="meeting-admin-reg-list">'+(x.registrations||[]).map(r=>'<div class="meeting-admin-reg"><div><strong>'+esc(r.userName||'Unnamed user')+'</strong><span>'+esc(r.userEmail||'')+'</span></div><time>'+esc(r.registeredAt?new Date(r.registeredAt).toLocaleString():'—')+'</time></div>').join('')+'</div>'
             : '<div class="meeting-admin-reg-empty">No registrations yet.</div>')+
+          '<div class="meeting-admin-reg-head" style="margin-top:16px"><strong>'+esc(String(x.attendanceCount||0))+' actually attended</strong><span>Recorded when they enter during the scheduled time</span></div>'+
+          ((x.attendance||[]).length
+            ? '<div class="meeting-admin-reg-list">'+(x.attendance||[]).map(r=>'<div class="meeting-admin-reg"><div><strong>'+esc(r.userName||'Unnamed user')+'</strong><span>'+esc(r.userEmail||'')+'</span></div><time>'+esc(r.enteredAt?new Date(r.enteredAt).toLocaleString():'—')+'</time></div>').join('')+'</div>'
+            : '<div class="meeting-admin-reg-empty">No attendance recorded yet.</div>')+
           '</div>'
         : '';
       return '<div class="admin-item-block" data-admin-item="'+esc(x.id)+'"><div class="row"><div><h3>'+esc(state.type==='contests' ? ((String(x.type||'').toUpperCase()==='IMO'?'IMO':String(x.type||'').toUpperCase()==='BMO'?'BMO':'Contest')+' '+(x.year||'')) : (x.titleEn||x.title||'Untitled'))+'</h3><p>'+esc(x.descriptionEn||x.description||x.excerptEn||x.excerpt||x.topic||'')+(state.type==='contests'?' · '+(x.problems||[]).length+' problems':'')+(state.type==='meetings'?' · '+String(x.registrationCount||0)+' registered':'')+'</p></div><div>'+esc(x.status||'published')+'</div><div class="right"><button class="btn" data-edit-id="'+esc(x.id)+'">Edit</button> <button class="btn danger" data-remove-id="'+esc(x.id)+'">Delete</button></div></div>'+meetingRegistrations+(open?'<div id="admin-editor-anchor" class="admin-editor-inline admin-editor-edit">'+formHtml(state.editing)+'</div>':'')+'</div>';
