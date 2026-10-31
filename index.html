@@ -427,21 +427,73 @@
   min-height:138px!important;
   box-sizing:border-box!important;
   padding:21px 23px!important;
-  border:1px solid #d9e0ee!important;
-  border-radius:17px!important;
-  background:rgba(255,255,255,.97)!important;
+  position:relative!important;
+  isolation:isolate!important;
+  overflow:hidden!important;
+  border:1px solid #c8d8f1!important;
+  border-radius:20px!important;
+  background:linear-gradient(135deg,#edf5ff 0%,#ffffff 54%,#e7f8ff 100%)!important;
   color:#101a33!important;
-  box-shadow:0 12px 34px rgba(15,30,65,.10)!important;
+  box-shadow:0 16px 38px rgba(21,65,137,.12),inset 0 1px 0 rgba(255,255,255,.9)!important;
   text-align:left!important;
   opacity:1;
   visibility:visible!important;
   filter:none;
   transform:translateX(-76px);
-  animation:karpTuranSlide 15s ease-in-out 0s infinite both!important;
+  animation:karpTuranSlide 15s cubic-bezier(.2,.75,.25,1) 0s infinite both!important;
+  transition:box-shadow .25s ease,border-color .25s ease!important;
+}
+.hero .homepage-testimonials-grid .homepage-testimonial:first-child::before,
+.hero .homepage-testimonials-grid .homepage-testimonial:nth-child(2)::before{
+  content:""!important;
+  position:absolute!important;
+  z-index:0!important;
+  left:0!important;
+  right:0!important;
+  top:0!important;
+  height:5px!important;
+  border-radius:20px 20px 0 0!important;
+}
+.hero .homepage-testimonials-grid .homepage-testimonial:first-child::before{
+  background:linear-gradient(90deg,#102c72 0%,#2878d8 48%,#36c5d8 100%)!important;
 }
 .hero .homepage-testimonials-grid .homepage-testimonial:nth-child(2){
+  border-color:#d8cff6!important;
+  background:linear-gradient(135deg,#f3efff 0%,#ffffff 54%,#edf5ff 100%)!important;
+  box-shadow:0 16px 38px rgba(80,53,153,.12),inset 0 1px 0 rgba(255,255,255,.95)!important;
   animation-name:karpElinSlide!important;
 }
+.hero .homepage-testimonials-grid .homepage-testimonial:nth-child(2)::before{
+  background:linear-gradient(90deg,#342071 0%,#7656d9 48%,#38a5dc 100%)!important;
+}
+.hero .homepage-testimonials-grid .homepage-testimonial::after{
+  content:"“"!important;
+  position:absolute!important;
+  z-index:0!important;
+  right:15px!important;
+  bottom:-34px!important;
+  color:rgba(25,69,145,.085)!important;
+  font-family:Georgia,serif!important;
+  font-size:112px!important;
+  font-weight:700!important;
+  line-height:1!important;
+  pointer-events:none!important;
+}
+.hero .homepage-testimonials-grid .homepage-testimonial:nth-child(2)::after{
+  color:rgba(104,74,174,.09)!important;
+}
+.hero .homepage-testimonials-grid .homepage-testimonial:hover{
+  border-color:#8fb2e4!important;
+  box-shadow:0 22px 48px rgba(21,65,137,.18),inset 0 1px 0 rgba(255,255,255,.95)!important;
+}
+.hero .homepage-testimonial-person,
+.hero .homepage-testimonial-quote,
+.hero .homepage-testimonial-name,
+.hero .homepage-testimonial-award{
+  position:relative!important;
+  z-index:1!important;
+}
+
 .hero .homepage-testimonial-person{
   display:flex!important;
   flex-wrap:wrap!important;
@@ -464,8 +516,8 @@
   padding:5px 9px!important;
   border:1px solid #dce4f3!important;
   border-radius:999px!important;
-  background:#f0f4fc!important;
-  color:#30466f!important;
+  background:#f0f5ff!important;
+  color:#234578!important;
   font-size:9px!important;
   font-weight:800!important;
   letter-spacing:.45px!important;
@@ -480,33 +532,36 @@
   line-height:1.6!important;
 }
 
-/* First, the action cards and exam notice stay visible for five seconds. */
+/* Reviews lead the loop: 10 seconds of student feedback, followed by 5 seconds of the three action boxes. */
 @keyframes karpPrimaryDeck{
-  0%,30%{opacity:1;transform:translateX(0)}
-  34%,96%{opacity:0;transform:translateX(-10px)}
-  100%{opacity:1;transform:translateX(0)}
+  0%,62%{opacity:0;transform:translateX(10px)}
+  66%{opacity:1;transform:translateX(0)}
+  96%{opacity:1;transform:translateX(0)}
+  100%{opacity:0;transform:translateX(10px)}
 }
-/* Then both reviews appear together in the same location for ten seconds. */
 @keyframes karpReviewDeck{
-  0%,32%{opacity:0;transform:translateX(0)}
-  37%,96%{opacity:1;transform:translateX(0)}
-  100%{opacity:0;transform:translateX(0)}
+  0%{opacity:0;transform:translateX(0)}
+  4%,62%{opacity:1;transform:translateX(0)}
+  66%,100%{opacity:0;transform:translateX(0)}
 }
+/* The two cards enter together from opposite sides, then subtly glide while visible. */
 @keyframes karpTuranSlide{
-  0%,30%{transform:translateX(-76px)}
-  36%{transform:translateX(0)}
-  55%{transform:translateX(5px)}
-  72%{transform:translateX(-4px)}
-  96%{transform:translateX(0)}
-  100%{transform:translateX(-30px)}
+  0%{opacity:0;transform:translateX(-78px)}
+  8%{opacity:1;transform:translateX(0)}
+  28%{opacity:1;transform:translateX(5px)}
+  45%{opacity:1;transform:translateX(-4px)}
+  60%{opacity:1;transform:translateX(0)}
+  64%{opacity:0;transform:translateX(-34px)}
+  100%{opacity:0;transform:translateX(-34px)}
 }
 @keyframes karpElinSlide{
-  0%,30%{transform:translateX(76px)}
-  36%{transform:translateX(0)}
-  55%{transform:translateX(-5px)}
-  72%{transform:translateX(4px)}
-  96%{transform:translateX(0)}
-  100%{transform:translateX(30px)}
+  0%{opacity:0;transform:translateX(78px)}
+  8%{opacity:1;transform:translateX(0)}
+  28%{opacity:1;transform:translateX(-5px)}
+  45%{opacity:1;transform:translateX(4px)}
+  60%{opacity:1;transform:translateX(0)}
+  64%{opacity:0;transform:translateX(34px)}
+  100%{opacity:0;transform:translateX(34px)}
 }
 @media(max-width:620px){
   .hero .hero-inner{width:100%!important;padding:46px 0 38px!important}
@@ -539,6 +594,15 @@
   .hero .homepage-testimonials-grid .homepage-testimonial{
     animation:none!important;opacity:1!important;visibility:visible!important;transform:none!important;filter:none!important;
   }
+}
+
+.hero .homepage-testimonials-grid .homepage-testimonial:nth-child(2) .homepage-testimonial-award{
+  border-color:#e0d8fb!important;
+  background:#f5f1ff!important;
+  color:#59439b!important;
+}
+@media(max-width:620px){
+  .hero .homepage-testimonials-grid .homepage-testimonial::after{font-size:92px!important;right:10px!important}
 }
 </style>
 </head><body><header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks home-nav"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/daily-problem.html">Daily Problem</a><a href="/mock.html">Mocks</a><a href="/books.html">Books</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a href="/chat.html">Chat</a><div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a></div></div><a href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header><main><section class="hero"><div class="noise"></div><div class="orb"></div><div class="hero-shapes" aria-hidden="true"><svg class="hero-shape-art" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" focusable="false">
