@@ -7,23 +7,13 @@
   <link rel="stylesheet" href="/style.css">
   <script defer src="/app.js"></script>
   <style>
-    .founder-block{width:100%;margin:0 0 34px;padding:0}
-    .founder-box{display:grid;grid-template-columns:minmax(250px,34%) minmax(0,1fr);gap:44px;align-items:center;background:#fff;border:1px solid #dedfe2;border-radius:18px;padding:28px;min-height:420px}
-    .founder-visual{text-align:center}
-    .founder-image-frame{width:min(100%,300px);aspect-ratio:210/297;margin:0 auto 14px;border-radius:14px;overflow:hidden;background:#f1f2f3;border:1px solid #d9dad8;display:grid;place-items:center}
-    .founder-image{display:block;width:100%;height:100%;object-fit:cover}
-    .founder-placeholder{color:#858b93;font-size:12px;padding:24px}
-    .founder-name{font-family:'Space Grotesk';font-size:24px;line-height:1.15;letter-spacing:-.7px;margin:0}
-    .founder-copy h2{font-family:'Space Grotesk';font-size:clamp(34px,4vw,58px);line-height:1.02;letter-spacing:-2.5px;margin:0 0 18px;color:#111}
-    .founder-copy p{font-size:16px;line-height:1.8;color:#626770;white-space:pre-line;margin:0;max-width:760px}
-    .about-card-image{display:block;width:100%;max-height:360px;object-fit:cover;border-radius:14px;margin:0 0 22px}
-    .about-grid .bigcard h2{margin-top:10px}
-    .about-card-copy{white-space:pre-line}
-    .about-founder-admin-preview{display:grid;grid-template-columns:180px minmax(0,1fr);gap:18px;align-items:center;margin:12px 0 18px}
-    .about-founder-file-wrap{width:180px;aspect-ratio:210/297;border:1px solid #d9dad8;border-radius:12px;overflow:hidden;background:#f1f2f3}
-    .about-founder-file-wrap img{width:100%;height:100%;object-fit:cover}
-    .about-founder-placeholder{width:100%;height:100%;place-items:center;text-align:center;padding:16px;color:#858b93;font-size:11px}
-    @media(max-width:760px){.founder-box{grid-template-columns:1fr;gap:24px;padding:20px}.founder-image-frame{width:min(260px,100%)}.about-founder-admin-preview{grid-template-columns:1fr}.about-founder-file-wrap{width:150px}}
+.team-page{padding:76px 0 90px}.team-heading{text-align:center;margin:0 0 52px}.team-heading h1{font-family:'Space Grotesk';font-size:clamp(52px,8vw,88px);line-height:.98;letter-spacing:-5px;margin:0}
+.team-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;max-width:920px;margin:0 auto 64px}.team-card{min-width:0;text-align:center}
+.team-photo,.team-photo-placeholder{width:100%;aspect-ratio:4/4.2;max-height:470px;object-fit:cover;display:block;border-radius:16px;background:var(--panel);border:1px solid var(--line)}
+.team-photo-placeholder{display:grid;place-items:center;color:var(--muted)}.team-card h2{font-family:'Space Grotesk';font-size:25px;letter-spacing:-.8px;margin:17px 0 2px}.team-role{color:var(--muted);font-size:14px;margin:0}
+.founder-note{max-width:920px;margin:0 auto 52px;padding:30px 34px;border:1px solid var(--line);border-radius:18px;background:var(--panel)}.founder-note .tag{margin-bottom:12px}.founder-note h2{font-family:'Space Grotesk';font-size:clamp(27px,4vw,40px);letter-spacing:-1.6px;margin:0 0 12px}.founder-note p{white-space:pre-line;color:var(--muted);font-size:15px;line-height:1.85;margin:0}
+.about-grid{max-width:1120px;margin:0 auto}.about-card-image{display:block;width:100%;max-height:360px;object-fit:cover;border-radius:14px;margin:0 0 22px}.about-grid .bigcard h2{margin-top:10px}.about-card-copy{white-space:pre-line}
+@media(max-width:680px){.team-page{padding:52px 0 65px}.team-grid{grid-template-columns:1fr;gap:34px;margin-bottom:42px}.team-photo,.team-photo-placeholder{max-height:420px}.founder-note{padding:23px 20px}.team-heading{margin-bottom:36px}}
   </style>
 </head>
 <body>
@@ -35,31 +25,16 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     {tag:'TECHNIQUE',title:'Ideas should travel.',text:'Some methods deserve to be remembered across many problems. Lambda substitution is one example: KARP can turn these recurring ideas into focused handouts rather than burying them inside solutions.',imageUrl:'',showImage:false},
     {tag:'COMMUNITY',title:'Join Us.',text:'Create an account to keep your place in the platform. Later, the same account layer can power saved problems, submissions, contributor access and more.',imageUrl:'',showImage:false}
   ];
-  let about={};
-  try{about=(await api('/api/content')).about||{}}catch(e){about={}}
+  let about={};try{about=(await api('/api/content')).about||{}}catch(e){about={}}
   const cards=Array.isArray(about.cards)&&about.cards.length?about.cards:defaultCards;
-  const founderImg=String(about.founderImage||'').trim();
-  shell('About','About Us',`
-    <main class="about-page">
-      <section class="pagehero"><div class="wrap"><h1>About Us</h1></div></section>
-      <section class="section"><div class="wrap">
-        <section class="founder-block">
-          <div class="founder-box">
-            <div class="founder-visual">
-              <div class="founder-image-frame">${founderImg?'<img class="founder-image" src="'+escapeHtml(founderImg)+'" alt="Founder">':'<div class="founder-placeholder">Founder image will appear here.</div>'}</div>
-              ${about.founderName?'<h3 class="founder-name">'+escapeHtml(about.founderName)+'</h3>':''}
-            </div>
-            <div class="founder-copy">
-              <h2>${escapeHtml(about.founderTitle||'About KARP')}</h2>
-              <p>${escapeHtml(about.founderText||'')}</p>
-            </div>
-          </div>
-        </section>
-        <div class="about-grid">
-          ${cards.map(card=>'<article class="bigcard">'+(card.showImage&&String(card.imageUrl||'').trim()?'<img class="about-card-image" src="'+escapeHtml(card.imageUrl)+'" alt="'+escapeHtml(card.title||'')+'">':'')+(card.tag?'<div class="tag">'+escapeHtml(card.tag)+'</div>':'')+'<h2>'+escapeHtml(card.title||'')+'</h2><p class="about-card-copy">'+escapeHtml(card.text||'')+'</p></article>').join('')}
-        </div>
-      </div></section>
-    </main>
+  const team=Array.isArray(about.team)&&about.team.length?about.team:[{name:'Murad Safarli',role:'Founder',image:''},{name:'Nuran Nurmammadov',role:'Marketing',image:''}];
+  shell('About','Our Team',`
+    <main class="about-page"><section class="section team-page"><div class="wrap">
+      <header class="team-heading"><h1>Our Team</h1></header>
+      <div class="team-grid">${team.map(p=>'<article class="team-card">'+(String(p.image||'').trim()?'<img class="team-photo" src="'+escapeHtml(p.image)+'" alt="'+escapeHtml(p.name||'KARP team member')+'">':'<div class="team-photo-placeholder">Team photo</div>')+'<h2>'+escapeHtml(p.name||'')+'</h2><p class="team-role">'+escapeHtml(p.role||'')+'</p></article>').join('')}</div>
+      ${String(about.founderText||'').trim()?'<section class="founder-note"><div class="tag">FROM FOUNDER</div><h2>'+escapeHtml(about.founderTitle||'')+'</h2><p>'+escapeHtml(about.founderText)+'</p></section>':''}
+      <div class="about-grid">${cards.map(card=>'<article class="bigcard">'+(card.showImage&&String(card.imageUrl||'').trim()?'<img class="about-card-image" src="'+escapeHtml(card.imageUrl)+'" alt="'+escapeHtml(card.title||'')+'">':'')+(card.tag?'<div class="tag">'+escapeHtml(card.tag)+'</div>':'')+'<h2>'+escapeHtml(card.title||'')+'</h2><p class="about-card-copy">'+escapeHtml(card.text||'')+'</p></article>').join('')}</div>
+    </div></section></main>
   `);
 });
 </script>
