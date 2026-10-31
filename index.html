@@ -404,11 +404,17 @@
   .hero .homepage-testimonial{animation:none!important;transform:none!important}
 }
 </style><style id="homepage-two-stage-loop">
-/* KARP wordmark keeps its existing blue letter gradients and reveals K-A-R-P in order. */
+/* One deep-navy KARP wordmark, revealed letter-by-letter with a Netflix-style focus-in. */
 .hero h1.karp-wordmark .karp-hero-letter{
+  color:#071D49!important;
+  background:none!important;
+  background-image:none!important;
+  -webkit-background-clip:border-box!important;
+  background-clip:border-box!important;
+  -webkit-text-fill-color:#071D49!important;
   opacity:1!important;
   filter:none!important;
-  transform:translateY(0) scale(1)!important;
+  transform:scale(.78)!important;
   animation:karpOriginalBlueLetterReveal .78s cubic-bezier(.16,.82,.22,1) both!important;
 }
 .hero h1.karp-wordmark .karp-hero-k{animation-delay:.08s!important}
@@ -416,9 +422,9 @@
 .hero h1.karp-wordmark .karp-hero-r{animation-delay:.42s!important}
 .hero h1.karp-wordmark .karp-hero-p{animation-delay:.59s!important}
 @keyframes karpOriginalBlueLetterReveal{
-  0%{opacity:0;transform:translateY(30px) scale(.78);filter:blur(10px)}
-  72%{opacity:1;transform:translateY(-4px) scale(1.045);filter:blur(0)}
-  100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+  0%{opacity:0;transform:scaleX(.42) scaleY(.82);filter:blur(10px)}
+  72%{opacity:1;transform:scaleX(1.045) scaleY(1.045);filter:blur(0)}
+  100%{opacity:1;transform:scale(1);filter:blur(0)}
 }
 
 /* The same space alternates between the three homepage links and the two reviews. */
@@ -452,7 +458,7 @@
   justify-content:center!important;
   opacity:0!important;
   visibility:hidden!important;
-  transform:scale(.94) translateY(18px)!important;
+  transform:none!important;
   animation:karpReviewsTenSeconds 15s ease-in-out 1.35s infinite both!important;
 }
 .hero .homepage-testimonials{
@@ -465,11 +471,32 @@
   transform:none!important;
 }
 .hero .homepage-testimonial{
-  opacity:1!important;
+  opacity:0!important;
   visibility:visible!important;
-  filter:none!important;
-  transform:none!important;
-  animation:none!important;
+  filter:blur(6px)!important;
+  transform:translateX(-88px) scale(.96)!important;
+  animation:karpReviewFromLeft 15s ease-in-out 1.35s infinite both!important;
+}
+.hero .homepage-testimonial:nth-child(2){
+  animation-name:karpReviewFromRight!important;
+}
+
+/* Both reviews move horizontally together: Turan enters from the left, Elin from the right. */
+@keyframes karpReviewFromLeft{
+  0%,31%{opacity:0;transform:translateX(-88px) scale(.96);filter:blur(6px)}
+  35%{opacity:1;transform:translateX(0) scale(1);filter:blur(0)}
+  56%{opacity:1;transform:translateX(8px) scale(1);filter:blur(0)}
+  74%{opacity:1;transform:translateX(-5px) scale(1);filter:blur(0)}
+  96.5%{opacity:1;transform:translateX(0) scale(1);filter:blur(0)}
+  100%{opacity:0;transform:translateX(-38px) scale(.98);filter:blur(4px)}
+}
+@keyframes karpReviewFromRight{
+  0%,31%{opacity:0;transform:translateX(88px) scale(.96);filter:blur(6px)}
+  35%{opacity:1;transform:translateX(0) scale(1);filter:blur(0)}
+  56%{opacity:1;transform:translateX(-8px) scale(1);filter:blur(0)}
+  74%{opacity:1;transform:translateX(5px) scale(1);filter:blur(0)}
+  96.5%{opacity:1;transform:translateX(0) scale(1);filter:blur(0)}
+  100%{opacity:0;transform:translateX(38px) scale(.98);filter:blur(4px)}
 }
 
 /* The three main boxes appear first, stay for about five seconds, then disappear. */
@@ -484,11 +511,10 @@
 
 /* Then the two review boxes appear and remain for roughly ten seconds. */
 @keyframes karpReviewsTenSeconds{
-  0%{opacity:0;visibility:hidden;transform:scale(.92) translateY(18px)}
-  31%{opacity:0;visibility:hidden;transform:scale(.92) translateY(18px)}
-  35%{opacity:1;visibility:visible;transform:scale(1) translateY(0)}
-  96.5%{opacity:1;visibility:visible;transform:scale(1) translateY(0)}
-  100%{opacity:0;visibility:hidden;transform:scale(.94) translateY(12px)}
+  0%,31%{opacity:0;visibility:hidden;transform:none}
+  35%{opacity:1;visibility:visible;transform:none}
+  96.5%{opacity:1;visibility:visible;transform:none}
+  100%{opacity:0;visibility:hidden;transform:none}
 }
 @media(max-width:620px){
   .hero .homepage-switchboard{
@@ -601,8 +627,7 @@
     </div>
     <div class="homepage-testimonial">
       <div class="homepage-testimonial-person">
-        <strong class="homepage-testimonial-name">Ali Sadigly</strong>
-        <span class="homepage-testimonial-award">IMO 2026 Participant</span>
+        <strong class="homepage-testimonial-name">Elin</strong>
       </div>
       <p class="homepage-testimonial-quote">A great place to practise with challenging olympiad problems.</p>
     </div>
