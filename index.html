@@ -475,6 +475,106 @@
     filter:none!important;
   }
 }
+</style><style id="homepage-sequence-safe-fix">
+/* Keep the full homepage content in the document flow; never crop the lower cards. */
+.hero{
+  height:auto!important;
+  min-height:calc(100vh - 77px)!important;
+  overflow:visible!important;
+  align-items:center!important;
+}
+.hero-inner{
+  display:block!important;
+  width:min(calc(100% - 42px),980px)!important;
+  max-width:980px!important;
+  padding:38px 0 54px!important;
+  margin:0 auto!important;
+}
+.hero .homepage-testimonials,
+.hero .homepage-testimonials-grid,
+.hero .homepage-action-cards,
+.hero .journal-announcement-wrap{
+  position:relative!important;
+  z-index:5!important;
+  visibility:visible!important;
+}
+.hero .homepage-testimonial,
+.hero h1.karp-wordmark .karp-hero-letter,
+.hero .homepage-action-card,
+.hero .journal-announcement-wrap{
+  opacity:1!important;
+  visibility:visible!important;
+  filter:none!important;
+}
+
+/* First: the two testimonial cards slide in from above. */
+.hero .homepage-testimonial{
+  transform:translateY(0) scale(1)!important;
+  animation:karpReviewMotion .7s cubic-bezier(.18,.82,.22,1) both!important;
+}
+.hero .homepage-testimonial:first-child{animation-delay:.08s!important}
+.hero .homepage-testimonial:nth-child(2){animation-delay:.28s!important}
+@keyframes karpReviewMotion{
+  from{transform:translateY(-32px) scale(.94)}
+  72%{transform:translateY(4px) scale(1.015)}
+  to{transform:translateY(0) scale(1)}
+}
+
+/* Second: KARP arrives after the testimonials. */
+.hero h1.karp-wordmark .karp-hero-letter{
+  opacity:1!important;
+  transform:translateY(0) scale(1)!important;
+  filter:none!important;
+  animation:karpWordMotion .68s cubic-bezier(.18,.82,.22,1) both!important;
+}
+.hero h1.karp-wordmark .karp-hero-k{animation-delay:.98s!important}
+.hero h1.karp-wordmark .karp-hero-a{animation-delay:1.10s!important}
+.hero h1.karp-wordmark .karp-hero-r{animation-delay:1.22s!important}
+.hero h1.karp-wordmark .karp-hero-p{animation-delay:1.34s!important}
+@keyframes karpWordMotion{
+  from{transform:translateY(30px) scale(.9)}
+  72%{transform:translateY(-3px) scale(1.035)}
+  to{transform:translateY(0) scale(1)}
+}
+
+/* Last: the two feature cards, then the exam card, rise into place. */
+.hero .homepage-action-card{
+  opacity:1!important;
+  visibility:visible!important;
+  transform:translateY(0) scale(1)!important;
+  animation:karpBoxMotion .7s cubic-bezier(.18,.82,.22,1) both!important;
+}
+.hero .homepage-action-card:first-child{animation-delay:2.02s!important}
+.hero .homepage-action-card:nth-child(2){animation-delay:2.22s!important}
+.hero .journal-announcement-wrap{
+  opacity:1!important;
+  visibility:visible!important;
+  transform:translateY(0) scale(1)!important;
+  animation:karpBoxMotion .7s cubic-bezier(.18,.82,.22,1) 2.42s both!important;
+}
+@keyframes karpBoxMotion{
+  from{transform:translateY(28px) scale(.96)}
+  75%{transform:translateY(-3px) scale(1.01)}
+  to{transform:translateY(0) scale(1)}
+}
+
+@media(max-width:620px){
+  .hero-inner{width:100%!important;padding:30px 0 42px!important}
+  .hero .homepage-testimonials{margin-bottom:17px!important}
+  .hero h1.karp-wordmark{margin:8px 0 0!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .hero .homepage-testimonial,
+  .hero h1.karp-wordmark .karp-hero-letter,
+  .hero .homepage-action-card,
+  .hero .journal-announcement-wrap{
+    animation:none!important;
+    opacity:1!important;
+    visibility:visible!important;
+    transform:none!important;
+    filter:none!important;
+  }
+}
 </style></head><body><header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks home-nav"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/daily-problem.html">Daily Problem</a><a href="/mock.html">Mocks</a><a href="/books.html">Books</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a href="/chat.html">Chat</a><div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a></div></div><a href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header><main><section class="hero"><div class="noise"></div><div class="orb"></div><div class="hero-shapes" aria-hidden="true"><svg class="hero-shape-art" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" focusable="false">
 <g class="drift-a">
   <circle class="geo blue" cx="135" cy="208" r="35"/>
