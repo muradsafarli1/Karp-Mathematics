@@ -1607,8 +1607,8 @@ async function render(){
       const item=d.about||{};
       const cards=Array.isArray(item.cards)?item.cards:[];
       const cardRows=cards.length?cards.map((x,i)=>'<div class="row"><div><h3>'+esc(x.title||('Box '+(i+1)))+'</h3><p>'+esc(x.tag||'')+(x.showImage&&x.imageUrl?' · image enabled':'')+'</p></div><div>'+esc(x.showImage?'With image':'Text only')+'</div><div class="right"></div></div>').join(''):'<div class="empty">No About boxes saved yet.</div>';
-      m.innerHTML='<div class="admin-head"><div><h2>About Us</h2><span class="admin-count">'+cards.length+' content boxes</span></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn" onclick="openAboutEditor()">Edit About</button><button class="btn primary" onclick="openAboutEditor(true)">+ Add Box</button></div></div>'+
-        '<div class="bigcard" style="margin-bottom:12px"><div class="tag">FOUNDER</div><h3>'+esc(item.founderName||'Founder not set')+'</h3><p>'+esc(item.founderImage?'Founder image is configured.':'No founder image configured.')+'</p></div>'+
+      m.innerHTML='<div class="admin-head"><div><h2>Our Team</h2><span class="admin-count">'+(Array.isArray(item.team)?item.team.length:2)+' team members · '+cards.length+' content boxes</span></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn" onclick="openAboutEditor()">Edit About</button><button class="btn primary" onclick="openAboutEditor(true)">+ Add Box</button></div></div>'+
+        '<div class="bigcard" style="margin-bottom:12px"><div class="tag">FROM FOUNDER</div><h3>'+esc(item.founderTitle||'Founder message')+'</h3><p>'+esc(item.founderText?'Founder message is configured.':'No founder message configured.')+'</p></div>'+
         '<div class="rows">'+cardRows+'</div>'+
         (state.editing?'<div class="admin-editor-inline admin-editor-edit">'+formHtml(state.editing)+'</div>':'');
     }catch(e){m.innerHTML='<div class="bigcard"><h3>Could not load About</h3><p>'+esc(e.message)+'</p></div>'}
@@ -1810,6 +1810,8 @@ async function saveItem(){
   syncCurrent();
   if(state.type==='about'){
     const data={
+      founderName:'',
+      founderImage:'',
       founderTitle:state.editing.founderTitle||'',
       team:state.editing.team||[],
       founderText:state.editing.founderText||'',
