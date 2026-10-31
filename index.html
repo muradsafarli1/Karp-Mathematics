@@ -403,6 +403,78 @@
 @media(prefers-reduced-motion:reduce){
   .hero .homepage-testimonial{animation:none!important;transform:none!important}
 }
+</style><style id="homepage-sequence-motion">
+/* Homepage entrance sequence: testimonials, KARP wordmark, then the three action boxes */
+.hero .homepage-testimonials{
+  margin:0 auto 24px!important;
+}
+.hero .homepage-testimonial{
+  opacity:0!important;
+  transform:translateY(-48px) scale(.88)!important;
+  filter:blur(9px)!important;
+  animation:karpReviewEntrance .82s cubic-bezier(.16,.82,.22,1) both!important;
+}
+.hero .homepage-testimonial:first-child{animation-delay:.08s!important}
+.hero .homepage-testimonial:nth-child(2){animation-delay:.28s!important}
+@keyframes karpReviewEntrance{
+  0%{opacity:0;transform:translateY(-48px) scale(.88);filter:blur(9px)}
+  70%{opacity:1;transform:translateY(5px) scale(1.015);filter:blur(0)}
+  100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+}
+
+/* The KARP letters appear only after both review cards have arrived. */
+.hero h1.karp-wordmark .karp-hero-letter{
+  opacity:0!important;
+  transform:translateY(35px) scale(.78)!important;
+  filter:blur(11px)!important;
+  animation:karpWordmarkEntrance .72s cubic-bezier(.16,.82,.22,1) both!important;
+}
+.hero h1.karp-wordmark .karp-hero-k{animation-delay:1.12s!important}
+.hero h1.karp-wordmark .karp-hero-a{animation-delay:1.25s!important}
+.hero h1.karp-wordmark .karp-hero-r{animation-delay:1.38s!important}
+.hero h1.karp-wordmark .karp-hero-p{animation-delay:1.51s!important}
+@keyframes karpWordmarkEntrance{
+  0%{opacity:0;transform:translateY(35px) scale(.78);filter:blur(11px)}
+  72%{opacity:1;transform:translateY(-3px) scale(1.035);filter:blur(0)}
+  100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+}
+
+/* Explore Problems, About KARP, and the Exam box arrive last, one after another. */
+.hero .homepage-action-cards{
+  opacity:1!important;
+  animation:none!important;
+}
+.hero .homepage-action-card{
+  opacity:0!important;
+  transform:translateY(34px) scale(.94)!important;
+  animation:karpActionEntrance .72s cubic-bezier(.16,.82,.22,1) both!important;
+}
+.hero .homepage-action-card:first-child{animation-delay:2.32s!important}
+.hero .homepage-action-card:nth-child(2){animation-delay:2.52s!important}
+.hero .journal-announcement-wrap{
+  opacity:0!important;
+  transform:translateY(34px) scale(.94)!important;
+  animation:karpActionEntrance .72s cubic-bezier(.16,.82,.22,1) 2.72s both!important;
+}
+@keyframes karpActionEntrance{
+  0%{opacity:0;transform:translateY(34px) scale(.94)}
+  75%{opacity:1;transform:translateY(-3px) scale(1.012)}
+  100%{opacity:1;transform:translateY(0) scale(1)}
+}
+@media(max-width:620px){
+  .hero .homepage-testimonials{margin-bottom:19px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .hero .homepage-testimonial,
+  .hero h1.karp-wordmark .karp-hero-letter,
+  .hero .homepage-action-card,
+  .hero .journal-announcement-wrap{
+    animation:none!important;
+    opacity:1!important;
+    transform:none!important;
+    filter:none!important;
+  }
+}
 </style></head><body><header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><nav class="navlinks home-nav"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/daily-problem.html">Daily Problem</a><a href="/mock.html">Mocks</a><a href="/books.html">Books</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a href="/chat.html">Chat</a><div class="nav-tool"><span class="nav-tool-label">Tools</span><div class="tools-menu"><a href="/geogebra.html"><span>GeoGebra</span><small>Dynamic Mathematics</small></a></div></div><a href="/about.html">About</a></nav><div class="actions" id="nav-actions"><a class="btn ghost" href="/login.html">Login</a><a class="btn primary" href="/signup.html">Join Us</a></div></div></header><main><section class="hero"><div class="noise"></div><div class="orb"></div><div class="hero-shapes" aria-hidden="true"><svg class="hero-shape-art" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" focusable="false">
 <g class="drift-a">
   <circle class="geo blue" cx="135" cy="208" r="35"/>
@@ -473,7 +545,7 @@
   <text class="math-symbol math-blue" x="905" y="205">lim</text>
   <text class="math-symbol math-gold" x="1090" y="735">a²+b²</text>
   <text class="math-symbol math-green" x="290" y="750">x ∈ ℝ</text>
-</g></svg></div><div class="hero-inner"><h1 class="karp-wordmark" aria-label="KARP"><span class="karp-hero-letter karp-hero-k" aria-hidden="true">K</span><span class="karp-hero-letter karp-hero-a" aria-hidden="true">A</span><span class="karp-hero-letter karp-hero-r" aria-hidden="true">R</span><span class="karp-hero-letter karp-hero-p" aria-hidden="true">P</span></h1><div class="homepage-action-cards"><a class="homepage-action-card homepage-action-card-primary" href="/problems.html"><span class="homepage-action-label">PRACTICE &amp; DISCOVER</span><strong class="homepage-action-title">Explore Problems</strong><span class="homepage-action-description">Challenge yourself with olympiad problems.</span><span class="homepage-action-arrow" aria-hidden="true">↗</span></a><a class="homepage-action-card" href="/about.html"><span class="homepage-action-label">GET TO KNOW KARP</span><strong class="homepage-action-title">About KARP</strong><span class="homepage-action-description">Learn about our mission and community.</span><span class="homepage-action-arrow" aria-hidden="true">↗</span></a></div><section class="journal-announcement-wrap"><a class="journal-announcement" href="/exams.html" aria-label="Register for an upcoming exam"><div class="exam-announcement-icon" aria-hidden="true">↗</div><div class="journal-announcement-text"><span class="journal-announcement-eyebrow">UPCOMING EXAM</span><h2>Don't forget to register for an upcoming exam!</h2><p>Visit the Exams page to see available exams and register.</p></div><span class="journal-announcement-action">View Exams <span aria-hidden="true">→</span></span></a></section><div class="homepage-testimonials" aria-label="Student testimonials">
+</g></svg></div><div class="hero-inner"><div class="homepage-testimonials" aria-label="Student testimonials">
   <div class="homepage-testimonials-grid">
     <div class="homepage-testimonial">
       <div class="homepage-testimonial-person">
@@ -490,4 +562,4 @@
       <p class="homepage-testimonial-quote">A great place to practise with challenging olympiad problems.</p>
     </div>
   </div>
-</div><div class="micro"><a href="/problems.html">Problems</a><span> · </span><a href="/contests.html">Contests</a><span> · </span><a href="/exams.html">Exams</a></div></div></section></main><footer class="footer"><div class="wrap footgrid"><div><div class="brand">KARP</div><div class="small">Olympiad mathematics for serious problem solvers.</div></div><div class="footlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/daily-problem.html">Daily Problem</a><a href="/mock.html">Mocks</a><a href="/books.html">Books</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a href="/chat.html">Chat</a><a href="/geogebra.html">Tools</a><a href="/about.html">About Us</a></div></div></footer><script>updateNavUser();</script></body></html>
+</div><h1 class="karp-wordmark" aria-label="KARP"><span class="karp-hero-letter karp-hero-k" aria-hidden="true">K</span><span class="karp-hero-letter karp-hero-a" aria-hidden="true">A</span><span class="karp-hero-letter karp-hero-r" aria-hidden="true">R</span><span class="karp-hero-letter karp-hero-p" aria-hidden="true">P</span></h1><div class="homepage-action-cards"><a class="homepage-action-card homepage-action-card-primary" href="/problems.html"><span class="homepage-action-label">PRACTICE &amp; DISCOVER</span><strong class="homepage-action-title">Explore Problems</strong><span class="homepage-action-description">Challenge yourself with olympiad problems.</span><span class="homepage-action-arrow" aria-hidden="true">↗</span></a><a class="homepage-action-card" href="/about.html"><span class="homepage-action-label">GET TO KNOW KARP</span><strong class="homepage-action-title">About KARP</strong><span class="homepage-action-description">Learn about our mission and community.</span><span class="homepage-action-arrow" aria-hidden="true">↗</span></a></div><section class="journal-announcement-wrap"><a class="journal-announcement" href="/exams.html" aria-label="Register for an upcoming exam"><div class="exam-announcement-icon" aria-hidden="true">↗</div><div class="journal-announcement-text"><span class="journal-announcement-eyebrow">UPCOMING EXAM</span><h2>Don't forget to register for an upcoming exam!</h2><p>Visit the Exams page to see available exams and register.</p></div><span class="journal-announcement-action">View Exams <span aria-hidden="true">→</span></span></a></section><div class="micro"><a href="/problems.html">Problems</a><span> · </span><a href="/contests.html">Contests</a><span> · </span><a href="/exams.html">Exams</a></div></div></section></main><footer class="footer"><div class="wrap footgrid"><div><div class="brand">KARP</div><div class="small">Olympiad mathematics for serious problem solvers.</div></div><div class="footlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/daily-problem.html">Daily Problem</a><a href="/mock.html">Mocks</a><a href="/books.html">Books</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a href="/chat.html">Chat</a><a href="/geogebra.html">Tools</a><a href="/about.html">About Us</a></div></div></footer><script>updateNavUser();</script></body></html>
