@@ -54,3 +54,14 @@
 @media(max-width:900px){.hero-shape-art .math-symbol{font-size:32px!important;opacity:.9}}
 @media(max-width:620px){.hero h1{font-size:clamp(92px,24vw,150px)!important;letter-spacing:-8px!important}.hero .cta{margin-top:28px!important}.hero-shape-art .math-symbol{font-size:30px!important;opacity:.78}.journal-announcement-wrap{width:calc(100% - 42px);margin-top:22px}.journal-announcement{padding:12px 14px}.journal-announcement h2{font-size:13px}.journal-announcement-arrow{font-size:19px}}
 @media(prefers-reduced-motion:reduce){.hero h1.karp-wordmark .karp-hero-letter{animation:none!important;opacity:1!important;filter:none!important;transform:none!important}.hero .cta,.hero .journal-announcement-wrap,.hero .micro{animation:none!important;opacity:1!important;transform:none!important}.hero-shape-art .math-drift{animation:none!important}}
+
+
+/* KARP brand wordmark: all four letters use the same deep navy. */
+.hero h1.karp-wordmark .karp-hero-letter{
+  color:#071D49!important;
+  background:none!important;
+  background-image:none!important;
+  -webkit-background-clip:border-box!important;
+  background-clip:border-box!important;
+  -webkit-text-fill-color:#071D49!important;
+}
