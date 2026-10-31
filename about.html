@@ -7,13 +7,16 @@
   <link rel="stylesheet" href="/style.css">
   <script defer src="/app.js"></script>
   <style>
-.team-page{padding:76px 0 90px}.team-heading{text-align:center;margin:0 0 52px}.team-heading h1{font-family:'Space Grotesk';font-size:clamp(52px,8vw,88px);line-height:.98;letter-spacing:-5px;margin:0}
-.team-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;max-width:920px;margin:0 auto 64px}.team-card{min-width:0;text-align:center}
-.team-photo,.team-photo-placeholder{width:100%;aspect-ratio:4/4.2;max-height:470px;object-fit:cover;display:block;border-radius:16px;background:var(--panel);border:1px solid var(--line)}
-.team-photo-placeholder{display:grid;place-items:center;color:var(--muted)}.team-card h2{font-family:'Space Grotesk';font-size:25px;letter-spacing:-.8px;margin:17px 0 2px}.team-role{color:var(--muted);font-size:14px;margin:0}
-.founder-note{max-width:920px;margin:0 auto 52px;padding:30px 34px;border:1px solid var(--line);border-radius:18px;background:var(--panel)}.founder-note .tag{margin-bottom:12px}.founder-note h2{font-family:'Space Grotesk';font-size:clamp(27px,4vw,40px);letter-spacing:-1.6px;margin:0 0 12px}.founder-note p{white-space:pre-line;color:var(--muted);font-size:15px;line-height:1.85;margin:0}
+.team-page{padding:82px 0 90px}
+.team-hero{display:grid;grid-template-columns:minmax(220px,.8fr) minmax(0,1.7fr);align-items:center;gap:clamp(38px,7vw,100px);max-width:1160px;margin:0 auto 72px}
+.team-heading{text-align:left;margin:0}.team-heading h1{font-family:'Space Grotesk';font-size:clamp(58px,8vw,100px);line-height:.95;letter-spacing:-6px;margin:0;white-space:nowrap}
+.team-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;max-width:none;margin:0}.team-card{min-width:0;text-align:left}
+.team-photo,.team-photo-placeholder{width:100%;aspect-ratio:4/4.2;max-height:390px;object-fit:cover;display:block;border-radius:14px;background:var(--panel2);border:1px solid var(--line)}
+.team-photo-placeholder{display:grid;place-items:center;color:var(--muted)}.team-card h2{font-family:'Space Grotesk';font-size:21px;letter-spacing:-.6px;margin:13px 0 1px}.team-role{color:var(--muted);font-size:14px;margin:0}
+.founder-note{max-width:1120px;margin:0 auto 52px;padding:30px 34px;border:1px solid var(--line);border-radius:18px;background:var(--panel)}.founder-note .tag{margin-bottom:12px}.founder-note h2{font-family:'Space Grotesk';font-size:clamp(27px,4vw,40px);letter-spacing:-1.6px;margin:0 0 12px}.founder-note p{white-space:pre-line;color:var(--muted);font-size:15px;line-height:1.85;margin:0}
 .about-grid{max-width:1120px;margin:0 auto}.about-card-image{display:block;width:100%;max-height:360px;object-fit:cover;border-radius:14px;margin:0 0 22px}.about-grid .bigcard h2{margin-top:10px}.about-card-copy{white-space:pre-line}
-@media(max-width:680px){.team-page{padding:52px 0 65px}.team-grid{grid-template-columns:1fr;gap:34px;margin-bottom:42px}.team-photo,.team-photo-placeholder{max-height:420px}.founder-note{padding:23px 20px}.team-heading{margin-bottom:36px}}
+@media(max-width:760px){.team-page{padding:54px 0 65px}.team-hero{grid-template-columns:1fr;gap:28px;margin-bottom:48px}.team-heading h1{font-size:clamp(52px,13vw,76px);letter-spacing:-4px}.team-grid{gap:16px}.team-photo,.team-photo-placeholder{max-height:320px}.team-card h2{font-size:18px}.founder-note{padding:23px 20px}}
+@media(max-width:440px){.team-grid{grid-template-columns:1fr;gap:30px}.team-photo,.team-photo-placeholder{max-height:420px}}
   </style>
 </head>
 <body>
@@ -30,8 +33,8 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   const team=Array.isArray(about.team)&&about.team.length?about.team:[{name:'Murad Safarli',role:'Founder',image:''},{name:'Nuran Nurmammadov',role:'Marketing',image:''}];
   shell('About','Our Team',`
     <main class="about-page"><section class="section team-page"><div class="wrap">
-      <header class="team-heading"><h1>Our Team</h1></header>
-      <div class="team-grid">${team.map(p=>'<article class="team-card">'+(String(p.image||'').trim()?'<img class="team-photo" src="'+escapeHtml(p.image)+'" alt="'+escapeHtml(p.name||'KARP team member')+'">':'<div class="team-photo-placeholder">Team photo</div>')+'<h2>'+escapeHtml(p.name||'')+'</h2><p class="team-role">'+escapeHtml(p.role||'')+'</p></article>').join('')}</div>
+      <div class="team-hero"><header class="team-heading"><h1>Our Team</h1></header>
+      <div class="team-grid">${team.map(p=>'<article class="team-card">'+(String(p.image||'').trim()?'<img class="team-photo" src="'+escapeHtml(p.image)+'" alt="'+escapeHtml(p.name||'KARP team member')+'">':'<div class="team-photo-placeholder">Team photo</div>')+'<h2>'+escapeHtml(p.name||'')+'</h2><p class="team-role">'+escapeHtml(p.role||'')+'</p></article>').join('')}</div></div>
       ${String(about.founderText||'').trim()?'<section class="founder-note"><div class="tag">FROM FOUNDER</div><h2>'+escapeHtml(about.founderTitle||'')+'</h2><p>'+escapeHtml(about.founderText)+'</p></section>':''}
       <div class="about-grid">${cards.map(card=>'<article class="bigcard">'+(card.showImage&&String(card.imageUrl||'').trim()?'<img class="about-card-image" src="'+escapeHtml(card.imageUrl)+'" alt="'+escapeHtml(card.title||'')+'">':'')+(card.tag?'<div class="tag">'+escapeHtml(card.tag)+'</div>':'')+'<h2>'+escapeHtml(card.title||'')+'</h2><p class="about-card-copy">'+escapeHtml(card.text||'')+'</p></article>').join('')}</div>
     </div></section></main>
