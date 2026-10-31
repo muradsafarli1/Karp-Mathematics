@@ -1667,7 +1667,7 @@ async function removeImportedOlympiadCatalog(){
 
 async function openAboutEditor(addBox=false){
   try{
-    pendingFounderImage='';
+    pendingFounderImage='';pendingTeamImages=[];
     const d=await api('/api/admin/about'),item=d.about||{};
     state.editing={
       id:'global',
@@ -1675,6 +1675,7 @@ async function openAboutEditor(addBox=false){
       founderImage:item.founderImage||'',
       founderTitle:item.founderTitle||'',
       founderText:item.founderText||'',
+      team:Array.isArray(item.team)&&item.team.length?JSON.parse(JSON.stringify(item.team)):[{name:'Murad Safarli',role:'Founder',image:''},{name:'Nuran Nurmammadov',role:'Marketing',image:''}],
       cards:Array.isArray(item.cards)&&item.cards.length?JSON.parse(JSON.stringify(item.cards)):aboutDefaultCards()
     };
     if(addBox)state.editing.cards.push({tag:'',title:'',text:'',imageUrl:'',showImage:false});
@@ -1819,7 +1820,7 @@ async function saveItem(){
     };
     try{
       await api('/api/admin/about/global',{method:'PUT',body:JSON.stringify(data)});
-      state.editing=null;toast('About saved successfully');render();
+      state.editing=null;pendingTeamImages=[];toast('About saved successfully');render();
     }catch(e){toast(e.message)}
     return;
   }
