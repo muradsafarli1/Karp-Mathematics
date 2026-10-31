@@ -316,299 +316,106 @@
   .hero .homepage-action-cards,.hero .journal-announcement-wrap{animation:none!important;opacity:1!important;transform:none!important}
   .hero .homepage-action-card,.hero .journal-announcement{transition:none!important}
 }
-</style><style id="homepage-testimonials-style">
-/* Compact rounded testimonial cards on the homepage only */
-.hero .homepage-testimonials{
+</style>
+
+
+<style id="homepage-single-deck-final">
+/* A single oversized KARP heading with extra right-side breathing room for P. */
+.hero .hero-inner{
+  width:min(calc(100% - 38px),1040px)!important;
+  max-width:1040px!important;
+  padding:54px 0 46px!important;
+}
+.hero h1.karp-wordmark{
   display:block!important;
+  position:relative!important;
+  width:100%!important;
+  max-width:100%!important;
+  margin:0 auto 28px!important;
+  padding:0 .14em .08em .02em!important;
+  box-sizing:border-box!important;
+  overflow:visible!important;
+  white-space:nowrap!important;
+  text-align:center!important;
+  font-size:clamp(94px,18vw,252px)!important;
+  line-height:1!important;
+  letter-spacing:-.045em!important;
+  font-weight:800!important;
+  color:#020B2D!important;
+  background:none!important;
+  background-image:none!important;
+  -webkit-background-clip:border-box!important;
+  background-clip:border-box!important;
+  -webkit-text-fill-color:#020B2D!important;
+  text-shadow:none!important;
+  filter:none!important;
+  opacity:1!important;
+  animation:karpSingleLogoReveal .95s cubic-bezier(.2,.8,.2,1) .08s both!important;
+}
+@keyframes karpSingleLogoReveal{
+  0%{opacity:0;transform:scale(.76);filter:blur(13px)}
+  72%{opacity:1;transform:scale(1.035);filter:blur(0)}
+  100%{opacity:1;transform:scale(1);filter:none}
+}
+
+/* The action/exam deck and the two testimonials occupy exactly the same grid cell. */
+.hero .homepage-switchboard{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  align-items:stretch!important;
+  position:relative!important;
   width:min(calc(100% - 42px),820px)!important;
   max-width:820px!important;
-  margin:22px auto 0!important;
+  min-height:292px!important;
+  margin:0 auto!important;
+  padding:0!important;
+  overflow:visible!important;
+  isolation:isolate!important;
+}
+.hero .homepage-primary-stage,
+.hero .homepage-review-stage{
+  grid-area:1 / 1!important;
   position:relative!important;
-  z-index:5!important;
+  inset:auto!important;
+  width:100%!important;
+  height:auto!important;
+  min-width:0!important;
+  margin:0!important;
+  align-self:stretch!important;
+  transition:none!important;
+}
+.hero .homepage-primary-stage{
+  z-index:1!important;
+  display:block!important;
+  opacity:1;
+  transform:none;
+  animation:karpPrimaryDeck 15s ease-in-out 0s infinite both!important;
+}
+.hero .homepage-review-stage{
+  z-index:2!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  opacity:0;
+  transform:none;
+  animation:karpReviewDeck 15s ease-in-out 0s infinite both!important;
+  pointer-events:none!important;
+}
+.hero .homepage-testimonials{
+  display:block!important;
+  position:relative!important;
+  width:100%!important;
+  max-width:820px!important;
+  margin:0 auto!important;
+  opacity:1!important;
+  visibility:visible!important;
+  transform:none!important;
   background:transparent!important;
 }
 .hero .homepage-testimonials-grid{
   display:grid!important;
   grid-template-columns:repeat(2,minmax(0,1fr))!important;
-  gap:14px!important;
   align-items:stretch!important;
-}
-.hero .homepage-testimonial{
-  display:flex!important;
-  flex-direction:column!important;
-  justify-content:center!important;
-  min-width:0!important;
-  min-height:126px!important;
-  padding:19px 21px!important;
-  border:1px solid #dce2ef!important;
-  border-radius:18px!important;
-  background:#fff!important;
-  color:#17191c!important;
-  box-shadow:0 8px 24px rgba(31,46,79,.075)!important;
-  text-align:left!important;
-  opacity:1!important;
-  visibility:visible!important;
-  animation:karpTestimonialDrop .68s cubic-bezier(.2,.8,.2,1) backwards!important;
-}
-.hero .homepage-testimonial:first-child{animation-delay:.22s!important}
-.hero .homepage-testimonial:nth-child(2){animation-delay:.43s!important}
-.hero .homepage-testimonial-person{
-  display:flex!important;
-  flex-wrap:wrap!important;
-  align-items:center!important;
-  justify-content:space-between!important;
-  gap:7px 12px!important;
-  margin:0 0 12px!important;
-}
-.hero .homepage-testimonial-name{
-  display:block!important;
-  color:#17191c!important;
-  font-family:"Space Grotesk",sans-serif!important;
-  font-size:16px!important;
-  font-weight:800!important;
-  letter-spacing:-.35px!important;
-  line-height:1.25!important;
-}
-.hero .homepage-testimonial-award{
-  display:inline-block!important;
-  padding:5px 9px!important;
-  border:1px solid #e0e7f7!important;
-  border-radius:999px!important;
-  background:#f1f5ff!important;
-  color:#4e6397!important;
-  font-size:9px!important;
-  font-weight:800!important;
-  letter-spacing:.45px!important;
-  line-height:1.25!important;
-  white-space:nowrap!important;
-}
-.hero .homepage-testimonial-quote{
-  display:block!important;
-  margin:0!important;
-  color:#535d70!important;
-  font-size:13px!important;
-  font-weight:500!important;
-  line-height:1.55!important;
-}
-@keyframes karpTestimonialDrop{
-  from{transform:translateY(-22px)}
-  to{transform:translateY(0)}
-}
-@media(max-width:620px){
-  .hero .homepage-testimonials{width:calc(100% - 42px)!important;margin-top:17px!important}
-  .hero .homepage-testimonials-grid{grid-template-columns:1fr!important;gap:10px!important}
-  .hero .homepage-testimonial{min-height:0!important;padding:16px 17px!important;border-radius:16px!important}
-  .hero .homepage-testimonial-person{margin-bottom:9px!important}
-}
-@media(prefers-reduced-motion:reduce){
-  .hero .homepage-testimonial{animation:none!important;transform:none!important}
-}
-</style><style id="homepage-two-stage-loop">
-/* One deep-navy KARP wordmark, revealed letter-by-letter with a Netflix-style focus-in. */
-.hero h1.karp-wordmark .karp-hero-letter{
-  color:#071D49!important;
-  background:none!important;
-  background-image:none!important;
-  -webkit-background-clip:border-box!important;
-  background-clip:border-box!important;
-  -webkit-text-fill-color:#071D49!important;
-  opacity:1!important;
-  filter:none!important;
-  transform:scale(.78)!important;
-  animation:karpOriginalBlueLetterReveal .78s cubic-bezier(.16,.82,.22,1) both!important;
-}
-.hero h1.karp-wordmark .karp-hero-k{animation-delay:.08s!important}
-.hero h1.karp-wordmark .karp-hero-a{animation-delay:.25s!important}
-.hero h1.karp-wordmark .karp-hero-r{animation-delay:.42s!important}
-.hero h1.karp-wordmark .karp-hero-p{animation-delay:.59s!important}
-@keyframes karpOriginalBlueLetterReveal{
-  0%{opacity:0;transform:scaleX(.42) scaleY(.82);filter:blur(10px)}
-  72%{opacity:1;transform:scaleX(1.045) scaleY(1.045);filter:blur(0)}
-  100%{opacity:1;transform:scale(1);filter:blur(0)}
-}
-
-/* The same space alternates between the three homepage links and the two reviews. */
-.hero .homepage-switchboard{
-  position:relative!important;
-  width:min(calc(100% - 42px),820px)!important;
-  max-width:820px!important;
-  min-height:300px!important;
-  margin:0 auto!important;
-  isolation:isolate!important;
-  overflow:visible!important;
-}
-.hero .homepage-primary-stage,
-.hero .homepage-review-stage{
-  position:absolute!important;
-  inset:0!important;
-  width:100%!important;
-  height:100%!important;
-  margin:0!important;
-  transition:none!important;
-}
-.hero .homepage-primary-stage{
-  opacity:1!important;
-  visibility:visible!important;
-  transform:none!important;
-  animation:karpPrimaryFiveSeconds 15s ease-in-out 1.35s infinite both!important;
-}
-.hero .homepage-review-stage{
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  opacity:0!important;
-  visibility:hidden!important;
-  transform:none!important;
-  animation:karpReviewsTenSeconds 15s ease-in-out 1.35s infinite both!important;
-}
-.hero .homepage-testimonials{
-  position:relative!important;
-  width:100%!important;
-  max-width:820px!important;
-  margin:0 auto!important;
-  opacity:1!important;
-  visibility:visible!important;
-  transform:none!important;
-}
-.hero .homepage-testimonial{
-  opacity:0!important;
-  visibility:visible!important;
-  filter:blur(6px)!important;
-  transform:translateX(-88px) scale(.96)!important;
-  animation:karpReviewFromLeft 15s ease-in-out 1.35s infinite both!important;
-}
-.hero .homepage-testimonial:nth-child(2){
-  animation-name:karpReviewFromRight!important;
-}
-
-/* Both reviews move horizontally together: Turan enters from the left, Elin from the right. */
-@keyframes karpReviewFromLeft{
-  0%,31%{opacity:0;transform:translateX(-88px) scale(.96);filter:blur(6px)}
-  35%{opacity:1;transform:translateX(0) scale(1);filter:blur(0)}
-  56%{opacity:1;transform:translateX(8px) scale(1);filter:blur(0)}
-  74%{opacity:1;transform:translateX(-5px) scale(1);filter:blur(0)}
-  96.5%{opacity:1;transform:translateX(0) scale(1);filter:blur(0)}
-  100%{opacity:0;transform:translateX(-38px) scale(.98);filter:blur(4px)}
-}
-@keyframes karpReviewFromRight{
-  0%,31%{opacity:0;transform:translateX(88px) scale(.96);filter:blur(6px)}
-  35%{opacity:1;transform:translateX(0) scale(1);filter:blur(0)}
-  56%{opacity:1;transform:translateX(-8px) scale(1);filter:blur(0)}
-  74%{opacity:1;transform:translateX(5px) scale(1);filter:blur(0)}
-  96.5%{opacity:1;transform:translateX(0) scale(1);filter:blur(0)}
-  100%{opacity:0;transform:translateX(38px) scale(.98);filter:blur(4px)}
-}
-
-/* The three main boxes appear first, stay for about five seconds, then disappear. */
-@keyframes karpPrimaryFiveSeconds{
-  0%{opacity:0;visibility:hidden;transform:translateY(22px) scale(.90)}
-  2.2%{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
-  30%{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
-  34%{opacity:0;visibility:hidden;transform:translateY(12px) scale(.96)}
-  96.5%{opacity:0;visibility:hidden;transform:translateY(12px) scale(.96)}
-  100%{opacity:0;visibility:hidden;transform:translateY(12px) scale(.96)}
-}
-
-/* Then the two review boxes appear and remain for roughly ten seconds. */
-@keyframes karpReviewsTenSeconds{
-  0%,31%{opacity:0;visibility:hidden;transform:none}
-  35%{opacity:1;visibility:visible;transform:none}
-  96.5%{opacity:1;visibility:visible;transform:none}
-  100%{opacity:0;visibility:hidden;transform:none}
-}
-@media(max-width:620px){
-  .hero .homepage-switchboard{
-    width:calc(100% - 42px)!important;
-    min-height:390px!important;
-  }
-  .hero .homepage-review-stage{align-items:center!important}
-  .hero .homepage-testimonials{width:100%!important}
-}
-@media(prefers-reduced-motion:reduce){
-  .hero h1.karp-wordmark .karp-hero-letter{
-    animation:none!important;
-    opacity:1!important;
-    transform:none!important;
-    filter:none!important;
-  }
-  .hero .homepage-primary-stage{
-    animation:none!important;
-    opacity:1!important;
-    visibility:visible!important;
-    transform:none!important;
-  }
-  .hero .homepage-review-stage{
-    animation:none!important;
-    opacity:0!important;
-    visibility:hidden!important;
-  }
-}
-</style>
-<style id="homepage-final-visual-fix">
-/* One single KARP wordmark — no layered/duplicate animated letter spans. */
-.hero h1.karp-wordmark{
-  display:block!important;
-  width:100%!important;
-  margin:0 auto 24px!important;
-  padding:0!important;
-  text-align:center!important;
-  white-space:nowrap!important;
-  color:#071D49!important;
-  background:none!important;
-  background-image:none!important;
-  -webkit-background-clip:border-box!important;
-  background-clip:border-box!important;
-  -webkit-text-fill-color:#071D49!important;
-  text-shadow:none!important;
-  filter:none!important;
-  opacity:1!important;
-  transform-origin:center!important;
-  animation:karpSingleLogoReveal 1.05s cubic-bezier(.2,.8,.2,1) .12s both!important;
-}
-@keyframes karpSingleLogoReveal{
-  0%{opacity:0;transform:scale(.72);filter:blur(12px)}
-  68%{opacity:1;transform:scale(1.035);filter:blur(0)}
-  100%{opacity:1;transform:scale(1);filter:none}
-}
-
-/* Keep both layers measurable and visible to the animation engine. */
-.hero .homepage-switchboard{
-  position:relative!important;
-  min-height:300px!important;
-}
-.hero .homepage-primary-stage,
-.hero .homepage-review-stage{
-  position:absolute!important;
-  inset:0!important;
-  width:100%!important;
-  height:100%!important;
-  visibility:visible!important;
-}
-.hero .homepage-primary-stage{
-  z-index:2!important;
-  animation:karpPrimaryFiveSeconds 15s ease-in-out 1.35s infinite both!important;
-}
-.hero .homepage-review-stage{
-  z-index:3!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  opacity:0!important;
-  visibility:visible!important;
-  transform:none!important;
-  animation:karpReviewsTenSeconds 15s ease-in-out 1.35s infinite both!important;
-}
-.hero .homepage-testimonials{
-  display:block!important;
-  width:100%!important;
-  max-width:820px!important;
-  margin:0 auto!important;
-  opacity:1!important;
-  visibility:visible!important;
-}
-.hero .homepage-testimonials-grid{
-  display:grid!important;
-  grid-template-columns:repeat(2,minmax(0,1fr))!important;
   gap:14px!important;
   width:100%!important;
 }
@@ -617,26 +424,23 @@
   flex-direction:column!important;
   justify-content:center!important;
   min-width:0!important;
-  min-height:126px!important;
-  padding:19px 21px!important;
-  border:1px solid #dce2ef!important;
-  border-radius:18px!important;
-  background:#fff!important;
-  color:#17191c!important;
-  box-shadow:0 8px 24px rgba(31,46,79,.075)!important;
+  min-height:138px!important;
+  box-sizing:border-box!important;
+  padding:21px 23px!important;
+  border:1px solid #d9e0ee!important;
+  border-radius:17px!important;
+  background:rgba(255,255,255,.97)!important;
+  color:#101a33!important;
+  box-shadow:0 12px 34px rgba(15,30,65,.10)!important;
   text-align:left!important;
-  opacity:0!important;
+  opacity:1;
   visibility:visible!important;
-  filter:blur(6px)!important;
-  transform:translateX(-88px) scale(.96)!important;
-  animation:karpReviewFromLeft 15s ease-in-out 1.35s infinite both!important;
+  filter:none;
+  transform:translateX(-76px);
+  animation:karpTuranSlide 15s ease-in-out 0s infinite both!important;
 }
 .hero .homepage-testimonials-grid .homepage-testimonial:nth-child(2){
-  animation-name:karpReviewFromRight!important;
-  animation-delay:1.35s!important;
-}
-.hero .homepage-testimonials-grid .homepage-testimonial:first-child{
-  animation-delay:1.35s!important;
+  animation-name:karpElinSlide!important;
 }
 .hero .homepage-testimonial-person{
   display:flex!important;
@@ -648,62 +452,92 @@
 }
 .hero .homepage-testimonial-name{
   display:block!important;
-  color:#071D49!important;
+  color:#020B2D!important;
   font-family:"Space Grotesk",sans-serif!important;
   font-size:16px!important;
   font-weight:800!important;
+  letter-spacing:-.3px!important;
+  line-height:1.25!important;
+}
+.hero .homepage-testimonial-award{
+  display:inline-block!important;
+  padding:5px 9px!important;
+  border:1px solid #dce4f3!important;
+  border-radius:999px!important;
+  background:#f0f4fc!important;
+  color:#30466f!important;
+  font-size:9px!important;
+  font-weight:800!important;
+  letter-spacing:.45px!important;
   line-height:1.25!important;
 }
 .hero .homepage-testimonial-quote{
   display:block!important;
   margin:0!important;
-  color:#535d70!important;
-  font-size:13px!important;
+  color:#46536b!important;
+  font-size:14px!important;
   font-weight:500!important;
-  line-height:1.55!important;
+  line-height:1.6!important;
 }
-@keyframes karpReviewFromLeft{
-  0%,31%{opacity:0;transform:translateX(-88px) scale(.96);filter:blur(6px)}
-  35%{opacity:1;transform:translateX(0) scale(1);filter:blur(0)}
-  56%{opacity:1;transform:translateX(8px) scale(1);filter:blur(0)}
-  74%{opacity:1;transform:translateX(-5px) scale(1);filter:blur(0)}
-  96.5%{opacity:1;transform:translateX(0) scale(1);filter:blur(0)}
-  100%{opacity:0;transform:translateX(-38px) scale(.98);filter:blur(4px)}
+
+/* First, the action cards and exam notice stay visible for five seconds. */
+@keyframes karpPrimaryDeck{
+  0%,30%{opacity:1;transform:translateX(0)}
+  34%,96%{opacity:0;transform:translateX(-10px)}
+  100%{opacity:1;transform:translateX(0)}
 }
-@keyframes karpReviewFromRight{
-  0%,31%{opacity:0;transform:translateX(88px) scale(.96);filter:blur(6px)}
-  35%{opacity:1;transform:translateX(0) scale(1);filter:blur(0)}
-  56%{opacity:1;transform:translateX(-8px) scale(1);filter:blur(0)}
-  74%{opacity:1;transform:translateX(5px) scale(1);filter:blur(0)}
-  96.5%{opacity:1;transform:translateX(0) scale(1);filter:blur(0)}
-  100%{opacity:0;transform:translateX(38px) scale(.98);filter:blur(4px)}
+/* Then both reviews appear together in the same location for ten seconds. */
+@keyframes karpReviewDeck{
+  0%,32%{opacity:0;transform:translateX(0)}
+  37%,96%{opacity:1;transform:translateX(0)}
+  100%{opacity:0;transform:translateX(0)}
 }
-@keyframes karpPrimaryFiveSeconds{
-  0%{opacity:1;transform:none}
-  30%{opacity:1;transform:none}
-  34%{opacity:0;transform:translateY(8px)}
-  96.5%{opacity:0;transform:translateY(8px)}
-  100%{opacity:1;transform:none}
+@keyframes karpTuranSlide{
+  0%,30%{transform:translateX(-76px)}
+  36%{transform:translateX(0)}
+  55%{transform:translateX(5px)}
+  72%{transform:translateX(-4px)}
+  96%{transform:translateX(0)}
+  100%{transform:translateX(-30px)}
 }
-@keyframes karpReviewsTenSeconds{
-  0%,31%{opacity:0;transform:none}
-  35%{opacity:1;transform:none}
-  96.5%{opacity:1;transform:none}
-  100%{opacity:0;transform:none}
+@keyframes karpElinSlide{
+  0%,30%{transform:translateX(76px)}
+  36%{transform:translateX(0)}
+  55%{transform:translateX(-5px)}
+  72%{transform:translateX(4px)}
+  96%{transform:translateX(0)}
+  100%{transform:translateX(30px)}
 }
 @media(max-width:620px){
-  .hero .homepage-switchboard{width:calc(100% - 42px)!important;min-height:390px!important}
-  .hero .homepage-testimonials{width:100%!important}
+  .hero .hero-inner{width:100%!important;padding:46px 0 38px!important}
+  .hero h1.karp-wordmark{
+    font-size:clamp(76px,21vw,132px)!important;
+    letter-spacing:-.04em!important;
+    margin-bottom:22px!important;
+    padding-right:.17em!important;
+  }
+  .hero .homepage-switchboard{
+    width:calc(100% - 36px)!important;
+    min-height:330px!important;
+  }
   .hero .homepage-testimonials-grid{grid-template-columns:1fr!important;gap:10px!important}
-  .hero .homepage-testimonials-grid .homepage-testimonial{min-height:0!important;padding:16px 17px!important}
-}
-/* Reduced-motion users still see the reviews; only the motion is removed. */
-@media(prefers-reduced-motion:reduce){
-  .hero h1.karp-wordmark{animation:none!important;opacity:1!important;transform:none!important;filter:none!important}
-  .hero .homepage-primary-stage{animation:none!important;opacity:0!important;visibility:hidden!important}
-  .hero .homepage-review-stage{animation:none!important;opacity:1!important;visibility:visible!important;display:flex!important}
   .hero .homepage-testimonials-grid .homepage-testimonial{
-    animation:none!important;opacity:1!important;visibility:visible!important;transform:none!important;filter:none!important
+    min-height:112px!important;padding:16px 18px!important;
+  }
+}
+/* Never hide the student reviews for users who prefer reduced motion. */
+@media(prefers-reduced-motion:reduce){
+  .hero h1.karp-wordmark{
+    animation:none!important;opacity:1!important;transform:none!important;filter:none!important;
+  }
+  .hero .homepage-primary-stage{
+    animation:none!important;opacity:0!important;visibility:hidden!important;
+  }
+  .hero .homepage-review-stage{
+    animation:none!important;opacity:1!important;visibility:visible!important;transform:none!important;
+  }
+  .hero .homepage-testimonials-grid .homepage-testimonial{
+    animation:none!important;opacity:1!important;visibility:visible!important;transform:none!important;filter:none!important;
   }
 }
 </style>
