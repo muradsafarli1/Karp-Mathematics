@@ -1475,9 +1475,17 @@ function ensureChatNav(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureDailyProblemNav,{once:true});else ensureDailyProblemNav();
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureChatNav,{once:true});else ensureChatNav();
+function ensureKarpAiNav(){
+  const navEl=document.querySelector('.navlinks');
+  if(!navEl||navEl.querySelector('a[href="/ai.html"]'))return;
+  const about=navEl.querySelector('a[href="/about.html"]');
+  const link=document.createElement('a');link.href='/ai.html';link.textContent='KARP AI';
+  if(about)navEl.insertBefore(link,about);else navEl.appendChild(link);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureKarpAiNav,{once:true});else ensureKarpAiNav();
 async function updateNavUser(){const box=document.getElementById('nav-actions');if(!box)return;const u=await me();if(!u)return;const avatar=u.photoURL?`<img src="${escapeHtml(u.photoURL)}" alt="" class="nav-profile-img">`:`<span class="nav-profile-initial">${escapeHtml((u.name||'K').charAt(0).toUpperCase())}</span>`;box.innerHTML=`<a class="nav-profile" href="/account.html" aria-label="Account" title="Account">${avatar}</a>${u.role==='admin'?'<a class="btn nav-admin" href="/admin.html">Admin</a>':''}<button class="nav-logout" onclick="logout()">Log out</button>`}
 function shell(active,title,body){document.title=`KARP — ${title}`;document.body.innerHTML=nav(active)+body+footer();updateNavUser()}
-function footer(){return `<footer class="footer"><div class="wrap footgrid"><div><div class="brand">KARP</div><div class="small">Olympiad mathematics for serious problem solvers.</div></div><div class="footlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/daily-problem.html">Daily Problem</a><a href="/mock.html">Mocks</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a href="/about.html">Our Team</a></div></div></footer>`}
+function footer(){return `<footer class="footer"><div class="wrap footgrid"><div><div class="brand">KARP</div><div class="small">Olympiad mathematics for serious problem solvers.</div></div><div class="footlinks"><a href="/problems.html">Problems</a><a href="/contests.html">Contests</a><a href="/exams.html">Exams</a><a href="/daily-problem.html">Daily Problem</a><a href="/mock.html">Mocks</a><a href="/ai.html">KARP AI</a><a href="/videos.html">Videos</a><a href="/journal.html">Journal</a><a href="/meetings.html">Meetings</a><a href="/about.html">Our Team</a></div></div></footer>`}
 function currentLanguage(){const lang=localStorage.getItem('able_lang');return lang==='az'||lang==='tr'?lang:'en'}
 function setLanguage(lang){const next=lang==='az'||lang==='tr'?lang:'en';localStorage.setItem('able_lang',next);return next}
 function localized(item,field,lang=currentLanguage()){
