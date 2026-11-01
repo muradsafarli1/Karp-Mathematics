@@ -46,6 +46,7 @@ let pendingFile = null;
 let usage = {used: 0, limit: DAILY_LIMIT, remaining: DAILY_LIMIT};
 let backendReady = false;
 let sending = false;
+let lastUsageRefreshAt = 0;
 
 function makeId() {
   if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
@@ -212,10 +213,14 @@ function typesetMath() {
 }
 
 function renderUsage(nextUsage) {
+  const nextDate = String(nextUsage?.date || "");
+  const nextUsed = Math.max(0, Number(nextUsage?.used) || 0);
+  const sameDay = Boolean(nextDate && nextDate === usage.date);
   usage = {
-    used: Math.max(0, Number(nextUsage?.used) || 0),
+    used: sameDay ? Math.max(usage.used, nextUsed) : nextUsed,
     limit: Math.max(1, Number(nextUsage?.limit) || DAILY_LIMIT),
-    remaining: Math.max(0, Number(nextUsage?.remaining) || 0)
+    remaining: Math.max(0, Math.max(1, Number(nextUsage?.limit) || DAILY_LIMIT) - (sameDay ? Math.max(usage.used, nextUsed) : nextUsed)),
+    date: nextDate
   };
   const used = Math.min(usage.limit, usage.used);
   ui.limitText.textContent = usage.remaining + " / " + usage.limit + " left";
@@ -226,8 +231,11 @@ function renderUsage(nextUsage) {
   updateSendState();
 }
 
-async function refreshUsage() {
+async function refreshUsage(force = false) {
   if (!currentUser) return;
+  const now = Date.now();
+  if (!force && now - lastUsageRefreshAt < 5000) return;
+  lastUsageRefreshAt = now;
   try {
     const result = await getKarpAIUsage({});
     renderUsage(result.data || {});
@@ -468,6 +476,7 @@ onAuthStateChanged(auth, async (user) => {
 
   try { await user.reload(); } catch {}
   currentUser = auth.currentUser || user;
+  try { await currentUser.getIdToken(true); } catch {}
   if (currentUser.emailVerified !== true) {
     backendReady = false;
     showAuthGate(null, "verify");
@@ -481,5 +490,5 @@ onAuthStateChanged(auth, async (user) => {
   ui.accountAvatar.textContent = (name.charAt(0) || "K").toUpperCase();
   currentKey = "karp_ai_chats_v1_" + currentUser.uid;
   loadChats();
-  await refreshUsage();
+  await refreshUsage(true);
 });
