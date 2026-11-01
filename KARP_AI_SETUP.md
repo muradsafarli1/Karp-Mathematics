@@ -21,7 +21,7 @@ ONE-TIME SETUP
    cd ..
    firebase deploy --only functions,hosting
 
-The functions use the europe-west1 region and the stable Gemini gemini-3.8-flash model.
+The functions use the europe-west1 region and the Gemini gemini-3.1-flash-lite model (the low-cost model selected for the initial trial).
 
 CURRENT SAFEGUARDS
 
