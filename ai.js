@@ -34,7 +34,7 @@ const ui = {
   disclaimer: document.querySelector(".ai-disclaimer")
 };
 
-const DAILY_LIMIT = 10;
+const DAILY_TOKEN_LIMIT = 5000;
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 const MAX_LOCAL_CHATS = 15;
 const MAX_LOCAL_MESSAGES = 40;
@@ -43,7 +43,7 @@ let currentKey = "";
 let chats = [];
 let activeChatId = "";
 let pendingFile = null;
-let usage = {used: 0, limit: DAILY_LIMIT, remaining: DAILY_LIMIT};
+let usage = {usedTokens:0,reservedTokens:0,limitTokens:DAILY_TOKEN_LIMIT,remainingTokens:DAILY_TOKEN_LIMIT,date:""};
 let backendReady = false;
 let sending = false;
 let lastUsageRefreshAt = 0;
@@ -213,22 +213,15 @@ function typesetMath() {
 }
 
 function renderUsage(nextUsage) {
-  const nextDate = String(nextUsage?.date || "");
-  const nextUsed = Math.max(0, Number(nextUsage?.used) || 0);
-  const sameDay = Boolean(nextDate && nextDate === usage.date);
-  usage = {
-    used: sameDay ? Math.max(usage.used, nextUsed) : nextUsed,
-    limit: Math.max(1, Number(nextUsage?.limit) || DAILY_LIMIT),
-    remaining: Math.max(0, Math.max(1, Number(nextUsage?.limit) || DAILY_LIMIT) - (sameDay ? Math.max(usage.used, nextUsed) : nextUsed)),
-    date: nextDate
-  };
-  const used = Math.min(usage.limit, usage.used);
-  ui.limitText.textContent = usage.remaining + " / " + usage.limit + " left";
-  ui.limitBar.style.width = (100 * used / usage.limit) + "%";
-  ui.limitBar.style.background = usage.remaining <= 2
-    ? "linear-gradient(90deg,#d79a44,#d35c5c)"
-    : "linear-gradient(90deg,#3867e8,#7c4dff)";
-  updateSendState();
+ const usedTokens=Math.max(0,Number(nextUsage?.usedTokens)||0);
+ const reservedTokens=Math.max(0,Number(nextUsage?.reservedTokens)||0);
+ const limitTokens=Math.max(1,Number(nextUsage?.limitTokens)||DAILY_TOKEN_LIMIT);
+ const remainingTokens=Math.max(0,Number(nextUsage?.remainingTokens)||0);
+ usage={usedTokens,reservedTokens,limitTokens,remainingTokens,date:String(nextUsage?.date||"")};
+ ui.limitText.textContent=remainingTokens.toLocaleString()+" tokens left";
+ ui.limitBar.style.width=(100*Math.min(limitTokens,usedTokens+reservedTokens)/limitTokens)+"%";
+ ui.limitBar.style.background=remainingTokens<=500?"linear-gradient(90deg,#d79a44,#d35c5c)":"linear-gradient(90deg,#3867e8,#7c4dff)";
+ updateSendState();
 }
 
 async function refreshUsage(force = false) {
@@ -252,13 +245,13 @@ async function refreshUsage(force = false) {
 }
 
 function updateSendState() {
-  const blockedByLimit = usage.remaining <= 0;
+  const blockedByLimit = usage.remainingTokens <= 0;
   const hasContent = Boolean(ui.input.value.trim() || pendingFile);
   ui.send.disabled = sending || !backendReady || blockedByLimit || !hasContent;
   ui.attach.disabled = sending || !backendReady || blockedByLimit;
   ui.input.disabled = sending || !backendReady || blockedByLimit;
   if (!backendReady) ui.input.placeholder = "AI setup is required before sending a message...";
-  else if (blockedByLimit) ui.input.placeholder = "Daily limit reached — resets at 00:00 Baku time";
+  else if (blockedByLimit) ui.input.placeholder = "Daily token budget used — resets at 00:00 Baku time";
   else ui.input.placeholder = "Ask an olympiad mathematics question...";
 }
 
@@ -310,7 +303,7 @@ function readFileAsBase64(file) {
 
 function friendlyError(error) {
   const code = String(error?.code || "");
-  if (code.includes("resource-exhausted")) return "You have used all 10 KARP AI messages for today. Your allowance resets at 00:00 Baku time.";
+  if (code.includes("resource-exhausted")) return "Your daily KARP AI token budget has been used. It resets at 00:00 Baku time.";
   if (code.includes("unauthenticated")) return "Please sign in to your KARP account before using KARP AI.";
   if (code.includes("failed-precondition")) return error.message || "Please verify your email address and check the Gemini API setup.";
   if (code.includes("invalid-argument")) return error.message || "The message or attachment is not valid.";
@@ -393,7 +386,7 @@ async function sendMessage() {
       createdAt: Date.now()
     });
     if (String(error?.code || "").includes("resource-exhausted")) {
-      renderUsage({used: DAILY_LIMIT, limit: DAILY_LIMIT, remaining: 0});
+      await refreshUsage(true);
     } else if (String(error?.code || "").includes("not-found")) {
       backendReady = false;
     }
