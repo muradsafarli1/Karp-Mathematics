@@ -543,7 +543,7 @@ async function api(path, opts = {}) {
   }
   const am=path.match(/^\/api\/admin\/(problems|articles|contests|videos|exams|meetings|about)(?:\/([^/]+))?$/);
   if(am){
-    if(!user||(user.role!=='admin'&&user.roleUnverified!==true)) throw new Error('Admin access required');
+    if(!user||user.role!=='admin') throw new Error('Admin access required');
     const type=am[1],id=am[2],aboutType=type==='about',aboutId='global',ref=doc(db,type,aboutType?(id||aboutId):(id||crypto.randomUUID()));
     if(method==='GET'){
       if(type==='users') return {users:[]};
@@ -1133,7 +1133,7 @@ async function requireUser(){
 }
 async function requireAdmin(){
   const u=await me();
-  if(!u||(u.role!=='admin'&&u.roleUnverified!==true)){location.href='/login.html';return null}
+  if(!u||u.role!=='admin'){location.href='/login.html';return null}
   return u;
 }
 function escapeHtml(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
