@@ -671,6 +671,16 @@ async function karpMigrateLocalState(){
   // migration can still merge their remaining local-only data into the cloud.
   const marker='karp_cloud_migrated_v4_'+uid;
   if(localStorage.getItem(marker))return;
+  // Avoid four Firestore reads for accounts that have no legacy browser-only data.
+  const legacyKeys=['able_solved_problems','karp_saved_mathnet','karp_mock_history','karp_active_mock'];
+  let hasLegacyData=false;
+  try{
+    hasLegacyData=legacyKeys.some(key=>{
+      const raw=localStorage.getItem(key);
+      return !!raw&&!['{}','[]','null','""'].includes(String(raw).trim());
+    });
+    if(!hasLegacyData){localStorage.setItem(marker,'1');return;}
+  }catch{}
   const {collection,doc,getDoc,getDocs,writeBatch}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
   try{
     const [cloudSolved,cloudSaved,cloudMocks,cloudPrivate]=await Promise.all([
