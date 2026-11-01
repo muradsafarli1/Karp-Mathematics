@@ -43,31 +43,6 @@
   try{
     const d=await api('/api/exams');
     const currentUser=await me(),isAdmin=currentUser?.role==='admin';
-    // Admins can see the source sessions, so sync the public counter directly
-    // from the same records used by Admin > Exams before rendering this page.
-    if(isAdmin){
-      try{
-        const {db}=await fb();
-        const {collection,getDocs,doc,updateDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-        const sessionsSnap=await getDocs(collection(db,'examSessions'));
-        const sessions=sessionsSnap.docs.map(s=>({id:s.id,...s.data()}));
-        for(const exam of (d.exams||[])){
-          const count=sessions.filter(s=>
-            String(s.examId)===String(exam.id) &&
-            !!s.uid &&
-            !!(s.startedAt||s.attemptId||['active','completed'].includes(String(s.status||'').toLowerCase())) &&
-            String(s.status||'')!=='archive-view'
-          ).length;
-          const changed=Number(exam.timedAttemptCount||0)!==count||Number(exam.attemptedCount||0)!==count;
-          exam.timedAttemptCount=count;
-          exam.attemptedCount=count;
-          if(changed){
-            try{await updateDoc(doc(db,'exams',exam.id),{timedAttemptCount:count,attemptedCount:count})}
-            catch(error){console.warn('Could not persist exam attempt count:',exam.id,error)}
-          }
-        }
-      }catch(error){console.warn('Could not sync public exam attempt counts:',error)}
-    }
     const now=Date.now();
     setKarpActivity({page:'Exams',label:'Exam list',detail:'Browsing available exams',question:null});
 
@@ -113,7 +88,7 @@ function parseExamInstant(value,offset=4){
         :(previewAction+(completed?'<a class="btn" href="/exam.html?id='+encodeURIComponent(e.id)+'&review=1">Completed</a>':'<a class="btn primary" href="/exam.html?id='+encodeURIComponent(e.id)+'">Open →</a>'));
       const count=isUpcoming
         ?Math.max(0,Number(e.registrationCount||0))
-        :Math.max(0,Number(e.timedAttemptCount||0),Number(e.attemptedCount||0));
+        :Math.max(0,Number(e.timedAttemptCount||0),Number(e.attemptedCount||0),Number(e.participatedCount||0));
       const countText=isUpcoming
         ?(count>0?count+(count===1?' person registered':' people registered'):'')
         :(count>0?count+' timed attempts':'');
