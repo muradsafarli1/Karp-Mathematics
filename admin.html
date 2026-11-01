@@ -740,6 +740,19 @@ let __usersAnalytics={
 const __usersVisitorLimit=15;
 const __usersLiveLimit=15;
 const __USERS_ANALYTICS_CACHE='karp_admin_users_analytics_snapshot_v1';
+function __usersCacheTime(value){
+  if(value?.toMillis)return new Date(value.toMillis()).toISOString();
+  if(value?.toDate)return value.toDate().toISOString();
+  return value;
+}
+function __usersCacheRows(rows){
+  const timeFields=['timestamp','updatedAt','enteredAt','firstSeenAt','lastSeen','expiresAt','sessionStartedAt','sessionEndedAt','createdAt','lastLoginAt','lastLogoutAt','registeredAt','submittedAt'];
+  return (rows||[]).map(row=>{
+    const out={...row};
+    timeFields.forEach(key=>{if(out[key]&&typeof out[key]==='object')out[key]=__usersCacheTime(out[key]);});
+    return out;
+  });
+}
 
 function __usersTimestamp(v){
   if(v?.toMillis)return v.toMillis();
@@ -804,7 +817,7 @@ function __usersLoadActivity(db,force=false){
       const snap=await getDocs(q);
       __usersAnalytics.activity=snap.docs.map(x=>({id:x.id,...x.data()}));
       __usersAnalytics.activityLoading=false;__usersAnalytics.activityError='';__usersAnalytics.activityLoaded=true;
-      try{const raw=localStorage.getItem(__USERS_ANALYTICS_CACHE),cached=raw?JSON.parse(raw):{};localStorage.setItem(__USERS_ANALYTICS_CACHE,JSON.stringify({...cached,activity:__usersAnalytics.activity,savedAt:Date.now()}));}catch{}
+      try{const raw=localStorage.getItem(__USERS_ANALYTICS_CACHE),cached=raw?JSON.parse(raw):{};localStorage.setItem(__USERS_ANALYTICS_CACHE,JSON.stringify({...cached,activity:__usersCacheRows(__usersAnalytics.activity),savedAt:Date.now()}));}catch{}
       __usersRender();
     }catch(err){
       console.warn('KARP activity history query failed:',err);
@@ -1127,7 +1140,7 @@ function __usersStartLive(db,adminUid){
     ]);
     __usersAnalytics.loadError=firstError;
     try{
-      const cached={savedAt:Date.now(),users:__usersAnalytics.users,presence:__usersAnalytics.presence,visits:__usersAnalytics.visits,activity:__usersAnalytics.activity};
+      const cached={savedAt:Date.now(),users:__usersCacheRows(__usersAnalytics.users),presence:__usersCacheRows(__usersAnalytics.presence),visits:__usersCacheRows(__usersAnalytics.visits),activity:__usersCacheRows(__usersAnalytics.activity)};
       localStorage.setItem(__USERS_ANALYTICS_CACHE,JSON.stringify(cached));
     }catch{}
     __usersRender();
