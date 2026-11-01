@@ -15,7 +15,7 @@ const MODEL = "gemini-3.8-flash";
 const DAILY_LIMIT = 10;
 const MAX_PROMPT_CHARS = 6000;
 const MAX_HISTORY_MESSAGES = 10;
-const MAX_FILE_BASE64_CHARS = 5 * 1024 * 1024;
+const MAX_FILE_BASE64_CHARS = 6 * 1024 * 1024;
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent";
 
 const SYSTEM_INSTRUCTION = [
@@ -262,10 +262,9 @@ exports.askKarpAI = onCall({
   const quota = await spendUsage(request.auth.uid);
   try {
     const result = await generateAnswer({text: prompt, history, file});
-    const latestUsage = await readUsage(request.auth.uid);
     return {
       ...result,
-      usage: latestUsage || quota
+      usage: quota
     };
   } catch (error) {
     await refundUsage(request.auth.uid, quota.date);
