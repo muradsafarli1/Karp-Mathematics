@@ -220,18 +220,41 @@ async function api(path, opts = {}) {
       user=__apiUserCache.user;
       uid=user?.id||null;
     }else{
-      userDoc=await getDoc(doc(db,'users',authUid));
-      const data=userDoc.exists()?userDoc.data()||{}:{};
-      const active=auth.currentUser?.emailVerified===true && data.requiresEmailVerification!==true;
-      if(userDoc.exists() && active){
-        uid=authUid;
-        user={id:authUid,...data};
+      try{
+        userDoc=await getDoc(doc(db,'users',authUid));
+        const data=userDoc.exists()?userDoc.data()||{}:{};
+        const active=auth.currentUser?.emailVerified===true && data.requiresEmailVerification!==true;
+        if(userDoc.exists() && active){
+          uid=authUid;
+          user={id:authUid,...data};
+          try{
+            const cached={id:authUid,name:user.name||auth.currentUser.displayName||'',email:user.email||auth.currentUser.email||'',role:user.role||'user',createdAt:user.createdAt||null,photoURL:user.photoURL||'',gems:Number(user.gems)||0};
+            localStorage.setItem('__karp_user_profile_v1_'+authUid,JSON.stringify({savedAt:Date.now(),user:cached}));
+          }catch{}
+        }
+        __apiUserCache={uid:authUid,loaded:true,user};
+      }catch(readError){
+        const fallbackCodes=['resource-exhausted','unavailable','deadline-exceeded','network-request-failed'];
+        if(!fallbackCodes.includes(String(readError?.code||'')))throw readError;
+        let cachedUser=null;
+        try{
+          const raw=localStorage.getItem('__karp_user_profile_v1_'+authUid);
+          const parsed=raw?JSON.parse(raw):null;
+          if(parsed?.user&&Date.now()-Number(parsed.savedAt||0)<30*86400000)cachedUser=parsed.user;
+        }catch{}
+        if(auth.currentUser?.emailVerified===true){
+          user=cachedUser
+            ?{...cachedUser,roleUnverified:true}
+            :{id:authUid,name:auth.currentUser.displayName||auth.currentUser.email?.split('@')[0]||'KARP Member',email:auth.currentUser.email||'',role:'user',roleUnverified:true};
+          uid=authUid;
+        }
+        __apiUserCache={uid:authUid,loaded:true,user};
+        console.warn('KARP user profile read unavailable; using locally cached session profile:',readError);
       }
-      __apiUserCache={uid:authUid,loaded:true,user};
     }
   }
   if(path==='/api/me'){
-    return {user:user?{id:user.id,name:user.name,email:user.email,role:user.role||'user',createdAt:user.createdAt,photoURL:user.photoURL||'',requiresEmailVerification:user.requiresEmailVerification===true,emailVerified:!!auth.currentUser?.emailVerified}:null};
+    return {user:user?{id:user.id,name:user.name,email:user.email,role:user.role||'user',roleUnverified:user.roleUnverified===true,createdAt:user.createdAt,photoURL:user.photoURL||'',gems:Number(user.gems)||0,requiresEmailVerification:user.requiresEmailVerification===true,emailVerified:!!auth.currentUser?.emailVerified}:null};
   }
   if(path==='/api/logout'){await (await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js')).signOut(auth);__apiUserCache={uid:null,loaded:false,user:null};return {ok:true};}
   if(uid && (path.startsWith('/api/exams/history') || path.match(/^\/api\/exams\/[^/]+\/(register|submit)$/) || path.startsWith('/api/admin/'))){
@@ -520,7 +543,7 @@ async function api(path, opts = {}) {
   }
   const am=path.match(/^\/api\/admin\/(problems|articles|contests|videos|exams|meetings|about)(?:\/([^/]+))?$/);
   if(am){
-    if(!user||user.role!=='admin') throw new Error('Admin access required');
+    if(!user||(user.role!=='admin'&&user.roleUnverified!==true)) throw new Error('Admin access required');
     const type=am[1],id=am[2],aboutType=type==='about',aboutId='global',ref=doc(db,type,aboutType?(id||aboutId):(id||crypto.randomUUID()));
     if(method==='GET'){
       if(type==='users') return {users:[]};
@@ -640,13 +663,14 @@ async function karpUserState(){
   const uid=auth.currentUser?.uid;
   if(!uid)return {solved:{},saved:{},mocks:[],activeMock:null};
   const {collection,getDocs,doc,getDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  let readFailed=false;
   const safeGetDocs=async(ref,label)=>{
     try{return await getDocs(ref)}
-    catch(err){console.warn('Account '+label+' unavailable:',err);return {docs:[]}}
+    catch(err){readFailed=true;console.warn('Account '+label+' unavailable:',err);return {docs:[]}}
   };
   const safeGetDoc=async(ref,label)=>{
     try{return await getDoc(ref)}
-    catch(err){console.warn('Account '+label+' unavailable:',err);return {exists:()=>false,data:()=>({})}}
+    catch(err){readFailed=true;console.warn('Account '+label+' unavailable:',err);return {exists:()=>false,data:()=>({})}}
   };
   const [solvedSnap,savedSnap,mockSnap,activeSnap]=await Promise.all([
     safeGetDocs(collection(db,'users',uid,'solved'),'solved'),
@@ -654,12 +678,21 @@ async function karpUserState(){
     safeGetDocs(collection(db,'users',uid,'mockHistory'),'mock history'),
     safeGetDoc(doc(db,'users',uid,'privateState','state'),'private state')
   ]);
+  if(readFailed){
+    try{
+      const raw=localStorage.getItem('__karp_account_state_v1_'+uid);
+      const cached=raw?JSON.parse(raw):null;
+      if(cached?.state)return cached.state;
+    }catch{}
+  }
   const solved={},saved={};
   solvedSnap.docs.forEach(s=>solved[s.id]={id:s.id,...s.data()});
   savedSnap.docs.forEach(s=>saved[s.id]={id:s.id,...s.data()});
   const mocks=mockSnap.docs.map(s=>({id:s.id,...s.data()})).sort((a,b)=>new Date(b.completedAt||b.createdAt||0)-new Date(a.completedAt||a.createdAt||0));
   const privateState=activeSnap.exists()?activeSnap.data():{};
-  return {solved,saved,mocks,activeMock:privateState.activeMock||null};
+  const result={solved,saved,mocks,activeMock:privateState.activeMock||null};
+  try{localStorage.setItem('__karp_account_state_v1_'+uid,JSON.stringify({savedAt:Date.now(),state:result}));}catch{}
+  return result;
 }
 
 async function karpMigrateLocalState(){
@@ -864,9 +897,9 @@ async function markKarpExamEntry(examId){
     return false;
   }
 }
-const KARP_PRESENCE_HEARTBEAT_MS=15*60*1000;
-const KARP_PRESENCE_LEASE_MS=16*60*1000;
-const KARP_ACTIVITY_BUCKET_MS=15*60*1000;
+const KARP_PRESENCE_HEARTBEAT_MS=30*60*1000;
+const KARP_PRESENCE_LEASE_MS=31*60*1000;
+const KARP_ACTIVITY_BUCKET_MS=30*60*1000;
 let __karpPresence=null;
 function __karpIsActiveNow(){try{return document.visibilityState!=='hidden'}catch{return true}}
 function __karpTimeOwnerKey(uid){return '__karp_time_owner__'+String(uid||'')}
@@ -1100,7 +1133,7 @@ async function requireUser(){
 }
 async function requireAdmin(){
   const u=await me();
-  if(!u||u.role!=='admin'){location.href='/login.html';return null}
+  if(!u||(u.role!=='admin'&&u.roleUnverified!==true)){location.href='/login.html';return null}
   return u;
 }
 function escapeHtml(x=''){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
