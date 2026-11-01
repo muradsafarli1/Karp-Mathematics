@@ -898,7 +898,7 @@ button,a,.btn,.submit{touch-action:manipulation}
 }
 @media(max-width:1000px){
  .chat-app{height:calc(100vh - 64px)!important;height:calc(100dvh - 64px)!important;min-height:0!important;overflow:hidden}
- .chat-window{height:100%!important;min-height:0!important;grid-template-columns:minmax(0,1fr)!important;border-radius:0!important}
+ .chat-window{height:100%!important;min-height:0!important;border-radius:0!important}
  .chat-main{height:100%!important;min-height:0!important;grid-template-rows:58px minmax(0,1fr) auto!important}
  .chat-left{min-height:0;min-width:0}
 }
