@@ -90,7 +90,8 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "functions/**"
     ],
     "rewrites": [
       {
@@ -112,6 +113,10 @@
       {
         "source": "/videos",
         "destination": "/videos.html"
+      },
+      {
+        "source": "/ai",
+        "destination": "/ai.html"
       },
       {
         "source": "/about",
@@ -207,5 +212,9 @@
         "type": 302
       }
     ]
+  },
+  "functions": {
+    "source": "functions",
+    "codebase": "default"
   }
 }
