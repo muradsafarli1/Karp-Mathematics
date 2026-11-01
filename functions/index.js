@@ -185,7 +185,7 @@ async function generateAnswer({text, history, file}) {
       body: body.slice(0, 1000)
     });
     if (response.status === 429) {
-      throw new HttpsError("resource-exhausted", "Gemini is temporarily busy. Please try again shortly.");
+      throw new HttpsError("unavailable", "Gemini is temporarily busy. Please try again shortly.");
     }
     if (response.status === 401 || response.status === 403) {
       throw new HttpsError("failed-precondition", "The Gemini API key is not valid or does not have API access. Check the GEMINI_API_KEY secret.");
