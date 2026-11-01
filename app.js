@@ -1513,4 +1513,43 @@ async function typesetMath(root,retries=40){
 }
 function formatDuration(m){m=Number(m||60);const h=Math.floor(m/60),mm=m%60;return `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`}
 
+
+(function initKarpMobileNavigation(){
+  const install=()=>{
+    document.querySelectorAll('.top .nav').forEach(nav=>{
+      const header=nav.closest('.top'),links=nav.querySelector('.navlinks');
+      if(!header||!links||nav.querySelector('.karp-mobile-nav-toggle'))return;
+      const actions=nav.querySelector('.actions'),toggle=document.createElement('button');
+      toggle.type='button';toggle.className='karp-mobile-nav-toggle';
+      toggle.setAttribute('aria-label','Open navigation menu');
+      toggle.setAttribute('aria-expanded','false');
+      toggle.setAttribute('aria-controls','karp-mobile-navigation');
+      toggle.innerHTML='<span></span><span></span><span></span>';
+      links.id=links.id||'karp-mobile-navigation';
+      nav.insertBefore(toggle,actions||null);
+      const close=()=>{
+        header.classList.remove('karp-mobile-menu-open');
+        toggle.setAttribute('aria-expanded','false');
+        toggle.setAttribute('aria-label','Open navigation menu');
+      };
+      toggle.addEventListener('click',()=>{
+        const opening=!header.classList.contains('karp-mobile-menu-open');
+        header.classList.toggle('karp-mobile-menu-open',opening);
+        toggle.setAttribute('aria-expanded',String(opening));
+        toggle.setAttribute('aria-label',opening?'Close navigation menu':'Open navigation menu');
+      });
+      links.addEventListener('click',event=>{if(event.target&&event.target.closest('a'))close()});
+      document.addEventListener('pointerdown',event=>{if(!header.contains(event.target))close()});
+      document.addEventListener('keydown',event=>{if(event.key==='Escape')close()});
+      window.addEventListener('resize',()=>{if(!window.matchMedia('(max-width: 1000px)').matches)close()});
+    });
+    const chatWindow=document.getElementById('chat-window');
+    if(chatWindow&&window.matchMedia('(max-width: 700px)').matches&&!chatWindow.querySelector('.chat-row.active')){
+      chatWindow.classList.add('mobile-list');
+    }
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+})();
+
 if(location.pathname!=='/login.html' && location.pathname!=='/signup.html')startKarpPresence();
