@@ -152,3 +152,6 @@ body.karp-ai-body{background:#f7f7f5;color:#17191c;overflow:hidden}
   .ai-composer-meta span:last-child{display:none}
 }
 @media(prefers-reduced-motion:reduce){.ai-typing span{animation:none}.ai-sidebar{transition:none}.ai-suggestion,.ai-new-chat{transition:none}}
+
+.ai-token-usage{margin:5px 2px 0;color:#a0a6ad;font-size:8px;text-align:right}
+.ai-message.user .ai-token-usage{text-align:right}
