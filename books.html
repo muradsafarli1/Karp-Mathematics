@@ -55,15 +55,23 @@
       const filtered=books.filter(b=>String(b.title||b.fileName||'').toLowerCase().includes(q));
       grid.innerHTML=filtered.length?filtered.map(b=>{
         const title=b.title||b.fileName||'Untitled Book';
-        return '<a class="book-card" href="/book.html?id='+encodeURIComponent(b.id)+'" aria-label="Open '+esc(title)+'">'+
+        return '<a class="book-card" href="/book.html?id='+encodeURIComponent(b.id)+(b.sourceCollection==='journalIssues'?'&amp;source=journal':'')+'" aria-label="Open '+esc(title)+'">'+
           '<div class="book-cover">'+(b.coverImage?'<img src="'+esc(b.coverImage)+'" alt="">':'<div class="book-cover-fallback"><small>KARP · OLYMPIAD MATHEMATICS</small><h2>'+esc(title)+'</h2><small>PDF BOOKLET</small></div>')+'</div>'+
           '<div class="book-card-meta"><span class="book-card-title">'+esc(title)+'</span><span class="book-views">'+eye+esc(fmt(b.viewCount))+'</span></div>'+
         '</a>';
       }).join(''):'<div class="books-empty">'+(q?'No books match your search.':'No books have been published yet.')+'</div>';
     }
     search.addEventListener('input',render);
-    const snap=await getDocs(collection(db,'books'));
-    books=snap.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+    const [bookSnap,issueSnap]=await Promise.all([
+      getDocs(collection(db,'books')),
+      getDocs(collection(db,'journalIssues'))
+    ]);
+    const regularBooks=bookSnap.docs.map(x=>({id:x.id,...x.data()}));
+    const formerJournalIssues=issueSnap.docs
+      .map(x=>({id:x.id,...x.data(),sourceCollection:'journalIssues'}))
+      .filter(x=>x.published!==false);
+    books=[...regularBooks,...formerJournalIssues]
+      .sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
     render();
   }catch(e){
     console.error(e);
