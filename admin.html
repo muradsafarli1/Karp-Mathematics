@@ -301,6 +301,7 @@ body.users-analytics-fullscreen .admin .wrap{padding-top:26px!important}
 }
 </style><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$","$"]],processEnvironments:true,processEscapes:true},svg:{fontCache:"global"},startup:{typeset:false}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script><style>.chat-admin-convs{display:grid;gap:12px}.chat-admin-conv{border:1px solid #dfe2df;border-radius:14px;background:#fff;overflow:hidden}.chat-admin-conv-head{display:flex;justify-content:space-between;gap:12px;padding:13px 15px;border-bottom:1px solid #e7e9e7;background:#f7f8f7}.chat-admin-conv-head strong{font-size:12px}.chat-admin-conv-head span{display:block;color:#7b8289;font-size:9px;margin-top:3px}.chat-admin-msgs{display:grid}.chat-admin-msg{padding:11px 14px;border-bottom:1px solid #eef0ee}.chat-admin-msg:last-child{border-bottom:0}.chat-admin-msg>div{display:flex;gap:8px;align-items:baseline}.chat-admin-msg strong{font-size:10px}.chat-admin-msg span,.chat-admin-msg time{font-size:8px;color:#858b91}.chat-admin-msg p{font-size:10px;line-height:1.6;margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere}.chat-admin-all{max-height:560px;overflow:auto;border:1px solid #e5e7e5;border-radius:10px}.chat-admin-all-row{display:grid;grid-template-columns:190px minmax(0,1fr) 145px;gap:12px;padding:10px 12px;border-bottom:1px solid #edf0ee;align-items:start}.chat-admin-all-row strong{display:block;font-size:10px}.chat-admin-all-row span{display:block;color:#858b91;font-size:8px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-admin-all-row p{font-size:10px;line-height:1.55;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.chat-admin-all-row time{font-size:8px;color:#858b91;white-space:nowrap}.chat-admin-empty{padding:18px;text-align:center;font-size:10px;color:#858b91}@media(max-width:800px){.chat-admin-all-row{grid-template-columns:1fr}.chat-admin-all-row time{white-space:normal}}</style></head><body><div id="root"></div><script>
 const __adminSavedSection=(()=>{try{return new URLSearchParams(location.search).get('section')||localStorage.getItem('karp_admin_section')||'problems'}catch{return 'problems'}})();
+const ADMIN_PRESENCE_HEARTBEAT_MS=10*60*1000,ADMIN_PRESENCE_LEASE_MS=11*60*1000;
 let state={type:__adminSavedSection,editing:null},liveDocs=[],liveUnsub=null,liveTimer=null,pendingVideoThumbnail='',pendingFounderImage='',pendingTeamImages=[],pendingMeetingImage='',pendingBookFile=null,pendingJournalFile=null,booksAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''},journalsAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function startAdminPresence(db,u){
@@ -313,11 +314,11 @@ async function startAdminPresence(db,u){
       online:true,
       visible:!document.hidden,
       lastSeen:serverTimestamp(),
-      expiresAt:Timestamp.fromMillis(Date.now()+70000),
+      expiresAt:Timestamp.fromMillis(Date.now()+ADMIN_PRESENCE_LEASE_MS),
       activity:{page:'Admin',label:'Admin panel',detail:state.type==='users'?'Users':'Admin'}
     },{merge:true}).catch(e=>console.warn('KARP admin presence update failed:',e));
     await write();
-    window.__adminPresenceTimer=setInterval(write,30000);
+    window.__adminPresenceTimer=setInterval(write,ADMIN_PRESENCE_HEARTBEAT_MS);
     document.addEventListener('visibilitychange',write);
     window.addEventListener('beforeunload',()=>setDoc(doc(db,'presence',u.id),{
       online:false,visible:false,lastSeen:serverTimestamp(),expiresAt:Timestamp.fromMillis(0)
@@ -539,7 +540,7 @@ function renderLivePresence(){
   const el=document.getElementById('live-presence');if(!el)return;
   const now=Date.now();
   const rows=(Array.isArray(liveDocs)?liveDocs:[]).filter(p=>p&&p.visitorId);
-  const onlineRows=rows.filter(p=>p.online===true&&presenceMillis(p.lastSeen)>0&&presenceMillis(p.lastSeen)<=now+5000&&now-presenceMillis(p.lastSeen)<=75000).sort((a,b)=>presenceMillis(b.lastSeen)-presenceMillis(a.lastSeen));
+  const onlineRows=rows.filter(p=>p.online===true&&presenceMillis(p.lastSeen)>0&&presenceMillis(p.lastSeen)<=now+5000&&now-presenceMillis(p.lastSeen)<=ADMIN_PRESENCE_LEASE_MS).sort((a,b)=>presenceMillis(b.lastSeen)-presenceMillis(a.lastSeen));
   const accounts=rows.filter(p=>presenceKind(p)==='account').length;
   const guests=rows.filter(p=>presenceKind(p)==='guest').length;
   const onlinePeople=onlineRows.map(p=>{
@@ -553,7 +554,7 @@ function renderLivePresence(){
     .sort((a,b)=>presenceMillis(b.lastSeen)-presenceMillis(a.lastSeen))
     .slice(0,80);
   const recentRows=recent.map(p=>{
-    const isOnline=p.online===true&&presenceMillis(p.lastSeen)>0&&presenceMillis(p.lastSeen)<=now+5000&&now-presenceMillis(p.lastSeen)<=75000;
+    const isOnline=p.online===true&&presenceMillis(p.lastSeen)>0&&presenceMillis(p.lastSeen)<=now+5000&&now-presenceMillis(p.lastSeen)<=ADMIN_PRESENCE_LEASE_MS;
     const who=p.userType==='guest'?'Anonymous visitor':(p.name||'KARP Member');
     const last=presenceMillis(p.lastSeen);
     const a=p.activity||{};
@@ -751,7 +752,7 @@ function __usersOnline(p,now=Date.now()){
   const expires=__usersTimestamp(p?.expiresAt);
   // Prefer the explicit server heartbeat lease; lastSeen is a fallback for
   // older presence documents and for small server-timestamp delays.
-  return (expires>now-3000)||(last>0&&last<=now+5000&&(now-last)<=45000);
+  return (expires>now-3000)||(last>0&&last<=now+5000&&(now-last)<=ADMIN_PRESENCE_LEASE_MS);
 }
 function __usersDuration(p,now=Date.now(),extra=0){
   const stored=Math.max(0,Math.floor(Number(p?.totalActiveSeconds||0)));
@@ -797,8 +798,8 @@ function __usersLoadActivity(db,force=false){
   if(!force&&__usersAnalytics.unsubActivity)return;
   if(__usersAnalytics.unsubActivity){__usersAnalytics.unsubActivity();__usersAnalytics.unsubActivity=null}
   __usersAnalytics.activity=[];__usersAnalytics.activityError='';__usersAnalytics.activityLoading=true;
-  import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js').then(({collection,onSnapshot,query,where,Timestamp})=>{
-    const q=query(collection(db,'visitorActivity'),where('timestamp','>=',Timestamp.fromMillis(start)));
+  import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js').then(({collection,onSnapshot,query,where,Timestamp,orderBy,limit})=>{
+    const q=query(collection(db,'visitorActivity'),where('timestamp','>=',Timestamp.fromMillis(start)),orderBy('timestamp','desc'),limit(5000));
     __usersAnalytics.unsubActivity=onSnapshot(q,snap=>{
       __usersAnalytics.activity=snap.docs.map(x=>({id:x.id,...x.data()}));
       __usersAnalytics.activityLoading=false;__usersAnalytics.activityError='';__usersRender();
@@ -1089,10 +1090,10 @@ function __usersStartLive(db,adminUid){
   __usersAnalytics.db=db;__usersAnalytics.adminUid=adminUid||null;
   if(__usersAnalytics.started)return;
   __usersAnalytics.started=true;
-  import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js').then(({collection,onSnapshot,query,where})=>{
+  import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js').then(({collection,onSnapshot,query,where,orderBy,limit})=>{
     __usersAnalytics.unsubUsers=onSnapshot(collection(db,'users'),snap=>{__usersAnalytics.users=snap.docs.map(x=>({id:x.id,...x.data()}));__usersRender()},err=>console.warn('Users listener failed:',err));
     __usersAnalytics.unsubPresence=onSnapshot(collection(db,'presence'),snap=>{__usersAnalytics.presence=snap.docs.map(x=>({id:x.id,...x.data()}));__usersRender()},err=>console.warn('Presence listener failed:',err));
-    const visitsQuery=query(collection(db,'visitorVisits'),where('dateKey','>=','2026-10-01'));
+    const visitsQuery=query(collection(db,'visitorVisits'),where('dateKey','>=','2026-10-01'),orderBy('dateKey','desc'),limit(5000));
     __usersAnalytics.unsubVisits=onSnapshot(visitsQuery,snap=>{__usersAnalytics.visits=snap.docs.map(x=>({id:x.id,...x.data()}));__usersRender()},err=>console.warn('Visitor visits listener failed:',err));
     __usersLoadActivity(db,true);
     __usersAnalytics.timer=setInterval(__usersRender,10000);
