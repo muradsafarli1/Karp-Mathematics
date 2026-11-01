@@ -829,17 +829,15 @@ async function markKarpExamEntry(examId){
   await authReady();
   const uid=auth.currentUser?.uid;
   if(!uid||!examId)return false;
-
-  const {doc,runTransaction}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const {doc,runTransaction,increment}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
   const markerRef=doc(db,'users',uid,'examEntries',String(examId));
-
+  const examRef=doc(db,'exams',String(examId));
   try{
-    // Only write the individual participant's state. Do not update a shared
-    // exam document when hundreds of participants enter simultaneously.
-    // The Admin panel derives participant counts from per-user examSessions.
     return await runTransaction(db,async tx=>{
       const marker=await tx.get(markerRef);
       if(marker.exists() && marker.data()?.participated===true)return false;
+      const exam=await tx.get(examRef);
+      if(!exam.exists())return false;
       const now=new Date().toISOString();
       const previous=marker.exists()?marker.data()||{}:{};
       tx.set(markerRef,{
@@ -848,6 +846,7 @@ async function markKarpExamEntry(examId){
         firstParticipatedAt:previous.firstParticipatedAt||now,
         lastParticipatedAt:now
       },{merge:true});
+      tx.update(examRef,{participatedCount:increment(1)});
       return true;
     });
   }catch(e){
@@ -855,9 +854,9 @@ async function markKarpExamEntry(examId){
     return false;
   }
 }
-const KARP_PRESENCE_HEARTBEAT_MS=10*60*1000;
-const KARP_PRESENCE_LEASE_MS=11*60*1000;
-const KARP_ACTIVITY_BUCKET_MS=10*60*1000;
+const KARP_PRESENCE_HEARTBEAT_MS=15*60*1000;
+const KARP_PRESENCE_LEASE_MS=16*60*1000;
+const KARP_ACTIVITY_BUCKET_MS=15*60*1000;
 let __karpPresence=null;
 function __karpIsActiveNow(){try{return document.visibilityState!=='hidden'}catch{return true}}
 function __karpTimeOwnerKey(uid){return '__karp_time_owner__'+String(uid||'')}
