@@ -69,15 +69,15 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
 
 <script>
 (async()=>{
-  const params=new URLSearchParams(location.search),initialId=params.get('id');
+  const params=new URLSearchParams(location.search),initialId=params.get('id'),initialSource=params.get('source')==='journal'?'journalIssues':'books';
   if(!initialId){location.replace('/books.html');return}
   try{
     const {db}=await fb();
     const {doc,getDoc,getDocs,collection,setDoc,updateDoc,runTransaction}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
     const authUser=await authReady();
-    const initialSnap=await getDoc(doc(db,'books',initialId));
+    const initialSnap=await getDoc(doc(db,initialSource,initialId));
     if(!initialSnap.exists()){location.replace('/books.html');return}
-    const current={id:initialSnap.id,...initialSnap.data()};
+    const current={id:initialSnap.id,...initialSnap.data(),sourceCollection:initialSource};
     document.title='KARP — '+(current.title||current.fileName||'Book');
     document.body.innerHTML='<div class="karp-pdf-browser">'+
       '<div class="karp-pdf-tabs" id="pdf-tabs"><button class="karp-pdf-new" id="pdf-new" title="New tab">+</button></div>'+
@@ -149,7 +149,7 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
     async function getPdfBytes(book){
       const st=tabStates.get(book.id);
       if(st?.bytes)return st.bytes;
-      const snap=await getDocs(collection(db,'books',book.id,'chunks'));
+      const snap=await getDocs(collection(db,book.sourceCollection||'books',book.id,'chunks'));
       const parts=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>Number(a.index??a.id)-Number(b.index??b.id));
       if(!parts.length)throw new Error('PDF data is missing.');
       const total=parts.reduce((n,p)=>n+atob(p.data).length,0);
@@ -213,6 +213,7 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
       if(current)st.holder.scrollTop=current.offsetTop+ratio*current.offsetHeight;observePages(st);refreshPdfTools();
     }
     async function countViewOnce(book){
+      if(book.sourceCollection&&book.sourceCollection!=='books')return;
       const bookRef=doc(db,'books',book.id),viewRef=doc(db,'books',book.id,'views',visitor.viewerId);
       try{
         await runTransaction(db,async tx=>{
@@ -228,6 +229,7 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
       }catch(e){console.warn('Book unique view count failed:',e)}
     }
     async function startViewSession(book){
+      if(book.sourceCollection&&book.sourceCollection!=='books')return;
       if(document.hidden||activeSession||sessionStarting||!book)return;
       sessionStarting=true;
       try{
@@ -246,6 +248,7 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
       try{await updateDoc(s.ref,{endedAt:new Date(endedMs).toISOString(),durationSeconds,status:'ended'})}catch(e){console.warn('Book view session end could not be recorded:',e)}
     }
     async function recordDownload(book){
+      if(book.sourceCollection&&book.sourceCollection!=='books')return;
       const id=makeId(),bookRef=doc(db,'books',book.id),downloadRef=doc(db,'books',book.id,'downloads',id);
       try{
         await runTransaction(db,async tx=>{
@@ -274,7 +277,7 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
       activateTab(book.id);picker.style.display='none';
       const st=tabStates.get(book.id);
       try{await loadPdf(st);countViewOnce(book);startViewSession(book)}catch(e){console.error(e);loading.textContent='Unable to open PDF';loading.style.display='grid'}
-      history.replaceState({},'',location.pathname+'?id='+encodeURIComponent(book.id));
+      history.replaceState({},'',location.pathname+'?id='+encodeURIComponent(book.id)+(book.sourceCollection==='journalIssues'?'&source=journal':''));
     }
     function closeTab(id){
       const st=tabStates.get(id);if(!st)return;
@@ -309,8 +312,16 @@ html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow
     window.addEventListener('pagehide',stopViewSession);window.addEventListener('beforeunload',stopViewSession);
     document.getElementById('pdf-back').onclick=()=>history.back();
     document.getElementById('pdf-home').onclick=()=>location.replace('/books.html');
-    const snapBooks=await getDocs(collection(db,'books'));
-    books=snapBooks.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+    const [snapBooks,snapOldIssues]=await Promise.all([
+      getDocs(collection(db,'books')),
+      getDocs(collection(db,'journalIssues'))
+    ]);
+    const regularBooks=snapBooks.docs.map(x=>({id:x.id,...x.data(),sourceCollection:'books'}));
+    const previousIssues=snapOldIssues.docs
+      .map(x=>({id:x.id,...x.data(),sourceCollection:'journalIssues'}))
+      .filter(x=>x.published!==false);
+    books=[...regularBooks,...previousIssues]
+      .sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
     await openBook(current.id);
   }catch(e){
     document.body.innerHTML='<div style="font:14px system-ui;padding:40px;text-align:center"><h2>Unable to open this book</h2><p>'+escapeHtml(e.message||'Something went wrong.')+'</p><a href="/books.html">← Back to Books</a></div>';
