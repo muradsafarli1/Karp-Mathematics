@@ -12,6 +12,7 @@ const db = getFirestore();
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 const REGION = "europe-west1";
 const MODEL = "gemini-3.1-flash-lite";
+// Change this value to adjust each verified account's daily token allowance.
 const DAILY_TOKEN_LIMIT = 5000;
 const MAX_OUTPUT_TOKENS_PER_REQUEST = 2048;
 const MIN_OUTPUT_TOKENS_PER_REQUEST = 256;
@@ -74,13 +75,17 @@ async function reserveTokenBudget(uid,promptTokens) {
 }
 async function settleTokenReservation(uid,reservation,actualTokens) {
  const ref=usageRef(uid);
- await db.runTransaction(async transaction=>{
-  const snapshot=await transaction.get(ref);if(!snapshot.exists)return;
-  const data=snapshot.data();if(data.dateKey!==reservation.dateKey)return;
+ const updated=await db.runTransaction(async transaction=>{
+  const snapshot=await transaction.get(ref);
+  if(!snapshot.exists)return null;
+  const data=snapshot.data();if(data.dateKey!==reservation.dateKey)return null;
   const usedTokens=Math.max(0,Number(data.usedTokens)||0),reservedTokens=Math.max(0,Number(data.reservedTokens)||0);
-  transaction.set(ref,{usedTokens:usedTokens+Math.max(0,Math.ceil(actualTokens)),reservedTokens:Math.max(0,reservedTokens-reservation.reservedForRequest),updatedAt:FieldValue.serverTimestamp()},{merge:true});
+  const nextUsed=usedTokens+Math.max(0,Math.ceil(actualTokens));
+  const nextReserved=Math.max(0,reservedTokens-reservation.reservedForRequest);
+  transaction.set(ref,{usedTokens:nextUsed,reservedTokens:nextReserved,updatedAt:FieldValue.serverTimestamp()},{merge:true});
+  return {usedTokens:nextUsed,reservedTokens:nextReserved,limitTokens:DAILY_TOKEN_LIMIT,remainingTokens:Math.max(0,DAILY_TOKEN_LIMIT-nextUsed-nextReserved),date:reservation.dateKey,resetsAt:"00:00 Asia/Baku"};
  });
- return readUsage(uid);
+ return updated||readUsage(uid);
 }
 async function releaseTokenReservation(uid,reservation) {
  if(!reservation)return;
