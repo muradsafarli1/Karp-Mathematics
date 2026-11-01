@@ -734,11 +734,12 @@ async function saveBookAdmin(){
   }catch(e){toast(e.message||'Could not save the book.');button.disabled=false;if(status)status.textContent='Save failed.'}
 }
 let __usersAnalytics={
-  unsubUsers:null,unsubPresence:null,unsubActivity:null,unsubVisits:null,users:[],presence:[],activity:[],visits:[],activityError:'',activityLoading:true,
+  unsubUsers:null,unsubPresence:null,unsubActivity:null,unsubVisits:null,users:[],presence:[],activity:[],visits:[],activityError:'',activityLoading:true,activityLoaded:false,loadError:'',
   db:null,adminUid:null,started:false,timer:null,searchTerm:'',selectedId:null,detailPeriod:'month',trendPeriod:'daily',signupPeriod:'daily',visitorPeriod:'daily'
 };
 const __usersVisitorLimit=15;
 const __usersLiveLimit=15;
+const __USERS_ANALYTICS_CACHE='karp_admin_users_analytics_snapshot_v1';
 
 function __usersTimestamp(v){
   if(v?.toMillis)return v.toMillis();
@@ -799,10 +800,12 @@ function __usersLoadActivity(db,force=false){
   __usersAnalytics.activity=[];__usersAnalytics.activityError='';__usersAnalytics.activityLoading=true;
   import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js').then(async ({collection,getDocs,query,where,Timestamp,orderBy,limit})=>{
     try{
-      const q=query(collection(db,'visitorActivity'),where('timestamp','>=',Timestamp.fromMillis(start)),orderBy('timestamp','desc'),limit(1000));
+      const q=query(collection(db,'visitorActivity'),where('timestamp','>=',Timestamp.fromMillis(start)),orderBy('timestamp','desc'),limit(5000));
       const snap=await getDocs(q);
       __usersAnalytics.activity=snap.docs.map(x=>({id:x.id,...x.data()}));
-      __usersAnalytics.activityLoading=false;__usersAnalytics.activityError='';__usersAnalytics.activityLoaded=true;__usersRender();
+      __usersAnalytics.activityLoading=false;__usersAnalytics.activityError='';__usersAnalytics.activityLoaded=true;
+      try{const raw=localStorage.getItem(__USERS_ANALYTICS_CACHE),cached=raw?JSON.parse(raw):{};localStorage.setItem(__USERS_ANALYTICS_CACHE,JSON.stringify({...cached,activity:__usersAnalytics.activity,savedAt:Date.now()}));}catch{}
+      __usersRender();
     }catch(err){
       console.warn('KARP activity history query failed:',err);
       __usersAnalytics.activityLoading=false;__usersAnalytics.activityError=err.message||'Could not load activity history.';__usersRender();
@@ -992,7 +995,7 @@ function __usersRenderUniqueVisitorPanel(visits,period,now){
     return '<div class="users-trend-day" title="'+__usersEscapeAttr(x.title+' · '+x.count+' unique visitor'+(x.count===1?'':'s'))+'"><div class="users-trend-day-value">'+esc(x.count?String(x.count):'–')+'</div><div class="users-trend-bar-space"><div class="users-trend-bar" style="height:'+h+'%"></div></div><div class="users-trend-day-label">'+esc(x.label)+'</div></div>';
   }).join('');
   const subtitle=mode==='daily'?'Unique visitors per day · from 1 Oct 2026':mode==='monthly'?'Unique visitors per month · from Oct 2026':'Unique visitors per year · from 2026';
-  return '<section class="users-panel users-trend" aria-label="Unique website visitors"><div class="users-trend-head"><div><div class="users-trend-title">Unique Visitors</div><div class="users-trend-subtitle">'+esc(subtitle)+'</div></div><div class="users-trend-periods">'+buttons+'</div></div><div class="users-trend-summary"><span>Unique visitors today</span><strong>'+esc(String(data.todayCount))+'</strong></div>'+(max?'<div class="users-trend-chart users-daily-history-chart" style="grid-template-columns:repeat('+b.length+',minmax(34px,1fr))">'+graph+'</div>':'<div class="users-trend-empty">No visitor records in this period.</div>')+'</section>';
+  return '<section class="users-panel users-trend" aria-label="Unique website visitors"><div class="users-trend-head"><div><div class="users-trend-title">Unique Visitors per Day</div><div class="users-trend-subtitle">'+esc(subtitle)+'</div></div><div class="users-trend-periods">'+buttons+'</div></div><div class="users-trend-summary"><span>Unique visitors today</span><strong>'+esc(String(data.todayCount))+'</strong></div>'+(max?'<div class="users-trend-chart users-daily-history-chart" style="grid-template-columns:repeat('+b.length+',minmax(34px,1fr))">'+graph+'</div>':'<div class="users-trend-empty">No visitor records in this period.</div>')+'</section>';
 }
 function __usersRenderAccountCreationPanel(users,period,now){
   const mode=['daily','monthly','yearly'].includes(period)?period:'daily',data=__usersAccountCreationBuckets(users,mode,now),b=data.buckets,max=Math.max(0,...b.map(x=>x.count));
@@ -1060,13 +1063,13 @@ function __usersRender(){
   const totalActive=visitorDocs.reduce((a,p)=>a+activeTotal(p),0);
   const todayKey=__usersDayKey(now),todayActivity=activity.filter(r=>__usersDayKey(__usersTimestamp(r.timestamp))===todayKey).reduce((a,r)=>a+Math.max(0,Number(r.activeSeconds||0)),0);
   const weekActivity=activity.filter(r=>__usersTimestamp(r.timestamp)>=now-7*86400000).reduce((a,r)=>a+Math.max(0,Number(r.activeSeconds||0)),0);
-  const liveRows=onlineVisitors.slice(0,__usersLiveLimit).map(p=>{const x=__usersIdentity(p,userMap);return '<div class="users-live-row"><div><div class="users-live-who"><span class="visitor-online"></span>'+esc(x.name)+'</div><div class="users-live-meta">'+esc(x.email==='-'?'Anonymous visitor':x.email)+'</div></div><div><div class="users-live-status users-live-green">Online now · '+esc(__usersFormatDuration(activeTotal(p)))+'</div><div class="users-live-meta">'+esc(__usersLocationLabel(p))+'</div></div><div class="users-device">'+esc(__usersDeviceLabel(p))+'</div><div class="users-live-meta">'+esc(__usersDate(p.lastSeen))+'</div></div>'}).join('');
+  const liveRows=onlineVisitors.slice(0,__usersLiveLimit).map(p=>{const x=__usersIdentity(p,userMap);return '<div class="users-live-row"><div><div class="users-live-who"><span class="visitor-online"></span>'+esc(x.name)+'</div><div class="users-live-meta">'+esc(x.email==='-'?'Anonymous visitor':x.email)+'</div></div><div><div class="users-live-status users-live-green">Online at refresh · '+esc(__usersFormatDuration(activeTotal(p)))+'</div><div class="users-live-meta">'+esc(__usersLocationLabel(p))+'</div></div><div class="users-device">'+esc(__usersDeviceLabel(p))+'</div><div class="users-live-meta">'+esc(__usersDate(p.lastSeen))+'</div></div>'}).join('');
   const detail=selected?__usersRenderDetail(selected,userMap):'';
   m.innerHTML='<div class="users-dashboard"><div class="users-dashboard-head"><div><div class="users-dashboard-kicker">KARP · ADMIN ANALYTICS</div><h2>Users & Activity</h2><p>Accurate current presence, preserved active time, searchable visitors and per-user daily history.</p></div><div class="users-dashboard-head-actions"><div class="users-dashboard-live"><span class="users-dashboard-live-dot"></span>Live · '+esc(new Date(now).toLocaleTimeString())+'</div><button type="button" class="users-dashboard-back" id="users-back-to-admin">&lt;- Admin sections</button></div></div>'+
     '<div class="users-kpis users-primary-metrics"><div class="users-kpi"><strong>'+users.length+'</strong><span>Registered accounts</span><small>Today: '+__usersAccountCreationBuckets(users,'daily',now).todayCount+' new accounts</small></div><div class="users-kpi"><strong>'+onlineAccounts+'</strong><span>Accounts online now</span><small>Live presence</small></div><div class="users-kpi"><strong>'+onlineGuests+'</strong><span>Anonymous online now</span><small>Live presence</small></div><div class="users-kpi"><strong>'+onlineVisitors.length+'</strong><span>Total online now</span><small>Today: '+(__usersUniqueVisitorBuckets(__usersAnalytics.visits,'daily',now).todayCount)+' unique visitors entered</small></div></div>'+
     '<div class="users-time-overview"><section class="users-time-card users-time-card-total"><div><div class="users-time-card-label">TOTAL TRACKED ACTIVE TIME</div><div class="users-time-card-value">'+esc(__usersFormatDuration(totalActive))+'</div></div><div class="users-time-card-note">Existing cumulative totals are preserved. New active time is added without resetting previous data.</div></section><section class="users-time-card"><div><div class="users-time-card-label">TODAY</div><div class="users-time-card-value">'+esc(__usersFormatDuration(todayActivity))+'</div></div><div class="users-time-card-note">Active time recorded today. Use the Daily, Weekly and Monthly graph below to compare activity over time.</div></section></div>'+
     __usersRenderUniqueVisitorPanel(__usersAnalytics.visits,__usersAnalytics.visitorPeriod||'daily',now)+__usersRenderAccountCreationPanel(users,__usersAnalytics.signupPeriod||'daily',now)+__usersRenderTrendPanel(activity,__usersAnalytics.trendPeriod||'daily',now)+'<section class="users-panel users-search-panel"><div class="users-search-head"><div><strong>Search visitors and accounts</strong><span>'+((visitorMatches.length)+' visitors · '+users.filter(u=>!search||[u.name,u.email,u.id,u.role].join(' ').toLowerCase().includes(search)).length)+' accounts match</span></div><input id="users-search" class="users-search-input" type="search" placeholder="Search name, email, or visitor ID..." value="'+__usersEscapeAttr(__usersAnalytics.searchTerm)+'"></div></section>'+
-    '<section class="users-panel"><div class="users-panel-head"><strong>Live visitors</strong><span>Showing '+Math.min(__usersLiveLimit,onlineVisitors.length)+' of '+onlineVisitors.length+' · maximum 15</span></div><div class="users-live-list">'+(liveRows||'<div class="users-note">No one is online right now.</div>')+'</div></section>'+
+    '<section class="users-panel"><div class="users-panel-head"><strong>Visitors at last refresh</strong><span>Showing '+Math.min(__usersLiveLimit,onlineVisitors.length)+' of '+onlineVisitors.length+' · maximum 15</span></div><div class="users-live-list">'+(liveRows||'<div class="users-note">No one is online right now.</div>')+'</div></section>'+
     '<section class="users-panel"><div class="users-panel-head"><strong>Tracked visitors</strong><span>'+shownVisitors.length+(search?' matching':' · last 15')+'</span></div><div class="users-table-wrap"><table class="table users-dashboard-table"><thead><tr><th>Status</th><th>Visitor</th><th>Email</th><th>Device</th><th>Current / last page</th><th>Active time</th><th>First seen</th><th>Last seen</th></tr></thead><tbody>'+(visitorRows||'<tr><td colspan="8" class="visitor-empty">No visitors match the search.</td></tr>')+'</tbody></table></div></section>'+
     '<section class="users-panel"><div class="users-panel-head"><strong>All registered accounts</strong><span>'+users.filter(u=>!search||[u.name,u.email,u.id,u.role].join(' ').toLowerCase().includes(search)).length+' shown</span></div><div class="users-table-wrap"><table class="table users-dashboard-table"><thead><tr><th>Status</th><th>Name</th><th>Email</th><th>Role</th><th>Created</th><th>Last login</th><th>Last seen</th><th>Last logout</th><th>Current / last activity</th><th>Device</th><th>Total active time</th></tr></thead><tbody>'+(accountRows||'<tr><td colspan="11" class="visitor-empty">No accounts match the search.</td></tr>')+'</tbody></table></div></section>'+
     detail+'</div>';
@@ -1090,26 +1093,52 @@ function __usersStartLive(db,adminUid){
   __usersAnalytics.db=db;__usersAnalytics.adminUid=adminUid||null;
   if(__usersAnalytics.started)return;
   __usersAnalytics.started=true;
-  import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js').then(async ({collection,getDocs,query,where,orderBy,limit})=>{
-    try{
-      const visitsQuery=query(collection(db,'visitorVisits'),where('dateKey','>=','2026-10-01'),orderBy('dateKey','desc'),limit(1000));
-      const [usersSnap,presenceSnap,visitsSnap]=await Promise.all([
-        getDocs(query(collection(db,'users'),limit(1000))),
-        getDocs(query(collection(db,'presence'),limit(1000))),
-        getDocs(visitsQuery)
-      ]);
-      __usersAnalytics.users=usersSnap.docs.map(x=>({id:x.id,...x.data()}));
-      __usersAnalytics.presence=presenceSnap.docs.map(x=>({id:x.id,...x.data()}));
-      __usersAnalytics.visits=visitsSnap.docs.map(x=>({id:x.id,...x.data()}));
-      __usersLoadActivity(db,true);
-      __usersRender();
-    }catch(err){
-      console.warn('Could not load Users analytics:',err);
-      __usersAnalytics.started=false;
-      const m=document.getElementById('main');
-      if(m)m.innerHTML='<div class="bigcard"><h3>Could not load Users analytics</h3><p>'+esc(err.message||'Check Firestore permissions.')+'</p></div>';
+  // Restore the last successful snapshot first. Firestore is refreshed only once
+  // when this dashboard is opened or the browser page is reloaded.
+  try{
+    const raw=localStorage.getItem(__USERS_ANALYTICS_CACHE);
+    const cached=raw?JSON.parse(raw):null;
+    if(cached&&Date.now()-Number(cached.savedAt||0)<14*86400000){
+      if(Array.isArray(cached.users))__usersAnalytics.users=cached.users;
+      if(Array.isArray(cached.presence))__usersAnalytics.presence=cached.presence;
+      if(Array.isArray(cached.visits))__usersAnalytics.visits=cached.visits;
+      if(Array.isArray(cached.activity))__usersAnalytics.activity=cached.activity;
     }
-  }).catch(err=>{console.warn('Could not start Users analytics:',err);__usersAnalytics.started=false});
+  }catch{}
+  __usersRender();
+  import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js').then(async ({collection,getDocs,query,where,orderBy,limit})=>{
+    let firstError='';
+    const loadOne=async(label,task,apply)=>{
+      try{
+        const snap=await task();
+        apply(snap);
+        return true;
+      }catch(err){
+        console.warn('KARP Users '+label+' snapshot failed:',err);
+        firstError=firstError||((label||'Analytics')+': '+(err.message||'Could not refresh data.'));
+        return false;
+      }
+    };
+    const visitsQuery=query(collection(db,'visitorVisits'),where('dateKey','>=','2026-10-01'),orderBy('dateKey','desc'),limit(5000));
+    const [usersOk,presenceOk,visitsOk]=await Promise.all([
+      loadOne('accounts',()=>getDocs(query(collection(db,'users'),limit(1000))),snap=>{__usersAnalytics.users=snap.docs.map(x=>({id:x.id,...x.data()}));}),
+      loadOne('presence',()=>getDocs(query(collection(db,'presence'),limit(5000))),snap=>{__usersAnalytics.presence=snap.docs.map(x=>({id:x.id,...x.data()}));}),
+      loadOne('unique visitors',()=>getDocs(visitsQuery),snap=>{__usersAnalytics.visits=snap.docs.map(x=>({id:x.id,...x.data()}));})
+    ]);
+    __usersAnalytics.loadError=firstError;
+    try{
+      const cached={savedAt:Date.now(),users:__usersAnalytics.users,presence:__usersAnalytics.presence,visits:__usersAnalytics.visits,activity:__usersAnalytics.activity};
+      localStorage.setItem(__USERS_ANALYTICS_CACHE,JSON.stringify(cached));
+    }catch{}
+    __usersRender();
+    // Activity history loads independently: a quota error in another collection
+    // must never remove either chart or the rest of the dashboard.
+    __usersLoadActivity(db,true);
+  }).catch(err=>{
+    console.warn('Could not start Users snapshot refresh:',err);
+    __usersAnalytics.loadError=err.message||'Could not refresh analytics.';
+    __usersRender();
+  });
 }
 async function __usersExitDashboard(){
   let previous='problems';
