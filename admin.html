@@ -1617,7 +1617,7 @@ async function render(){
           });
           const logParticipantIds=new Set(esessions.filter(s=>s.uid&&(s.startedAt||s.attemptId)&&String(s.status||'')!=='archive-view').map(s=>String(s.uid)));
           const uniqueParticipants=Number(ex.participatedCount||0);
-          const totalAttempts=Number(ex.timedAttemptCount||ex.attemptedCount||ex.participatedCount||0);
+          const totalAttempts=Math.max(Number(ex.timedAttemptCount||0),Number(ex.attemptedCount||0),Number(ex.participatedCount||0));
           const timelineRows=people.flatMap(person=>{
             if(person.attempts.length)return person.attempts.map(attempt=>({person,attempt}));
             if(person.hasSubmission)return [{person,attempt:{number:'—',status:'Completed · legacy record',startedAt:person.legacyStartedAt,entryAt:person.legacyStartedAt,endedAt:person.legacyEndedAt,lastActivityAt:null,submittedAt:person.legacyEndedAt,durationSeconds:0,currentQuestion:0,reason:person.legacyReason}}];
