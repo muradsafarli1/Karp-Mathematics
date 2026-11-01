@@ -178,10 +178,13 @@ function messageMarkup(message) {
   const attachment = message.fileName
     ? '<div class="ai-message-file"><span>▧</span>' + escapeHtml(message.fileName) + "</div>"
     : "";
+  const tokenMeta = Number(message.tokenUsage) > 0
+    ? '<div class="ai-token-usage">' + Math.round(Number(message.tokenUsage)).toLocaleString() + " tokens used</div>"
+    : "";
   return '<article class="ai-message' + (isUser ? " user" : "") + '">' +
     '<div class="ai-message-avatar">' + avatar + "</div>" +
     '<div class="ai-message-content"><div class="ai-message-label">' + label + "</div>" +
-    '<div class="ai-message-bubble">' + bubble + attachment + "</div></div></article>";
+    '<div class="ai-message-bubble">' + bubble + attachment + "</div>" + tokenMeta + "</div></article>";
 }
 
 function renderMessages() {
@@ -303,7 +306,7 @@ function readFileAsBase64(file) {
 
 function friendlyError(error) {
   const code = String(error?.code || "");
-  if (code.includes("resource-exhausted")) return "Your daily KARP AI token budget has been used. It resets at 00:00 Baku time.";
+  if (code.includes("resource-exhausted")) return "This request needs more tokens than you have left today, or your daily token budget is exhausted. It resets at 00:00 Baku time.";
   if (code.includes("unauthenticated")) return "Please sign in to your KARP account before using KARP AI.";
   if (code.includes("failed-precondition")) return error.message || "Please verify your email address and check the Gemini API setup.";
   if (code.includes("invalid-argument")) return error.message || "The message or attachment is not valid.";
@@ -375,6 +378,7 @@ async function sendMessage() {
       text: String(data.answer || "I could not produce an answer. Please try again."),
       topic: String(data.topic || ""),
       inScope: data.inScope === true,
+      tokenUsage: Number(data.tokenUsage?.totalTokens) || 0,
       createdAt: Date.now()
     });
     if (data.usage) renderUsage(data.usage);
