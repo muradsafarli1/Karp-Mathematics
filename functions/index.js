@@ -11,7 +11,7 @@ initializeApp();
 const db = getFirestore();
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 const REGION = "europe-west1";
-const MODEL = "gemini-3.8-flash";
+const MODEL = "gemini-3.1-flash-lite";
 const DAILY_LIMIT = 10;
 const MAX_PROMPT_CHARS = 6000;
 const MAX_HISTORY_MESSAGES = 10;
