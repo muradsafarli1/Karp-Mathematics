@@ -85,31 +85,12 @@
             "value": "no-store, max-age=0, must-revalidate"
           }
         ]
-      },
-      {
-        "source": "/ai.css",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-store, max-age=0, must-revalidate"
-          }
-        ]
-      },
-      {
-        "source": "/ai.js",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-store, max-age=0, must-revalidate"
-          }
-        ]
       }
     ],
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**",
-      "functions/**"
+      "**/node_modules/**"
     ],
     "rewrites": [
       {
@@ -131,10 +112,6 @@
       {
         "source": "/videos",
         "destination": "/videos.html"
-      },
-      {
-        "source": "/ai",
-        "destination": "/ai.html"
       },
       {
         "source": "/about",
@@ -193,18 +170,6 @@
         "destination": "/mathnet-sync.html"
       },
       {
-        "source": "/journal",
-        "destination": "/journal.html"
-      },
-      {
-        "source": "/meetings",
-        "destination": "/meetings.html"
-      },
-      {
-        "source": "/meeting",
-        "destination": "/meeting.html"
-      },
-      {
         "source": "/books",
         "destination": "/books.html"
       },
@@ -228,11 +193,47 @@
         "source": "/hosting/**",
         "destination": "/",
         "type": 302
+      },
+      {
+        "source": "/ai",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/ai.html",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/journal",
+        "destination": "/books.html",
+        "type": 301
+      },
+      {
+        "source": "/journal.html",
+        "destination": "/books.html",
+        "type": 301
+      },
+      {
+        "source": "/meetings",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/meetings.html",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/meeting",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/meeting.html",
+        "destination": "/",
+        "type": 301
       }
     ]
-  },
-  "functions": {
-    "source": "functions",
-    "codebase": "default"
   }
 }
