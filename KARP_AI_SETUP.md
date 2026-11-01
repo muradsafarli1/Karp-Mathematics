@@ -26,11 +26,12 @@ The functions use the europe-west1 region and the Gemini gemini-3.1-flash-lite m
 CURRENT SAFEGUARDS
 
 - Sign-in and verified email are required.
-- Each account gets 10 AI messages per day, resetting at 00:00 in Asia/Baku.
-- The daily allowance is enforced inside a server-side Firestore transaction, not in browser JavaScript.
+- Each verified account starts with 5,000 total tokens per day, resetting at 00:00 in Asia/Baku. The counter includes the Gemini input (system instruction, recent chat context, user text, images/PDFs where supported) and the model response including thinking tokens reported by Gemini.
+- The daily token allowance is enforced inside a server-side Firestore transaction, with reservations before model generation to avoid parallel requests overspending. It is never trusted to the browser.
+- To change the allowance, edit the single `DAILY_TOKEN_LIMIT` constant in `functions/index.js` (for example, 3,000 / 5,000 / 15,000 tokens per account per day), then redeploy Functions.
 - The AI is instructed to answer only olympiad mathematics and mathematical-contest preparation questions.
 - Image and PDF uploads are limited to 4 MB and supported types.
 - Conversation history is kept in the signed-in user's browser storage; daily usage counts are stored server-side in the private karpAiDailyUsage collection.
-- The function is capped at 3 instances; Gemini output is capped at 4,096 tokens.
+- The function is capped at 3 instances; each Gemini answer is capped at 2,048 output tokens or the remaining daily budget, whichever is lower.
 
 For a normal website-only update in the future, use firebase deploy --only hosting. To remove KARP AI, remove its nav link, ai.html, ai.css, ai.js, the /ai rewrite, and the two functions, then deploy Hosting and Functions.
