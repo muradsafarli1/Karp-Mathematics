@@ -830,6 +830,7 @@ button,a,.btn,.submit{touch-action:manipulation}
  .problem-detail,.article-paper,.contest-problem .question-text{font-size:16px!important;line-height:1.8!important}
  .problem-detail img,.article-paper img,.contest-problem img{max-width:100%!important;height:auto!important}
  .problem-detail table,.article-paper table,.contest-problem table{display:block;max-width:100%;overflow-x:auto}
+ .admin-main table,.account-wrap table,.problem-detail table,.detail-content table{display:block;width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
  .problem-detail pre,.article-paper pre,.contest-problem pre{max-width:100%;overflow-x:auto}
  .exam-review,.exam-paper,.exam-active-paper{padding:18px 14px!important}
  .exam-question{padding:24px 0}
