@@ -979,25 +979,29 @@ function __usersUniqueVisitorBuckets(visits,period,now=Date.now()){
     for(let year=firstYear;year<=lastYear;year++)buckets.push({key:String(year),label:String(year),title:String(year),count:0});
   }
   const sets=new Map(buckets.map(b=>[b.key,new Set()]));
+  const visitCounts=new Map(buckets.map(b=>[b.key,0]));
+  let todayVisits=0;
   (visits||[]).forEach(v=>{
-    const id=String(v.visitorId||v.uid||v.guestId||v.id||'');
-    if(!id)return;
     const dateKey=String(v.dateKey||'');
     if(!dateKey)return;
     let key=dateKey;
     if(mode==='monthly')key=dateKey.slice(0,7);
     else if(mode==='yearly')key=dateKey.slice(0,4);
+    if(visitCounts.has(key))visitCounts.set(key,(visitCounts.get(key)||0)+1);
+    if(dateKey===todayKey)todayVisits++;
+    const id=String(v.visitorId||v.uid||v.guestId||v.id||'');
+    if(!id)return;
     const set=sets.get(key);
     if(set)set.add(id);
   });
-  buckets.forEach(b=>b.count=sets.get(b.key)?.size||0);
+  buckets.forEach(b=>{b.count=sets.get(b.key)?.size||0;b.visits=visitCounts.get(b.key)||0});
   const todaySet=new Set();
   (visits||[]).forEach(v=>{
     if(String(v.dateKey||'')!==todayKey)return;
     const id=String(v.visitorId||v.uid||v.guestId||v.id||'');
     if(id)todaySet.add(id);
   });
-  return {buckets,todayCount:todaySet.size};
+  return {buckets,todayCount:todaySet.size,todayVisits};
 }
 function __usersRenderUniqueVisitorPanel(visits,period,now){
   const mode=['daily','monthly','yearly'].includes(period)?period:'daily';
@@ -1005,10 +1009,10 @@ function __usersRenderUniqueVisitorPanel(visits,period,now){
   const buttons=[['daily','Daily'],['monthly','Monthly'],['yearly','Yearly']].map(([v,l])=>'<button type="button" class="users-period-button '+(mode===v?'active':'')+'" data-users-visitor-period="'+v+'">'+l+'</button>').join('');
   const graph=b.map(x=>{
     const h=max&&x.count?Math.max(3,Math.round(x.count/max*100)):0;
-    return '<div class="users-trend-day" title="'+__usersEscapeAttr(x.title+' · '+x.count+' unique visitor'+(x.count===1?'':'s'))+'"><div class="users-trend-day-value">'+esc(x.count?String(x.count):'–')+'</div><div class="users-trend-bar-space"><div class="users-trend-bar" style="height:'+h+'%"></div></div><div class="users-trend-day-label">'+esc(x.label)+'</div></div>';
+    return '<div class="users-trend-day" title="'+__usersEscapeAttr(x.title+' · '+x.count+' unique visitors · '+x.visits+' visits')+'"><div class="users-trend-day-value">'+esc(x.count?String(x.count):'–')+'</div><div class="users-trend-bar-space"><div class="users-trend-bar" style="height:'+h+'%"></div></div><div class="users-trend-day-label">'+esc(x.label)+'</div></div>';
   }).join('');
   const subtitle=mode==='daily'?'Unique visitors per day · from 1 Oct 2026':mode==='monthly'?'Unique visitors per month · from Oct 2026':'Unique visitors per year · from 2026';
-  return '<section class="users-panel users-trend" aria-label="Unique website visitors"><div class="users-trend-head"><div><div class="users-trend-title">Unique Visitors per Day</div><div class="users-trend-subtitle">'+esc(subtitle)+'</div></div><div class="users-trend-periods">'+buttons+'</div></div><div class="users-trend-summary"><span>Unique visitors today</span><strong>'+esc(String(data.todayCount))+'</strong></div>'+(max?'<div class="users-trend-chart users-daily-history-chart" style="grid-template-columns:repeat('+b.length+',minmax(34px,1fr))">'+graph+'</div>':'<div class="users-trend-empty">No visitor records in this period.</div>')+'</section>';
+  return '<section class="users-panel users-trend" aria-label="Unique website visitors"><div class="users-trend-head"><div><div class="users-trend-title">Unique Visitors per Day</div><div class="users-trend-subtitle">'+esc(subtitle)+'</div></div><div class="users-trend-periods">'+buttons+'</div></div><div class="users-trend-summary"><span>Unique visitors today</span><strong>'+esc(String(data.todayCount))+'</strong><span style="margin-left:18px">Total visits today</span><strong>'+esc(String(data.todayVisits))+'</strong></div>'+(max?'<div class="users-trend-chart users-daily-history-chart" style="grid-template-columns:repeat('+b.length+',minmax(34px,1fr))">'+graph+'</div>':'<div class="users-trend-empty">No visitor records in this period.</div>')+'</section>';
 }
 function __usersRenderAccountCreationPanel(users,period,now){
   const mode=['daily','monthly','yearly'].includes(period)?period:'daily',data=__usersAccountCreationBuckets(users,mode,now),b=data.buckets,max=Math.max(0,...b.map(x=>x.count));
