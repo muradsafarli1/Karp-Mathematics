@@ -301,7 +301,7 @@ body.users-analytics-fullscreen .admin .wrap{padding-top:26px!important}
 }
 </style><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$","$"]],processEnvironments:true,processEscapes:true},svg:{fontCache:"global"},startup:{typeset:false}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script><style>.chat-admin-convs{display:grid;gap:12px}.chat-admin-conv{border:1px solid #dfe2df;border-radius:14px;background:#fff;overflow:hidden}.chat-admin-conv-head{display:flex;justify-content:space-between;gap:12px;padding:13px 15px;border-bottom:1px solid #e7e9e7;background:#f7f8f7}.chat-admin-conv-head strong{font-size:12px}.chat-admin-conv-head span{display:block;color:#7b8289;font-size:9px;margin-top:3px}.chat-admin-msgs{display:grid}.chat-admin-msg{padding:11px 14px;border-bottom:1px solid #eef0ee}.chat-admin-msg:last-child{border-bottom:0}.chat-admin-msg>div{display:flex;gap:8px;align-items:baseline}.chat-admin-msg strong{font-size:10px}.chat-admin-msg span,.chat-admin-msg time{font-size:8px;color:#858b91}.chat-admin-msg p{font-size:10px;line-height:1.6;margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere}.chat-admin-all{max-height:560px;overflow:auto;border:1px solid #e5e7e5;border-radius:10px}.chat-admin-all-row{display:grid;grid-template-columns:190px minmax(0,1fr) 145px;gap:12px;padding:10px 12px;border-bottom:1px solid #edf0ee;align-items:start}.chat-admin-all-row strong{display:block;font-size:10px}.chat-admin-all-row span{display:block;color:#858b91;font-size:8px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-admin-all-row p{font-size:10px;line-height:1.55;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.chat-admin-all-row time{font-size:8px;color:#858b91;white-space:nowrap}.chat-admin-empty{padding:18px;text-align:center;font-size:10px;color:#858b91}@media(max-width:800px){.chat-admin-all-row{grid-template-columns:1fr}.chat-admin-all-row time{white-space:normal}}</style></head><body><div id="root"></div><script>
 const __adminSavedSection=(()=>{try{return new URLSearchParams(location.search).get('section')||localStorage.getItem('karp_admin_section')||'problems'}catch{return 'problems'}})();
-const ADMIN_PRESENCE_HEARTBEAT_MS=30*1000,ADMIN_PRESENCE_LEASE_MS=90*1000;
+const ADMIN_PRESENCE_HEARTBEAT_MS=30*60*1000,ADMIN_PRESENCE_LEASE_MS=31*60*1000;
 let state={type:__adminSavedSection,editing:null},liveDocs=[],liveUnsub=null,liveTimer=null,pendingVideoThumbnail='',pendingFounderImage='',pendingTeamImages=[],pendingMeetingImage='',pendingBookFile=null,pendingJournalFile=null,booksAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''},journalsAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function startAdminPresence(db,u){
@@ -1147,19 +1147,6 @@ function __usersStartLive(db,adminUid){
     // Activity history loads independently: a quota error in another collection
     // must never remove either chart or the rest of the dashboard.
     __usersLoadActivity(db,true);
-    // Keep the Users dashboard live instead of freezing the initial getDocs snapshot.
-    import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js').then(({collection,onSnapshot,query,where,limit})=>{
-      const saveSnapshot=()=>{try{localStorage.setItem(__USERS_ANALYTICS_CACHE,JSON.stringify({savedAt:Date.now(),users:__usersCacheRows(__usersAnalytics.users),presence:__usersCacheRows(__usersAnalytics.presence),visits:__usersCacheRows(__usersAnalytics.visits),activity:__usersCacheRows(__usersAnalytics.activity)}))}catch{}};
-      if(__usersAnalytics.unsubPresence)__usersAnalytics.unsubPresence();
-      __usersAnalytics.unsubPresence=onSnapshot(query(collection(db,'presence'),limit(5000)),snap=>{
-        __usersAnalytics.presence=snap.docs.map(x=>({id:x.id,...x.data()}));saveSnapshot();__usersRender();
-      },err=>{console.warn('KARP live presence subscription failed:',err);__usersAnalytics.loadError=__usersAnalytics.loadError||('Presence: '+(err.message||'Live update unavailable.'));__usersRender()});
-      if(__usersAnalytics.unsubVisits)__usersAnalytics.unsubVisits();
-      const liveVisitsQuery=query(collection(db,'visitorVisits'),where('dateKey','>=','2026-10-01'),limit(5000));
-      __usersAnalytics.unsubVisits=onSnapshot(liveVisitsQuery,snap=>{
-        __usersAnalytics.visits=snap.docs.map(x=>({id:x.id,...x.data()}));saveSnapshot();__usersRender();
-      },err=>{console.warn('KARP live visitor analytics subscription failed:',err);__usersAnalytics.loadError=__usersAnalytics.loadError||('Unique visitors: '+(err.message||'Live update unavailable.'));__usersRender()});
-    }).catch(err=>console.warn('Could not start live Users subscriptions:',err));
   }).catch(err=>{
     console.warn('Could not start Users snapshot refresh:',err);
     __usersAnalytics.loadError=err.message||'Could not refresh analytics.';
