@@ -229,9 +229,9 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       sessionStartedAt=startedAt;
       end=Date.now()+durationMinutes*60000;
       localStorage.setItem(storageKey,JSON.stringify({startedAt,end,submitted:false,attemptId:currentAttemptId}));
-      await markKarpExamEntry(id);
-      await writeExamSession({status:'active',attemptId:currentAttemptId,startedAt,entryAt:startedAt,endedAt:null,exitAt:null,exitObservedAt:null,durationSeconds:0,lastKnownRemainingMs:durationMinutes*60000,entrySource:'start-button',lastActivityAt:startedAt});
+      markKarpExamEntry(id).catch(e=>console.warn('Exam participation tracking skipped:',e));
       renderActive();startExamTimer();
+      writeExamSession({status:'active',attemptId:currentAttemptId,startedAt,entryAt:startedAt,endedAt:null,exitAt:null,exitObservedAt:null,durationSeconds:0,lastKnownRemainingMs:durationMinutes*60000,entrySource:'start-button',lastActivityAt:startedAt});
     }
     async function resumeExam(){
       const current=JSON.parse(localStorage.getItem(storageKey)||'{}');
@@ -239,10 +239,10 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       sessionStartedAt=current.startedAt||new Date().toISOString();
       end=Number(current.end)||end;
       localStorage.setItem(storageKey,JSON.stringify({...current,attemptId:currentAttemptId,end,submitted:false}));
-      await markKarpExamEntry(id);
+      markKarpExamEntry(id).catch(e=>console.warn('Exam participation tracking skipped:',e));
       const resumedAt=new Date().toISOString();
-      await writeExamSession({status:'active',attemptId:currentAttemptId,startedAt:sessionStartedAt,entryAt:sessionStartedAt,resumedAt,lastActivityAt:resumedAt,exitObservedAt:null,exitAt:null,visibilityState:document.visibilityState});
       renderActive();startExamTimer();
+      writeExamSession({status:'active',attemptId:currentAttemptId,startedAt:sessionStartedAt,entryAt:sessionStartedAt,resumedAt,lastActivityAt:resumedAt,exitObservedAt:null,exitAt:null,visibilityState:document.visibilityState});
     }
     function startExamTimer(){clearInterval(timer);tick();timer=setInterval(tick,500)}
     async function finishExam(reason){
