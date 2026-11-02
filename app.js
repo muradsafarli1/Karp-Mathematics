@@ -868,38 +868,38 @@ async function getKarpReadCounts(type,items=[]){
   return result;
 }
 async function markKarpExamEntry(examId){
-  const {db,auth}=await fb();
-  await authReady();
-  const uid=auth.currentUser?.uid;
-  if(!uid||!examId)return false;
-  const {doc,runTransaction,increment}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-  const markerRef=doc(db,'users',uid,'examEntries',String(examId));
-  const examRef=doc(db,'exams',String(examId));
   try{
-    return await runTransaction(db,async tx=>{
+    const {db,auth}=await fb();
+    await authReady();
+    const uid=auth.currentUser?.uid;
+    if(!uid||!examId)return false;
+    const cacheKey='__karp_exam_entry_v1_'+uid+'_'+String(examId);
+    try{if(localStorage.getItem(cacheKey)==='1')return false}catch{}
+    const {doc,runTransaction,increment}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const markerRef=doc(db,'users',uid,'examEntries',String(examId));
+    const examRef=doc(db,'exams',String(examId));
+    const status=await runTransaction(db,async tx=>{
       const marker=await tx.get(markerRef);
-      if(marker.exists() && marker.data()?.participated===true)return false;
+      if(marker.exists()&&marker.data()?.participated===true)return 'already';
       const exam=await tx.get(examRef);
-      if(!exam.exists())return false;
+      if(!exam.exists())return 'missing';
       const now=new Date().toISOString();
       const previous=marker.exists()?marker.data()||{}:{};
-      tx.set(markerRef,{
-        examId:String(examId),
-        participated:true,
-        firstParticipatedAt:previous.firstParticipatedAt||now,
-        lastParticipatedAt:now
-      },{merge:true});
+      tx.set(markerRef,{examId:String(examId),participated:true,firstParticipatedAt:previous.firstParticipatedAt||now,lastParticipatedAt:now},{merge:true});
       tx.update(examRef,{participatedCount:increment(1)});
-      return true;
+      return 'created';
     });
+    if(status==='created'||status==='already'){try{localStorage.setItem(cacheKey,'1')}catch{}}
+    return status==='created';
   }catch(e){
-    console.warn('KARP exam participation tracking failed:',e);
+    console.warn('KARP exam participation tracking failed (exam access will continue):',e);
     return false;
   }
 }
-const KARP_PRESENCE_HEARTBEAT_MS=20*1000;
-const KARP_PRESENCE_LEASE_MS=90*1000;
+const KARP_PRESENCE_HEARTBEAT_MS=120*1000;
+const KARP_PRESENCE_LEASE_MS=240*1000;
 const KARP_ACTIVITY_BUCKET_MS=30*60*1000;
+const KARP_ACTIVE_TIME_FLUSH_MS=10*60*1000;
 let __karpPresence=null;
 function __karpIsActiveNow(){try{return document.visibilityState!=='hidden'}catch{return true}}
 function __karpTimeOwnerKey(uid){return '__karp_time_owner__'+String(uid||'')}
@@ -909,6 +909,7 @@ function __karpTryClaimTimeOwner(){if(!__karpPresence)return false;try{const uid
 function __karpRenewTimeOwner(){if(!__karpPresence||!__karpPresence.timeOwner)return;try{localStorage.setItem(__karpTimeOwnerKey(__karpPresence.user.uid),JSON.stringify({version:2,token:__karpInstanceId(),expiresAt:Date.now()+KARP_PRESENCE_LEASE_MS}))}catch{}}
 function __karpReleaseTimeOwner(){if(!__karpPresence)return;try{const uid=__karpPresence.user.uid,cur=__karpReadOwner(uid);if(cur?.token===__karpInstanceId())localStorage.setItem(__karpTimeOwnerKey(uid),JSON.stringify({token:'',expiresAt:0}))}catch{}}
 function __karpConsumeElapsed(nextActive){if(!__karpPresence)return 0;const now=performance.now(),prev=Number(__karpPresence.lastSampleMs||now);const elapsed=Math.min(Math.max(0,(now-prev)/1000),KARP_PRESENCE_LEASE_MS/1000-30);const shouldCount=!!__karpPresence.wasActive&&!!__karpPresence.timeOwner;__karpPresence.lastSampleMs=now;__karpPresence.wasActive=!!nextActive;if(!shouldCount||elapsed<=0)return 0;__karpPresence.pendingSeconds=(Number(__karpPresence.pendingSeconds)||0)+elapsed;const whole=Math.floor(__karpPresence.pendingSeconds);if(whole>0)__karpPresence.pendingSeconds-=whole;return whole}
+function __karpAccumulateActiveLog(state,delta,nowMs=Date.now(),force=false){if(!state)return 0;if(!Number.isFinite(Number(state.lastActiveLogAt)))state.lastActiveLogAt=nowMs;state.pendingLogSeconds=(Number(state.pendingLogSeconds)||0)+Math.max(0,Number(delta)||0);if(!force&&nowMs-Number(state.lastActiveLogAt)<KARP_ACTIVE_TIME_FLUSH_MS)return 0;const amount=Math.floor(state.pendingLogSeconds);if(amount>0){state.pendingLogSeconds-=amount;state.lastActiveLogAt=nowMs;}return amount}
 function __karpDeviceInfo(){
   const ua=navigator.userAgent||'',platform=navigator.platform||'';
   let deviceType='Desktop';
@@ -1015,8 +1016,8 @@ async function __writeKarpGuestPresence(forceOffline=false){
     const {setDoc,doc,Timestamp,increment,serverTimestamp}=__karpGuestPresence.fs;
     const active=!forceOffline&&__karpIsActiveNow(),device=__karpGuestPresence.device,nowMs=Date.now();
     if(!active){
-      const delta=__karpConsumeGuestElapsed(false);
-      if(delta>0)await __karpLogActiveTime(delta,{db:__karpGuestPresence.db,fs:__karpGuestPresence.fs,visitorId:__karpGuestPresence.guestId,userType:'guest',name:'Anonymous visitor',device,activity:__karpGuestPresence.activity,sessionId:__karpGuestPresence.sessionId||'legacy',sessionStartedAt:__karpGuestPresence.sessionStartedAt});
+      const delta=__karpConsumeGuestElapsed(false),logDelta=__karpAccumulateActiveLog(__karpGuestPresence,delta,Date.now(),true);
+      if(logDelta>0)await __karpLogActiveTime(logDelta,{db:__karpGuestPresence.db,fs:__karpGuestPresence.fs,visitorId:__karpGuestPresence.guestId,userType:'guest',name:'Anonymous visitor',device,activity:__karpGuestPresence.activity,sessionId:__karpGuestPresence.sessionId||'legacy',sessionStartedAt:__karpGuestPresence.sessionStartedAt});
       if(__karpGuestPresence.timeOwner){__karpGuestReleaseTimeOwner();__karpGuestPresence.timeOwner=false}
       return;
     }
@@ -1030,7 +1031,7 @@ async function __writeKarpGuestPresence(forceOffline=false){
       guestSessionJustStarted=true;
     }
     if(__karpGuestPresence.timeOwner)__karpGuestRenewTimeOwner();
-    const delta=__karpConsumeGuestElapsed(true),payload={
+    const delta=__karpConsumeGuestElapsed(true),logDelta=__karpAccumulateActiveLog(__karpGuestPresence,delta,nowMs),payload={
       guestId:__karpGuestPresence.guestId,visitorId:__karpGuestPresence.guestId,uid:null,userType:'guest',name:'Anonymous visitor',photoURL:'',
       online:true,visible:true,lastSeen:serverTimestamp(),expiresAt:Timestamp.fromMillis(Date.now()+KARP_PRESENCE_LEASE_MS),
       firstSeenAt:__karpGuestPresence.firstSeenAt,sessionStartedAt:__karpGuestPresence.sessionStartedAt,
@@ -1040,7 +1041,7 @@ async function __writeKarpGuestPresence(forceOffline=false){
     };
     await setDoc(doc(__karpGuestPresence.db,'presence',__karpGuestPresence.guestId),payload,{merge:true});
     if(guestSessionJustStarted)await __karpLogVisit({db:__karpGuestPresence.db,fs:__karpGuestPresence.fs,visitorId:__karpGuestPresence.guestId,userType:'guest',name:'Anonymous visitor',device,sessionId:__karpGuestPresence.sessionId,sessionStartedAt:__karpGuestPresence.sessionStartedAt});
-    if(delta>0)await __karpLogActiveTime(delta,{db:__karpGuestPresence.db,fs:__karpGuestPresence.fs,visitorId:__karpGuestPresence.guestId,userType:'guest',name:'Anonymous visitor',device,activity:__karpGuestPresence.activity,sessionId:__karpGuestPresence.sessionId||'legacy',sessionStartedAt:__karpGuestPresence.sessionStartedAt});
+    if(logDelta>0)await __karpLogActiveTime(logDelta,{db:__karpGuestPresence.db,fs:__karpGuestPresence.fs,visitorId:__karpGuestPresence.guestId,userType:'guest',name:'Anonymous visitor',device,activity:__karpGuestPresence.activity,sessionId:__karpGuestPresence.sessionId||'legacy',sessionStartedAt:__karpGuestPresence.sessionStartedAt});
   }catch(e){console.warn('KARP anonymous presence update failed:',e)}
 }
 async function startKarpGuestPresence(){
@@ -1063,8 +1064,8 @@ async function __writeKarpPresence(online=true){
     if(!__karpPresence)return;
     const {setDoc,doc,Timestamp,increment,serverTimestamp}=__karpPresence.fs,u=__karpPresence.user,active=!!online&&__karpIsActiveNow(),device=__karpPresence.device||__karpDeviceInfo(),nowMs=Date.now();
     if(!active){
-      const delta=__karpConsumeElapsed(false);
-      if(delta>0)await __karpLogActiveTime(delta,{db:__karpPresence.db,fs:__karpPresence.fs,visitorId:u.uid,uid:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',device,activity:__karpPresence.activity,sessionId:__karpPresence.sessionId||'legacy',sessionStartedAt:__karpPresence.sessionStartedAt});
+      const delta=__karpConsumeElapsed(false),logDelta=__karpAccumulateActiveLog(__karpPresence,delta,Date.now(),true);
+      if(logDelta>0)await __karpLogActiveTime(logDelta,{db:__karpPresence.db,fs:__karpPresence.fs,visitorId:u.uid,uid:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',device,activity:__karpPresence.activity,sessionId:__karpPresence.sessionId||'legacy',sessionStartedAt:__karpPresence.sessionStartedAt});
       if(__karpPresence.timeOwner){__karpReleaseTimeOwner();__karpPresence.timeOwner=false}
       return;
     }
@@ -1074,7 +1075,7 @@ async function __writeKarpPresence(online=true){
     let accountSessionJustStarted=false;
     if(__karpPresence.timeOwner&&!__karpPresence.sessionId){__karpPresence.sessionId=__karpSessionId();__karpPresence.sessionStartedAt=new Date().toISOString();accountSessionJustStarted=true}
     if(__karpPresence.timeOwner)__karpRenewTimeOwner();
-    const delta=__karpConsumeElapsed(true),payload={
+    const delta=__karpConsumeElapsed(true),logDelta=__karpAccumulateActiveLog(__karpPresence,delta,nowMs),payload={
       uid:u.uid,visitorId:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',photoURL:u.photoURL||'',
       online:true,visible:true,lastSeen:serverTimestamp(),expiresAt:Timestamp.fromMillis(Date.now()+KARP_PRESENCE_LEASE_MS),
       sessionStartedAt:__karpPresence.sessionStartedAt,firstSeenAt:__karpPresence.firstSeenAt,
@@ -1085,7 +1086,7 @@ async function __writeKarpPresence(online=true){
     try{await setDoc(doc(__karpPresence.db,'chatPresence',u.uid),{uid:u.uid,online:true,lastSeen:serverTimestamp(),expiresAt:Timestamp.fromMillis(Date.now()+KARP_PRESENCE_LEASE_MS)},{merge:true})}
     catch(chatPresenceError){console.warn('KARP chat online status update failed:',chatPresenceError)}
     if(accountSessionJustStarted)await __karpLogVisit({db:__karpPresence.db,fs:__karpPresence.fs,visitorId:u.uid,uid:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',device,sessionId:__karpPresence.sessionId,sessionStartedAt:__karpPresence.sessionStartedAt});
-    if(delta>0)await __karpLogActiveTime(delta,{db:__karpPresence.db,fs:__karpPresence.fs,visitorId:u.uid,uid:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',device,activity:__karpPresence.activity,sessionId:__karpPresence.sessionId||'legacy',sessionStartedAt:__karpPresence.sessionStartedAt});
+    if(logDelta>0)await __karpLogActiveTime(logDelta,{db:__karpPresence.db,fs:__karpPresence.fs,visitorId:u.uid,uid:u.uid,userType:'account',name:u.displayName||u.email?.split('@')[0]||'KARP Member',email:u.email||'',device,activity:__karpPresence.activity,sessionId:__karpPresence.sessionId||'legacy',sessionStartedAt:__karpPresence.sessionStartedAt});
   }catch(e){console.warn('KARP presence update failed:',e)}
 }
 function setKarpActivity(activity={}){
