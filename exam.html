@@ -268,7 +268,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     async function finishExam(reason){
       if(finished)return;finished=true;clearInterval(timer);clearTrackers();sessionCleanup?.();sessionCleanup=null;sessionCleanup?.();sessionCleanup=null;
       try{
-        const current=JSON.parse(localStorage.getItem(storageKey)||'{}');
+        const current=readExamState();
         const started=current.startedAt||sessionStartedAt||new Date().toISOString();
         currentAttemptId=current.attemptId||currentAttemptId||makeAttemptId();
         const endedAt=new Date(reason==='time'?Math.min(Date.now(),end||Date.now()):Date.now()).toISOString();
