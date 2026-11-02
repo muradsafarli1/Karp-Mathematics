@@ -1151,23 +1151,23 @@ function __usersStartLive(db,adminUid){
       __usersRender();
     };
     __usersAnalytics.unsubUsers=onSnapshot(
-      query(collection(db,'users'),limit(1000)),
+      query(collection(db,'users'),limit(500)),
       snap=>apply('users',snap),
       err=>fail('accounts',err)
     );
     __usersAnalytics.unsubPresence=onSnapshot(
-      query(collection(db,'presence'),orderBy('lastSeen','desc'),limit(5000)),
+      query(collection(db,'presence'),orderBy('lastSeen','desc'),limit(1000)),
       snap=>apply('presence',snap),
       err=>fail('presence',err)
     );
     __usersAnalytics.unsubVisits=onSnapshot(
-      query(collection(db,'visitorVisits'),where('dateKey','>=','2026-10-01'),orderBy('dateKey','desc'),limit(5000)),
+      query(collection(db,'visitorVisits'),where('dateKey','>=','2026-10-01'),orderBy('dateKey','desc'),limit(1000)),
       snap=>apply('visits',snap),
       err=>fail('unique visitors',err)
     );
     const activityStart=Timestamp.fromMillis(Date.now()-365*86400000);
     __usersAnalytics.unsubActivity=onSnapshot(
-      query(collection(db,'visitorActivity'),where('timestamp','>=',activityStart),orderBy('timestamp','desc'),limit(5000)),
+      query(collection(db,'visitorActivity'),where('timestamp','>=',activityStart),orderBy('timestamp','desc'),limit(1000)),
       snap=>apply('activity',snap),
       err=>fail('active time',err)
     );
