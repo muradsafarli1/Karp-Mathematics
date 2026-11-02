@@ -404,19 +404,10 @@ async function api(path, opts = {}) {
     const exams=snap.docs.map(x=>({id:x.id,...x.data()}));
 
     if(uid){
-      // Load the user's state once and also discover legacy submissions through
-      // a userId-filtered collection-group query. This does not read one empty
-      // submission document per exam, so it stays far cheaper than the old loop.
+      // The user's examEntries are the compact per-exam index. Current
+      // registrations and submissions update this index, so the Exams page
+      // does not need an additional collection-group scan on every visit.
       const entriesSnap=await getDocs(collection(db,'users',uid,'examEntries'));
-      // If the legacy-completion lookup is denied or an index is still
-      // provisioning, never fail the entire Exams page. Current submissions
-      // also write completed:true into examEntries.
-      let submissionsSnap={docs:[]};
-      try{
-        submissionsSnap=await getDocs(query(collectionGroup(db,'submissions'),where('userId','==',uid)));
-      }catch(err){
-        console.warn('Legacy exam completion lookup unavailable; using examEntries:',err);
-      }
       const statusById=new Map(entriesSnap.docs.map(entry=>{
         const d=entry.data()||{};
         return [entry.id,{
@@ -425,9 +416,9 @@ async function api(path, opts = {}) {
           participated:d.participated===true
         }];
       }));
-      const submittedExamIds=new Set(submissionsSnap.docs
-        .map(s=>s.ref.parent.parent?.id)
-        .filter(Boolean));
+      const submittedExamIds=new Set(entriesSnap.docs
+        .filter(entry=>(entry.data()||{}).completed===true)
+        .map(entry=>entry.id));
       return {exams:exams.map(exam=>{
         const status=statusById.get(exam.id)||{};
         return {...publicExam(exam),
