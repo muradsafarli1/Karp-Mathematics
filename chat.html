@@ -514,6 +514,8 @@ async function openConversation(id){
   const c=conversations.find(x=>x.id===id);
   if(!c)return;
   selected=c;
+  messages=[];
+  renderMessages();
   if(unsubMsg)unsubMsg();
   const p=c.type==='direct'?people.get(otherId(c)):null;
   const headDisplayName=c.type==='group'?c.name:(p?.name||'Member');
@@ -537,7 +539,11 @@ async function openConversation(id){
   unsubMsg=onSnapshot(query(collection(db,'conversations',id,'messages'),orderBy('createdAt','asc'),limitToLast(500)),s=>{
     messages=s.docs.map(d=>({id:d.id,...d.data()}));
     renderMessages();
-  },e=>console.error('message listener',e));
+  },e=>{
+    console.error('message listener',e);
+    const box=document.getElementById('messages');
+    if(box)box.innerHTML='<div class="empty-chat"><div><strong>Could not load messages</strong>'+esc(e?.message||'Please retry after the connection is restored.')+'</div></div>';
+  });
   renderList().catch(()=>{});
 }
 function renderMessages(){
