@@ -65,16 +65,40 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
   function getSaved(){return cloudSaved||{}}
 
   async function toggleSave(){
+    const button=document.getElementById('save-btn');
+    if(button?.dataset.busy==='1')return;
     const u=await ensureSignedIn('Save a problem','Sign in or create an account to save problems and find them later in your account.');if(!u)return;
-    if(cloudSaved[problemStateId()]){
-      await karpDeleteUserRecord('saved',problemStateId());
-      delete cloudSaved[problemStateId()];
-    }else{
-      const record=saveRecord();
-      await karpUserRecord('saved',problemStateId(),record);
-      cloudSaved[problemStateId()]=record;
+    const key=problemStateId();
+    if(!key||!currentProblem){toast('Problem is still loading. Please try again.');return;}
+    if(button){button.dataset.busy='1';button.disabled=true;}
+    try{
+      if(cloudSaved[key]){
+        await karpDeleteUserRecord('saved',key);
+        delete cloudSaved[key];
+      }else{
+        const record=saveRecord();
+        await karpUserRecord('saved',key,record);
+        cloudSaved[key]=record;
+      }
+      try{
+        const {auth}=await fb();await authReady();
+        if(auth.currentUser?.uid){
+          const raw=localStorage.getItem('__karp_account_state_v1_'+auth.currentUser.uid);
+          const cached=raw?JSON.parse(raw):{};
+          const state=cached.state||{solved:{},saved:{},mocks:[],activeMock:null};
+          state.saved={...(state.saved||{})};
+          if(cloudSaved[key])state.saved[key]=cloudSaved[key];else delete state.saved[key];
+          localStorage.setItem('__karp_account_state_v1_'+auth.currentUser.uid,JSON.stringify({savedAt:Date.now(),state}));
+        }
+      }catch(cacheError){console.warn('Could not refresh saved-problem cache:',cacheError)}
+      syncSaveButton();
+      toast(cloudSaved[key]?'Problem saved.':'Problem removed from Saved.');
+    }catch(error){
+      console.error('KARP save problem failed:',error);
+      toast('Could not save this problem: '+(error?.message||'Please try again.'));
+    }finally{
+      if(button){button.dataset.busy='0';button.disabled=false;}
     }
-    syncSaveButton();
   }
 
   function syncSaveButton(){
@@ -83,16 +107,42 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
   }
 
   async function toggleSolved(){
+    const button=document.getElementById('solved-btn');
+    if(button?.dataset.busy==='1')return;
     const u=await ensureSignedIn('Mark a problem solved','Sign in or create an account to keep your solved-problem history and progress.');if(!u)return;
-    if(cloudSolved[problemStateId()]){
-      await karpDeleteUserRecord('solved',problemStateId());
-      delete cloudSolved[problemStateId()];
-    }else{
-      const record={...saveRecord(),dates:[new Date().toISOString()]};
-      await karpUserRecord('solved',problemStateId(),record);
-      cloudSolved[problemStateId()]=record;
+    const key=problemStateId();
+    if(!key||!currentProblem){toast('Problem is still loading. Please try again.');return;}
+    if(button){button.dataset.busy='1';button.disabled=true;}
+    try{
+      if(cloudSolved[key]){
+        await karpDeleteUserRecord('solved',key);
+        delete cloudSolved[key];
+      }else{
+        const previous=cloudSolved[key];
+        const dates=[...(Array.isArray(previous?.dates)?previous.dates:[]),new Date().toISOString()];
+        const record={...saveRecord(),dates};
+        await karpUserRecord('solved',key,record);
+        cloudSolved[key]=record;
+      }
+      try{
+        const {auth}=await fb();await authReady();
+        if(auth.currentUser?.uid){
+          const raw=localStorage.getItem('__karp_account_state_v1_'+auth.currentUser.uid);
+          const cached=raw?JSON.parse(raw):{};
+          const state=cached.state||{solved:{},saved:{},mocks:[],activeMock:null};
+          state.solved={...(state.solved||{})};
+          if(cloudSolved[key])state.solved[key]=cloudSolved[key];else delete state.solved[key];
+          localStorage.setItem('__karp_account_state_v1_'+auth.currentUser.uid,JSON.stringify({savedAt:Date.now(),state}));
+        }
+      }catch(cacheError){console.warn('Could not refresh solved-problem cache:',cacheError)}
+      syncSolvedButton();
+      toast(cloudSolved[key]?'Problem marked as solved.':'Solved status removed.');
+    }catch(error){
+      console.error('KARP mark solved failed:',error);
+      toast('Could not update solved status: '+(error?.message||'Please try again.'));
+    }finally{
+      if(button){button.dataset.busy='0';button.disabled=false;}
     }
-    syncSolvedButton();
   }
 
   function syncSolvedButton(){
@@ -194,8 +244,8 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
             <div class="detail-actions">
               <button class="btn" type="button" onclick="goBackToProblems()">← Back to Problems</button>
               <div class="detail-actions-right">
-                <button id="save-btn" class="btn save-btn" onclick="toggleSave()">Save ✓</button>
-                <button id="solved-btn" class="btn solved-btn" onclick="toggleSolved()">Solved ✓</button>
+                <button type="button" id="save-btn" class="btn save-btn" onclick="toggleSave()">Save ✓</button>
+                <button type="button" id="solved-btn" class="btn solved-btn" onclick="toggleSolved()">Solved ✓</button>
               </div>
             </div>
           </div>
