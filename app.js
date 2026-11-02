@@ -686,6 +686,30 @@ async function karpUserState(){
   return result;
 }
 
+async function karpProblemUserState(){
+  const {db,auth}=await fb();
+  await authReady();
+  const uid=auth.currentUser?.uid;
+  if(!uid)return {solved:{},saved:{}};
+  const cacheKey='__karp_account_state_v1_'+uid;
+  let cachedState={};
+  try{cachedState=JSON.parse(localStorage.getItem(cacheKey)||'{}').state||{}}catch{}
+  const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  let solvedSnap,savedSnap,failed=false;
+  [solvedSnap,savedSnap]=await Promise.all([
+    getDocs(collection(db,'users',uid,'solved')).catch(error=>{failed=true;console.warn('Problem solved-state read unavailable:',error);return {docs:[]}}),
+    getDocs(collection(db,'users',uid,'saved')).catch(error=>{failed=true;console.warn('Problem saved-state read unavailable:',error);return {docs:[]}})
+  ]);
+  if(failed&&cachedState)return {solved:cachedState.solved||{},saved:cachedState.saved||{}};
+  const solved={},saved={};
+  solvedSnap.docs.forEach(s=>solved[s.id]={id:s.id,...s.data()});
+  savedSnap.docs.forEach(s=>saved[s.id]={id:s.id,...s.data()});
+  try{
+    localStorage.setItem(cacheKey,JSON.stringify({savedAt:Date.now(),state:{...cachedState,solved,saved}}));
+  }catch{}
+  return {solved,saved};
+}
+
 async function karpMigrateLocalState(){
   const {db,auth}=await fb();
   await authReady();
