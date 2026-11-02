@@ -1053,6 +1053,7 @@ async function startKarpGuestPresence(){
     __karpGuestPresence.timer=setInterval(()=>__writeKarpGuestPresence(),KARP_PRESENCE_HEARTBEAT_MS);
     const stateChange=()=>__writeKarpGuestPresence();
     document.addEventListener('visibilitychange',stateChange);window.addEventListener('focus',stateChange);
+    window.addEventListener('storage',e=>{if(__karpGuestPresence&&e.key===__karpGuestOwnerKey(__karpGuestPresence.guestId)&&__karpIsActiveNow()&&!__karpGuestPresence.timeOwner)__writeKarpGuestPresence()});
     // Do not write offline on blur/pagehide: another open tab may still be active.
     // Presence expires automatically when every open tab stops heartbeating.
   }catch(e){console.warn('KARP anonymous presence could not start:',e)}
