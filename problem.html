@@ -218,7 +218,7 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
     }
 
     await karpMigrateLocalState();
-    const cloud=await karpUserState();
+    const cloud=await karpProblemUserState();
     cloudSolved=cloud.solved||{};
     cloudSaved=cloud.saved||{};
     
