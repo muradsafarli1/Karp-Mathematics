@@ -424,7 +424,6 @@ async function loadConversations(){
       persistedUnreadByConversation.set(id,current);
     });
     conversations=next.sort((a,b)=>Date.parse(b.updatedAt||b.createdAt||0)-Date.parse(a.updatedAt||a.createdAt||0));
-    syncUnreadMessageListeners();
     updateSelectedPresence();
     renderList().catch(e=>console.warn('render conversations',e));
   },e=>console.error('conversation listener',e));
@@ -538,7 +537,6 @@ async function openConversation(id){
   unsubMsg=onSnapshot(query(collection(db,'conversations',id,'messages'),orderBy('createdAt','asc'),limitToLast(500)),s=>{
     messages=s.docs.map(d=>({id:d.id,...d.data()}));
     renderMessages();
-    updateDoc(doc(db,'conversations',id),{['unread_'+user.uid]:0}).catch(()=>{});
   },e=>console.error('message listener',e));
   renderList().catch(()=>{});
 }
@@ -864,7 +862,7 @@ au.onAuthStateChanged(auth,async u=>{
   await loadRequests();
   await loadConversations();
   await repairAcceptedRelationships();
-  await Promise.all([loadFriends(),loadConversations()]);
+  await loadFriends();
   await renderList();
 });
 })();
