@@ -897,8 +897,8 @@ async function markKarpExamEntry(examId){
     return false;
   }
 }
-const KARP_PRESENCE_HEARTBEAT_MS=30*1000;
-const KARP_PRESENCE_LEASE_MS=90*1000;
+const KARP_PRESENCE_HEARTBEAT_MS=30*60*1000;
+const KARP_PRESENCE_LEASE_MS=31*60*1000;
 const KARP_ACTIVITY_BUCKET_MS=30*60*1000;
 let __karpPresence=null;
 function __karpIsActiveNow(){try{return document.visibilityState!=='hidden'}catch{return true}}
