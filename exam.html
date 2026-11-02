@@ -215,7 +215,27 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     if(!user){renderKarpSignInGate('Sign in','Sign in or create a KARP account to enter this exam.','/exams.html');return;}
 
     const storageKey='able_exam_'+id;
-    let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{}
+    // Browser localStorage can be full (QuotaExceededError), often because
+    // other KARP pages cache large content. Never let that prevent an exam
+    // from starting: keep the tiny attempt record in sessionStorage instead.
+    let memoryExamState=null;
+    function readExamState(){
+      for(const storage of [localStorage,sessionStorage]){
+        try{const raw=storage.getItem(storageKey);if(raw){const value=JSON.parse(raw);if(value&&typeof value==='object')return value;}}catch{}
+      }
+      return memoryExamState&&typeof memoryExamState==='object'?memoryExamState:{};
+    }
+    function writeExamState(value){
+      memoryExamState={...value};
+      const raw=JSON.stringify(memoryExamState);
+      try{localStorage.setItem(storageKey,raw);return true}catch(localError){
+        try{sessionStorage.setItem(storageKey,raw);return true}catch(sessionError){
+          console.warn('KARP exam state is kept in memory because browser storage is full:',localError,sessionError);
+          return false;
+        }
+      }
+    }
+    let saved=readExamState();
     if(saved.submitted){await openReview();return}
     let end=Number(saved.end)||0;
     currentAttemptId=saved.attemptId||null;
@@ -228,17 +248,17 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       lastTrackedQuestion=0;
       sessionStartedAt=startedAt;
       end=Date.now()+durationMinutes*60000;
-      localStorage.setItem(storageKey,JSON.stringify({startedAt,end,submitted:false,attemptId:currentAttemptId}));
+      writeExamState({startedAt,end,submitted:false,attemptId:currentAttemptId});
       markKarpExamEntry(id).catch(e=>console.warn('Exam participation tracking skipped:',e));
       renderActive();startExamTimer();
       writeExamSession({status:'active',attemptId:currentAttemptId,startedAt,entryAt:startedAt,endedAt:null,exitAt:null,exitObservedAt:null,durationSeconds:0,lastKnownRemainingMs:durationMinutes*60000,entrySource:'start-button',lastActivityAt:startedAt});
     }
     async function resumeExam(){
-      const current=JSON.parse(localStorage.getItem(storageKey)||'{}');
+      const current=readExamState();
       currentAttemptId=current.attemptId||makeAttemptId();
       sessionStartedAt=current.startedAt||new Date().toISOString();
       end=Number(current.end)||end;
-      localStorage.setItem(storageKey,JSON.stringify({...current,attemptId:currentAttemptId,end,submitted:false}));
+      writeExamState({...current,attemptId:currentAttemptId,end,submitted:false});
       markKarpExamEntry(id).catch(e=>console.warn('Exam participation tracking skipped:',e));
       const resumedAt=new Date().toISOString();
       renderActive();startExamTimer();
@@ -256,12 +276,12 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
         const durationSeconds=Math.max(0,Math.min(durationMinutes*60,Math.round((Date.parse(endedAt)-Date.parse(started))/1000)));
         await api('/api/exams/'+encodeURIComponent(id)+'/submit',{method:'POST',body:JSON.stringify({answers:{},startedAt:started,endedAt,submittedAt,attemptId:currentAttemptId,durationSeconds,reason})});
         await writeExamSession({status:'completed',attemptId:currentAttemptId,startedAt:started,entryAt:started,endedAt,exitAt:endedAt,exitObservedAt:null,durationSeconds,lastActivityAt:submittedAt,submittedAt,exitReason:reason,lastKnownRemainingMs:0});
-        localStorage.setItem(storageKey,JSON.stringify({startedAt:started,end,submitted:true,attemptId:currentAttemptId}));
+        writeExamState({startedAt:started,end,submitted:true,attemptId:currentAttemptId});
         setKarpActivity({page:'Exam Review',label:'Exam review',detail:localized(exam,'title')||'Exam',question:null});
         await openReview();
       }catch(e){
         if(/already completed/i.test(e.message||'')){
-          try{const pending=JSON.parse(localStorage.getItem(storageKey)||'{}');localStorage.setItem(storageKey,JSON.stringify({...pending,submitted:true}))}catch{}
+          try{const pending=readExamState();writeExamState({...pending,submitted:true})}catch{}
           await openReview();return;
         }
         finished=false;
@@ -298,7 +318,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     if(saved.startedAt&&!saved.submitted){
       sessionStartedAt=saved.startedAt;
       currentAttemptId=saved.attemptId||makeAttemptId();
-      if(!saved.attemptId){saved.attemptId=currentAttemptId;localStorage.setItem(storageKey,JSON.stringify(saved))}
+      if(!saved.attemptId){saved.attemptId=currentAttemptId;writeExamState(saved)}
       if(end<=Date.now()){await finishExam('time')}
       else renderEntry(true);
     }else renderEntry(false);
