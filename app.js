@@ -1126,9 +1126,6 @@ async function logout(){
     console.warn('KARP sign-out encountered an issue:',err);
   }finally{
     __apiUserCache={uid:null,loaded:false,user:null};
-    try{
-      Object.keys(localStorage).filter(k=>k.startsWith('__karp_user_profile_v1_')).forEach(k=>localStorage.removeItem(k));
-    }catch{}
     location.replace('/');
   }
 }
