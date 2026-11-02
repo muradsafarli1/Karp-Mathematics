@@ -1480,20 +1480,35 @@ async function renderDailyProblemAdmin(){
 
 async function renderChatAdmin(){
   const m=document.getElementById('main');if(!m)return;
+  m.innerHTML='<div class="bigcard"><h3>Loading recent conversations…</h3><p>Loading a bounded recent-message view to keep the Admin panel responsive.</p></div>';
   try{
     const {db}=await fb();
-    const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-    const [convSnap,userSnap]=await Promise.all([getDocs(collection(db,'conversations')),getDocs(collection(db,'users'))]);
-    const users=new Map(userSnap.docs.map(x=>[x.id,x.data()])),convs=[];
-    for(const d of convSnap.docs){
-      const c={id:d.id,...d.data()};let ms=[];
-      try{
-        const s=await getDocs(collection(db,'conversations',d.id,'messages'));
-        ms=s.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>Date.parse(b.createdAt||0)-Date.parse(a.createdAt||0));
-      }catch(e){console.warn('Chat messages read failed',d.id,e)}
-      convs.push({...c,messages:ms});
+    const {collection,getDocs,query,orderBy,limit,limitToLast,where,documentId}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const convSnap=await getDocs(query(collection(db,'conversations'),orderBy('updatedAt','desc'),limit(30)));
+    const convs=[];
+    for(let i=0;i<convSnap.docs.length;i+=5){
+      const batch=convSnap.docs.slice(i,i+5);
+      const loaded=await Promise.all(batch.map(async d=>{
+        const c={id:d.id,...d.data()};
+        try{
+          const snap=await getDocs(query(collection(db,'conversations',d.id,'messages'),orderBy('createdAt','desc'),limit(25)));
+          return {...c,messages:snap.docs.map(x=>({id:x.id,...x.data()})).reverse()};
+        }catch(error){
+          console.warn('Recent chat messages could not be loaded:',d.id,error);
+          return {...c,messages:[],messageError:error?.message||'Could not load messages'};
+        }
+      }));
+      convs.push(...loaded);
     }
-    convs.sort((a,b)=>Date.parse(b.messages[0]?.createdAt||b.updatedAt||b.createdAt||0)-Date.parse(a.messages[0]?.createdAt||a.updatedAt||a.createdAt||0));
+    const memberIds=[...new Set(convs.flatMap(c=>[...(c.members||[]),c.createdBy||'']).filter(Boolean))];
+    const users=new Map();
+    for(let i=0;i<memberIds.length;i+=30){
+      const chunk=memberIds.slice(i,i+30);
+      try{
+        const snap=await getDocs(query(collection(db,'users'),where(documentId(),'in',chunk)));
+        snap.forEach(x=>users.set(x.id,x.data()||{}));
+      }catch(error){console.warn('Some chat member profiles are unavailable:',error)}
+    }
     const who=id=>users.get(id)?.name||'KARP Member';
     const email=id=>users.get(id)?.email||'';
     const memberText=c=>(c.members||[]).map(id=>who(id)+' <'+email(id)+'>').join(' · ');
@@ -1502,14 +1517,14 @@ async function renderChatAdmin(){
     const card=c=>{
       const title=c.type==='group'?c.name:(c.members||[]).map(id=>who(id)).join(' · ')||'Conversation';
       const kind=c.type==='group'?'GROUP':'DIRECT';
-      return '<div class="chat-admin-conv"><div class="chat-admin-conv-head"><div><strong>'+esc(title)+'</strong><span>'+kind+' · '+(c.members||[]).length+' members · '+c.messages.length+' messages</span><small style="display:block;margin-top:5px;color:#737a80">Created by: '+esc(creatorText(c))+'</small><small style="display:block;margin-top:3px;color:#737a80">Members: '+esc(memberText(c))+'</small></div><span>'+esc(fmtAdminChat(c.messages[0]?.createdAt||c.updatedAt||c.createdAt))+'</span></div><div class="chat-admin-msgs">'+(c.messages.slice().reverse().map(x=>'<div class="chat-admin-msg"><div><strong>'+esc(x.senderName||who(x.senderId))+'</strong><span>'+esc(email(x.senderId))+'</span></div><p>'+esc(x.text||'')+'</p><time>'+esc(fmtAdminChat(x.createdAt))+'</time></div>').join('')||'<div class="chat-admin-empty">No messages yet.</div>')+'</div></div>';
+      return '<div class="chat-admin-conv"><div class="chat-admin-conv-head"><div><strong>'+esc(title)+'</strong><span>'+kind+' · '+(c.members||[]).length+' members · '+c.messages.length+' recent messages</span><small style="display:block;margin-top:5px;color:#737a80">Created by: '+esc(creatorText(c))+'</small><small style="display:block;margin-top:3px;color:#737a80">Members: '+esc(memberText(c))+'</small></div><span>'+esc(fmtAdminChat(c.messages[c.messages.length-1]?.createdAt||c.updatedAt||c.createdAt))+'</span></div><div class="chat-admin-msgs">'+(c.messages.map(x=>'<div class="chat-admin-msg"><div><strong>'+esc(x.senderName||who(x.senderId))+'</strong><span>'+esc(email(x.senderId))+'</span></div><p>'+esc(x.text||'')+'</p><time>'+esc(fmtAdminChat(x.createdAt))+'</time></div>').join('')||'<div class="chat-admin-empty">'+esc(c.messageError||'No recent messages.')+'</div>')+'</div></div>';
     };
     const allRows=all.map(x=>'<div class="chat-admin-all-row"><div><strong>'+esc(x.senderName||who(x.senderId))+'</strong><span>'+esc(x.senderId?email(x.senderId):'')+'</span><span>'+esc((x.conversationType==='group'?'GROUP · ':'DIRECT · ')+(x.conversationName||x.conversationId))+'</span><small style="display:block;margin-top:3px;color:#737a80">Created by: '+esc(x.createdBy?creatorText({createdBy:x.createdBy}):'—')+'</small></div><p>'+esc(x.text||'')+'</p><time>'+esc(fmtAdminChat(x.createdAt))+'</time></div>').join('');
     const groups=convs.filter(c=>c.type==='group');
-    const groupRows=groups.map(c=>'<div class="chat-admin-all-row"><div><strong>'+esc(c.name||'Unnamed group')+'</strong><span>Created by: '+esc(creatorText(c))+'</span><span>'+esc((c.members||[]).length+' members · '+c.messages.length+' messages')+'</span></div><p>'+esc(memberText(c))+'</p><time>'+esc(fmtAdminChat(c.createdAt||c.updatedAt))+'</time></div>').join('');
-    m.innerHTML='<div class="admin-head"><div><h2>Chat & Messages</h2><span class="admin-count">Complete private-message audit · '+convs.length+' conversations · '+all.length+' messages · '+groups.length+' groups</span></div><button class="btn primary" id="chat-admin-refresh">Refresh</button></div><div class="bigcard admin-kpi-bar"><div><strong>'+convs.length+'</strong><span>Conversations</span></div><div><strong>'+all.length+'</strong><span>Messages stored</span></div><div><strong>'+new Set(all.map(x=>x.senderId).filter(Boolean)).size+'</strong><span>Message senders</span></div></div><div class="bigcard" style="margin-bottom:14px"><h3 style="margin-top:0">All messages</h3><p style="font-size:10px;color:#737a80">Every direct and group message is visible here: who sent it, who/which group received it, the exact text and timestamp.</p><div class="chat-admin-all">'+(allRows||'<div class="chat-admin-empty">No messages yet.</div>')+'</div></div><div class="bigcard" style="margin-bottom:14px"><h3 style="margin-top:0">Groups created</h3><p style="font-size:10px;color:#737a80">Every group, its creator and all members are listed here.</p><div class="chat-admin-all">'+(groupRows||'<div class="chat-admin-empty">No groups created yet.</div>')+'</div></div><div class="admin-head" style="margin-top:18px"><div><h2>Conversations</h2><span class="admin-count">Full message history by conversation, including creator and members</span></div></div><div class="chat-admin-convs">'+(convs.map(card).join('')||'<div class="bigcard"><p>No conversations yet.</p></div>')+'</div>';
+    const groupRows=groups.map(c=>'<div class="chat-admin-all-row"><div><strong>'+esc(c.name||'Unnamed group')+'</strong><span>Created by: '+esc(creatorText(c))+'</span><span>'+esc((c.members||[]).length+' members · '+c.messages.length+' recent messages')+'</span></div><p>'+esc(memberText(c))+'</p><time>'+esc(fmtAdminChat(c.createdAt||c.updatedAt))+'</time></div>').join('');
+    m.innerHTML='<div class="admin-head"><div><h2>Chat & Messages</h2><span class="admin-count">Recent 30 conversations · up to 25 latest messages each · '+all.length+' messages loaded</span></div><button class="btn primary" id="chat-admin-refresh">Refresh</button></div><div class="bigcard admin-kpi-bar"><div><strong>'+convs.length+'</strong><span>Recent conversations</span></div><div><strong>'+all.length+'</strong><span>Recent messages loaded</span></div><div><strong>'+new Set(all.map(x=>x.senderId).filter(Boolean)).size+'</strong><span>Message senders</span></div></div><div class="bigcard" style="margin-bottom:14px"><h3 style="margin-top:0">Recent messages</h3><p style="font-size:10px;color:#737a80">The Admin view loads only the latest messages from the 30 most recently updated conversations. Open an individual conversation in Chat to access its full history.</p><div class="chat-admin-all">'+(allRows||'<div class="chat-admin-empty">No recent messages yet.</div>')+'</div></div><div class="bigcard" style="margin-bottom:14px"><h3 style="margin-top:0">Groups created</h3><p style="font-size:10px;color:#737a80">Groups among the 30 most recently updated conversations.</p><div class="chat-admin-all">'+(groupRows||'<div class="chat-admin-empty">No recent groups found.</div>')+'</div></div><div class="admin-head" style="margin-top:18px"><div><h2>Recent conversations</h2><span class="admin-count">Latest 25 messages per conversation</span></div></div><div class="chat-admin-convs">'+(convs.map(card).join('')||'<div class="bigcard"><p>No conversations yet.</p></div>')+'</div>';
     document.getElementById('chat-admin-refresh')?.addEventListener('click',renderChatAdmin);
-  }catch(e){m.innerHTML='<div class="bigcard"><h3>Could not load Chat</h3><p>'+esc(e.message||'Check Firestore permissions.')+'</p></div>'}
+  }catch(e){console.error('Could not load Chat admin:',e);m.innerHTML='<div class="bigcard"><h3>Could not load Chat</h3><p>'+esc(e.message||'Check Firestore permissions.')+'</p><button class="btn" id="chat-admin-retry">Retry</button></div>';document.getElementById('chat-admin-retry')?.addEventListener('click',renderChatAdmin)}
 }
 function fmtAdminChat(v){if(!v)return'—';const d=v?.toDate?v.toDate():new Date(v);return Number.isNaN(d.getTime())?'—':d.toLocaleString('en-GB',{timeZone:'Asia/Baku',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})+' (UTC+4)'}
 async function loadAdminExamTimeline(details){
