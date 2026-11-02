@@ -1116,15 +1116,21 @@ async function startKarpPresence(){
 async function me(){try{return(await api('/api/me')).user}catch{return null}}
 async function logout(){
   try{
-    const {db,auth}=await fb();
+    const {auth}=await fb();
     await authReady();
-    const uid=auth.currentUser?.uid;
-    if(uid){
-      const {doc,updateDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-      await updateDoc(doc(db,'users',uid),{lastLogoutAt:new Date().toISOString()}).catch(()=>{});
-    }
-    await api('/api/logout',{method:'POST'});
-  }finally{location.href='/'}
+    const {signOut}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js');
+    // End the Firebase session first. A Firestore activity write must never
+    // prevent logout, especially when the project is throttled or offline.
+    await signOut(auth);
+  }catch(err){
+    console.warn('KARP sign-out encountered an issue:',err);
+  }finally{
+    __apiUserCache={uid:null,loaded:false,user:null};
+    try{
+      Object.keys(localStorage).filter(k=>k.startsWith('__karp_user_profile_v1_')).forEach(k=>localStorage.removeItem(k));
+    }catch{}
+    location.replace('/');
+  }
 }
 async function requireUser(){
   const u=await me();
