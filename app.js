@@ -977,7 +977,7 @@ async function __karpLogVisit({db,fs,visitorId,uid=null,userType='guest',name=''
   try{
     if(!db||!fs||!visitorId||!sessionId)return;
     const {doc,setDoc,serverTimestamp}=fs;
-    const dateKey=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Baku',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    const dateParts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Baku',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()),dateValues={};dateParts.forEach(p=>{dateValues[p.type]=p.value});const dateKey=dateValues.year+'-'+dateValues.month+'-'+dateValues.day;
     await setDoc(doc(db,'visitorVisits',String(visitorId)+'_'+String(sessionId)),{
       visitorId:String(visitorId),uid:uid||null,guestId:userType==='guest'?String(visitorId):null,userType,
       name:String(name||''),email:String(email||''),deviceType:String(device.deviceType||'Unknown device'),
