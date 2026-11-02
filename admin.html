@@ -301,7 +301,7 @@ body.users-analytics-fullscreen .admin .wrap{padding-top:26px!important}
 }
 </style><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$","$"]],processEnvironments:true,processEscapes:true},svg:{fontCache:"global"},startup:{typeset:false}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script><style>.chat-admin-convs{display:grid;gap:12px}.chat-admin-conv{border:1px solid #dfe2df;border-radius:14px;background:#fff;overflow:hidden}.chat-admin-conv-head{display:flex;justify-content:space-between;gap:12px;padding:13px 15px;border-bottom:1px solid #e7e9e7;background:#f7f8f7}.chat-admin-conv-head strong{font-size:12px}.chat-admin-conv-head span{display:block;color:#7b8289;font-size:9px;margin-top:3px}.chat-admin-msgs{display:grid}.chat-admin-msg{padding:11px 14px;border-bottom:1px solid #eef0ee}.chat-admin-msg:last-child{border-bottom:0}.chat-admin-msg>div{display:flex;gap:8px;align-items:baseline}.chat-admin-msg strong{font-size:10px}.chat-admin-msg span,.chat-admin-msg time{font-size:8px;color:#858b91}.chat-admin-msg p{font-size:10px;line-height:1.6;margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere}.chat-admin-all{max-height:560px;overflow:auto;border:1px solid #e5e7e5;border-radius:10px}.chat-admin-all-row{display:grid;grid-template-columns:190px minmax(0,1fr) 145px;gap:12px;padding:10px 12px;border-bottom:1px solid #edf0ee;align-items:start}.chat-admin-all-row strong{display:block;font-size:10px}.chat-admin-all-row span{display:block;color:#858b91;font-size:8px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-admin-all-row p{font-size:10px;line-height:1.55;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.chat-admin-all-row time{font-size:8px;color:#858b91;white-space:nowrap}.chat-admin-empty{padding:18px;text-align:center;font-size:10px;color:#858b91}@media(max-width:800px){.chat-admin-all-row{grid-template-columns:1fr}.chat-admin-all-row time{white-space:normal}}</style></head><body><div id="root"></div><script>
 const __adminSavedSection=(()=>{try{return new URLSearchParams(location.search).get('section')||localStorage.getItem('karp_admin_section')||'problems'}catch{return 'problems'}})();
-const ADMIN_PRESENCE_HEARTBEAT_MS=20*1000,ADMIN_PRESENCE_LEASE_MS=90*1000;
+const ADMIN_PRESENCE_HEARTBEAT_MS=120*1000,ADMIN_PRESENCE_LEASE_MS=240*1000;
 let state={type:__adminSavedSection,editing:null},liveDocs=[],liveUnsub=null,liveTimer=null,pendingVideoThumbnail='',pendingFounderImage='',pendingTeamImages=[],pendingMeetingImage='',pendingBookFile=null,pendingJournalFile=null,booksAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''},journalsAdminDetails={id:null,tab:'views',loading:false,loaded:false,views:[],sessions:[],downloads:[],error:''};
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function startAdminPresence(db,u){
@@ -1078,7 +1078,7 @@ function __usersRender(){
   const weekActivity=activity.filter(r=>__usersTimestamp(r.timestamp)>=now-7*86400000).reduce((a,r)=>a+Math.max(0,Number(r.activeSeconds||0)),0);
   const liveRows=onlineVisitors.slice(0,__usersLiveLimit).map(p=>{const x=__usersIdentity(p,userMap),sessionStart=__usersTimestamp(p.sessionStartedAt||p.firstSeenAt),sessionDuration=sessionStart>0&&sessionStart<=now?Math.floor((now-sessionStart)/1000):activeTotal(p);return '<div class="users-live-row"><div><div class="users-live-who"><span class="visitor-online"></span>'+esc(x.name)+'</div><div class="users-live-meta">'+esc(x.email==='-'?'Anonymous visitor':x.email)+'</div></div><div><div class="users-live-status users-live-green">Online at refresh · '+esc(__usersFormatDuration(sessionDuration))+'</div><div class="users-live-meta">'+esc(__usersLocationLabel(p))+'</div></div><div class="users-device">'+esc(__usersDeviceLabel(p))+'</div><div class="users-live-meta">'+esc(__usersDate(p.lastSeen))+'</div></div>'}).join('');
   const detail=selected?__usersRenderDetail(selected,userMap):'';
-  m.innerHTML='<div class="users-dashboard"><div class="users-dashboard-head"><div><div class="users-dashboard-kicker">KARP · ADMIN ANALYTICS</div><h2>Users & Activity</h2><p>Accurate current presence, preserved active time, searchable visitors and per-user daily history.</p>'+(__usersAnalytics.loadError?'<p class="users-note">Refresh warning: '+esc(__usersAnalytics.loadError)+'. Showing the last successful snapshot where available.</p>':'')+'</div><div class="users-dashboard-head-actions"><div class="users-dashboard-live"><span class="users-dashboard-live-dot"></span>Live · '+esc(new Date(now).toLocaleTimeString())+'</div><button type="button" class="users-dashboard-back" id="users-back-to-admin">&lt;- Admin sections</button></div></div>'+
+  m.innerHTML='<div class="users-dashboard"><div class="users-dashboard-head"><div><div class="users-dashboard-kicker">KARP · ADMIN ANALYTICS</div><h2>Users & Activity</h2><p>Accurate current presence, preserved active time, searchable visitors and per-user daily history.</p>'+(__usersAnalytics.loadError?'<p class="users-note">Refresh warning: '+esc(__usersAnalytics.loadError)+'. Showing the last successful snapshot where available.</p>':'')+'</div><div class="users-dashboard-head-actions"><div class="users-dashboard-live"><span class="users-dashboard-live-dot"></span>Live · '+esc(new Date(now).toLocaleTimeString())+'</div><button type="button" class="btn" id="users-refresh-data">Refresh data</button><button type="button" class="users-dashboard-back" id="users-back-to-admin">&lt;- Admin sections</button></div></div>'+
     '<div class="users-kpis users-primary-metrics"><div class="users-kpi"><strong>'+users.length+'</strong><span>Registered accounts</span><small>Today: '+__usersAccountCreationBuckets(users,'daily',now).todayCount+' new accounts</small></div><div class="users-kpi"><strong>'+onlineAccounts+'</strong><span>Accounts online now</span><small>At last refresh</small></div><div class="users-kpi"><strong>'+onlineGuests+'</strong><span>Anonymous online now</span><small>Live presence</small></div><div class="users-kpi"><strong>'+onlineVisitors.length+'</strong><span>Total online now</span><small>Today: '+(__usersUniqueVisitorBuckets(__usersAnalytics.visits,'daily',now).todayCount)+' unique visitors entered</small></div></div>'+
     '<div class="users-time-overview"><section class="users-time-card users-time-card-total"><div><div class="users-time-card-label">TOTAL TRACKED ACTIVE TIME</div><div class="users-time-card-value">'+esc(__usersFormatDuration(totalActive))+'</div></div><div class="users-time-card-note">Existing cumulative totals are preserved. New active time is added without resetting previous data.</div></section><section class="users-time-card"><div><div class="users-time-card-label">TODAY</div><div class="users-time-card-value">'+esc(__usersFormatDuration(todayActivity))+'</div></div><div class="users-time-card-note">Active time recorded today. Use the Daily, Weekly and Monthly graph below to compare activity over time.</div></section></div>'+
     __usersRenderUniqueVisitorPanel(__usersAnalytics.visits,__usersAnalytics.visitorPeriod||'daily',now)+__usersRenderAccountCreationPanel(users,__usersAnalytics.signupPeriod||'daily',now)+__usersRenderTrendPanel(activity,__usersAnalytics.trendPeriod||'daily',now)+'<section class="users-panel users-search-panel"><div class="users-search-head"><div><strong>Search visitors and accounts</strong><span>'+((visitorMatches.length)+' visitors · '+users.filter(u=>!search||[u.name,u.email,u.id,u.role].join(' ').toLowerCase().includes(search)).length)+' accounts match</span></div><input id="users-search" class="users-search-input" type="search" placeholder="Search name, email, or visitor ID..." value="'+__usersEscapeAttr(__usersAnalytics.searchTerm)+'"></div></section>'+
@@ -1092,6 +1092,7 @@ function __usersRender(){
   m.querySelectorAll('[data-users-period]').forEach(btn=>btn.addEventListener('click',()=>{__usersAnalytics.detailPeriod=btn.getAttribute('data-users-period')||'month';__usersRender()}));
   m.querySelectorAll('[data-users-trend-period]').forEach(btn=>btn.addEventListener('click',()=>{__usersAnalytics.trendPeriod=btn.getAttribute('data-users-trend-period')||'daily';__usersRender()}));m.querySelectorAll('[data-users-visitor-period]').forEach(btn=>btn.addEventListener('click',()=>{__usersAnalytics.visitorPeriod=btn.getAttribute('data-users-visitor-period')||'daily';__usersRender()}));
   const close=document.getElementById('users-detail-close');if(close)close.onclick=()=>{__usersAnalytics.selectedId=null;__usersRender()};
+  const refresh=document.getElementById('users-refresh-data');if(refresh)refresh.onclick=()=>__usersStartLive(__usersAnalytics.db,__usersAnalytics.adminUid,true);
   const back=document.getElementById('users-back-to-admin');if(back)back.onclick=__usersExitDashboard;
 }
 function __usersDestroyLive(){
@@ -1120,64 +1121,62 @@ function __usersStopLive(){
   });
   __usersAnalytics.started=false;
 }
-function __usersStartLive(db,adminUid){
+async function __usersStartLive(db,adminUid,forceRefresh=false){
   __usersAnalytics.db=db;__usersAnalytics.adminUid=adminUid||null;
-  if(__usersAnalytics.started)return;
+  if(__usersAnalytics.refreshing)return;
+  if(__usersAnalytics.started&&!forceRefresh)return;
   __usersAnalytics.started=true;
-  try{
-    const raw=localStorage.getItem(__USERS_ANALYTICS_CACHE);
-    const cached=raw?JSON.parse(raw):null;
-    if(cached&&Date.now()-Number(cached.savedAt||0)<14*86400000){
-      if(Array.isArray(cached.users))__usersAnalytics.users=cached.users;
-      if(Array.isArray(cached.presence))__usersAnalytics.presence=cached.presence;
-      if(Array.isArray(cached.visits))__usersAnalytics.visits=cached.visits;
-      if(Array.isArray(cached.activity))__usersAnalytics.activity=cached.activity;
-    }
-  }catch{}
+  if(!forceRefresh){
+    try{
+      const raw=localStorage.getItem(__USERS_ANALYTICS_CACHE);
+      const cached=raw?JSON.parse(raw):null;
+      if(cached&&Date.now()-Number(cached.savedAt||0)<14*86400000){
+        if(Array.isArray(cached.users))__usersAnalytics.users=cached.users;
+        if(Array.isArray(cached.presence))__usersAnalytics.presence=cached.presence;
+        if(Array.isArray(cached.visits))__usersAnalytics.visits=cached.visits;
+        if(Array.isArray(cached.activity))__usersAnalytics.activity=cached.activity;
+      }
+    }catch{}
+  }
+  __usersAnalytics.refreshing=true;
   __usersAnalytics.activityLoading=true;
+  __usersAnalytics.loadError='';
   __usersRender();
-  import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js').then(({collection,onSnapshot,query,where,orderBy,limit,Timestamp})=>{
-    const fail=(label,err)=>{
-      console.warn('KARP live Users '+label+' listener failed:',err);
-      __usersAnalytics.loadError=label+': '+(err?.message||'Live data unavailable.');
-      if(label==='active time'){__usersAnalytics.activityLoading=false;__usersAnalytics.activityError=err?.message||'Activity history unavailable.'}
-      __usersRender();
-    };
-    const apply=(field,snap)=>{
-      __usersAnalytics[field]=snap.docs.map(x=>({id:x.id,...x.data()}));
-      if(field==='activity'){__usersAnalytics.activityLoading=false;__usersAnalytics.activityLoaded=true;__usersAnalytics.activityError=''}
-      __usersAnalytics.loadError='';
-      __usersSaveLiveCache();
-      __usersRender();
-    };
-    __usersAnalytics.unsubUsers=onSnapshot(
-      query(collection(db,'users'),limit(500)),
-      snap=>apply('users',snap),
-      err=>fail('accounts',err)
-    );
-    __usersAnalytics.unsubPresence=onSnapshot(
-      query(collection(db,'presence'),orderBy('lastSeen','desc'),limit(1000)),
-      snap=>apply('presence',snap),
-      err=>fail('presence',err)
-    );
-    __usersAnalytics.unsubVisits=onSnapshot(
-      query(collection(db,'visitorVisits'),where('dateKey','>=','2026-10-01'),orderBy('dateKey','desc'),limit(1000)),
-      snap=>apply('visits',snap),
-      err=>fail('unique visitors',err)
-    );
+  try{
+    const {collection,getDocs,query,where,orderBy,limit,Timestamp}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
     const activityStart=Timestamp.fromMillis(Date.now()-365*86400000);
-    __usersAnalytics.unsubActivity=onSnapshot(
-      query(collection(db,'visitorActivity'),where('timestamp','>=',activityStart),orderBy('timestamp','desc'),limit(1000)),
-      snap=>apply('activity',snap),
-      err=>fail('active time',err)
-    );
-  }).catch(err=>{
-    console.warn('Could not start live Users subscriptions:',err);
-    __usersAnalytics.started=false;
+    const requests=[
+      ['users',query(collection(db,'users'),limit(500))],
+      ['presence',query(collection(db,'presence'),orderBy('lastSeen','desc'),limit(1000))],
+      ['visits',query(collection(db,'visitorVisits'),where('dateKey','>=','2026-10-01'),orderBy('dateKey','desc'),limit(5000))],
+      ['activity',query(collection(db,'visitorActivity'),where('timestamp','>=',activityStart),orderBy('timestamp','desc'),limit(5000))]
+    ];
+    const results=await Promise.allSettled(requests.map(([,q])=>getDocs(q)));
+    const errors=[];
+    results.forEach((result,index)=>{
+      const field=requests[index][0];
+      if(result.status==='fulfilled'){
+        __usersAnalytics[field]=result.value.docs.map(x=>({id:x.id,...x.data()}));
+        if(field==='activity'){__usersAnalytics.activityLoaded=true;__usersAnalytics.activityError='';}
+      }else{
+        const message=result.reason?.message||'Live data unavailable.';
+        errors.push(field+': '+message);
+        console.warn('KARP Users '+field+' refresh failed:',result.reason);
+        if(field==='activity')__usersAnalytics.activityError=message;
+      }
+    });
+    __usersAnalytics.loadError=errors.join(' · ');
     __usersAnalytics.activityLoading=false;
-    __usersAnalytics.loadError=err?.message||'Could not start live analytics.';
+    __usersSaveLiveCache();
+  }catch(err){
+    console.warn('Could not refresh Users analytics:',err);
+    __usersAnalytics.loadError=err?.message||'Could not load analytics.';
+    __usersAnalytics.activityLoading=false;
+    __usersAnalytics.activityError=__usersAnalytics.loadError;
+  }finally{
+    __usersAnalytics.refreshing=false;
     __usersRender();
-  });
+  }
 }
 async function __usersExitDashboard(){
   __usersStopLive();
