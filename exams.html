@@ -80,7 +80,9 @@ function parseExamInstant(value,offset=4){
       const durationLabel=durationMinutes>=60?(Math.floor(durationMinutes/60)+(durationMinutes%60?'h '+(durationMinutes%60)+'m':'h')):(durationMinutes+' min');
       const questionCount=Array.isArray(e.questions)?e.questions.length:0;
       let localState={};
-      try{localState=JSON.parse(localStorage.getItem('able_exam_'+e.id)||'{}')}catch{}
+      for(const storage of [localStorage,sessionStorage]){
+        try{const candidate=JSON.parse(storage.getItem('able_exam_'+e.id)||'{}');if(candidate&&Object.keys(candidate).length){localState=candidate;break}}catch{}
+      }
       const completed=!!e.completedByCurrentUser||localState.submitted===true;
       const previewAction=isAdmin?'<a class="btn exam-preview-btn" target="_blank" rel="noopener" href="/exam.html?id='+encodeURIComponent(e.id)+'&preview=1">Preview</a>':'';
       const action=isUpcoming
