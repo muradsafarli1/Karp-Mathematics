@@ -1586,7 +1586,7 @@ async function loadAdminExamTimeline(details){
           const durationSeconds=ses.durationSeconds!=null?Math.max(0,Number(ses.durationSeconds)||0):((startedAt&&endedAt)?Math.max(0,Math.round((Date.parse(endedAt)-Date.parse(startedAt))/1000)):0);
           const rawStatus=String(ses.status||'');
           const online=!!p.online&&((p.expiresAt?.toMillis?p.expiresAt.toMillis():Number(p.expiresAt||0))>Date.now());
-          const status=rawStatus==='active'?(ses.exitObservedAt?'Left page · resumable':(online?'In progress':'In progress · offline')):(rawStatus||'started');
+          const status=rawStatus==='restarted'?'Restarted':(rawStatus==='active'?(ses.exitObservedAt?'Left page · resumable':(online?'In progress':'In progress · offline')):(rawStatus||'started'));
           return {id:ses.attemptId||ses.id,number:index+1,startedAt,entryAt:ses.entryAt||startedAt,lastActivityAt:ses.lastActivityAt||ses.submittedAt||null,endedAt,submittedAt:ses.submittedAt||(!ses.attemptId?sub.submittedAt:null)||null,restartedAt:ses.restartedAt||null,exitObservedAt:ses.exitObservedAt||null,durationSeconds,status,currentQuestion:Number(ses.currentQuestion||0),reason:ses.exitReason||ses.reason||(!ses.attemptId?sub.reason:'')||'',remainingMs:ses.lastKnownRemainingMs};
         });
       const online=!!p.online&&((p.expiresAt?.toMillis?p.expiresAt.toMillis():Number(p.expiresAt||0))>Date.now());
@@ -1601,7 +1601,7 @@ async function loadAdminExamTimeline(details){
       (timelineRows.length?timelineRows.map(row=>{
         const p=row.person,a=row.attempt;
         return '<tr><td>'+escapeHtml(a?(String(a.number)+' / '+String(p.attempts.length||1)):'—')+'</td><td>'+escapeHtml(a?String(Math.max(0,p.attempts.length-1)):'0')+'</td><td>'+escapeHtml(a?.status||(p.online?'Online · not started':'Registered · not started'))+'</td><td>'+escapeHtml(p.name)+'</td><td>'+escapeHtml(p.email)+'</td><td>'+fmtTime(p.registeredAt)+'</td><td>'+fmtTime(a?.entryAt||a?.startedAt)+'</td><td>'+fmtTime(a?.lastActivityAt)+'</td><td>'+fmtTime(a?.restartedAt)+'</td><td>'+fmtTime(a?.endedAt||a?.submittedAt||a?.exitObservedAt)+'</td><td>'+(a?fmtDuration(a.durationSeconds):'—')+'</td><td>'+((Number(a?.currentQuestion||0)>0)?'Q'+Number(a.currentQuestion):'—')+'</td><td>'+escapeHtml(a?.reason||'—')+'</td></tr>';
-      }).join(''):'<tr><td colspan="11">No participant activity yet.</td></tr>')+
+      }).join(''):'<tr><td colspan="13">No participant activity yet.</td></tr>')+
       '</tbody></table>';
     details.dataset.loaded='1';
     details.dataset.loading='0';
@@ -1716,7 +1716,7 @@ async function render(){
                 const endedAt=ses.endedAt||ses.exitAt||(!ses.attemptId?sub.endedAt||sub.submittedAt:null)||null;
                 const durationSeconds=ses.durationSeconds!=null?Math.max(0,Number(ses.durationSeconds)||0):((startedAt&&endedAt)?Math.max(0,Math.round((Date.parse(endedAt)-Date.parse(startedAt))/1000)):0);
                 const rawStatus=String(ses.status||'');
-                const status=rawStatus==='active'?(ses.exitObservedAt?'Left page · resumable':(p.online?'In progress':'In progress · offline')):(rawStatus||'started');
+                const status=rawStatus==='restarted'?'Restarted':(rawStatus==='active'?(ses.exitObservedAt?'Left page · resumable':(p.online?'In progress':'In progress · offline')):(rawStatus||'started'));
                 return {id:ses.attemptId||ses.id,number:index+1,startedAt,entryAt:ses.entryAt||startedAt,lastActivityAt:ses.lastActivityAt||ses.submittedAt||null,endedAt,submittedAt:ses.submittedAt||(!ses.attemptId?sub.submittedAt:null)||null,restartedAt:ses.restartedAt||null,exitObservedAt:ses.exitObservedAt||null,durationSeconds,status,currentQuestion:Number(ses.currentQuestion||0),reason:ses.exitReason||ses.reason||(!ses.attemptId?sub.reason:'')||'',remainingMs:ses.lastKnownRemainingMs};
               });
             return {uid,name:u.name||p.name||'KARP Member',email:u.email||'—',online:!!p.online,lastSeen:p.lastSeen?.toDate?p.lastSeen.toDate().toLocaleString():(p.lastSeen?String(p.lastSeen):'—'),activity:p.activity||{},registeredAt:reg.registeredAt||null,attempts,hasSubmission:!!sub.submittedAt,legacyStartedAt:sub.startedAt||null,legacyEndedAt:sub.endedAt||sub.submittedAt||null,legacyReason:sub.reason||''};
