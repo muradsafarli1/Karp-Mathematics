@@ -1594,7 +1594,7 @@ async function loadAdminExamTimeline(details){
     });
     const timelineRows=people.flatMap(person=>{
       if(person.attempts.length)return person.attempts.map(attempt=>({person,attempt}));
-      if(person.hasSubmission)return [{person,attempt:{number:'—',status:'Completed · legacy record',startedAt:person.legacyStartedAt,entryAt:person.legacyStartedAt,endedAt:person.legacyEndedAt,lastActivityAt:null,submittedAt:person.legacyEndedAt,durationSeconds:0,currentQuestion:0,reason:person.legacyReason}}];
+      if(person.hasSubmission)return [{person,attempt:{number:'—',status:person.legacyStartedAt?'Legacy submission · no session log':'Submission record · no entry log',startedAt:person.legacyStartedAt,entryAt:person.legacyStartedAt,endedAt:person.legacyEndedAt,lastActivityAt:null,submittedAt:person.legacyEndedAt,durationSeconds:0,currentQuestion:0,reason:person.legacyReason}}];
       return [{person,attempt:null}];
     }).sort((a,b)=>Date.parse(b.attempt?.startedAt||b.attempt?.entryAt||0)-Date.parse(a.attempt?.startedAt||a.attempt?.entryAt||0));
     host.innerHTML='<table class="table"><thead><tr><th>Attempt</th><th>Restarts</th><th>Status</th><th>Name</th><th>Email</th><th>Registered</th><th>Entered / started</th><th>Last activity</th><th>Restarted at</th><th>Ended</th><th>Time spent</th><th>Last question</th><th>Exit reason</th></tr></thead><tbody>'+
@@ -1726,7 +1726,7 @@ async function render(){
           const totalAttempts=esessions.length>0?esessions.length:Math.max(Number(ex.timedAttemptCount||0),Number(ex.attemptedCount||0),Number(ex.participatedCount||0));
           const timelineRows=people.flatMap(person=>{
             if(person.attempts.length)return person.attempts.map(attempt=>({person,attempt}));
-            if(person.hasSubmission)return [{person,attempt:{number:'—',status:'Completed · legacy record',startedAt:person.legacyStartedAt,entryAt:person.legacyStartedAt,endedAt:person.legacyEndedAt,lastActivityAt:null,submittedAt:person.legacyEndedAt,durationSeconds:0,currentQuestion:0,reason:person.legacyReason}}];
+            if(person.hasSubmission)return [{person,attempt:{number:'—',status:person.legacyStartedAt?'Legacy submission · no session log':'Submission record · no entry log',startedAt:person.legacyStartedAt,entryAt:person.legacyStartedAt,endedAt:person.legacyEndedAt,lastActivityAt:null,submittedAt:person.legacyEndedAt,durationSeconds:0,currentQuestion:0,reason:person.legacyReason}}];
             return [{person,attempt:null}];
           }).sort((a,b)=>Date.parse(b.attempt?.startedAt||b.attempt?.entryAt||0)-Date.parse(a.attempt?.startedAt||a.attempt?.entryAt||0));
           const formatScheduled=(value,offset=4)=>{
