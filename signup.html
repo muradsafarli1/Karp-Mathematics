@@ -47,9 +47,19 @@ async function finishVerifiedSignup(){
     await user.getIdToken(true);
     if(!user.emailVerified){setVerificationNotice("Your email is not verified yet. Click the verification link in the email, then try again.","error");return}
     const ref=doc(db,"users",user.uid),snap=await getDoc(ref);
-    if(!snap.exists()){setVerificationNotice("Your KARP signup could not be found. Please create your account again.","error");return}
-    const data=snap.data()||{},now=new Date().toISOString(),name=data.name||user.displayName||user.email?.split("@")[0]||"User";
-    await setDoc(ref,{name,email:user.email||data.email||"",requiresEmailVerification:false,emailVerifiedAt:now,updatedAt:now},{merge:true});
+    const data=snap.exists()?(snap.data()||{}):{};
+    const now=new Date().toISOString(),name=data.name||user.displayName||user.email?.split("@")[0]||"User";
+    // Recover accounts where Firebase Auth succeeded but the original
+    // Firestore profile write failed during signup.
+    if(!snap.exists()){
+      await setDoc(ref,{
+        name,email:user.email||"",role:"user",createdAt:now,
+        photoURL:user.photoURL||"",loginCount:0,
+        requiresEmailVerification:false,emailVerifiedAt:now
+      });
+    }else{
+      await setDoc(ref,{name,email:user.email||data.email||"",requiresEmailVerification:false,emailVerifiedAt:now,updatedAt:now},{merge:true});
+    }
     // Public profile creation is auxiliary; never block a verified account from entering KARP.
     try{
       await setDoc(doc(db,"publicProfiles",user.uid),{uid:user.uid,name,nameLower:String(name).trim().toLowerCase(),photoURL:user.photoURL||data.photoURL||"",updatedAt:now},{merge:true});
@@ -66,12 +76,19 @@ form.onsubmit=async e=>{
     const cred=await createUserWithEmailAndPassword(auth,email,password);
     await updateProfile(cred.user,{displayName:name});
     const now=new Date().toISOString();
-    await setDoc(doc(db,"users",cred.user.uid),{name,email:cred.user.email||email,role:"user",createdAt:now,photoURL:cred.user.photoURL||"",loginCount:0,requiresEmailVerification:true});
+    // Auth account creation is the decisive step. A temporary Firestore
+    // failure must not make the user think signup failed: that would leave
+    // an existing Auth account behind and cause email-already-in-use later.
+    try{
+      await setDoc(doc(db,"users",cred.user.uid),{name,email:cred.user.email||email,role:"user",createdAt:now,photoURL:cred.user.photoURL||"",loginCount:0,requiresEmailVerification:true});
+    }catch(profileError){
+      console.warn("KARP signup profile write deferred; it will be recovered after email verification:",profileError);
+    }
     showVerification(cred.user);
     await sendVerification(cred.user);
   }catch(err){
     notice.className="notice error";
-    notice.textContent=err.code==="auth/email-already-in-use"?"An account with this email already exists.":err.code==="auth/too-many-requests"?"Too many requests. Please try again in a moment.":err.message;
+    notice.textContent=err.code==="auth/email-already-in-use"?"This email already has a KARP login. Go to Log in and use the same method you originally registered with (email and password or Google).":err.code==="auth/too-many-requests"?"Too many requests. Please try again in a moment.":err.code==="auth/network-request-failed"?"Could not reach Firebase. Check your internet connection, disable any VPN/ad blocker temporarily, and try again.":err.message;
   }finally{emailBtn.disabled=false;emailBtn.textContent="Create account"}
 };
 verificationCheck.onclick=finishVerifiedSignup;
