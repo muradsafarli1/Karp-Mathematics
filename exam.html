@@ -205,7 +205,13 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       if(!user){renderKarpSignInGate('Sign in','Sign in or create a KARP account to review this exam.','/exams.html');return}
       renderReview();return;
     }
-    if(data.completedByCurrentUser&&!restartMode){await openReview();return}
+    let hasLocalActiveAttempt=false;
+    if(!restartMode){
+      for(const storage of [localStorage,sessionStorage]){
+        try{const local=JSON.parse(storage.getItem('able_exam_'+id)||'{}');if(local.startedAt&&!local.submitted&&Number(local.end)>Date.now()){hasLocalActiveAttempt=true;break}}catch{}
+      }
+    }
+    if(data.completedByCurrentUser&&!restartMode&&!hasLocalActiveAttempt){await openReview();return}
     if(!availabilityReached){
       const closedTitle='Exam not available yet';
       const closedText=examStartText();
