@@ -443,7 +443,7 @@ async function api(path, opts = {}) {
       if(!rawExam)return null;
       const s=sub.data()||{},safe=publicExam(rawExam);
       const reviewQuestions=(rawExam.questions||[]).map(q=>({...q}));
-      return {examId,title:safe.titleEn||safe.title||'',titleEn:safe.titleEn||safe.title||'',titleAz:safe.titleAz||'',submittedAt:s.submittedAt,answers:s.answers||{},questions:reviewQuestions};
+      return {examId,title:safe.titleEn||safe.title||'',titleEn:safe.titleEn||safe.title||'',titleAz:safe.titleAz||'',submittedAt:s.submittedAt,attemptId:s.attemptId||null,answers:s.answers||{},questions:reviewQuestions};
     }).filter(Boolean);
     history.sort((a,b)=>new Date(b.submittedAt)-new Date(a.submittedAt));
     return {history};
@@ -502,7 +502,9 @@ async function api(path, opts = {}) {
     // NEVER read submissions here. Firestore rules allow this document to be
     // created but not updated by a normal user. Therefore a duplicate attempt
     // is rejected by the rules themselves without a BatchGetDocuments read.
-    const subRef=doc(db,'exams',examId,'submissions',uid);
+    const attemptId=String(body.attemptId||crypto.randomUUID()).replace(/[^a-zA-Z0-9_-]/g,'_');
+    const submissionId=uid+'_'+attemptId;
+    const subRef=doc(db,'exams',examId,'submissions',submissionId);
     const entryRef=doc(db,'users',uid,'examEntries',examId);
     const submittedAt=body.submittedAt||new Date().toISOString();
     const batch=writeBatch(db);
