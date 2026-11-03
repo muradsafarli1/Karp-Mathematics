@@ -1581,13 +1581,13 @@ async function loadAdminExamTimeline(details){
         .slice()
         .sort((a,b)=>Date.parse(a.startedAt||a.entryAt||0)-Date.parse(b.startedAt||b.entryAt||0))
         .map((ses,index)=>{
-          const startedAt=ses.startedAt||ses.entryAt||sub.startedAt||null;
-          const endedAt=ses.endedAt||ses.exitAt||sub.endedAt||sub.submittedAt||null;
+          const startedAt=ses.startedAt||ses.entryAt||(!ses.attemptId?sub.startedAt:null)||null;
+          const endedAt=ses.endedAt||ses.exitAt||(!ses.attemptId?sub.endedAt||sub.submittedAt:null)||null;
           const durationSeconds=ses.durationSeconds!=null?Math.max(0,Number(ses.durationSeconds)||0):((startedAt&&endedAt)?Math.max(0,Math.round((Date.parse(endedAt)-Date.parse(startedAt))/1000)):0);
           const rawStatus=String(ses.status||'');
           const online=!!p.online&&((p.expiresAt?.toMillis?p.expiresAt.toMillis():Number(p.expiresAt||0))>Date.now());
           const status=rawStatus==='active'?(ses.exitObservedAt?'Left page · resumable':(online?'In progress':'In progress · offline')):(rawStatus||'started');
-          return {id:ses.attemptId||ses.id,number:index+1,startedAt,entryAt:ses.entryAt||startedAt,lastActivityAt:ses.lastActivityAt||ses.submittedAt||null,endedAt,submittedAt:ses.submittedAt||sub.submittedAt||null,exitObservedAt:ses.exitObservedAt||null,durationSeconds,status,currentQuestion:Number(ses.currentQuestion||0),reason:ses.exitReason||ses.reason||sub.reason||'',remainingMs:ses.lastKnownRemainingMs};
+          return {id:ses.attemptId||ses.id,number:index+1,startedAt,entryAt:ses.entryAt||startedAt,lastActivityAt:ses.lastActivityAt||ses.submittedAt||null,endedAt,submittedAt:ses.submittedAt||(!ses.attemptId?sub.submittedAt:null)||null,restartedAt:ses.restartedAt||null,exitObservedAt:ses.exitObservedAt||null,durationSeconds,status,currentQuestion:Number(ses.currentQuestion||0),reason:ses.exitReason||ses.reason||(!ses.attemptId?sub.reason:'')||'',remainingMs:ses.lastKnownRemainingMs};
         });
       const online=!!p.online&&((p.expiresAt?.toMillis?p.expiresAt.toMillis():Number(p.expiresAt||0))>Date.now());
       return {uid,name:u.name||p.name||'KARP Member',email:u.email||'—',online,lastSeen:p.lastSeen?.toDate?p.lastSeen.toDate().toLocaleString():(p.lastSeen?String(p.lastSeen):'—'),activity:p.activity||{},registeredAt:reg.registeredAt||null,attempts,hasSubmission:!!sub.submittedAt,legacyStartedAt:sub.startedAt||null,legacyEndedAt:sub.endedAt||sub.submittedAt||null,legacyReason:sub.reason||''};
@@ -1597,10 +1597,10 @@ async function loadAdminExamTimeline(details){
       if(person.hasSubmission)return [{person,attempt:{number:'—',status:'Completed · legacy record',startedAt:person.legacyStartedAt,entryAt:person.legacyStartedAt,endedAt:person.legacyEndedAt,lastActivityAt:null,submittedAt:person.legacyEndedAt,durationSeconds:0,currentQuestion:0,reason:person.legacyReason}}];
       return [{person,attempt:null}];
     }).sort((a,b)=>Date.parse(b.attempt?.startedAt||b.attempt?.entryAt||0)-Date.parse(a.attempt?.startedAt||a.attempt?.entryAt||0));
-    host.innerHTML='<table class="table"><thead><tr><th>Attempt</th><th>Status</th><th>Name</th><th>Email</th><th>Registered</th><th>Entered / started</th><th>Last activity</th><th>Ended</th><th>Time spent</th><th>Last question</th><th>Exit reason</th></tr></thead><tbody>'+
+    host.innerHTML='<table class="table"><thead><tr><th>Attempt</th><th>Restarts</th><th>Status</th><th>Name</th><th>Email</th><th>Registered</th><th>Entered / started</th><th>Last activity</th><th>Restarted at</th><th>Ended</th><th>Time spent</th><th>Last question</th><th>Exit reason</th></tr></thead><tbody>'+
       (timelineRows.length?timelineRows.map(row=>{
         const p=row.person,a=row.attempt;
-        return '<tr><td>'+escapeHtml(a?(String(a.number)+' / '+String(p.attempts.length||1)):'—')+'</td><td>'+escapeHtml(a?.status||(p.online?'Online · not started':'Registered · not started'))+'</td><td>'+escapeHtml(p.name)+'</td><td>'+escapeHtml(p.email)+'</td><td>'+fmtTime(p.registeredAt)+'</td><td>'+fmtTime(a?.entryAt||a?.startedAt)+'</td><td>'+fmtTime(a?.lastActivityAt)+'</td><td>'+fmtTime(a?.endedAt||a?.submittedAt||a?.exitObservedAt)+'</td><td>'+(a?fmtDuration(a.durationSeconds):'—')+'</td><td>'+((Number(a?.currentQuestion||0)>0)?'Q'+Number(a.currentQuestion):'—')+'</td><td>'+escapeHtml(a?.reason||'—')+'</td></tr>';
+        return '<tr><td>'+escapeHtml(a?(String(a.number)+' / '+String(p.attempts.length||1)):'—')+'</td><td>'+escapeHtml(a?String(Math.max(0,p.attempts.length-1)):'0')+'</td><td>'+escapeHtml(a?.status||(p.online?'Online · not started':'Registered · not started'))+'</td><td>'+escapeHtml(p.name)+'</td><td>'+escapeHtml(p.email)+'</td><td>'+fmtTime(p.registeredAt)+'</td><td>'+fmtTime(a?.entryAt||a?.startedAt)+'</td><td>'+fmtTime(a?.lastActivityAt)+'</td><td>'+fmtTime(a?.restartedAt)+'</td><td>'+fmtTime(a?.endedAt||a?.submittedAt||a?.exitObservedAt)+'</td><td>'+(a?fmtDuration(a.durationSeconds):'—')+'</td><td>'+((Number(a?.currentQuestion||0)>0)?'Q'+Number(a.currentQuestion):'—')+'</td><td>'+escapeHtml(a?.reason||'—')+'</td></tr>';
       }).join(''):'<tr><td colspan="11">No participant activity yet.</td></tr>')+
       '</tbody></table>';
     details.dataset.loaded='1';
@@ -1712,12 +1712,12 @@ async function render(){
               .slice()
               .sort((a,b)=>Date.parse(a.startedAt||a.entryAt||0)-Date.parse(b.startedAt||b.entryAt||0))
               .map((ses,index)=>{
-                const startedAt=ses.startedAt||ses.entryAt||sub.startedAt||null;
-                const endedAt=ses.endedAt||ses.exitAt||sub.endedAt||sub.submittedAt||null;
+                const startedAt=ses.startedAt||ses.entryAt||(!ses.attemptId?sub.startedAt:null)||null;
+                const endedAt=ses.endedAt||ses.exitAt||(!ses.attemptId?sub.endedAt||sub.submittedAt:null)||null;
                 const durationSeconds=ses.durationSeconds!=null?Math.max(0,Number(ses.durationSeconds)||0):((startedAt&&endedAt)?Math.max(0,Math.round((Date.parse(endedAt)-Date.parse(startedAt))/1000)):0);
                 const rawStatus=String(ses.status||'');
                 const status=rawStatus==='active'?(ses.exitObservedAt?'Left page · resumable':(p.online?'In progress':'In progress · offline')):(rawStatus||'started');
-                return {id:ses.attemptId||ses.id,number:index+1,startedAt,entryAt:ses.entryAt||startedAt,lastActivityAt:ses.lastActivityAt||ses.submittedAt||null,endedAt,submittedAt:ses.submittedAt||sub.submittedAt||null,exitObservedAt:ses.exitObservedAt||null,durationSeconds,status,currentQuestion:Number(ses.currentQuestion||0),reason:ses.exitReason||ses.reason||sub.reason||'',remainingMs:ses.lastKnownRemainingMs};
+                return {id:ses.attemptId||ses.id,number:index+1,startedAt,entryAt:ses.entryAt||startedAt,lastActivityAt:ses.lastActivityAt||ses.submittedAt||null,endedAt,submittedAt:ses.submittedAt||(!ses.attemptId?sub.submittedAt:null)||null,restartedAt:ses.restartedAt||null,exitObservedAt:ses.exitObservedAt||null,durationSeconds,status,currentQuestion:Number(ses.currentQuestion||0),reason:ses.exitReason||ses.reason||(!ses.attemptId?sub.reason:'')||'',remainingMs:ses.lastKnownRemainingMs};
               });
             return {uid,name:u.name||p.name||'KARP Member',email:u.email||'—',online:!!p.online,lastSeen:p.lastSeen?.toDate?p.lastSeen.toDate().toLocaleString():(p.lastSeen?String(p.lastSeen):'—'),activity:p.activity||{},registeredAt:reg.registeredAt||null,attempts,hasSubmission:!!sub.submittedAt,legacyStartedAt:sub.startedAt||null,legacyEndedAt:sub.endedAt||sub.submittedAt||null,legacyReason:sub.reason||''};
           });
