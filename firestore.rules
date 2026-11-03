@@ -536,15 +536,244 @@ service cloud.firestore {
         allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
       }
 
-      match /submissions/{uid} {
-        // Support direct reads by owner and safe collection-group queries
-        // filtered by userId, which lets Exam history discover completed exams
-        // without probing every exam's submission document.
+      match /submissions/{submissionId} {
+        // One immutable submission per timed attempt. Keep the legacy
+        // submissions/{uid} document readable while allowing uid_attemptId
+        // documents for subsequent attempts.
         allow read: if isAdmin() || (signedIn()
-          && (request.auth.uid == uid || resource.data.userId == request.auth.uid));
+          && resource.data.userId == request.auth.uid);
         allow create: if signedIn()
-          && request.auth.uid == uid
-          && request.resource.data.userId == request.auth.uid;
+          && request.resource.data.userId == request.auth.uid
+          && (submissionId == request.auth.uid
+            || submissionId.matches('^' + request.auth.uid + '_.+
+    }
+    // Collection-group access for a signed-in user's own exam submissions.
+    // The userId equality filter in app.js keeps this query scoped to that user.
+    match /{path=**}/submissions/{submissionId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /books/{id} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
+          && request.resource.data.viewCount == (resource.data.viewCount is number ? resource.data.viewCount : 0) + 1
+        )
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['downloadCount'])
+          && request.resource.data.downloadCount == (resource.data.downloadCount is number ? resource.data.downloadCount : 0) + 1
+        );
+    }
+
+    match /books/{bookId}/views/{viewerId} {
+      // One unique-view document per signed-in account or browser-local guest ID.
+      allow get: if isAdmin()
+        || (request.auth != null && request.auth.uid == viewerId)
+        || viewerId.matches('guest_[A-Za-z0-9_-]+');
+      allow list: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['viewerId','uid','displayName','email','createdAt'])
+        && request.resource.data.keys().hasAll(['viewerId','uid','displayName','email','createdAt'])
+        && request.resource.data.viewerId == viewerId
+        && request.resource.data.displayName is string
+        && request.resource.data.email is string
+        && request.resource.data.createdAt is string
+        && ((request.auth == null && request.resource.data.uid == null)
+          || (request.auth != null && request.resource.data.uid == request.auth.uid));
+      allow update, delete: if isAdmin();
+    }
+
+    match /books/{bookId}/viewSessions/{sessionId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['sessionId','bookId','viewerId','uid','displayName','email','userType','startedAt','endedAt','durationSeconds','status'])
+        && request.resource.data.keys().hasAll(['sessionId','bookId','viewerId','uid','displayName','email','userType','startedAt','endedAt','durationSeconds','status'])
+        && request.resource.data.sessionId == sessionId
+        && request.resource.data.bookId == bookId
+        && request.resource.data.viewerId is string
+        && request.resource.data.displayName is string
+        && request.resource.data.email is string
+        && request.resource.data.userType in ['account','guest']
+        && request.resource.data.startedAt is string
+        && request.resource.data.endedAt == null
+        && request.resource.data.durationSeconds == 0
+        && request.resource.data.status == 'active'
+        && ((request.auth == null && request.resource.data.uid == null && request.resource.data.userType == 'guest')
+          || (request.auth != null && request.resource.data.uid == request.auth.uid && request.resource.data.userType == 'account'));
+      allow update: if isAdmin()
+        || (resource.data.status == 'active'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['endedAt','durationSeconds','status'])
+          && request.resource.data.status == 'ended'
+          && request.resource.data.endedAt is string
+          && request.resource.data.durationSeconds is number
+          && request.resource.data.durationSeconds >= resource.data.durationSeconds
+          && request.resource.data.viewerId == resource.data.viewerId
+          && ((request.auth == null && resource.data.uid == null)
+            || (request.auth != null && resource.data.uid == request.auth.uid)));
+      allow delete: if isAdmin();
+    }
+
+    match /books/{bookId}/downloads/{downloadId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['downloadId','bookId','viewerId','uid','displayName','email','userType','fileName','createdAt'])
+        && request.resource.data.keys().hasAll(['downloadId','bookId','viewerId','uid','displayName','email','userType','fileName','createdAt'])
+        && request.resource.data.downloadId == downloadId
+        && request.resource.data.bookId == bookId
+        && request.resource.data.viewerId is string
+        && request.resource.data.displayName is string
+        && request.resource.data.email is string
+        && request.resource.data.userType in ['account','guest']
+        && request.resource.data.fileName is string
+        && request.resource.data.createdAt is string
+        && ((request.auth == null && request.resource.data.uid == null && request.resource.data.userType == 'guest')
+          || (request.auth != null && request.resource.data.uid == request.auth.uid && request.resource.data.userType == 'account'));
+      allow update, delete: if isAdmin();
+    }
+
+    match /books/{bookId}/chunks/{chunkId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /journals/{uid}/entries/{entryId} {
+      allow read, create, update, delete: if signedIn() && request.auth.uid == uid;
+    }
+    match /journalIssues/{id} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
+          && request.resource.data.viewCount == (resource.data.viewCount is number ? resource.data.viewCount : 0) + 1
+        )
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['downloadCount'])
+          && request.resource.data.downloadCount == (resource.data.downloadCount is number ? resource.data.downloadCount : 0) + 1
+        )
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readCount'])
+          && (
+            (!resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == 1)
+            || (resource.data.keys().hasAny(['readCount']) && request.resource.data.readCount == resource.data.readCount + 1)
+          )
+        );
+    }
+
+    match /journalIssues/{journalId}/views/{viewerId} {
+      allow get: if isAdmin()
+        || (request.auth != null && request.auth.uid == viewerId)
+        || viewerId.matches('guest_[A-Za-z0-9_-]+');
+      allow list: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['viewerId','uid','displayName','email','createdAt','journalId'])
+        && request.resource.data.keys().hasAll(['viewerId','uid','displayName','email','createdAt','journalId'])
+        && request.resource.data.viewerId == viewerId
+        && request.resource.data.journalId == journalId
+        && request.resource.data.displayName is string
+        && request.resource.data.email is string
+        && request.resource.data.createdAt is string
+        && ((request.auth == null && request.resource.data.uid == null)
+          || (request.auth != null && request.resource.data.uid == request.auth.uid));
+      allow update, delete: if isAdmin();
+    }
+
+    match /journalIssues/{journalId}/viewSessions/{sessionId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['sessionId','journalId','viewerId','uid','displayName','email','userType','startedAt','endedAt','durationSeconds','status'])
+        && request.resource.data.keys().hasAll(['sessionId','journalId','viewerId','uid','displayName','email','userType','startedAt','endedAt','durationSeconds','status'])
+        && request.resource.data.sessionId == sessionId
+        && request.resource.data.journalId == journalId
+        && request.resource.data.viewerId is string
+        && request.resource.data.displayName is string
+        && request.resource.data.email is string
+        && request.resource.data.userType in ['account','guest']
+        && request.resource.data.startedAt is string
+        && request.resource.data.endedAt == null
+        && request.resource.data.durationSeconds == 0
+        && request.resource.data.status == 'active'
+        && ((request.auth == null && request.resource.data.uid == null && request.resource.data.userType == 'guest')
+          || (request.auth != null && request.resource.data.uid == request.auth.uid && request.resource.data.userType == 'account'));
+      allow update: if isAdmin()
+        || (resource.data.status == 'active'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['endedAt','durationSeconds','status'])
+          && request.resource.data.status == 'ended'
+          && request.resource.data.endedAt is string
+          && request.resource.data.durationSeconds is number
+          && request.resource.data.durationSeconds >= resource.data.durationSeconds
+          && request.resource.data.viewerId == resource.data.viewerId
+          && request.resource.data.journalId == resource.data.journalId
+          && ((request.auth == null && resource.data.uid == null)
+            || (request.auth != null && resource.data.uid == request.auth.uid)));
+      allow delete: if isAdmin();
+    }
+
+    match /journalIssues/{journalId}/downloads/{downloadId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['downloadId','journalId','viewerId','uid','displayName','email','userType','fileName','createdAt'])
+        && request.resource.data.keys().hasAll(['downloadId','journalId','viewerId','uid','displayName','email','userType','fileName','createdAt'])
+        && request.resource.data.downloadId == downloadId
+        && request.resource.data.journalId == journalId
+        && request.resource.data.viewerId is string
+        && request.resource.data.displayName is string
+        && request.resource.data.email is string
+        && request.resource.data.userType in ['account','guest']
+        && request.resource.data.fileName is string
+        && request.resource.data.createdAt is string
+        && ((request.auth == null && request.resource.data.uid == null && request.resource.data.userType == 'guest')
+          || (request.auth != null && request.resource.data.uid == request.auth.uid && request.resource.data.userType == 'account'));
+      allow update, delete: if isAdmin();
+    }
+
+    match /journalIssues/{journalId}/chunks/{chunkId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+
+    // Daily Problem: the current statement is public; only admins can edit it.
+    match /dailyProblem/{id} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Every published Daily Problem is kept for the past-problem archive.
+    match /dailyProblems/{problemId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Approval-order reward counter: only administrators can access this bookkeeping.
+    match /dailyProblemRewards/{problemId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Community solutions are private while pending/rejected and public only after approval.
+    match /dailyProblemSubmissions/{submissionId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid)
+        || resource.data.status == 'approved';
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid','displayName','email','photoURL','language','solution','status','createdAt','problemId'])
+        && request.resource.data.keys().hasAll(['uid','displayName','email','solution','status','createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() > 0
+        && request.resource.data.displayName.size() <= 100
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 200
+        && (!request.resource.data.keys().hasAny(['photoURL']) || (request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 12000))
+        && (!request.resource.data.keys().hasAny(['language']) || request.resource.data.language in ['ENG','AZE'])
+        && (!request.resource.data.keys().hasAny(['problemId']) || (request.resource.data.problemId is string && request.resource.data.problemId.size() <= 200))
+        && request.resource.data.solution is string
+        && request.resource.data.solution.size() > 0
+        && request.resource.data.solution.size() <= 50000
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt is string;
+      allow update, delete: if isAdmin();
+    }
+
+  }
+}));
         allow update: if isAdmin();
         allow delete: if isAdmin();
       }
