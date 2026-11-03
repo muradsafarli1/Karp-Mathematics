@@ -250,7 +250,16 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       if(previousAttemptId){
         const activeId=currentAttemptId;
         currentAttemptId=previousAttemptId;
-        await writeExamSession({restartedAt:startedAt,restartedToAttemptId:nextAttemptId,lastActivityAt:startedAt});
+        const previousPatch={restartedAt:startedAt,restartedToAttemptId:nextAttemptId,lastActivityAt:startedAt};
+        if(previousState.startedAt&&!previousState.submitted){
+          previousPatch.status='restarted';
+          previousPatch.endedAt=startedAt;
+          previousPatch.exitAt=startedAt;
+          previousPatch.durationSeconds=Math.max(0,Math.round((Date.parse(startedAt)-Date.parse(previousState.startedAt))/1000));
+          previousPatch.exitReason='restart';
+          previousPatch.lastKnownRemainingMs=0;
+        }
+        await writeExamSession(previousPatch);
         currentAttemptId=activeId;
       }
       currentAttemptId=nextAttemptId;
