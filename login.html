@@ -48,6 +48,8 @@ async function sendVerification(){const user=auth.currentUser;if(!user){await si
 async function finishLogin(cred){
   const user=cred.user;
   await user.reload();
+  // Refresh the token so Firestore rules see the latest email_verified claim.
+  await user.getIdToken(true);
   const ref=doc(db,"users",user.uid);
   let profileData={},snap=null;
   try{
