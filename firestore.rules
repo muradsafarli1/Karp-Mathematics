@@ -546,7 +546,9 @@ service cloud.firestore {
           && request.resource.data.userId == request.auth.uid
           && (submissionId == request.auth.uid
             || submissionId.matches('^' + request.auth.uid + '_.+'));
-    }
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+      }
     // Collection-group access for a signed-in user's own exam submissions.
     // The userId equality filter in app.js keeps this query scoped to that user.
     match /{path=**}/submissions/{submissionId} {
