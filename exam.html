@@ -226,13 +226,26 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     // from starting: keep the tiny attempt record in sessionStorage instead.
     let memoryExamState=null;
     function readExamState(){
+      let best=null;
       for(const storage of [localStorage,sessionStorage]){
-        try{const raw=storage.getItem(storageKey);if(raw){const value=JSON.parse(raw);if(value&&typeof value==='object')return value;}}catch{}
+        try{
+          const raw=storage.getItem(storageKey);
+          if(!raw)continue;
+          const value=JSON.parse(raw);
+          if(value&&typeof value==='object'){
+            const stamp=Number(value.updatedAt||0);
+            if(!best||stamp>=best.stamp)best={value,stamp};
+          }
+        }catch{}
       }
-      return memoryExamState&&typeof memoryExamState==='object'?memoryExamState:{};
+      if(memoryExamState&&typeof memoryExamState==='object'){
+        const stamp=Number(memoryExamState.updatedAt||0);
+        if(!best||stamp>=best.stamp)best={value:memoryExamState,stamp};
+      }
+      return best?.value||{};
     }
     function writeExamState(value){
-      memoryExamState={...value};
+      memoryExamState={...value,updatedAt:Date.now()};
       const raw=JSON.stringify(memoryExamState);
       try{localStorage.setItem(storageKey,raw);return true}catch(localError){
         try{sessionStorage.setItem(storageKey,raw);return true}catch(sessionError){
