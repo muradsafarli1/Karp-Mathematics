@@ -83,7 +83,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
 <body>
 <script>
 (async()=>{
-  const params=new URLSearchParams(location.search),id=params.get('id'),reviewMode=params.get('review')==='1',previewMode=params.get('preview')==='1';
+  const params=new URLSearchParams(location.search),id=params.get('id'),reviewMode=params.get('review')==='1',previewMode=params.get('preview')==='1',restartMode=params.get('restart')==='1';
   if(!id){location.href='/exams.html';return}
   let timer=null,finished=false,fullscreenCleanup=null,activityCleanup=null,sessionCleanup=null,sessionStartedAt=null,examGuardCleanup=null,focusLost=false,currentAttemptId=null,lastTrackedQuestion=0;
 
@@ -100,7 +100,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     const data=await api('/api/exams/'+encodeURIComponent(id));
     const exam=data.exam;
     if(!exam){location.href='/exams.html';return}
-    const history=reviewMode&&user?(await api('/api/exams/history').catch(()=>({history:[]}))).history||[]:[];
+    const history=(reviewMode||restartMode)&&user?(await api('/api/exams/history').catch(()=>({history:[]}))).history||[]:[];
     let previous=history.find(x=>x.examId===id)||null;
     const title=localized(exam,'title')||'Exam';
     const questions=Array.isArray(exam.questions)?exam.questions:[];
@@ -172,7 +172,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       const reviewTitle=localized(exam,'title')||'Exam';
       const reviewQuestions=Array.isArray(previous?.questions)?previous.questions:questions;
       setKarpActivity({page:'Exam Review',label:'Exam review',detail:reviewTitle,question:null});
-      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top exam-review-top"><div class="exam-review-spacer"></div><h1>'+escapeHtml(reviewTitle)+'</h1><div class="exam-review-lang">'+languageSwitch()+'</div></header><div class="exam-active-body"><section class="exam-active-paper"><div id="review-questions">'+reviewQuestions.map((q,i)=>questionHtml(q,i,true)).join('')+'</div></section></div></main>';
+      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top exam-review-top"><div class="exam-review-spacer"></div><h1>'+escapeHtml(reviewTitle)+'</h1><div class="exam-review-lang">'+languageSwitch()+'</div></header><div class="exam-active-body"><div class="exam-active-actions" style="justify-content:flex-end;padding:0 0 18px"><a class="btn primary" href="/exam.html?id='+encodeURIComponent(id)+'&restart=1">Restart Exam</a></div><section class="exam-active-paper"><div id="review-questions">'+reviewQuestions.map((q,i)=>questionHtml(q,i,true)).join('')+'</div></section></div></main>';
       const host=document.getElementById('review-questions');
       bindSolutions(host);
       bindLanguageSwitch(()=>renderReview());
@@ -205,7 +205,7 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       if(!user){renderKarpSignInGate('Sign in','Sign in or create a KARP account to review this exam.','/exams.html');return}
       renderReview();return;
     }
-    if(data.completedByCurrentUser){await openReview();return}
+    if(data.completedByCurrentUser&&!restartMode){await openReview();return}
     if(!availabilityReached){
       const closedTitle='Exam not available yet';
       const closedText=examStartText();
@@ -236,22 +236,47 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       }
     }
     let saved=readExamState();
-    if(saved.submitted){await openReview();return}
+    if(saved.submitted&&!restartMode){await openReview();return}
     let end=Number(saved.end)||0;
     currentAttemptId=saved.attemptId||null;
     const hasStarted=!!saved.startedAt&&!saved.submitted&&end>Date.now();
     const makeAttemptId=()=>crypto?.randomUUID?crypto.randomUUID():'attempt_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2);
 
     async function beginExam(){
+      const previousState=readExamState();
+      const previousAttemptId=previousState.attemptId||previous?.attemptId||null;
       const startedAt=new Date().toISOString();
-      currentAttemptId=makeAttemptId();
+      const nextAttemptId=makeAttemptId();
+      if(previousAttemptId){
+        const activeId=currentAttemptId;
+        currentAttemptId=previousAttemptId;
+        await writeExamSession({restartedAt:startedAt,restartedToAttemptId:nextAttemptId,lastActivityAt:startedAt});
+        currentAttemptId=activeId;
+      }
+      currentAttemptId=nextAttemptId;
       lastTrackedQuestion=0;
       sessionStartedAt=startedAt;
       end=Date.now()+durationMinutes*60000;
       writeExamState({startedAt,end,submitted:false,attemptId:currentAttemptId});
       markKarpExamEntry(id).catch(e=>console.warn('Exam participation tracking skipped:',e));
       renderActive();startExamTimer();
-      writeExamSession({status:'active',attemptId:currentAttemptId,startedAt,entryAt:startedAt,endedAt:null,exitAt:null,exitObservedAt:null,durationSeconds:0,lastKnownRemainingMs:durationMinutes*60000,entrySource:'start-button',lastActivityAt:startedAt});
+      writeExamSession({status:'active',attemptId:currentAttemptId,startedAt,entryAt:startedAt,endedAt:null,exitAt:null,exitObservedAt:null,durationSeconds:0,lastKnownRemainingMs:durationMinutes*60000,entrySource:restartMode?'restart-button':'start-button',lastActivityAt:startedAt});
+    }
+    async function restartExam(){
+      if(!confirm('Restart this exam? Your current attempt will be kept in the history and a new timed attempt will begin.'))return;
+      const current=readExamState(),oldAttemptId=current.attemptId||currentAttemptId;
+      if(oldAttemptId&&current.startedAt&&!current.submitted){
+        const now=new Date().toISOString();
+        const activeId=currentAttemptId;
+        currentAttemptId=oldAttemptId;
+        const durationSeconds=Math.max(0,Math.round((Date.now()-Date.parse(current.startedAt))/1000));
+        await writeExamSession({status:'restarted',restartedAt:now,endedAt:now,exitAt:now,durationSeconds,lastActivityAt:now,exitReason:'restart',lastKnownRemainingMs:0});
+        currentAttemptId=activeId;
+      }
+      writeExamState({});
+      currentAttemptId=null;
+      finished=false;
+      await beginExam();
     }
     async function resumeExam(){
       const current=readExamState();
@@ -306,8 +331,9 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       clearTrackers();
       sessionCleanup?.();
       sessionCleanup=startExamSessionTracking();
-      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top"><div class="exam-active-title"><h1>'+escapeHtml(localized(exam,'title')||'Exam')+'</h1></div><div class="exam-active-timer" id="exam-timer">'+timerText(end-Date.now())+'</div><div class="exam-active-lang">'+languageSwitch()+'</div></header><div class="exam-active-body"><section class="exam-active-paper"><div id="active-questions">'+questions.map((q,i)=>questionHtml(q,i,false)).join('')+'</div><div class="exam-active-actions"><button class="btn primary" id="finish-exam">Finish Exam</button></div></section></div></main>';
+      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top"><div class="exam-active-title"><h1>'+escapeHtml(localized(exam,'title')||'Exam')+'</h1></div><div class="exam-active-timer" id="exam-timer">'+timerText(end-Date.now())+'</div><div class="exam-active-lang">'+languageSwitch()+'</div></header><div class="exam-active-body"><section class="exam-active-paper"><div id="active-questions">'+questions.map((q,i)=>questionHtml(q,i,false)).join('')+'</div><div class="exam-active-actions"><button class="btn" id="restart-exam">Restart Exam</button><button class="btn primary" id="finish-exam">Finish Exam</button></div></section></div></main>';
       document.getElementById('finish-exam').onclick=()=>{if(confirm('Finish this exam now?'))finishExam('manual')};
+       document.getElementById('restart-exam').onclick=restartExam;
       bindLanguageSwitch(()=>renderActive());
       setKarpActivity({page:'Exam',label:'Taking exam',detail:localized(exam,'title')||'Exam',question:1});
       typesetMath(document.getElementById('active-questions'));installActivity();
@@ -315,7 +341,10 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
     function timerText(ms){const s=Math.max(0,Math.ceil(ms/1000)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
     function tick(){const el=document.getElementById('exam-timer');const left=end-Date.now();if(el)el.textContent=timerText(left);if(left<=0)finishExam('time')}
 
-    if(saved.startedAt&&!saved.submitted){
+    if(restartMode){
+      currentAttemptId=saved.attemptId||previous?.attemptId||null;
+      renderEntry(false);
+    }else if(saved.startedAt&&!saved.submitted){
       sessionStartedAt=saved.startedAt;
       currentAttemptId=saved.attemptId||makeAttemptId();
       if(!saved.attemptId){saved.attemptId=currentAttemptId;writeExamState(saved)}
