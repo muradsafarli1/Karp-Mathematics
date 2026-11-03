@@ -1669,20 +1669,39 @@ async function render(){
   if(state.type==='exams'){
     try{
       const {db}=await fb();
-      const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+      const {collection,getDocs,query,where,limit,doc,updateDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
       const examSnap=await getDocs(collection(db,'exams'));
-      const sessions=[],usersById=new Map(),presenceByUid=new Map();
+      const usersById=new Map(),presenceByUid=new Map();
       const fmtTime=v=>{if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':d.toLocaleString('en-GB',{timeZone:'Asia/Baku',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})+' (UTC+4)'};
       const fmtDuration=sec=>{const n=Math.max(0,Number(sec||0));if(!n)return'0s';const h=Math.floor(n/3600),m=Math.floor((n%3600)/60),ss=n%60;return h?(h+'h '+m+'m '+ss+'s'):(m?(m+'m '+ss+'s'):(ss+'s'))};
       function parseAdminExamInstant(value,offset=4){const raw=String(value||'').trim();if(!raw)return NaN;if(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw))return Date.parse(raw);const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);if(m)return Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]),Number(m[4]||0),Number(m[5]||0),Number(m[6]||0))-Number(offset??4)*3600000;return Date.parse(raw)}
       const examBase=examSnap.docs.map(x=>({id:x.id,...x.data(),regs:[],subs:[]}));
+       const sessionsByExam=new Map();
+       await Promise.all(examBase.map(async ex=>{
+         try{
+           const sessionSnap=await getDocs(query(collection(db,'examSessions'),where('examId','==',ex.id),limit(1000)));
+           const attempts=sessionSnap.docs.map(x=>x.data()||{}).filter(session=>
+             !!(session.startedAt||session.attemptId||['active','completed'].includes(String(session.status||'').toLowerCase()))
+             && String(session.status||'')!=='archive-view'
+           );
+           sessionsByExam.set(ex.id,attempts);
+           // Reconcile the public counter from complete timed-session records.
+           if(sessionSnap.size<1000&&attempts.length>0&&Number(ex.timedAttemptCount||0)!==attempts.length){
+             await updateDoc(doc(db,'exams',ex.id),{timedAttemptCount:attempts.length});
+             ex.timedAttemptCount=attempts.length;
+           }
+         }catch(error){
+           console.warn('Could not reconcile timed-attempt count for exam '+ex.id+':',error);
+           sessionsByExam.set(ex.id,[]);
+         }
+       }));
        const exams=examBase.sort((a,b)=>new Date(String(b.date||b.createdAt||0))-new Date(String(a.date||a.createdAt||0)));
       m.innerHTML='<div class="admin-head"><div><h2>Exams</h2><span class="admin-count">'+exams.length+' exams · participant/session analytics</span></div><button class="btn primary" onclick="newItem()">+ New</button></div>'+
         '<div class="admin-exam-list">'+(exams.length?exams.map(ex=>{
           const regs=ex.regs||[], submissions=ex.subs||[];
           const regIds=regs.map(r=>String(r.userId||r.uid||r.id||'')).filter(Boolean);
           const subIds=submissions.map(r=>String(r.userId||r.uid||r.id||'')).filter(Boolean);
-          const esessions=sessions.filter(z=>String(z.examId)===String(ex.id));
+          const esessions=sessionsByExam.get(ex.id)||[];
           const ids=[...new Set(regIds.concat(subIds,esessions.map(z=>String(z.uid||'')).filter(Boolean)))];
           const people=ids.map(uid=>{
             const u=usersById.get(uid)||{},p=presenceByUid.get(uid)||{},reg=regs.find(z=>String(z.userId||z.uid||z.id)===uid)||{};
@@ -1704,7 +1723,7 @@ async function render(){
           });
           const logParticipantIds=new Set(esessions.filter(s=>s.uid&&(s.startedAt||s.attemptId)&&String(s.status||'')!=='archive-view').map(s=>String(s.uid)));
           const uniqueParticipants=Number(ex.participatedCount||0);
-          const totalAttempts=Math.max(Number(ex.timedAttemptCount||0),Number(ex.attemptedCount||0),Number(ex.participatedCount||0));
+          const totalAttempts=esessions.length>0?esessions.length:Math.max(Number(ex.timedAttemptCount||0),Number(ex.attemptedCount||0),Number(ex.participatedCount||0));
           const timelineRows=people.flatMap(person=>{
             if(person.attempts.length)return person.attempts.map(attempt=>({person,attempt}));
             if(person.hasSubmission)return [{person,attempt:{number:'—',status:'Completed · legacy record',startedAt:person.legacyStartedAt,entryAt:person.legacyStartedAt,endedAt:person.legacyEndedAt,lastActivityAt:null,submittedAt:person.legacyEndedAt,durationSeconds:0,currentQuestion:0,reason:person.legacyReason}}];
