@@ -58,12 +58,26 @@ async function finishLogin(cred){
       new Promise((_,reject)=>setTimeout(()=>reject(Object.assign(new Error("Profile lookup timed out"),{code:"karp/profile-timeout"})),7000))
     ]);
     if(!snap.exists()){
-      await signOut(auth).catch(()=>{});
-      const err=new Error("KARP account not found. Please create an account first.");
-      err.code="karp/account-not-found";
-      throw err;
+      // Firebase Authentication is the source of truth for account existence.
+      // A previous signup may have created the Auth user but failed before its
+      // Firestore profile write completed. Repair that missing profile instead
+      // of signing out and incorrectly telling the user to register again.
+      const now=new Date().toISOString();
+      const fallbackName=user.displayName||user.email?.split("@")[0]||"User";
+      profileData={
+        name:fallbackName,
+        email:user.email||"",
+        role:"user",
+        createdAt:now,
+        photoURL:user.photoURL||"",
+        loginCount:0,
+        requiresEmailVerification:user.emailVerified!==true,
+        ...(user.emailVerified===true?{emailVerifiedAt:now}:{})
+      };
+      await setDoc(ref,profileData,{merge:true});
+    }else{
+      profileData=snap.data()||{};
     }
-    profileData=snap.data()||{};
   }catch(err){
     if(err.code==="karp/account-not-found")throw err;
     const fallbackCodes=["resource-exhausted","unavailable","deadline-exceeded","network-request-failed","karp/profile-timeout"];
