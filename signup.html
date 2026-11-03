@@ -74,7 +74,7 @@ form.onsubmit=async e=>{
   try{
     const name=String(f.get("name")||"").trim(),email=String(f.get("email")).trim(),password=f.get("password");
     const cred=await createUserWithEmailAndPassword(auth,email,password);
-    await updateProfile(cred.user,{displayName:name});
+    try{await updateProfile(cred.user,{displayName:name})}catch(profileNameError){console.warn("KARP display-name update deferred; account creation will continue:",profileNameError)}
     const now=new Date().toISOString();
     // Auth account creation is the decisive step. A temporary Firestore
     // failure must not make the user think signup failed: that would leave
