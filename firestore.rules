@@ -121,7 +121,7 @@ service cloud.firestore {
       // Private daily activity records for the member's KARP streak.
       match /streakDays/{dayId} {
         allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
-        allow create, update: if signedIn()
+        allow create, update: if verifiedAccount(uid)
           && request.auth.uid == uid
           && dayId is string
           && dayId.size() == 10
