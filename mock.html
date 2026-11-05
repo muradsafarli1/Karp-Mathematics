@@ -39,15 +39,15 @@
 @media(max-width:700px){.mock-paper{width:calc(100% - 28px)}.mock-fullscreen{width:38px;height:38px}}
 
 .shared-mock-intro{padding:6px 0 18px;border-bottom:1px solid var(--line)}
-.mock-shared-landing .mock-top{grid-template-columns:minmax(0,1fr) auto auto;gap:22px}
+.mock-shared-landing .mock-top{grid-template-columns:minmax(0,1fr) auto;gap:22px}
 .mock-shared-landing .mock-timer{font-size:18px;letter-spacing:1px;color:#6f665d}
-.mock-shared-landing .mock-top .btn{white-space:nowrap}
+
 .shared-auth-nudge{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:1000;width:min(760px,calc(100% - 28px));}
 .shared-auth-nudge-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;border:1px solid #d9dad8;border-radius:16px;background:#fff;color:#17191c;box-shadow:0 14px 45px rgba(20,24,30,.15)}
 .shared-auth-nudge-inner .muted{margin-top:4px;color:#6f665d!important}
 .shared-auth-nudge-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .shared-auth-nudge-actions .btn{white-space:nowrap}
-@media(max-width:700px){.mock-shared-landing .mock-top{grid-template-columns:1fr auto;gap:8px}.mock-shared-landing .mock-timer{grid-column:1;font-size:14px;justify-self:start;grid-row:2}.mock-shared-landing .mock-top .btn{grid-column:2;grid-row:1/3}.shared-auth-nudge-inner{align-items:flex-start;flex-direction:column}.shared-auth-nudge-actions{width:100%}}
+@media(max-width:700px){.mock-shared-landing .mock-top{grid-template-columns:1fr auto;gap:8px}.mock-shared-landing .mock-timer{grid-column:1;font-size:14px;justify-self:start;grid-row:2}.shared-auth-nudge-inner{align-items:flex-start;flex-direction:column}.shared-auth-nudge-actions{width:100%}}
 </style>
 </head><body>
 <script>
@@ -273,7 +273,7 @@
     if(!mock?.questions?.length)throw new Error('Generate a mock before sharing it.');
     const {db,auth}=await fb();await authReady();
     const user=auth.currentUser;if(!user)throw new Error('Please sign in before sharing a mock.');
-    const {doc,setDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const {doc,writeBatch}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
     const shareId=(crypto.randomUUID?crypto.randomUUID():('m'+Date.now().toString(36)+Math.random().toString(36).slice(2,10))).replace(/[^A-Za-z0-9_-]/g,'');
     const safeQuestions=(mock.questions||[]).map(q=>{
       const out={};
@@ -281,8 +281,15 @@
       return out;
     });
     const profile=await me().catch(()=>null);
-    const sharedTitle=resolvedMockTitle(mock);const payload={id:shareId,title:sharedTitle.slice(0,120),minutes:Number(mock.minutes||60),questions:safeQuestions,ownerUid:user.uid,ownerName:String(profile?.name||user.displayName||'KARP User').slice(0,100),createdAt:new Date().toISOString(),status:'published'};
-    await setDoc(doc(db,'sharedMocks',shareId),payload);
+    const sharedTitle=resolvedMockTitle(mock);
+    const payload={id:shareId,title:sharedTitle.slice(0,120),minutes:Number(mock.minutes||60),questions:safeQuestions,ownerUid:user.uid,ownerName:String(profile?.name||user.displayName||'KARP User').slice(0,100),ownerEmail:String(profile?.email||user.email||'').slice(0,200),createdAt:new Date().toISOString(),status:'published'};
+    const batch=writeBatch(db);
+    batch.set(doc(db,'sharedMocks',shareId),payload);
+    (mock.questions||[]).forEach((q,index)=>{
+      const solutions=Array.isArray(q.solutions)?q.solutions.filter(x=>typeof x==='string'&&x.trim()):[];
+      if(solutions.length)batch.set(doc(db,'sharedMocks',shareId,'solutions','q'+index),{questionIndex:index,solutions});
+    });
+    await batch.commit();
     mock.shareId=shareId;
     mock.shareOwnerUid=user.uid;
     mock.title=sharedTitle;
@@ -303,7 +310,23 @@
     if(data.status!=='published'||!Array.isArray(data.questions)||!data.questions.length)throw new Error('This shared mock is unavailable.');
     isSharedView=true;
     const sharedTitle=String(data.title||data.name||'Shared KARP Mock').trim();
-    mock={id:'shared-'+(data.id||id),title:sharedTitle&&!/^untitled mock$/i.test(sharedTitle)?sharedTitle:'Shared KARP Mock',minutes:Number(data.minutes||60),questions:data.questions,createdAt:data.createdAt||new Date().toISOString(),status:'draft',sharedBy:data.ownerName||'KARP User',sharedShareId:String(data.id||id),shareOwnerUid:String(data.ownerUid||'')};
+    mock={id:'shared-'+(data.id||id),title:sharedTitle&&!/^untitled mock$/i.test(sharedTitle)?sharedTitle:'Shared KARP Mock',minutes:Number(data.minutes||60),questions:data.questions,createdAt:data.createdAt||new Date().toISOString(),status:'draft',sharedBy:data.ownerName||'KARP User',sharedShareId:String(data.id||id),shareOwnerUid:String(data.ownerUid||''),sharedAttemptStatus:'new'};
+    if(auth.currentUser?.emailVerified){
+      const attemptSnap=await getDoc(doc(db,'sharedMocks',String(data.id||id),'participants',auth.currentUser.uid));
+      if(attemptSnap.exists()){
+        const attempt=attemptSnap.data()||{};
+        mock.sharedAttemptStatus=String(attempt.status||'active');
+        mock.endAt=Number(attempt.endsAtMs||0)||null;
+        mock.sharedAttempt=attempt;
+        if(attempt.status==='completed'&&attempt.rewardProcessed===true){
+          mock.completedAt=attempt.completedAt?.toDate?attempt.completedAt.toDate().toISOString():new Date().toISOString();
+          mock.status='completed';
+          await loadSharedMockSolutions(mock);
+          renderReview(mock);
+          return;
+        }
+      }
+    }
     renderSharedMockPage();
   }
 
@@ -328,23 +351,107 @@
   }
   function renderSharedMockPage(){
     clearTimeout(sharedNudgeTimer);
-    const startLabel=mockAuth?.currentUser?.emailVerified?'Start Mock':'Sign in to Start';
+    const ownerIsViewer=mockAuth?.currentUser?.uid===mock.shareOwnerUid;
+    const alreadyDone=mock.sharedAttemptStatus==='completed';
+    const hasActiveAttempt=mock.sharedAttemptStatus==='active';
+    const startLabel=ownerIsViewer?'Shared by you':alreadyDone?'Completed':hasActiveAttempt?'Resume Mock':(mockAuth?.currentUser?.emailVerified?'Start Mock':'Sign in to Start');
     const questions=(mock.questions||[]).map((q,i)=>
       '<section class="session-question"><div class="session-qtitle">Question '+(i+1)+'</div><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+esc(q.imageUrl)+'" alt="Problem image" loading="lazy" style="margin:10px 0 16px">':'')+'<div class="session-statement">'+md(q.statement)+'</div></section>'
     ).join('');
-    document.body.innerHTML='<main class="mock-session mock-shared-landing"><header class="mock-top"><div class="mock-session-title">'+esc(mock.title)+'</div><div class="mock-timer">'+esc(String(mock.minutes||60)+' MIN')+'</div><button class="btn primary" id="shared-start-top">'+startLabel+'</button></header><div class="mock-paper" id="shared-mock-paper"><div class="shared-mock-intro"><div class="mock-kicker">SHARED KARP MOCK</div><div class="muted">'+esc((mock.questions?.length||0)+' questions · '+(mock.minutes||60)+' minutes · Shared by '+(mock.sharedBy||'KARP User'))+'</div><p class="muted">Read the problems below. The timer starts only when you press Start Mock.</p></div>'+questions+'<div class="session-bottom"><span class="session-note">Your timer will start after you sign in and press Start Mock.</span><button class="btn primary" id="shared-start-bottom">'+startLabel+'</button></div></div></main>';
+    document.body.innerHTML='<main class="mock-session mock-shared-landing"><header class="mock-top"><div class="mock-session-title">'+esc(mock.title)+'</div><div class="mock-timer">'+esc(String(mock.minutes||60)+' MIN')+'</div></header><div class="mock-paper" id="shared-mock-paper"><div class="shared-mock-intro"><div class="mock-kicker">SHARED KARP MOCK</div><div class="muted">'+esc((mock.questions?.length||0)+' questions · '+(mock.minutes||60)+' minutes · Shared by '+(mock.sharedBy||'KARP User'))+'</div><p class="muted">'+(hasActiveAttempt?'Your attempt is already running. The original countdown continues; you can resume it here.':alreadyDone?'You have completed this mock. Your Gems have already been credited.':'Read the problems below. The timed attempt begins when you press the button.')+'</p></div>'+questions+'<div class="session-bottom"><span class="session-note">'+(ownerIsViewer?'You created this mock. Share it with another KARP member to earn Gems.':alreadyDone?'One completion per account for this shared mock.':hasActiveAttempt?'Your end time cannot be reset by reopening this link.':'One Gem for you and one for the author after the full timer ends.')+'</span><button class="btn primary" id="shared-start-bottom" '+(ownerIsViewer||alreadyDone?'disabled':'')+'>'+startLabel+'</button></div></div></main>';
     const begin=()=>{
+      if(ownerIsViewer){toast('You cannot earn referral Gems by taking your own shared mock.');return;}
+      if(alreadyDone){toast('You have already completed this shared mock.');return;}
       if(!mockAuth?.currentUser?.emailVerified){
         showAuthPrompt('Sign in','Sign in or create a KARP account before starting this mock.');
         return;
       }
       startMock(mock);
     };
-    document.getElementById('shared-start-top')?.addEventListener('click',begin);
     document.getElementById('shared-start-bottom')?.addEventListener('click',begin);
     setKarpActivity({page:'Shared Mock',label:'Viewing shared mock',detail:mock.title,question:null});
     renderMath(document.getElementById('shared-mock-paper'));
     installSharedSignInNudge();
+  }
+
+  async function loadSharedMockSolutions(item=mock){
+    if(!item?.sharedShareId||!Array.isArray(item.questions))return;
+    const {db}=await fb();
+    const {doc,getDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const questions=await Promise.all(item.questions.map(async(q,index)=>{
+      const snap=await getDoc(doc(db,'sharedMocks',item.sharedShareId,'solutions','q'+index));
+      const solutions=snap.exists()&&Array.isArray(snap.data().solutions)?snap.data().solutions:[];
+      return {...q,solutions};
+    }));
+    item.questions=questions;
+  }
+
+  async function startOrResumeSharedAttempt(item){
+    const user=mockAuth?.currentUser;
+    if(!user?.emailVerified)throw new Error('A verified KARP account is required.');
+    if(String(user.uid)===String(item.shareOwnerUid))throw new Error('The owner cannot receive a referral reward for taking their own mock.');
+    const {db}=await fb();
+    const {doc,getDoc,setDoc,serverTimestamp}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const shareId=String(item.sharedShareId||'');
+    if(!shareId)throw new Error('Shared mock link information is missing.');
+    const ref=doc(db,'sharedMocks',shareId,'participants',user.uid);
+    let snap=await getDoc(ref);
+    if(snap.exists()){
+      const data=snap.data()||{};
+      if(data.status==='completed'&&data.rewardProcessed===true)throw new Error('You have already completed this shared mock.');
+      if(data.status!=='active')throw new Error('This shared mock attempt is no longer available.');
+      return data;
+    }
+    const profile=await me().catch(()=>null);
+    const startedAtMs=Date.now();
+    const attempt={
+      shareId,ownerUid:item.shareOwnerUid,participantUid:user.uid,
+      ownerName:String(item.sharedBy||'KARP User').slice(0,100),
+      participantName:String(profile?.name||user.displayName||user.email?.split('@')[0]||'KARP Member').slice(0,100),
+      participantEmail:String(profile?.email||user.email||'').slice(0,200),
+      mockTitle:String(item.title||'KARP Mock').slice(0,120),
+      minutes:Number(item.minutes||60),
+      startedAt:serverTimestamp(),
+      endsAtMs:startedAtMs+Number(item.minutes||60)*60000,
+      status:'active',rewardProcessed:false
+    };
+    try{await setDoc(ref,attempt)}
+    catch(error){
+      // Two tabs may try to start simultaneously; the first start wins.
+      snap=await getDoc(ref);
+      if(!snap.exists())throw error;
+      const existing=snap.data()||{};
+      if(existing.status!=='active')throw error;
+      return existing;
+    }
+    snap=await getDoc(ref);
+    if(!snap.exists())throw new Error('Could not confirm the shared mock attempt.');
+    return snap.data();
+  }
+
+  async function completeSharedMockAttempt(){
+    const user=mockAuth?.currentUser;
+    if(!user?.emailVerified)throw new Error('A verified KARP account is required to complete this mock.');
+    const {db}=await fb();
+    const {doc,getDoc,writeBatch,serverTimestamp,increment}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const shareId=String(mock.sharedShareId||''),participantUid=user.uid,attemptRef=doc(db,'sharedMocks',shareId,'participants',participantUid);
+    const snap=await getDoc(attemptRef);
+    if(!snap.exists())throw new Error('The shared mock attempt was not registered.');
+    const attempt=snap.data()||{};
+    if(attempt.status==='completed'&&attempt.rewardProcessed===true)return {already:true};
+    if(attempt.status!=='active')throw new Error('This shared mock attempt is not active.');
+    if(Date.now()<Number(attempt.endsAtMs||0))throw new Error('The full mock duration has not elapsed yet.');
+    if(!attempt.ownerUid||attempt.ownerUid===participantUid)throw new Error('Invalid shared mock owner.');
+    const now=new Date().toISOString();
+    const rewardFor=recipientUid=>({
+      shareId,ownerUid:attempt.ownerUid,participantUid,recipientUid,amount:1,awardedAt:now
+    });
+    const batch=writeBatch(db);
+    batch.update(attemptRef,{status:'completed',completedAt:serverTimestamp(),rewardProcessed:true});
+    batch.update(doc(db,'users',attempt.ownerUid),{gems:increment(1),lastSharedMockReward:rewardFor(attempt.ownerUid)});
+    batch.update(doc(db,'users',participantUid),{gems:increment(1),lastSharedMockReward:rewardFor(participantUid)});
+    await batch.commit();
+    return {awarded:true};
   }
 
   function renderPreview(){
@@ -394,6 +501,18 @@
     const fullscreenAttempt=requestMockFullscreen();
     if(!(await fullscreenAttempt))return;
     try{await saveMockDraft(mock)}catch(e){toast(e.message||'Could not save mock.');return}
+    if(mock.sharedShareId){
+      try{
+        const attempt=await startOrResumeSharedAttempt(mock);
+        mock.sharedAttemptStatus=attempt.status||'active';
+        mock.sharedAttempt=attempt;
+        mock.endAt=Number(attempt.endsAtMs||0);
+      }catch(e){
+        if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
+        toast(e.message||'Could not start this shared mock.');
+        return;
+      }
+    }
     finished=false;
     mock.endAt=mock.endAt||Date.now()+Number(mock.minutes||60)*60000;
     seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));
@@ -439,15 +558,39 @@
   function renderSession(){
     mockAutoSaveCleanup?.();
     mockAutoSaveCleanup=installMockAutoSave();
-    document.body.innerHTML='<main class="mock-session"><header class="mock-top"><div class="mock-session-title">'+esc(mock.title)+'</div><div class="mock-timer" id="mock-timer">'+clock(seconds)+'</div><div></div></header><div class="mock-paper" id="mock-paper">'+mock.questions.map((q,i)=>'<section class="session-question"><div class="session-qtitle">Question '+(i+1)+'</div><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+esc(q.imageUrl)+'" alt="Problem image" loading="lazy" style="margin:10px 0 16px">':'')+'<div class="session-statement">'+md(q.statement)+'</div></section>').join('')+'<div class="session-bottom"><span class="session-note">Your mock is saved automatically.</span><button class="btn primary" id="finish-mock">Finish Mock</button></div></div></main>';
-    document.getElementById('finish-mock').onclick=()=>finishMock(false);
+    document.body.innerHTML='<main class="mock-session"><header class="mock-top"><div class="mock-session-title">'+esc(mock.title)+'</div><div class="mock-timer" id="mock-timer">'+clock(seconds)+'</div><div></div></header><div class="mock-paper" id="mock-paper">'+mock.questions.map((q,i)=>'<section class="session-question"><div class="session-qtitle">Question '+(i+1)+'</div><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+esc(q.imageUrl)+'" alt="Problem image" loading="lazy" style="margin:10px 0 16px">':'')+'<div class="session-statement">'+md(q.statement)+'</div></section>').join('')+'<div class="session-bottom"><span class="session-note">'+(mock.sharedShareId?'This shared mock is completed automatically when the full timer ends.':'Your mock is saved automatically.')+'</span>'+(mock.sharedShareId?'':'<button class="btn primary" id="finish-mock">Finish Mock</button>')+'</div></div></main>';
+    const finishButton=document.getElementById('finish-mock');if(finishButton)finishButton.onclick=()=>finishMock(false);
     renderMath(document.getElementById('mock-paper'));window.scrollTo(0,0);
     setKarpActivity({page:'Mock',label:'Taking mock',detail:mock.title,question:1});
     installMockFullscreen();installMockActivity();
   }
   function clock(s){const x=Math.max(0,Number(s||0));return String(Math.floor(x/3600)).padStart(2,'0')+':'+String(Math.floor(x%3600/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0')}
   function tick(){seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));const el=document.getElementById('mock-timer');if(el)el.textContent=clock(seconds);const bucket=Math.floor(seconds/15);if(bucket!==lastSavedBucket){lastSavedBucket=bucket;activeSave()}if(seconds<=0)finishMock(true)}
-  async function finishMock(auto){if(finished)return;mockAutoSaveCleanup?.();mockAutoSaveCleanup=null;finished=true;clearInterval(timer);installGuard(false);mock={...mock,completedAt:new Date().toISOString(),timedOut:!!auto};try{await saveFinished();window.__karpMockFsCleanup?.();window.__karpMockFsCleanup=null;if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});renderReview(mock)}catch(e){finished=false;toast(e.message||'Could not save mock history.')}}
+  async function finishMock(auto){
+    if(finished)return;
+    if(mock?.sharedShareId&&(!auto||seconds>0)){toast('Shared mocks can only be completed after the full timer reaches zero.');return;}
+    mockAutoSaveCleanup?.();mockAutoSaveCleanup=null;finished=true;clearInterval(timer);installGuard(false);
+    try{
+      if(mock.sharedShareId){
+        await completeSharedMockAttempt();
+        await loadSharedMockSolutions(mock);
+        mock.sharedAttemptStatus='completed';
+        mock.status='completed';
+      }
+      mock={...mock,completedAt:new Date().toISOString(),timedOut:!!auto,status:'completed'};
+      await saveFinished();
+      window.__karpMockFsCleanup?.();window.__karpMockFsCleanup=null;
+      if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
+      renderReview(mock);
+    }catch(e){
+      finished=false;
+      toast(e.message||'Could not save mock history or award Gems. Your shared attempt remains resumable.');
+      if(mock.sharedShareId&&mock.endAt) {
+        seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));
+        if(seconds===0)setTimeout(()=>finishMock(true),1500);
+      }
+    }
+  }
   (async()=>{try{
     // Public shared previews must load independently of any signed-in account.
     if(shareId){await loadSharedMock(shareId);return;}
