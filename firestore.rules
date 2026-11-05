@@ -8,7 +8,8 @@ service cloud.firestore {
           request.auth.token.email_verified == true
           || (
             exists(/databases/$(database)/documents/users/$(uid))
-            && get(/databases/$(database)/documents/users/$(uid)).data.requiresEmailVerification != true
+            && get(/databases/$(database)/documents/users/$(uid)).data.keys().hasAny(['requiresEmailVerification'])
+            && get(/databases/$(database)/documents/users/$(uid)).data.requiresEmailVerification == false
           )
         );
     }
@@ -153,7 +154,10 @@ service cloud.firestore {
           || (signedIn() && get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid);
         allow create: if verifiedAccount(participantUid)
           && exists(/databases/$(database)/documents/users/$(participantUid))
-          && get(/databases/$(database)/documents/users/$(participantUid)).data.requiresEmailVerification != true
+          && (
+            !get(/databases/$(database)/documents/users/$(participantUid)).data.keys().hasAny(['requiresEmailVerification'])
+            || get(/databases/$(database)/documents/users/$(participantUid)).data.requiresEmailVerification == false
+          )
           && request.auth.uid == participantUid
           && participantUid != get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid
           && request.resource.data.keys().hasOnly(['shareId','ownerUid','participantUid','ownerName','participantName','participantEmail','mockTitle','minutes','startedAt','status','rewardProcessed'])
