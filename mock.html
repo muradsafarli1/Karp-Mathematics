@@ -69,7 +69,7 @@
   }
   function cats(){return [...document.querySelectorAll('.mock-cat:checked')].map(x=>x.value)}
   function count(){return Math.max(1,Math.min(30,Number(document.getElementById('mock-count').value||6)))}
-  function minutes(){return Math.max(1,Math.min(600,Number(document.getElementById('mock-minutes').value||60)))}
+  function minutes(){return Math.max(1,Math.min(600,Math.floor(Number(document.getElementById('mock-minutes').value||60))))}
   function difficulty(){return document.querySelector('input[name="mock-difficulty"]:checked')?.value||'any'}
   function sequence(){const raw=document.getElementById('mock-sequence').value.trim();if(!raw)return null;const list=raw.toUpperCase().replace(/[^ACGN,\\s]/g,'').split(/[,\\s]+/).filter(Boolean);return list.length===count()&&list.every(x=>['A','C','G','N'].includes(x))?list:null}
   function history(){return cloudMockHistory.slice()}
@@ -573,7 +573,8 @@
     mockAutoSaveCleanup?.();mockAutoSaveCleanup=null;finished=true;clearInterval(timer);installGuard(false);
     try{
       if(mock.sharedShareId){
-        await completeSharedMockAttempt();
+        const reward=await completeSharedMockAttempt();
+        if(reward?.awarded)toast('Mock completed! +1 Gem for you and +1 Gem for the author.');
         await loadSharedMockSolutions(mock);
         mock.sharedAttemptStatus='completed';
         mock.status='completed';
