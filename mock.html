@@ -104,7 +104,7 @@
     window.__karpMockFsCleanup?.();window.__karpMockFsCleanup=null;window.__karpMockActivityCleanup?.();window.__karpMockActivityCleanup=null;
     setKarpActivity({page:'Mock Review',label:'Mock review',detail:item?.title||'Mock',question:null});
     finished=true;clearInterval(timer);leaveGuard=false;window.onbeforeunload=null;
-    document.body.innerHTML='<main class="mock-page"><section class="pagehero"><div class="wrap"><h1>'+esc(item.title||'Mock')+'</h1><p class="lead">'+esc((item.questions?.length||0)+' questions · '+(item.minutes||0)+' minutes · '+dateText(item.completedAt))+'</p></div></section><section class="section"><div class="mock-wrap"><section class="mock-review"><div class="review-head"><div></div><button class="btn" id="review-back">← Back to Mocks</button></div><div id="review-questions"></div></section></div></section></main>';
+    document.body.innerHTML='<main class="mock-page"><section class="pagehero"><div class="wrap"><h1>'+esc(item.title||'Mock')+'</h1><p class="lead">'+esc((item.questions?.length||0)+' questions · '+(item.minutes||0)+' minutes · '+dateText(item.completedAt))+'</p>'+(item.sharedShareId&&item.gemRewarded?'<p class="lead" style="margin-top:10px">✓ Your +1 Gem has been credited. The mock author also received +1 Gem.</p>':'')+'</div></section><section class="section"><div class="mock-wrap"><section class="mock-review"><div class="review-head"><div><div class="mock-kicker">COMPLETED MOCK · QUESTIONS & SOLUTIONS</div></div><button class="btn" id="review-back">← Back to Mocks</button></div><div id="review-questions"></div></section></div></section></main>';
     const host=document.getElementById('review-questions');
     (item.questions||[]).forEach((q,i)=>{
       const sec=document.createElement('section');sec.className='review-question';sec.innerHTML='<h3>Question '+(i+1)+'</h3><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+esc(q.imageUrl)+'" alt="Problem image" loading="lazy" style="margin:10px 0 16px">':'')+'<div class="review-statement">'+md(q.statement)+'</div><div class="review-solution"><button class="btn">Show solution</button><div class="review-solution-body">'+((q.solutions||[]).map((s,j)=>'<div style="margin-top:8px"><div class="mock-kicker">SOLUTION '+(j+1)+'</div>'+md(s)+'</div>').join('')||'<div class="muted">No supplied solution.</div>')+'</div></div>';
@@ -324,6 +324,9 @@
     isSharedView=true;
     const sharedTitle=String(data.title||data.name||'Shared KARP Mock').trim();
     mock={id:'shared-'+(data.id||id),title:sharedTitle&&!/^untitled mock$/i.test(sharedTitle)?sharedTitle:'Shared KARP Mock',minutes:Number(data.minutes||60),questions:data.questions,createdAt:data.createdAt||new Date().toISOString(),status:'draft',sharedBy:data.ownerName||'KARP User',sharedShareId:String(data.id||id),shareOwnerUid:String(data.ownerUid||''),sharedAttemptStatus:'new'};
+    if(auth.currentUser){
+      try{await refreshSharedMockAuth()}catch(error){console.warn('Could not refresh the shared-mock session before checking its attempt:',error)}
+    }
     if(auth.currentUser?.emailVerified){
       const attemptSnap=await getDoc(doc(db,'sharedMocks',String(data.id||id),'participants',auth.currentUser.uid));
       if(attemptSnap.exists()){
@@ -334,6 +337,7 @@
         if(attempt.status==='completed'&&attempt.rewardProcessed===true){
           mock.completedAt=attempt.completedAt?.toDate?attempt.completedAt.toDate().toISOString():new Date().toISOString();
           mock.status='completed';
+          mock.gemRewarded=true;
           await loadSharedMockSolutions(mock);
           renderReview(mock);
           return;
@@ -375,7 +379,7 @@
     const begin=()=>{
       if(ownerIsViewer){toast('You cannot earn referral Gems by taking your own shared mock.');return;}
       if(alreadyDone){toast('You have already completed this shared mock.');return;}
-      if(!mockAuth?.currentUser?.emailVerified){
+      if(!mockAuth?.currentUser){
         showAuthPrompt('Sign in','Sign in or create a KARP account before starting this mock.');
         return;
       }
@@ -394,6 +398,18 @@
     const snap=await getDocs(collection(db,'sharedMocks',item.sharedShareId,'solutions'));
     const solutionsByIndex=new Map(snap.docs.map(docSnap=>[Number(docSnap.data().questionIndex),Array.isArray(docSnap.data().solutions)?docSnap.data().solutions:[]]));
     item.questions=item.questions.map((q,index)=>({...q,solutions:solutionsByIndex.get(index)||[]}));
+  }
+
+  async function refreshSharedMockAuth(){
+    const {auth}=await fb();
+    await authReady();
+    let user=auth.currentUser;
+    if(!user)return null;
+    await user.reload();
+    user=auth.currentUser||user;
+    if(user.emailVerified)await user.getIdToken(true);
+    mockAuth=auth;
+    return user;
   }
 
   async function startOrResumeSharedAttempt(item){
@@ -440,7 +456,7 @@
   }
 
   async function completeSharedMockAttempt(){
-    const user=mockAuth?.currentUser;
+    const user=await refreshSharedMockAuth();
     if(!user?.emailVerified)throw new Error('A verified KARP account is required to complete this mock.');
     const {db}=await fb();
     const {doc,getDoc,writeBatch,serverTimestamp,increment}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
@@ -507,7 +523,18 @@
 
   async function startMock(item){
     if(item&&item.id)mock=JSON.parse(JSON.stringify(item));if(!mock)return;
-    if(!mockAuth?.currentUser?.emailVerified){showAuthPrompt('Sign in','Sign in or create a KARP account with a verified email before starting a mock.');return;}
+    if(mock.sharedShareId){
+      try{
+        const freshUser=await refreshSharedMockAuth();
+        if(!freshUser?.emailVerified){showAuthPrompt('Verify your email','Sign in with a verified KARP account before starting this shared mock.');return;}
+      }catch(error){
+        toast(error.message||'Could not refresh your KARP sign-in. Please sign in again.');
+        return;
+      }
+    }else if(!mockAuth?.currentUser?.emailVerified){
+      showAuthPrompt('Sign in','Sign in or create a KARP account with a verified email before starting a mock.');
+      return;
+    }
     const fullscreenAttempt=requestMockFullscreen();
     if(!(await fullscreenAttempt))return;
     try{await saveMockDraft(mock)}catch(e){toast(e.message||'Could not save mock.');return}
@@ -583,22 +610,46 @@
     try{
       if(mock.sharedShareId){
         const reward=await completeSharedMockAttempt();
+        mock.gemRewarded=!!(reward?.awarded||reward?.already);
         if(reward?.awarded)toast('Mock completed! +1 Gem for you and +1 Gem for the author.');
         await loadSharedMockSolutions(mock);
         mock.sharedAttemptStatus='completed';
         mock.status='completed';
       }
       mock={...mock,completedAt:new Date().toISOString(),timedOut:!!auto,status:'completed'};
-      await saveFinished();
+      let historyError=null;
+      try{await saveFinished()}catch(error){historyError=error;console.error('Mock completed, but history persistence failed:',error)}
       window.__karpMockFsCleanup?.();window.__karpMockFsCleanup=null;
       if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
       renderReview(mock);
+      if(historyError)toast('Mock completed, but its entry could not be saved to Mock History. Your result is still shown.');
     }catch(e){
       finished=false;
-      toast(e.message||'Could not save mock history or award Gems. Your shared attempt remains resumable.');
-      if(mock.sharedShareId&&mock.endAt) {
+      toast(e.message||'Could not complete the mock. Your attempt is still saved.');
+      if(mock.sharedShareId&&mock.endAt){
         seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));
-        if(seconds===0)setTimeout(()=>finishMock(true),1500);
+        if(seconds===0){
+          const note=document.querySelector('.session-note');
+          if(note)note.textContent='Time is up. The completion or reward sync did not finish. Your attempt is safe; retry below.';
+          let retry=document.getElementById('retry-shared-completion');
+          if(!retry){
+            retry=document.createElement('button');
+            retry.id='retry-shared-completion';
+            retry.className='btn primary';
+            retry.type='button';
+            document.querySelector('.session-bottom')?.appendChild(retry);
+          }
+          if(retry){
+            retry.disabled=false;
+            retry.textContent='Retry Completion & Gem';
+            retry.onclick=async()=>{
+              retry.disabled=true;
+              retry.textContent='Processing…';
+              await finishMock(true);
+              if(!finished){retry.disabled=false;retry.textContent='Retry Completion & Gem'}
+            };
+          }
+        }
       }
     }
   }
