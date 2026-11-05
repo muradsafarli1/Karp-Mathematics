@@ -382,7 +382,14 @@
           mock.completedAt=attempt.completedAt?.toDate?attempt.completedAt.toDate().toISOString():new Date().toISOString();
           mock.status='completed';
           mock.gemRewarded=true;
-          await loadSharedMockSolutions(mock);
+          try{
+            await loadSharedMockSolutions(mock);
+            mock.solutionsLoaded=true;
+          }catch(solutionError){
+            mock.solutionsLoaded=false;
+            mock.solutionsLoadError=solutionError.message||'Could not load private solutions.';
+            console.error('Completed shared mock loaded, but private solutions could not be read:',solutionError);
+          }
           renderReview(mock);
           return;
         }
