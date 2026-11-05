@@ -56,7 +56,7 @@ service cloud.firestore {
       // by the current token or the user's KARP profile (which avoids stale claims).
       return verifiedAccount(request.auth.uid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gems','lastSharedMockReward'])
-        && request.resource.data.gems == (resource.data.gems is number ? resource.data.gems : 0) + 1
+        && request.resource.data.gems == (resource.data.get('gems', 0) is number ? resource.data.get('gems', 0) : 0) + 1
         && request.resource.data.lastSharedMockReward is map
         && request.resource.data.lastSharedMockReward.shareId is string
         && request.resource.data.lastSharedMockReward.participantUid == request.auth.uid
@@ -187,11 +187,11 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/users/$(resource.data.ownerUid))
           && exists(/databases/$(database)/documents/users/$(resource.data.participantUid))
           && getAfter(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.gems
-            == (get(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.gems is number
-              ? get(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.gems : 0) + 1
+            == (get(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.get('gems', 0) is number
+              ? get(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.get('gems', 0) : 0) + 1
           && getAfter(/databases/$(database)/documents/users/$(resource.data.participantUid)).data.gems
-            == (get(/databases/$(database)/documents/users/$(resource.data.participantUid)).data.gems is number
-              ? get(/databases/$(database)/documents/users/$(resource.data.participantUid)).data.gems : 0) + 1
+            == (get(/databases/$(database)/documents/users/$(resource.data.participantUid)).data.get('gems', 0) is number
+              ? get(/databases/$(database)/documents/users/$(resource.data.participantUid)).data.get('gems', 0) : 0) + 1
           && getAfter(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.lastSharedMockReward.shareId == shareId
           && getAfter(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.lastSharedMockReward.participantUid == participantUid
           && getAfter(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.lastSharedMockReward.recipientUid == resource.data.ownerUid
