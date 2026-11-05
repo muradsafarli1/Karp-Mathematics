@@ -75,8 +75,22 @@
   function history(){return cloudMockHistory.slice()}
   let cloudActiveMock=null,isSharedView=false;
   function activeLoad(){return cloudActiveMock||(()=>{try{return JSON.parse(localStorage.getItem('karp_active_mock')||'null')}catch{return null}})()}
-  async function activeSave(){const data={...mock,active:true,lastUpdatedAt:new Date().toISOString()};localStorage.setItem('karp_active_mock',JSON.stringify(data));cloudActiveMock=data;try{await karpUserRecord('privateState','state',{activeMock:data})}catch(e){console.warn('Could not persist active mock',e)}}
-  async function activeClear(){localStorage.removeItem('karp_active_mock');cloudActiveMock=null;try{await karpUserRecord('privateState','state',{activeMock:null})}catch(e){console.warn('Could not clear active mock',e)}}
+  async function activeSave(){
+    const data={...mock,active:true,lastUpdatedAt:new Date().toISOString()};
+    localStorage.setItem('karp_active_mock',JSON.stringify(data));cloudActiveMock=data;
+    // Shared attempts are tracked by sharedMocks/{shareId}/participants/{uid}.
+    // Do not write a second copy to privateState, which is unrelated to the
+    // shared attempt and can block entry under account-specific rules.
+    if(mock?.sharedShareId)return;
+    try{await karpUserRecord('privateState','state',{activeMock:data})}
+    catch(e){console.warn('Could not persist active mock',e)}
+  }
+  async function activeClear(){
+    localStorage.removeItem('karp_active_mock');cloudActiveMock=null;
+    if(mock?.sharedShareId)return;
+    try{await karpUserRecord('privateState','state',{activeMock:null})}
+    catch(e){console.warn('Could not clear active mock',e)}
+  }
   function resolvedMockTitle(item){
     const candidates=[item?.title,item?.mockName,item?.name,draftMockTitle];
     try{candidates.push(localStorage.getItem('karp_mock_draft_title')||'')}catch{}
@@ -312,6 +326,17 @@
     catch{window.prompt('Copy your mock link:',url);}
     return url;
   }
+  function sharedAttemptEndMs(attempt){
+    const minutes=Number(attempt?.minutes||0);
+    const startedAt=attempt?.startedAt;
+    const startedAtMs=typeof startedAt?.toMillis==='function'
+      ?startedAt.toMillis()
+      :Number(startedAt?.seconds||0)*1000;
+    if(startedAtMs>0&&minutes>0)return startedAtMs+minutes*60000;
+    // Backward compatibility for attempts created before server-anchored timing.
+    return Number(attempt?.endsAtMs||0);
+  }
+
   async function loadSharedMock(id){
     const {db,auth}=await fb();
     await authReady();
@@ -332,7 +357,7 @@
       if(attemptSnap.exists()){
         const attempt=attemptSnap.data()||{};
         mock.sharedAttemptStatus=String(attempt.status||'active');
-        mock.endAt=Number(attempt.endsAtMs||0)||null;
+        mock.endAt=sharedAttemptEndMs(attempt)||null;
         mock.sharedAttempt=attempt;
         if(attempt.status==='completed'&&attempt.rewardProcessed===true){
           mock.completedAt=attempt.completedAt?.toDate?attempt.completedAt.toDate().toISOString():new Date().toISOString();
@@ -437,22 +462,27 @@
       participantEmail:String(profile?.email||user.email||'').slice(0,200),
       mockTitle:String(item.title||'KARP Mock').slice(0,120),
       minutes:Number(item.minutes||60),
+      // The server timestamp is the authoritative start; no client clock is trusted.
       startedAt:serverTimestamp(),
-      endsAtMs:startedAtMs+Number(item.minutes||60)*60000,
       status:'active',rewardProcessed:false
     };
     try{await setDoc(ref,attempt)}
     catch(error){
       // Two tabs may try to start simultaneously; the first start wins.
-      snap=await getDoc(ref);
-      if(!snap.exists())throw error;
+      try{snap=await getDoc(ref)}catch(readError){
+        throw new Error('Could not verify the shared attempt after the write failed: '+(readError.message||readError));
+      }
+      if(!snap.exists()){
+        throw new Error('Firestore denied creation of the shared participant attempt ('+(error.code||'permission-denied')+'). Check the participant and share rules.');
+      }
       const existing=snap.data()||{};
-      if(existing.status!=='active')throw error;
-      return existing;
+      if(existing.status!=='active')throw new Error('This shared mock attempt is no longer active.');
+      return {...existing,endsAtMs:sharedAttemptEndMs(existing)};
     }
     snap=await getDoc(ref);
-    if(!snap.exists())throw new Error('Could not confirm the shared mock attempt.');
-    return snap.data();
+    if(!snap.exists())throw new Error('The shared attempt was created but could not be confirmed.');
+    const saved=snap.data()||{};
+    return {...saved,endsAtMs:sharedAttemptEndMs(saved)};
   }
 
   async function completeSharedMockAttempt(){
@@ -466,7 +496,8 @@
     const attempt=snap.data()||{};
     if(attempt.status==='completed'&&attempt.rewardProcessed===true)return {already:true};
     if(attempt.status!=='active')throw new Error('This shared mock attempt is not active.');
-    if(Date.now()<Number(attempt.endsAtMs||0))throw new Error('The full mock duration has not elapsed yet.');
+    const endsAtMs=sharedAttemptEndMs(attempt);
+    if(!endsAtMs||Date.now()<endsAtMs)throw new Error('The full mock duration has not elapsed yet.');
     if(!attempt.ownerUid||attempt.ownerUid===participantUid)throw new Error('Invalid shared mock owner.');
     const now=new Date().toISOString();
     const rewardFor=recipientUid=>({
@@ -544,10 +575,10 @@
           return;
         }
       }
-      await saveMockDraft(mock);
+      if(!mock.sharedShareId)await saveMockDraft(mock);
     }catch(error){
       if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
-      toast(error.message||'Could not prepare your mock. Please sign in again and retry.');
+      toast('Could not save this mock before starting: '+(error.message||'permission denied'));
       return;
     }
     if(mock.sharedShareId){
@@ -558,7 +589,7 @@
         mock.endAt=Number(attempt.endsAtMs||0);
       }catch(e){
         if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
-        toast(e.message||'Could not start this shared mock.');
+        toast('Could not register or resume the shared mock attempt: '+(e.message||e.code||'permission denied'));
         return;
       }
     }
