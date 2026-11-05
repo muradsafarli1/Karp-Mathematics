@@ -51,8 +51,9 @@ service cloud.firestore {
     // Gem changes from shared mocks are only valid in the same atomic write
     // that completes the participant's one-per-share attempt.
     function sharedMockRewardUpdate(uid) {
-      return signedIn()
-        && request.auth.token.email_verified == true
+      // Completion rewards are allowed when the verified status is confirmed
+      // by the current token or the user's KARP profile (which avoids stale claims).
+      return verifiedAccount(request.auth.uid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gems','lastSharedMockReward'])
         && request.resource.data.gems == (resource.data.gems is number ? resource.data.gems : 0) + 1
         && request.resource.data.lastSharedMockReward is map
@@ -174,8 +175,7 @@ service cloud.firestore {
           && request.resource.data.endsAtMs <= request.time.toMillis() + request.resource.data.minutes * 60000 + 15000
           && request.resource.data.status == 'active'
           && request.resource.data.rewardProcessed == false;
-        allow update: if signedIn()
-          && request.auth.token.email_verified == true
+        allow update: if verifiedAccount(participantUid)
           && request.auth.uid == participantUid
           && resource.data.status == 'active'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','completedAt','rewardProcessed'])
