@@ -700,14 +700,6 @@
       if(mock.sharedShareId){
         const reward=await completeSharedMockAttempt();
         mock.gemRewarded=!!(reward?.awarded||reward?.already);
-        if(mock.gemRewarded&&typeof showKarpGemCelebration==='function'){
-          showKarpGemCelebration({
-            amount:1,
-            title:'Shared mock completed!',
-            message:'You earned 1 Gem, and the mock author received 1 Gem too. Great work finishing the full attempt.',
-            rewardKey:'shared-mock:'+mock.sharedShareId+':'+mockAuth.currentUser.uid
-          });
-        }
         if(reward?.awarded)toast('Mock completed! +1 Gem for you and +1 Gem for the author.');
         try{
           await loadSharedMockSolutions(mock);
@@ -733,6 +725,14 @@
       window.__karpMockFsCleanup?.();window.__karpMockFsCleanup=null;
       if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
       renderReview(mock);
+      if(mock.sharedShareId&&mock.gemRewarded&&typeof showKarpGemCelebration==='function'){
+        showKarpGemCelebration({
+          amount:1,
+          title:'Shared mock completed!',
+          message:'You earned 1 Gem, and the mock author received 1 Gem too. Great work finishing the full attempt.',
+          rewardKey:'shared-mock:'+mock.sharedShareId+':'+mockAuth.currentUser.uid
+        });
+      }
       if(historyError)toast('Mock completed, but its entry could not be saved to Mock History. Your result is still shown.');
     }catch(e){
       finished=false;
