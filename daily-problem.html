@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KARP — Daily Problem</title>
 <link rel="stylesheet" href="/style.css">
-<script src="/app.js?v=20261101mobile1"></script>
+<script src="/app.js?v=20261105streak1?v=20261101mobile1"></script>
 <script>
 window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]],processEnvironments:true,processEscapes:true},svg:{fontCache:"global"},startup:{typeset:false}};
 </script>
@@ -299,6 +299,9 @@ window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\
       const photoURL=await compactAvatar(profile.photoURL||currentUser.photoURL||'');
       const submission={uid:currentUser.uid,displayName,email:String(currentUser.email||'').slice(0,200),photoURL,solution,status:'pending',problemId:currentProblemId,createdAt:new Date().toISOString()};
       const submissionRef=await fs.addDoc(fs.collection(db,'dailyProblemSubmissions'),submission);
+      if(solution.trim().length>=80&&typeof karpRecordStreakActivity==='function'){
+        await karpRecordStreakActivity('daily_solution_submitted',{problemId:currentProblemId}).catch(error=>console.warn('Daily solution submitted, but streak activity could not be recorded:',error));
+      }
       input.value='';toggleEditor(false);setPendingNotice(submission);
       ownSubmissions=[...ownSubmissions.filter(x=>x.id!==submissionRef.id),{id:submissionRef.id,...submission}];
       renderCurrentSolutions();
