@@ -129,8 +129,9 @@ service cloud.firestore {
         && request.resource.data.status == 'published'
         && request.resource.data.title is string
         && request.resource.data.title.size() <= 120
-        && request.resource.data.minutes is number
+        && request.resource.data.minutes is int
         && request.resource.data.minutes >= 1
+        && request.resource.data.minutes <= 600
         && request.resource.data.questions is list
         && request.resource.data.questions.size() > 0
         && request.resource.data.questions.size() <= 30
@@ -160,6 +161,9 @@ service cloud.firestore {
           && request.resource.data.ownerUid == get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid
           && request.resource.data.participantUid == participantUid
           && request.resource.data.mockTitle == get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.title
+          && request.resource.data.minutes is int
+          && request.resource.data.minutes >= 1
+          && request.resource.data.minutes <= 600
           && request.resource.data.minutes == get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.minutes
           && request.resource.data.ownerName is string
           && request.resource.data.participantName is string
