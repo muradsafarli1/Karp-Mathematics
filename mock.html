@@ -282,7 +282,7 @@
     });
     const profile=await me().catch(()=>null);
     const sharedTitle=resolvedMockTitle(mock);
-    const payload={id:shareId,title:sharedTitle.slice(0,120),minutes:Number(mock.minutes||60),questions:safeQuestions,ownerUid:user.uid,ownerName:String(profile?.name||user.displayName||'KARP User').slice(0,100),ownerEmail:String(profile?.email||user.email||'').slice(0,200),createdAt:new Date().toISOString(),status:'published'};
+    const payload={id:shareId,title:sharedTitle.slice(0,120),minutes:Number(mock.minutes||60),questions:safeQuestions,ownerUid:user.uid,ownerName:String(profile?.name||user.displayName||'KARP User').slice(0,100),createdAt:new Date().toISOString(),status:'published'};
     const batch=writeBatch(db);
     batch.set(doc(db,'sharedMocks',shareId),payload);
     (mock.questions||[]).forEach((q,index)=>{
