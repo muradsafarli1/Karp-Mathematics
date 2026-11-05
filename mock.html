@@ -273,7 +273,7 @@
     if(!mock?.questions?.length)throw new Error('Generate a mock before sharing it.');
     const {db,auth}=await fb();await authReady();
     const user=auth.currentUser;if(!user)throw new Error('Please sign in before sharing a mock.');
-    const {doc,writeBatch}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const {doc,setDoc,writeBatch}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
     const shareId=(crypto.randomUUID?crypto.randomUUID():('m'+Date.now().toString(36)+Math.random().toString(36).slice(2,10))).replace(/[^A-Za-z0-9_-]/g,'');
     const safeQuestions=(mock.questions||[]).map(q=>{
       const out={};
@@ -283,14 +283,27 @@
     const profile=await me().catch(()=>null);
     const sharedTitle=resolvedMockTitle(mock);
     const payload={id:shareId,title:sharedTitle.slice(0,120),minutes:Number(mock.minutes||60),questions:safeQuestions,ownerUid:user.uid,ownerName:String(profile?.name||user.displayName||'KARP User').slice(0,100),createdAt:new Date().toISOString(),status:'published'};
-    const batch=writeBatch(db);
-    batch.set(doc(db,'sharedMocks',shareId),payload);
+    await setDoc(doc(db,'sharedMocks',shareId),payload);
+    const solutionDocs=[];
     (mock.questions||[]).forEach((q,index)=>{
       const rawSolutions=Array.isArray(q.solutions)?q.solutions:(typeof q.solution==='string'?[q.solution]:(typeof q.solutionEn==='string'?[q.solutionEn]:[]));
       const solutions=rawSolutions.map(x=>typeof x==='string'?x:String(x?.solution||x?.text||x?.content||'')).filter(x=>x.trim());
-      if(solutions.length)batch.set(doc(db,'sharedMocks',shareId,'solutions','q'+index),{questionIndex:index,solutions});
+      if(solutions.length)solutionDocs.push({ref:doc(db,'sharedMocks',shareId,'solutions','q'+index),data:{questionIndex:index,solutions}});
     });
-    await batch.commit();
+    try{
+      // Keep each Firestore atomic batch small so its security-rule document
+      // lookups stay comfortably below the per-batch access-call limit.
+      for(let i=0;i<solutionDocs.length;i+=5){
+        const batch=writeBatch(db);
+        solutionDocs.slice(i,i+5).forEach(item=>batch.set(item.ref,item.data));
+        await batch.commit();
+      }
+    }catch(error){
+      await Promise.allSettled(solutionDocs.map(item=>import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js').then(fs=>fs.deleteDoc(item.ref))));
+      const {deleteDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+      await deleteDoc(doc(db,'sharedMocks',shareId)).catch(()=>{});
+      throw error;
+    }
     mock.shareId=shareId;
     mock.shareOwnerUid=user.uid;
     mock.title=sharedTitle;
@@ -378,13 +391,10 @@
   async function loadSharedMockSolutions(item=mock){
     if(!item?.sharedShareId||!Array.isArray(item.questions))return;
     const {db}=await fb();
-    const {doc,getDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-    const questions=await Promise.all(item.questions.map(async(q,index)=>{
-      const snap=await getDoc(doc(db,'sharedMocks',item.sharedShareId,'solutions','q'+index));
-      const solutions=snap.exists()&&Array.isArray(snap.data().solutions)?snap.data().solutions:[];
-      return {...q,solutions};
-    }));
-    item.questions=questions;
+    const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const snap=await getDocs(collection(db,'sharedMocks',item.sharedShareId,'solutions'));
+    const solutionsByIndex=new Map(snap.docs.map(docSnap=>[Number(docSnap.data().questionIndex),Array.isArray(docSnap.data().solutions)?docSnap.data().solutions:[]]));
+    item.questions=item.questions.map((q,index)=>({...q,solutions:solutionsByIndex.get(index)||[]}));
   }
 
   async function startOrResumeSharedAttempt(item){
