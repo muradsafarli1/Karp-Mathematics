@@ -273,7 +273,7 @@
     if(!mock?.questions?.length)throw new Error('Generate a mock before sharing it.');
     const {db,auth}=await fb();await authReady();
     const user=auth.currentUser;if(!user)throw new Error('Please sign in before sharing a mock.');
-    const {doc,setDoc,writeBatch}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const {doc,setDoc,writeBatch,deleteDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
     const shareId=(crypto.randomUUID?crypto.randomUUID():('m'+Date.now().toString(36)+Math.random().toString(36).slice(2,10))).replace(/[^A-Za-z0-9_-]/g,'');
     const safeQuestions=(mock.questions||[]).map(q=>{
       const out={};
@@ -299,8 +299,7 @@
         await batch.commit();
       }
     }catch(error){
-      await Promise.allSettled(solutionDocs.map(item=>import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js').then(fs=>fs.deleteDoc(item.ref))));
-      const {deleteDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+      await Promise.allSettled(solutionDocs.map(item=>deleteDoc(item.ref)));
       await deleteDoc(doc(db,'sharedMocks',shareId)).catch(()=>{});
       throw error;
     }
