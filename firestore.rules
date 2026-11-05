@@ -98,6 +98,31 @@ service cloud.firestore {
       }
     }
 
+    // Public, unlisted mock links. Only the owner can publish or remove a mock;
+    // visitors can fetch a known link but cannot enumerate the collection.
+    match /sharedMocks/{shareId} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.id == shareId
+        && request.resource.data.status == 'published'
+        && request.resource.data.title is string
+        && request.resource.data.title.size() <= 120
+        && request.resource.data.minutes is number
+        && request.resource.data.minutes >= 1
+        && request.resource.data.questions is list
+        && request.resource.data.questions.size() > 0
+        && request.resource.data.questions.size() <= 30
+        && request.resource.data.ownerName is string
+        && request.resource.data.ownerName.size() <= 100;
+      allow update: if signedIn()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.id == resource.data.id;
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
     match /examSessions/{sessionId} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
