@@ -34,7 +34,18 @@ import {doc,getDoc,setDoc} from "https://www.gstatic.com/firebasejs/12.19.0/fire
 const form=document.getElementById("form"),formWrap=document.getElementById("signup-form-wrap"),notice=document.getElementById("notice"),emailBtn=document.getElementById("email-submit");
 const verificationState=document.getElementById("verification-state"),verificationEmail=document.getElementById("verification-email"),verificationCheck=document.getElementById("verification-check"),verificationResend=document.getElementById("verification-resend"),verificationNotice=document.getElementById("verification-notice"),verificationSignout=document.getElementById("verification-signout");
 let resendTimer=0;
-function verificationSettings(){return {url:"https://karpmathematics.org/login.html?verified=1",handleCodeInApp:false}}
+const AUTH_RETURN_KEY="karp_auth_return_to";
+function safeAuthReturn(raw){
+  if(!raw||!raw.startsWith("/")||raw.startsWith("//"))return "";
+  try{
+    const target=new URL(raw,location.origin);
+    if(target.origin!==location.origin||target.pathname==="/login.html"||target.pathname==="/signup.html")return "";
+    return target.pathname+target.search+target.hash;
+  }catch{return ""}
+}
+const authReturnPath=safeAuthReturn(new URLSearchParams(location.search).get("returnTo"));
+if(authReturnPath)localStorage.setItem(AUTH_RETURN_KEY,authReturnPath);
+function verificationSettings(){const base="https://karpmathematics.org/login.html?verified=1";return {url:base+(authReturnPath?"&returnTo="+encodeURIComponent(authReturnPath):""),handleCodeInApp:false}}
 function setVerificationNotice(message,type=""){verificationNotice.className="notice"+(type?" "+type:"");verificationNotice.textContent=message}
 function showVerification(user){formWrap.style.display="none";verificationState.style.display="block";verificationEmail.textContent=user?.email||"your email address";setVerificationNotice("Sending your verification email…")}
 function startResendCooldown(seconds=30){clearInterval(resendTimer);let left=seconds;verificationResend.disabled=true;verificationResend.textContent="Resend email ("+left+"s)";resendTimer=setInterval(()=>{left--;if(left<=0){clearInterval(resendTimer);verificationResend.disabled=false;verificationResend.textContent="Resend email"}else verificationResend.textContent="Resend email ("+left+"s)"},1000)}
@@ -64,7 +75,9 @@ async function finishVerifiedSignup(){
     try{
       await setDoc(doc(db,"publicProfiles",user.uid),{uid:user.uid,name,nameLower:String(name).trim().toLowerCase(),photoURL:user.photoURL||data.photoURL||"",updatedAt:now},{merge:true});
     }catch(err){console.warn("KARP signup public profile sync skipped:",err)}
-    location.replace("/account.html");
+    const destination=authReturnPath||"/account.html";
+    try{localStorage.removeItem(AUTH_RETURN_KEY)}catch{}
+    location.replace(destination);
   }catch(err){setVerificationNotice(err.message||"Could not confirm your verification yet.","error")}
 }
 form.onsubmit=async e=>{
