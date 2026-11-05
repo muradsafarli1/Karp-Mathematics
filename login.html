@@ -40,7 +40,24 @@ import {doc,getDoc,setDoc} from "https://www.gstatic.com/firebasejs/12.19.0/fire
 const form=document.getElementById("form"),formWrap=document.getElementById("login-form-wrap"),notice=document.getElementById("notice"),emailBtn=document.getElementById("email-submit"),googleBtn=document.getElementById("google-login"),forgotPassword=document.getElementById("forgot-password"),resetMailNote=document.getElementById("reset-mail-note");
 const verificationState=document.getElementById("verification-state"),verificationEmail=document.getElementById("verification-email"),verificationCheck=document.getElementById("verification-check"),verificationResend=document.getElementById("verification-resend"),verificationNotice=document.getElementById("verification-notice"),verificationSignout=document.getElementById("verification-signout");
 const googleMarkup=googleBtn.innerHTML;let resendTimer=0;
-function verificationSettings(){return {url:"https://karpmathematics.org/login.html?verified=1",handleCodeInApp:false}}
+const AUTH_RETURN_KEY="karp_auth_return_to";
+function safeAuthReturn(raw){
+  if(!raw||!raw.startsWith("/")||raw.startsWith("//"))return "";
+  try{
+    const target=new URL(raw,location.origin);
+    if(target.origin!==location.origin||target.pathname==="/login.html"||target.pathname==="/signup.html")return "";
+    return target.pathname+target.search+target.hash;
+  }catch{return ""}
+}
+const loginParams=new URLSearchParams(location.search);
+const authReturnPath=safeAuthReturn(loginParams.get("returnTo")||((loginParams.get("verified")==="1"||loginParams.get("verify")==="1")?localStorage.getItem(AUTH_RETURN_KEY):""));
+if(authReturnPath)localStorage.setItem(AUTH_RETURN_KEY,authReturnPath);
+function authSuccessTarget(defaultPath){
+  const target=authReturnPath||defaultPath;
+  try{localStorage.removeItem(AUTH_RETURN_KEY)}catch{}
+  return target;
+}
+function verificationSettings(){const base="https://karpmathematics.org/login.html?verified=1";return {url:base+(authReturnPath?"&returnTo="+encodeURIComponent(authReturnPath):""),handleCodeInApp:false}}
 function setVerificationNotice(message,type=""){verificationNotice.className="notice"+(type?" "+type:"");verificationNotice.textContent=message}
 function showVerification(user,message){formWrap.style.display="none";verificationState.style.display="block";verificationEmail.textContent=user?.email||"Your email address";setVerificationNotice(message||"Please verify your email before continuing.")}
 function startResendCooldown(seconds=30){clearInterval(resendTimer);let left=seconds;verificationResend.disabled=true;verificationResend.textContent="Resend email ("+left+"s)";resendTimer=setInterval(()=>{left--;if(left<=0){clearInterval(resendTimer);verificationResend.disabled=false;verificationResend.textContent="Resend email"}else verificationResend.textContent="Resend email ("+left+"s)"},1000)}
@@ -104,7 +121,7 @@ async function finishLogin(cred){
   setDoc(ref,{lastLoginAt:now,loginCount:Number(profileData.loginCount||0)+1,email:user.email||profileData.email||""},{merge:true}).catch(err=>console.warn("KARP login activity sync skipped:",err));
   setDoc(doc(db,"publicProfiles",user.uid),{uid:user.uid,name:user.displayName||user.email?.split("@")[0]||profileData.name||"User",nameLower:String(user.displayName||user.email?.split("@")[0]||profileData.name||"User").trim().toLowerCase(),photoURL:user.photoURL||profileData.photoURL||"",isAdmin:existingRole==="admin",updatedAt:now},{merge:true}).catch(err=>console.warn("KARP public profile sync skipped:",err));
   notice.className="notice success";notice.textContent="Signed in successfully. Opening your account…";
-  setTimeout(()=>location.replace(existingRole==="admin"?"/admin.html":"/account.html"),350);
+  setTimeout(()=>location.replace(authSuccessTarget(existingRole==="admin"?"/admin.html":"/account.html")),350);
   return true;
 }
 async function handleGoogleResult(result){
