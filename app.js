@@ -443,7 +443,7 @@ async function api(path, opts = {}) {
       if(!rawExam)return null;
       const s=sub.data()||{},safe=publicExam(rawExam);
       const reviewQuestions=(rawExam.questions||[]).map(q=>({...q}));
-      return {examId,title:safe.titleEn||safe.title||'',titleEn:safe.titleEn||safe.title||'',titleAz:safe.titleAz||'',submittedAt:s.submittedAt,attemptId:s.attemptId||null,answers:s.answers||{},questions:reviewQuestions};
+      return {examId,title:safe.titleEn||safe.title||'',titleEn:safe.titleEn||safe.title||'',titleAz:safe.titleAz||'',submittedAt:s.submittedAt,durationSeconds:s.durationSeconds==null?null:Number(s.durationSeconds)||0,attemptId:s.attemptId||null,answers:s.answers||{},questions:reviewQuestions};
     }).filter(Boolean);
     history.sort((a,b)=>new Date(b.submittedAt)-new Date(a.submittedAt));
     return {history};
