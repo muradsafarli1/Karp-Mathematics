@@ -207,8 +207,9 @@ service cloud.firestore {
             || (signedIn()
               && get(/databases/$(database)/documents/sharedMocks/$(shareId)/participants/$(request.auth.uid)).data.status == 'completed'
               && get(/databases/$(database)/documents/sharedMocks/$(shareId)/participants/$(request.auth.uid)).data.rewardProcessed == true);
-          allow create, update, delete: if isAdmin()
-            || (signedIn() && getAfter(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid);
+          allow create, update, delete: if (signedIn()
+              && get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid)
+            || isAdmin();
         }
       }
     }
