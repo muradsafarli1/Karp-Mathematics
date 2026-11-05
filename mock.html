@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KARP — Mocks</title>
 <link rel="stylesheet" href="/style.css">
-<script src="/app.js?v=20261101mobile1"></script><script src="/mathnet-v8.js?v=13"></script>
+<script src="/app.js?v=20261105streak1"></script><script src="/mathnet-v8.js?v=13"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
 
@@ -633,6 +633,7 @@
     }
     finished=false;
     mock.endAt=mock.endAt||Date.now()+Number(mock.minutes||60)*60000;
+    mock.startedAtMs=Number(mock.startedAtMs||0)||Number(mock.endAt)-Number(mock.minutes||60)*60000;
     seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));
     await activeSave();installGuard(true);renderSession();clearInterval(timer);timer=setInterval(tick,1000);
   }
@@ -669,7 +670,7 @@
   }
   async function restartMock(item){
     const fresh=JSON.parse(JSON.stringify(item||{}));
-    fresh.id='mock-'+Date.now()+'-'+Math.floor(Math.random()*10000);delete fresh.completedAt;delete fresh.savedAt;delete fresh.timedOut;delete fresh.endAt;fresh.status='draft';
+    fresh.id='mock-'+Date.now()+'-'+Math.floor(Math.random()*10000);delete fresh.completedAt;delete fresh.savedAt;delete fresh.timedOut;delete fresh.endAt;delete fresh.startedAtMs;fresh.status='draft';
     await startMock(fresh);
   }
 
@@ -699,6 +700,14 @@
       if(mock.sharedShareId){
         const reward=await completeSharedMockAttempt();
         mock.gemRewarded=!!(reward?.awarded||reward?.already);
+        if(mock.gemRewarded&&typeof showKarpGemCelebration==='function'){
+          showKarpGemCelebration({
+            amount:1,
+            title:'Shared mock completed!',
+            message:'You earned 1 Gem, and the mock author received 1 Gem too. Great work finishing the full attempt.',
+            rewardKey:'shared-mock:'+mock.sharedShareId+':'+mockAuth.currentUser.uid
+          });
+        }
         if(reward?.awarded)toast('Mock completed! +1 Gem for you and +1 Gem for the author.');
         try{
           await loadSharedMockSolutions(mock);
@@ -714,6 +723,13 @@
       mock={...mock,completedAt:new Date().toISOString(),timedOut:!!auto,status:'completed'};
       let historyError=null;
       try{await saveFinished()}catch(error){historyError=error;console.error('Mock completed, but history persistence failed:',error)}
+      const elapsedMs=Math.max(0,Date.now()-Number(mock.startedAtMs||Date.now()));
+      const minimumWorkMs=Math.min(5*60000,Math.max(60*1000,Number(mock.minutes||60)*60000*.25));
+      if(mock.sharedShareId||elapsedMs>=minimumWorkMs){
+        if(typeof karpRecordStreakActivity==='function'){
+          await karpRecordStreakActivity('mock_completed',{mockId:String(mock.id||'')}).catch(error=>console.warn('Mock completed, but streak activity could not be recorded:',error));
+        }
+      }
       window.__karpMockFsCleanup?.();window.__karpMockFsCleanup=null;
       if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
       renderReview(mock);
