@@ -123,6 +123,9 @@ html[data-theme="light"] .detail-content{color:#17191c!important}
         const record={...saveRecord(),dates};
         await karpUserRecord('solved',key,record);
         cloudSolved[key]=record;
+        if(typeof karpRecordStreakActivity==='function'){
+          await karpRecordStreakActivity('problem_solved',{problemId:key}).catch(error=>console.warn('Solved problem saved, but streak activity could not be recorded:',error));
+        }
       }
       try{
         const {auth}=await fb();await authReady();
