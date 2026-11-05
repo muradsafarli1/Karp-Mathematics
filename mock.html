@@ -484,7 +484,7 @@
       const data=snap.data()||{};
       if(data.status==='completed'&&data.rewardProcessed===true)throw new Error('You have already completed this shared mock.');
       if(data.status!=='active')throw new Error('This shared mock attempt is no longer available.');
-      return data;
+      return {...data,endsAtMs:sharedAttemptEndMs(data)};
     }
     const profile=await me().catch(()=>null);
     const startedAtMs=Date.now();
