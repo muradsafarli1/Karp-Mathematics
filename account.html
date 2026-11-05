@@ -126,8 +126,19 @@
   });
   const solvedDates=solved.flatMap(p=>Array.isArray(p.dates)?p.dates:[]);
   solvedDates.forEach(value=>addActivityDay(value,'problem_solved'));
-  mocks.filter(item=>item.completedAt||item.status==='completed').forEach(item=>addActivityDay(item.completedAt||item.createdAt,'mock_completed'));
-  exams.forEach(item=>addActivityDay(item.submittedAt,'exam_completed'));
+  function mockCountsForStreak(item){
+    if(!item?.completedAt&&item?.status!=='completed')return false;
+    if(item.sharedShareId)return true;
+    const completedMs=Date.parse(item.completedAt||item.updatedAt||'');
+    const startedMs=Number(item.startedAtMs||0)||(Number(item.endAt||0)-Number(item.minutes||60)*60000);
+    if(startedMs>0&&Number.isFinite(completedMs)){
+      const requiredMs=Math.min(5*60000,Math.max(60000,Number(item.minutes||60)*60000*.25));
+      return completedMs-startedMs>=requiredMs;
+    }
+    return true;
+  }
+  mocks.filter(mockCountsForStreak).forEach(item=>addActivityDay(item.completedAt||item.createdAt,'mock_completed'));
+  exams.filter(item=>item.durationSeconds==null||Number(item.durationSeconds)>=60).forEach(item=>addActivityDay(item.submittedAt,'exam_completed'));
   const activeDayKeys=[...activityByDay.keys()].sort();
   const activeDays=new Set(activeDayKeys);
   const todayKey=localDayKey(new Date()),yesterdayKey=shiftDay(todayKey,-1);
@@ -187,7 +198,7 @@
     '<section class="streak-dashboard"><div class="streak-top"><div><div class="streak-kicker">DAILY PRACTICE</div><h2 class="streak-title">Keep your streak alive</h2><div class="streak-subtitle">'+escapeHtml(streakMessage)+'</div></div><div class="streak-current"><span class="streak-current-flame">🔥</span><strong>'+streak+'</strong><small>DAY STREAK</small></div></div>'+
     '<div class="streak-stats"><div class="streak-stat"><span>Best streak</span><strong>'+bestStreak+' days</strong></div><div class="streak-stat"><span>Active days</span><strong>'+activeDays.size+'</strong></div><div class="streak-stat"><span>Today</span><strong>'+(activeToday?'Completed ✓':'Not yet')+'</strong></div></div>'+
     '<div class="streak-calendar-head"><strong>Last six weeks</strong><span>One meaningful activity keeps a day active</span></div><div class="streak-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="streak-calendar">'+streakCalendarCells.join('')+'</div>'+
-    '<div class="streak-footnote"><strong>What counts?</strong> Marking a problem solved, completing a mock after real work, submitting an exam after at least one minute, or sending a Daily Problem proof (80+ characters). Simply visiting KARP, viewing pages, saving problems, or leaving a mock open does not count.</div></section>'+
+    '<div class="streak-footnote"><strong>What counts?</strong> Marking a problem solved, completing a mock after at least 1 minute of work (or 25% of its duration, capped at 5 minutes), submitting an exam after at least 1 minute, or sending a Daily Problem proof (80+ characters). Simply visiting KARP, viewing pages, saving problems, or leaving a mock open does not count.</div></section>'+
     '<section class="dashboard"><div class="dashboard-head"><div><h2>Solved activity</h2><p>Daily, monthly and yearly progress.</p></div><div class="switch" id="activity-switch"><button class="active" data-mode="daily">Daily</button><button data-mode="monthly">Monthly</button><button data-mode="yearly">Yearly</button></div></div><div id="activity-chart">'+chartHtml('daily')+'</div></section>'+
     '<section class="dashboard"><div class="dashboard-head"><div><h2>Topic distribution</h2><p>How your solved problems are distributed across olympiad topics.</p></div></div>'+
       '<div class="topic-cards"><div class="topic-card"><small>Algebra</small><strong>'+totals.A+'</strong></div><div class="topic-card"><small>Geometry</small><strong>'+totals.G+'</strong></div><div class="topic-card"><small>Combinatorics</small><strong>'+totals.C+'</strong></div><div class="topic-card"><small>Number Theory</small><strong>'+totals.N+'</strong></div></div>'+
