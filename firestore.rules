@@ -151,13 +151,12 @@ service cloud.firestore {
           || (signedIn() && get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid);
         allow list: if isAdmin()
           || (signedIn() && get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid);
-        allow create: if signedIn()
-          && request.auth.token.email_verified == true
+        allow create: if verifiedAccount(participantUid)
           && exists(/databases/$(database)/documents/users/$(participantUid))
           && get(/databases/$(database)/documents/users/$(participantUid)).data.requiresEmailVerification != true
           && request.auth.uid == participantUid
           && participantUid != get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid
-          && request.resource.data.keys().hasOnly(['shareId','ownerUid','participantUid','ownerName','participantName','participantEmail','mockTitle','minutes','startedAt','endsAtMs','status','rewardProcessed'])
+          && request.resource.data.keys().hasOnly(['shareId','ownerUid','participantUid','ownerName','participantName','participantEmail','mockTitle','minutes','startedAt','status','rewardProcessed'])
           && request.resource.data.shareId == shareId
           && request.resource.data.ownerUid == get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid
           && request.resource.data.participantUid == participantUid
@@ -170,9 +169,6 @@ service cloud.firestore {
           && request.resource.data.participantName is string
           && request.resource.data.participantEmail is string
           && request.resource.data.startedAt == request.time
-          && request.resource.data.endsAtMs is int
-          && request.resource.data.endsAtMs >= request.time.toMillis() + request.resource.data.minutes * 60000 - 15000
-          && request.resource.data.endsAtMs <= request.time.toMillis() + request.resource.data.minutes * 60000 + 15000
           && request.resource.data.status == 'active'
           && request.resource.data.rewardProcessed == false;
         allow update: if verifiedAccount(participantUid)
@@ -182,11 +178,11 @@ service cloud.firestore {
           && request.resource.data.status == 'completed'
           && request.resource.data.rewardProcessed == true
           && request.resource.data.completedAt == request.time
-          // The attempt end is calculated on the participant's device. The create rule
-          // already constrains client/server clock skew to +/-15 seconds, so apply the
-          // same bounded tolerance here; otherwise a fast client clock can make a
-          // legitimate full-duration attempt fail with permission-denied at timeout.
-          && request.time.toMillis() >= resource.data.endsAtMs - 15000
+          // The full duration is measured from the server-assigned start timestamp.
+          // A participant cannot move the deadline by changing their device clock.
+          && resource.data.startedAt is timestamp
+          && resource.data.minutes is int
+          && request.time.toMillis() >= resource.data.startedAt.toMillis() + resource.data.minutes * 60000
           && exists(/databases/$(database)/documents/users/$(resource.data.ownerUid))
           && exists(/databases/$(database)/documents/users/$(resource.data.participantUid))
           && getAfter(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.gems
