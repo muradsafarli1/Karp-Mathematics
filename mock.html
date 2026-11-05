@@ -121,7 +121,7 @@
     document.body.innerHTML='<main class="mock-page"><section class="pagehero"><div class="wrap"><h1>'+esc(item.title||'Mock')+'</h1><p class="lead">'+esc((item.questions?.length||0)+' questions · '+(item.minutes||0)+' minutes · '+dateText(item.completedAt))+'</p>'+(item.sharedShareId&&item.gemRewarded?'<p class="lead" style="margin-top:10px">✓ Your +1 Gem has been credited. The mock author also received +1 Gem.</p>':'')+'</div></section><section class="section"><div class="mock-wrap"><section class="mock-review"><div class="review-head"><div><div class="mock-kicker">COMPLETED MOCK · QUESTIONS & SOLUTIONS</div></div><button class="btn" id="review-back">← Back to Mocks</button></div><div id="review-questions"></div></section></div></section></main>';
     const host=document.getElementById('review-questions');
     (item.questions||[]).forEach((q,i)=>{
-      const sec=document.createElement('section');sec.className='review-question';sec.innerHTML='<h3>Question '+(i+1)+'</h3><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+esc(q.imageUrl)+'" alt="Problem image" loading="lazy" style="margin:10px 0 16px">':'')+'<div class="review-statement">'+md(q.statement)+'</div><div class="review-solution"><button class="btn">Show solution</button><div class="review-solution-body">'+((q.solutions||[]).map((s,j)=>'<div style="margin-top:8px"><div class="mock-kicker">SOLUTION '+(j+1)+'</div>'+md(s)+'</div>').join('')||'<div class="muted">No supplied solution.</div>')+'</div></div>';
+      const sec=document.createElement('section');sec.className='review-question';sec.innerHTML='<h3>Question '+(i+1)+'</h3><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+esc(q.imageUrl)+'" alt="Problem image" loading="lazy" style="margin:10px 0 16px">':'')+'<div class="review-statement">'+md(q.statement)+'</div><div class="review-solution"><button class="btn">Show solution</button><div class="review-solution-body">'+((q.solutions||[]).map((s,j)=>'<div style="margin-top:8px"><div class="mock-kicker">SOLUTION '+(j+1)+'</div>'+md(s)+'</div>').join('')||(item.sharedShareId&&item.solutionsLoaded===false?'<div class="muted">Solutions could not be loaded yet. Use the retry control above.</div>':'<div class="muted">No supplied solution.</div>'))+'</div></div>';
       const b=sec.querySelector('button'),body=sec.querySelector('.review-solution-body');b.onclick=()=>{const open=body.classList.toggle('open');b.textContent=open?'Hide solution':'Show solution';if(open)renderMath(body)};host.appendChild(sec);
     });
     if(item.sharedShareId&&item.solutionsLoaded===false){
@@ -541,7 +541,11 @@
     batch.update(attemptRef,{status:'completed',completedAt:serverTimestamp(),rewardProcessed:true});
     batch.update(doc(db,'users',attempt.ownerUid),{gems:increment(1),lastSharedMockReward:rewardFor(attempt.ownerUid)});
     batch.update(doc(db,'users',participantUid),{gems:increment(1),lastSharedMockReward:rewardFor(participantUid)});
-    await batch.commit();
+    try{await batch.commit()}
+    catch(error){
+      console.error('Shared mock completion and Gem batch rejected by Firestore:',error);
+      throw new Error('The completion/Gem transaction was rejected ('+(error.code||'firestore')+'): '+(error.message||error)+'. Neither Gem reward is confirmed.');
+    }
     return {awarded:true};
   }
 
