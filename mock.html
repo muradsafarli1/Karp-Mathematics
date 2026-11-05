@@ -42,7 +42,7 @@
 <script>
 (async()=>{
   const labels={A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'},qs=new URLSearchParams(location.search),reviewId=qs.get('review'),savedId=qs.get('saved'),contestId=qs.get('contestId'),shareId=qs.get('share');
-  let mock=null,timer=null,seconds=0,finished=false,leaveGuard=false,lastSavedBucket=-1,cloudMockHistory=[],manualQuestions=[],customLatexQuestions=[],manualSearchTimer=0,contestSource=null,draftMockTitle='';
+  let mock=null,timer=null,seconds=0,finished=false,leaveGuard=false,lastSavedBucket=-1,cloudMockHistory=[],manualQuestions=[],customLatexQuestions=[],manualSearchTimer=0,contestSource=null,draftMockTitle='',mockAuth=null;
 
   function esc(x){return escapeHtml(x==null?'':String(x))}
   function mathSource(s){return String(s||'').replace(/\\$\\$([\\s\\S]*?)\\$\\$/g,'\\\\[$1\\\\]').replace(/(^|[^\\\\])\\$([^$\\n]+)\\$/g,'$1\\\\($2\\\\)')}
@@ -179,7 +179,6 @@
     shell('Mocks','Contest Mock','<main class="mock-page"><section class="section"><div class="mock-wrap"><section class="mock-builder"><div class="mock-head"><div><div class="mock-kicker">CONTEST → MOCK</div><h2>'+esc(title)+'</h2><p>'+esc(source.questions.length+' contest problems · Choose only your time, then start a private mock.')+'</p></div><a class="btn" href="/contest.html?id='+encodeURIComponent(source.contest.id)+'">← Back to Contest</a></div><div class="mock-grid"><div class="mock-field"><label class="mock-label">Questions</label><div style="font-family:\'Space Grotesk\';font-size:28px;font-weight:800">'+source.questions.length+'</div><div class="muted">All contest problems are included.</div></div><div class="mock-field"><label class="mock-label">Time limit</label><input id="contest-mock-minutes" class="input" type="number" min="1" max="600" value="'+esc(source.contest.mockMinutes||Math.max(60,source.questions.length*25))+'"></div><div class="mock-field wide"><div class="muted">Nothing is generated or replaced. This uses the exact contest problem set as your own timed mock.</div></div></div><div class="mock-actions"><span id="contest-mock-status" class="mock-status"></span><button class="btn primary" id="contest-start-mock">Start Mock</button></div></section></div></section></main>');
     document.getElementById('contest-start-mock').onclick=async()=>{
       const status=document.getElementById('contest-mock-status'),minutesValue=Math.max(1,Math.min(600,Number(document.getElementById('contest-mock-minutes').value||60)));
-      if(!(await ensureSignedIn('Use contest as a mock','Sign in or create an account before starting a private contest mock.')))return;
       status.textContent='Starting mock…';
       await startMock({id:'mock-contest-'+Date.now(),title:title+' — Mock',minutes:minutesValue,questions:source.questions.map(q=>({...q})),createdAt:new Date().toISOString(),status:'draft',categories:[],difficulty:'any',sequence:null,fixedQuestions:true,sourceContestId:String(source.contest.id)});
     };
@@ -267,7 +266,9 @@
     return url;
   }
   async function loadSharedMock(id){
-    const {db}=await fb();
+    const {db,auth}=await fb();
+    await authReady();
+    mockAuth=auth;
     const {doc,getDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
     const snap=await getDoc(doc(db,'sharedMocks',id));
     if(!snap.exists())throw new Error('This shared mock does not exist or is no longer available.');
@@ -286,7 +287,7 @@
     const saved=mock.status==='saved'||mock.status==='active';
     mock.title=String(mock.title||mock.name||draftMockTitle||'KARP Mock').trim()||'KARP Mock';
     const actions=isSharedView
-      ? '<a class="btn" href="/mock.html">← Back to Mocks</a><button class="btn primary" id="start-mock">Start Mock</button>'
+      ? '<a class="btn" href="/mock.html">← Back to Mocks</a><button class="btn primary" id="start-mock">'+(mockAuth?.currentUser?'Start Mock':'Sign in to Start')+'</button>'
       : '<button class="btn" id="share-mock">↗ Share Mock</button><button class="btn" id="save-mock">'+(saved?'Save changes':'Save Mock')+'</button><button class="btn primary" id="start-mock">Start Mock</button>';
     let html='<div class="mock-preview"><div class="preview-head"><div><div class="mock-kicker">'+(saved?'SAVED':'READY')+'</div><h2>'+esc(mock.title)+'</h2><div class="muted">'+mock.questions.length+' questions · '+mock.minutes+' minutes</div>'+(isSharedView?'<div class="saved-note">Shared by '+esc(mock.sharedBy||'KARP User')+'. Sign in or create a KARP account to start this mock.</div>':'')+(saved?'<div class="saved-note">Saved in your KARP account.</div>':'')+'</div><div class="preview-actions">'+actions+'</div></div>';
     mock.questions.forEach((q,i)=>html+='<section class="preview-question"><div class="preview-qhead"><div><div class="mock-kicker">QUESTION '+(i+1)+' · '+esc(q.custom?'Custom':(q.sourceType==='contest'?'Contest':(labels[q.category]||'Problem')))+'</div><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div></div>'+(q.custom||q.fixed||isSharedView?'':'<button class="btn" data-change="'+i+'">Change</button>')+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+esc(q.imageUrl)+'" alt="Problem image" loading="lazy">':'')+'<div class="preview-statement">'+md(q.statement)+'</div></section>');
@@ -325,7 +326,7 @@
 
   async function startMock(item){
     if(item&&item.id)mock=JSON.parse(JSON.stringify(item));if(!mock)return;
-    if(!(await ensureSignedIn('Start your mock','Sign in or create a KARP account before starting a mock.')))return;
+    if(!mockAuth?.currentUser){showAuthPrompt('Sign in','Sign in or create a KARP account before starting a mock.');return;}
     const fullscreenAttempt=requestMockFullscreen();
     if(!(await fullscreenAttempt))return;
     try{await saveMockDraft(mock)}catch(e){toast(e.message||'Could not save mock.');return}
@@ -387,6 +388,9 @@
     // Public shared previews must load independently of any signed-in account.
     if(shareId){await loadSharedMock(shareId);return;}
     await karpMigrateLocalState();
+    const {auth}=await fb();
+    await authReady();
+    mockAuth=auth;
     const cloud=await karpUserState();
     cloudMockHistory=Array.isArray(cloud.mocks)?cloud.mocks:[];
     cloudActiveMock=cloud.activeMock||null;
