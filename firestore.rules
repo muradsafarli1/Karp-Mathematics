@@ -48,6 +48,26 @@ service cloud.firestore {
     function conversationMember(data) {
       return signedIn() && data.members is list && request.auth.uid in data.members;
     }
+    // Gem changes from shared mocks are only valid in the same atomic write
+    // that completes the participant's one-per-share attempt.
+    function sharedMockRewardUpdate(uid) {
+      let reward = request.resource.data.lastSharedMockReward;
+      let attempt = getAfter(/databases/$(database)/documents/sharedMocks/$(reward.shareId)/participants/$(request.auth.uid)).data;
+      return signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gems','lastSharedMockReward'])
+        && request.resource.data.gems == (resource.data.gems is number ? resource.data.gems : 0) + 1
+        && reward is map
+        && reward.shareId is string
+        && reward.participantUid == request.auth.uid
+        && reward.recipientUid == uid
+        && reward.amount == 1
+        && attempt.status == 'completed'
+        && attempt.rewardProcessed == true
+        && attempt.shareId == reward.shareId
+        && attempt.participantUid == request.auth.uid
+        && attempt.ownerUid == reward.ownerUid
+        && (uid == attempt.ownerUid || uid == attempt.participantUid);
+    }
 
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
@@ -65,13 +85,15 @@ service cloud.firestore {
         || (signedIn()
           && request.auth.uid == uid
           && request.resource.data.role == resource.data.role
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['gems','lastSharedMockReward'])
           && (
             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['requiresEmailVerification'])
             || (
               request.auth.token.email_verified == true
               && request.resource.data.requiresEmailVerification == false
             )
-          ));
+          ))
+        || sharedMockRewardUpdate(uid);
       allow delete: if isAdmin();
 
       match /solved/{problemId} {
@@ -102,7 +124,7 @@ service cloud.firestore {
     // but visitors cannot enumerate shared mocks.
     match /sharedMocks/{shareId} {
       allow get: if true;
-      allow list: if false;
+      allow list: if isAdmin();
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.id == shareId
@@ -121,6 +143,73 @@ service cloud.firestore {
         && request.resource.data.ownerUid == resource.data.ownerUid
         && request.resource.data.id == resource.data.id;
       allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      // One participant document per account and shared link: no repeat claims.
+      match /participants/{participantUid} {
+        allow get: if isAdmin()
+          || (signedIn() && request.auth.uid == participantUid)
+          || (signedIn() && get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid);
+        allow list: if isAdmin()
+          || (signedIn() && get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid);
+        allow create: if signedIn()
+          && request.auth.uid == participantUid
+          && participantUid != get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid
+          && request.resource.data.keys().hasOnly(['shareId','ownerUid','participantUid','ownerName','participantName','participantEmail','mockTitle','minutes','startedAt','endsAtMs','status','rewardProcessed'])
+          && request.resource.data.shareId == shareId
+          && request.resource.data.ownerUid == get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid
+          && request.resource.data.participantUid == participantUid
+          && request.resource.data.mockTitle == get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.title
+          && request.resource.data.minutes == get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.minutes
+          && request.resource.data.ownerName is string
+          && request.resource.data.participantName is string
+          && request.resource.data.participantEmail is string
+          && request.resource.data.startedAt == request.time
+          && request.resource.data.endsAtMs is int
+          && request.resource.data.endsAtMs >= request.time.toMillis() + request.resource.data.minutes * 60000 - 15000
+          && request.resource.data.endsAtMs <= request.time.toMillis() + request.resource.data.minutes * 60000 + 15000
+          && request.resource.data.status == 'active'
+          && request.resource.data.rewardProcessed == false;
+        allow update: if signedIn()
+          && request.auth.uid == participantUid
+          && resource.data.status == 'active'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','completedAt','rewardProcessed'])
+          && request.resource.data.status == 'completed'
+          && request.resource.data.rewardProcessed == true
+          && request.resource.data.completedAt == request.time
+          && request.time.toMillis() >= resource.data.endsAtMs
+          && exists(/databases/$(database)/documents/users/$(resource.data.ownerUid))
+          && exists(/databases/$(database)/documents/users/$(resource.data.participantUid))
+          && getAfter(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.gems
+            == (get(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.gems is number
+              ? get(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.gems : 0) + 1
+          && getAfter(/databases/$(database)/documents/users/$(resource.data.participantUid)).data.gems
+            == (get(/databases/$(database)/documents/users/$(resource.data.participantUid)).data.gems is number
+              ? get(/databases/$(database)/documents/users/$(resource.data.participantUid)).data.gems : 0) + 1
+          && getAfter(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.lastSharedMockReward.shareId == shareId
+          && getAfter(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.lastSharedMockReward.participantUid == participantUid
+          && getAfter(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.lastSharedMockReward.recipientUid == resource.data.ownerUid
+          && getAfter(/databases/$(database)/documents/users/$(resource.data.participantUid)).data.lastSharedMockReward.shareId == shareId
+          && getAfter(/databases/$(database)/documents/users/$(resource.data.participantUid)).data.lastSharedMockReward.participantUid == participantUid
+          && getAfter(/databases/$(database)/documents/users/$(resource.data.participantUid)).data.lastSharedMockReward.recipientUid == resource.data.participantUid;
+        allow delete: if isAdmin();
+
+        // Full solutions remain private until this participant's timer has ended
+        // and the completion/reward transaction has succeeded.
+        match /solutions/{questionId} {
+          allow get, list: if isAdmin()
+            || (signedIn() && get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid)
+            || (signedIn()
+              && get(/databases/$(database)/documents/sharedMocks/$(shareId)/participants/$(request.auth.uid)).data.status == 'completed'
+              && get(/databases/$(database)/documents/sharedMocks/$(shareId)/participants/$(request.auth.uid)).data.rewardProcessed == true);
+          allow create, update, delete: if isAdmin()
+            || (signedIn() && getAfter(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid);
+        }
+      }
+    }
+
+    // Collection-group access used by the Admin > Shared Mocks dashboard only.
+    match /{path=**}/participants/{participantUid} {
+      allow read: if isAdmin();
     }
 
     match /examSessions/{sessionId} {
