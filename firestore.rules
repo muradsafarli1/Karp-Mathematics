@@ -152,12 +152,8 @@ service cloud.firestore {
           || (signedIn() && get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid);
         allow list: if isAdmin()
           || (signedIn() && get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid);
-        allow create: if verifiedAccount(participantUid)
-          && exists(/databases/$(database)/documents/users/$(participantUid))
-          && (
-            !get(/databases/$(database)/documents/users/$(participantUid)).data.keys().hasAny(['requiresEmailVerification'])
-            || get(/databases/$(database)/documents/users/$(participantUid)).data.requiresEmailVerification == false
-          )
+        allow create: if signedIn()
+          && request.auth.token.email_verified == true
           && request.auth.uid == participantUid
           && participantUid != get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid
           && request.resource.data.keys().hasOnly(['shareId','ownerUid','participantUid','ownerName','participantName','participantEmail','mockTitle','minutes','startedAt','status','rewardProcessed'])
@@ -175,7 +171,8 @@ service cloud.firestore {
           && request.resource.data.startedAt == request.time
           && request.resource.data.status == 'active'
           && request.resource.data.rewardProcessed == false;
-        allow update: if verifiedAccount(participantUid)
+        allow update: if signedIn()
+          && request.auth.token.email_verified == true
           && request.auth.uid == participantUid
           && resource.data.status == 'active'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','completedAt','rewardProcessed'])
