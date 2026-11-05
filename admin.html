@@ -323,7 +323,7 @@ async function startAdminPresence(db,u){
     // Let the short presence lease expire naturally; another open KARP tab may still be active.
   }catch(e){console.warn('KARP admin presence could not start:',e)}
 }
-async function init(){const u=await requireAdmin();if(!u)return;if(state.type==='journals'||state.type==='meetings')state.type='problems';let db;try{({db}=await fb())}catch(e){console.warn('Could not initialize Admin Firestore connection',e)}document.getElementById('root').innerHTML=`<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><div class="actions"><span style="color:#aeb7c8">${esc(u.name)}</span><a class="btn" href="/">View site</a><button class="btn" onclick="logout()">Log out</button></div></div></header><main class="admin"><div class="wrap"><div class="admin-grid"><aside class="admin-side"><button class="active" data-type="problems">Problems</button><button data-type="contests">Contests</button><button data-type="articles">Articles</button><button data-type="exams">Exams</button><button data-type="dailyProblem">Daily Problem</button><button data-type="videos">Videos</button><button type="button" onclick="location.href='/mathnet-sync.html'">MathNet Sync</button><button data-type="mocks">Mocks</button><button data-type="books">Books</button><button data-type="users">Users</button><button data-type="chat">Chat & Messages</button><button data-type="about">About Us</button></aside><section class="admin-main" id="main"></section></div></div></main>`;startAdminPresence(db,u);document.querySelectorAll('.admin-side button').forEach(b=>b.onclick=()=>{if(!b.dataset.type)return;syncCurrent();if(state.type==='users'&&b.dataset.type!=='users')__usersStopLive();if(b.dataset.type==='users'&&state.type!=='users'){try{localStorage.setItem('karp_admin_previous_section',state.type)}catch{}}document.querySelectorAll('.admin-side button').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.type=b.dataset.type;state.editing=null;try{localStorage.setItem('karp_admin_section',state.type);const u=new URL(location.href);u.searchParams.set('section',state.type);history.replaceState(null,'',u)}catch{}render()});document.querySelectorAll('.admin-side button').forEach(b=>b.classList.toggle('active',b.dataset.type===state.type));render()}
+async function init(){const u=await requireAdmin();if(!u)return;if(state.type==='journals'||state.type==='meetings')state.type='problems';let db;try{({db}=await fb())}catch(e){console.warn('Could not initialize Admin Firestore connection',e)}document.getElementById('root').innerHTML=`<header class="top"><div class="wrap nav"><a class="brand" href="/">KARP</a><div class="actions"><span style="color:#aeb7c8">${esc(u.name)}</span><a class="btn" href="/">View site</a><button class="btn" onclick="logout()">Log out</button></div></div></header><main class="admin"><div class="wrap"><div class="admin-grid"><aside class="admin-side"><button class="active" data-type="problems">Problems</button><button data-type="contests">Contests</button><button data-type="articles">Articles</button><button data-type="exams">Exams</button><button data-type="dailyProblem">Daily Problem</button><button data-type="videos">Videos</button><button type="button" onclick="location.href='/mathnet-sync.html'">MathNet Sync</button><button data-type="mocks">Mocks</button><button data-type="sharedMocks">Shared Mocks</button><button data-type="books">Books</button><button data-type="users">Users</button><button data-type="chat">Chat & Messages</button><button data-type="about">About Us</button></aside><section class="admin-main" id="main"></section></div></div></main>`;startAdminPresence(db,u);document.querySelectorAll('.admin-side button').forEach(b=>b.onclick=()=>{if(!b.dataset.type)return;syncCurrent();if(state.type==='users'&&b.dataset.type!=='users')__usersStopLive();if(b.dataset.type==='users'&&state.type!=='users'){try{localStorage.setItem('karp_admin_previous_section',state.type)}catch{}}document.querySelectorAll('.admin-side button').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.type=b.dataset.type;state.editing=null;try{localStorage.setItem('karp_admin_section',state.type);const u=new URL(location.href);u.searchParams.set('section',state.type);history.replaceState(null,'',u)}catch{}render()});document.querySelectorAll('.admin-side button').forEach(b=>b.classList.toggle('active',b.dataset.type===state.type));render()}
 document.addEventListener('DOMContentLoaded',init);
 function examList(d){return Array.isArray(d)?d:(d?.exams||[])}
 function presenceMillis(v){return v?.toMillis?v.toMillis():Number(v)||0}
@@ -1624,6 +1624,56 @@ async function render(){
 
   if(state.type==='books'){
     await renderBooksAdmin();
+    return;
+  }
+
+  if(state.type==='sharedMocks'){
+    try{
+      const {db}=await fb();
+      const {collection,collectionGroup,getDocs,limit,query}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+      const [shareSnap,attemptSnap,userSnap]=await Promise.all([
+        getDocs(query(collection(db,'sharedMocks'),limit(2000))),
+        getDocs(query(collectionGroup(db,'participants'),limit(5000))),
+        getDocs(query(collection(db,'users'),limit(5000)))
+      ]);
+      const usersById=new Map(userSnap.docs.map(x=>[x.id,x.data()||{}]));
+      const shares=shareSnap.docs.map(x=>({id:x.id,...(x.data()||{})}));
+      const attempts=attemptSnap.docs.map(x=>({id:x.id,...(x.data()||{})}));
+      const byShare=new Map();
+      attempts.forEach(a=>{const id=String(a.shareId||'');if(!id)return;if(!byShare.has(id))byShare.set(id,[]);byShare.get(id).push(a)});
+      const fmt=v=>{
+        if(!v)return'—';
+        const d=v?.toDate?v.toDate():(typeof v==='number'?new Date(v):new Date(v));
+        return Number.isNaN(d.getTime())?'—':d.toLocaleString('en-GB',{timeZone:'Asia/Baku',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})+' (UTC+4)';
+      };
+      const completed=attempts.filter(a=>a.status==='completed'&&a.rewardProcessed===true);
+      const rows=shares.flatMap(share=>{
+        const list=(byShare.get(share.id)||[]).slice().sort((a,b)=>Number(b.endsAtMs||0)-Number(a.endsAtMs||0));
+        const owner=usersById.get(String(share.ownerUid||''))||{};
+        const ownerName=owner.name||share.ownerName||'KARP Member';
+        const ownerEmail=owner.email||share.ownerEmail||'';
+        const link='https://karpmathematics.org/mock.html?share='+encodeURIComponent(share.id);
+        if(!list.length)return [{share,ownerName,ownerEmail,attempt:null,link}];
+        return list.map(attempt=>{
+          const participant=usersById.get(String(attempt.participantUid||''))||{};
+          return {share,ownerName,ownerEmail,attempt,link,participantName:participant.name||attempt.participantName||'KARP Member',participantEmail:participant.email||attempt.participantEmail||''};
+        });
+      }).sort((a,b)=>Number(b.attempt?.endsAtMs||0)-Number(a.attempt?.endsAtMs||0));
+      m.innerHTML='<div class="admin-head"><div><h2>Shared Mocks</h2><span class="admin-count">Referral activity · completion rewards</span></div><button class="btn" id="refresh-shared-mocks">Refresh</button></div>'+
+        '<div class="bigcard admin-kpi-bar"><div><strong>'+shares.length+'</strong><span>Share links</span></div><div><strong>'+attempts.length+'</strong><span>Started attempts</span></div><div><strong>'+completed.length+'</strong><span>Fully completed</span></div><div><strong>'+(completed.length*2)+'</strong><span>Gems awarded in total</span></div></div>'+
+        '<div class="visitor-analytics-table-wrap"><table class="visitor-analytics-table" style="min-width:1050px"><thead><tr><th>Shared mock</th><th>Shared by</th><th>Used by</th><th>Started</th><th>Scheduled end</th><th>Status</th><th>Gem reward</th></tr></thead><tbody>'+
+        (rows.length?rows.map(row=>{
+          const a=row.attempt;
+          const status=!a?'Not opened':(a.status==='completed'&&a.rewardProcessed?'Completed':(Number(a.endsAtMs||0)>Date.now()?'In progress':'Time elapsed · not claimed'));
+          const rewards=a?.status==='completed'&&a.rewardProcessed?'1 to author + 1 to participant':'—';
+          return '<tr><td><strong>'+escapeHtml(row.share.title||'KARP Mock')+'</strong><div class="visitor-meta"><a href="'+escapeHtml(row.link)+'" target="_blank" rel="noopener">Open shared link ↗</a></div><div class="visitor-meta">'+escapeHtml(a?.shareId||row.share.id)+'</div></td><td><div class="visitor-visitor">'+escapeHtml(row.ownerName)+'</div><div class="visitor-meta">'+escapeHtml(row.ownerEmail)+'</div></td><td><div class="visitor-visitor">'+escapeHtml(row.participantName||'—')+'</div><div class="visitor-meta">'+escapeHtml(row.participantEmail||'')+'</div></td><td>'+fmt(a?.startedAt)+'</td><td>'+fmt(a?.endsAtMs)+'</td><td><strong>'+escapeHtml(status)+'</strong></td><td>'+escapeHtml(rewards)+'</td></tr>';
+        }).join(''):'<tr><td colspan="7"><div class="visitor-empty">No shared mock links or attempts yet.</div></td></tr>')+
+        '</tbody></table></div>'+
+        '<div class="visitor-analytics" style="margin-top:12px"><div class="visitor-analytics-head"><strong>Reward rules</strong><span>One completion per account per shared link</span></div><div class="visitor-meta">Both accounts receive 1 Gem only after the full scheduled duration has elapsed and the completion transaction succeeds. Reopening a link does not reset the timer or create another reward.</div></div>';
+      document.getElementById('refresh-shared-mocks')?.addEventListener('click',render);
+    }catch(e){
+      m.innerHTML='<div class="bigcard"><h3>Could not load Shared Mocks</h3><p>'+escapeHtml(e.message||'Check Firestore permissions.')+'</p></div>';
+    }
     return;
   }
 
