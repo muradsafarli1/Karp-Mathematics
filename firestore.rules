@@ -199,18 +199,20 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/users/$(resource.data.participantUid)).data.lastSharedMockReward.recipientUid == resource.data.participantUid;
         allow delete: if isAdmin();
 
-        // Full solutions remain private until this participant's timer has ended
-        // and the completion/reward transaction has succeeded.
-        match /solutions/{questionId} {
-          allow get, list: if isAdmin()
-            || (signedIn() && get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid)
-            || (signedIn()
-              && get(/databases/$(database)/documents/sharedMocks/$(shareId)/participants/$(request.auth.uid)).data.status == 'completed'
-              && get(/databases/$(database)/documents/sharedMocks/$(shareId)/participants/$(request.auth.uid)).data.rewardProcessed == true);
-          allow create, update, delete: if (signedIn()
-              && get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid)
-            || isAdmin();
-        }
+
+      }
+
+      // Full solutions remain private until this participant's timer has ended
+      // and the completion/reward transaction has succeeded.
+      match /solutions/{questionId} {
+        allow get, list: if isAdmin()
+          || (signedIn() && get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid)
+          || (signedIn()
+            && get(/databases/$(database)/documents/sharedMocks/$(shareId)/participants/$(request.auth.uid)).data.status == 'completed'
+            && get(/databases/$(database)/documents/sharedMocks/$(shareId)/participants/$(request.auth.uid)).data.rewardProcessed == true);
+        allow create, update, delete: if (signedIn()
+            && get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid)
+          || isAdmin();
       }
     }
 
