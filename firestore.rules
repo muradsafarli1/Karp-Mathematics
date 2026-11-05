@@ -182,7 +182,11 @@ service cloud.firestore {
           && request.resource.data.status == 'completed'
           && request.resource.data.rewardProcessed == true
           && request.resource.data.completedAt == request.time
-          && request.time.toMillis() >= resource.data.endsAtMs
+          // The attempt end is calculated on the participant's device. The create rule
+          // already constrains client/server clock skew to +/-15 seconds, so apply the
+          // same bounded tolerance here; otherwise a fast client clock can make a
+          // legitimate full-duration attempt fail with permission-denied at timeout.
+          && request.time.toMillis() >= resource.data.endsAtMs - 15000
           && exists(/databases/$(database)/documents/users/$(resource.data.ownerUid))
           && exists(/databases/$(database)/documents/users/$(resource.data.participantUid))
           && getAfter(/databases/$(database)/documents/users/$(resource.data.ownerUid)).data.gems
