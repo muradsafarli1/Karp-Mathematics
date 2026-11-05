@@ -359,9 +359,11 @@ html[data-theme="light"] .exam-page,html[data-theme="light"] .exam-active-shell,
       clearTrackers();
       sessionCleanup?.();
       sessionCleanup=startExamSessionTracking();
-      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top"><div class="exam-active-title"><h1>'+escapeHtml(localized(exam,'title')||'Exam')+'</h1></div><div class="exam-active-timer" id="exam-timer">'+timerText(end-Date.now())+'</div><div class="exam-active-lang">'+languageSwitch()+'</div></header><div class="exam-active-body"><section class="exam-active-paper"><div id="active-questions">'+questions.map((q,i)=>questionHtml(q,i,false)).join('')+'</div><div class="exam-active-actions"><button class="btn" id="restart-exam">Restart Exam</button><button class="btn primary" id="finish-exam">Finish Exam</button></div></section></div></main>';
+      const canRestartAttempt=!!data.completedByCurrentUser;
+      document.body.innerHTML='<main class="exam-active-shell"><header class="exam-active-top"><div class="exam-active-title"><h1>'+escapeHtml(localized(exam,'title')||'Exam')+'</h1></div><div class="exam-active-timer" id="exam-timer">'+timerText(end-Date.now())+'</div><div class="exam-active-lang">'+languageSwitch()+'</div></header><div class="exam-active-body"><section class="exam-active-paper"><div id="active-questions">'+questions.map((q,i)=>questionHtml(q,i,false)).join('')+'</div><div class="exam-active-actions">'+(canRestartAttempt?'<button class="btn" id="restart-exam">Restart Exam</button>':'')+'<button class="btn primary" id="finish-exam">Finish Exam</button></div></section></div></main>';
       document.getElementById('finish-exam').onclick=()=>{if(confirm('Finish this exam now?'))finishExam('manual')};
-       document.getElementById('restart-exam').onclick=restartExam;
+      const restartButton=document.getElementById('restart-exam');
+      if(restartButton)restartButton.onclick=restartExam;
       bindLanguageSwitch(()=>renderActive());
       setKarpActivity({page:'Exam',label:'Taking exam',detail:localized(exam,'title')||'Exam',question:1});
       typesetMath(document.getElementById('active-questions'));installActivity();
