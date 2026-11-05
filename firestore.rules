@@ -799,8 +799,6 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-  }
-}));
         allow update: if isAdmin();
         allow delete: if isAdmin();
       }
