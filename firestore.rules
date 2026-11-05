@@ -51,22 +51,20 @@ service cloud.firestore {
     // Gem changes from shared mocks are only valid in the same atomic write
     // that completes the participant's one-per-share attempt.
     function sharedMockRewardUpdate(uid) {
-      let reward = request.resource.data.lastSharedMockReward;
-      let attempt = getAfter(/databases/$(database)/documents/sharedMocks/$(reward.shareId)/participants/$(request.auth.uid)).data;
       return signedIn()
+        && request.auth.token.email_verified == true
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gems','lastSharedMockReward'])
         && request.resource.data.gems == (resource.data.gems is number ? resource.data.gems : 0) + 1
-        && reward is map
-        && reward.shareId is string
-        && reward.participantUid == request.auth.uid
-        && reward.recipientUid == uid
-        && reward.amount == 1
-        && attempt.status == 'completed'
-        && attempt.rewardProcessed == true
-        && attempt.shareId == reward.shareId
-        && attempt.participantUid == request.auth.uid
-        && attempt.ownerUid == reward.ownerUid
-        && (uid == attempt.ownerUid || uid == attempt.participantUid);
+        && request.resource.data.lastSharedMockReward is map
+        && request.resource.data.lastSharedMockReward.shareId is string
+        && request.resource.data.lastSharedMockReward.participantUid == request.auth.uid
+        && request.resource.data.lastSharedMockReward.recipientUid == uid
+        && request.resource.data.lastSharedMockReward.amount == 1
+        && getAfter(/databases/$(database)/documents/sharedMocks/$(request.resource.data.lastSharedMockReward.shareId)/participants/$(request.auth.uid)).data.status == 'completed'
+        && getAfter(/databases/$(database)/documents/sharedMocks/$(request.resource.data.lastSharedMockReward.shareId)/participants/$(request.auth.uid)).data.rewardProcessed == true
+        && getAfter(/databases/$(database)/documents/sharedMocks/$(request.resource.data.lastSharedMockReward.shareId)/participants/$(request.auth.uid)).data.participantUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/sharedMocks/$(request.resource.data.lastSharedMockReward.shareId)/participants/$(request.auth.uid)).data.ownerUid == request.resource.data.lastSharedMockReward.ownerUid
+        && (uid == request.resource.data.lastSharedMockReward.ownerUid || uid == request.auth.uid);
     }
 
     match /users/{uid} {
@@ -152,6 +150,9 @@ service cloud.firestore {
         allow list: if isAdmin()
           || (signedIn() && get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid == request.auth.uid);
         allow create: if signedIn()
+          && request.auth.token.email_verified == true
+          && exists(/databases/$(database)/documents/users/$(participantUid))
+          && get(/databases/$(database)/documents/users/$(participantUid)).data.requiresEmailVerification != true
           && request.auth.uid == participantUid
           && participantUid != get(/databases/$(database)/documents/sharedMocks/$(shareId)).data.ownerUid
           && request.resource.data.keys().hasOnly(['shareId','ownerUid','participantUid','ownerName','participantName','participantEmail','mockTitle','minutes','startedAt','endsAtMs','status','rewardProcessed'])
@@ -170,6 +171,7 @@ service cloud.firestore {
           && request.resource.data.status == 'active'
           && request.resource.data.rewardProcessed == false;
         allow update: if signedIn()
+          && request.auth.token.email_verified == true
           && request.auth.uid == participantUid
           && resource.data.status == 'active'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','completedAt','rewardProcessed'])
