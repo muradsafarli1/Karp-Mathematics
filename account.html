@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KARP — Account</title>
 <link rel="stylesheet" href="/style.css">
-<script src="/app.js?v=20261101mobile1"></script>
+<script src="/app.js?v=20261105streak1"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
 <script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},svg:{fontCache:"global"},startup:{typeset:false}};</script>
@@ -19,7 +19,42 @@
 .profile-edit:hover{background:#e2e2de}
 .profile-initial{display:grid;place-items:center;font-size:52px;font-weight:800;color:var(--text)}
 .profile-name{font-size:19px;font-weight:800}.profile-email{margin-top:5px;font-size:12px;color:var(--muted)}
-.gem-balance-note{display:inline-flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;padding:9px 15px;border:1px solid #e9bd82;border-radius:12px;background:#faead5;color:#8a4b0c;font-size:12px;font-weight:850;box-shadow:0 2px 7px rgba(138,75,12,.07)}
+.gem-balance-note{display:inline-flex;align-items:center;justify-content:center;gap:9px;margin-top:14px;padding:10px 17px;border:1px solid rgba(181,140,76,.36);border-radius:999px;background:linear-gradient(110deg,#fff4dc,#f7e6c5 55%,#fff7e7);color:#795018;font-size:12px;font-weight:750;box-shadow:0 8px 26px rgba(138,98,35,.09);position:relative;overflow:hidden}
+.gem-balance-note:after{content:"";position:absolute;inset:-70% -35%;background:linear-gradient(105deg,transparent 42%,rgba(255,255,255,.72) 50%,transparent 58%);transform:translateX(-70%);animation:gemBalanceShine 4.8s ease-in-out infinite}
+.gem-balance-icon{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.8);font-size:17px;animation:gemBalanceFloat 2.8s ease-in-out infinite}
+.gem-balance-label{letter-spacing:.2px}.gem-balance-count{font:800 17px 'Space Grotesk';color:#57360f;min-width:14px}
+@keyframes gemBalanceShine{0%,55%{transform:translateX(-85%)}100%{transform:translateX(85%)}}
+@keyframes gemBalanceFloat{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-3px) rotate(5deg)}}
+.streak-dashboard{position:relative;overflow:hidden;background:linear-gradient(145deg,#101a30,#0c1425 68%,#121d34);border:1px solid rgba(135,164,221,.18);border-radius:22px;padding:26px;margin:0 0 15px;color:#f4f7ff;box-shadow:0 16px 42px rgba(8,15,30,.1)}
+.streak-dashboard:before{content:"";position:absolute;width:300px;height:300px;border-radius:50%;top:-230px;right:-80px;background:radial-gradient(circle,rgba(103,152,255,.26),transparent 70%);pointer-events:none}
+.streak-top{position:relative;display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:22px}
+.streak-kicker{font-size:9px;letter-spacing:2.4px;font-weight:850;color:#90b6ff;text-transform:uppercase}
+.streak-title{font:700 27px/1.1 'Space Grotesk';letter-spacing:-1px;margin:7px 0 7px;color:#fff}
+.streak-subtitle{font-size:11px;line-height:1.65;color:#abb9d0;max-width:550px}
+.streak-current{min-width:135px;padding:13px 17px;border:1px solid rgba(255,255,255,.14);border-radius:17px;background:rgba(255,255,255,.055);text-align:center;box-shadow:inset 0 1px rgba(255,255,255,.08)}
+.streak-current-flame{font-size:25px;display:block;filter:drop-shadow(0 0 9px rgba(255,147,70,.28));animation:streakFlame 1.7s ease-in-out infinite}
+.streak-current strong{display:block;font:800 35px/1 'Space Grotesk';margin:4px 0;color:#fff}
+.streak-current small{font-size:8px;letter-spacing:1.8px;color:#a9bad7;font-weight:850}
+.streak-stats{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:21px}
+.streak-stat{padding:13px 15px;border:1px solid rgba(255,255,255,.09);border-radius:13px;background:rgba(255,255,255,.045)}
+.streak-stat span{display:block;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#8fa2c2}
+.streak-stat strong{display:block;margin-top:5px;font:700 19px 'Space Grotesk';color:#f6f8ff}
+.streak-calendar-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;color:#e8efff;font-size:11px;font-weight:800}
+.streak-calendar-head span{color:#8fa2c2;font-size:9px;font-weight:600}
+.streak-weekdays,.streak-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.streak-weekdays{margin-bottom:6px}
+.streak-weekdays span{text-align:center;font-size:8px;letter-spacing:.7px;color:#8395b2;text-transform:uppercase}
+.streak-day{min-height:47px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;border:1px solid rgba(255,255,255,.075);border-radius:9px;background:rgba(255,255,255,.035);color:#8b9bb5}
+.streak-day b{font:700 11px 'Space Grotesk'}
+.streak-day small{font-size:7px;letter-spacing:.45px;color:#8295b3;text-transform:uppercase}
+.streak-day.active{background:linear-gradient(145deg,rgba(84,153,255,.3),rgba(66,108,197,.15));border-color:rgba(120,177,255,.45);color:#f4f8ff;box-shadow:inset 0 0 16px rgba(102,163,255,.1)}
+.streak-day.active small{color:#a8cdff}
+.streak-day.today{outline:1px solid #c0d7ff;outline-offset:2px}
+.streak-day.future{opacity:.2;border-style:dashed}
+.streak-footnote{margin:15px 0 0;padding:12px 14px;border-radius:11px;background:rgba(255,255,255,.055);color:#b8c6dc;font-size:10px;line-height:1.7}
+.streak-footnote strong{color:#fff}
+@keyframes streakFlame{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-3px) scale(1.08)}}
+@media(prefers-reduced-motion:reduce){.gem-balance-note:after,.gem-balance-icon,.streak-current-flame{animation:none!important}}
 .account-wrap{width:min(calc(100% - 42px),1220px);margin:0 auto;padding-bottom:90px}
 .kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
 .kpi{background:var(--panel2);border-radius:14px;padding:17px;text-align:center}.kpi strong{display:block;font-family:'Space Grotesk';font-size:30px;line-height:1}.kpi span{display:block;margin-top:6px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
@@ -33,8 +68,8 @@
 .history-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.history-card{background:var(--panel2);border-radius:14px;padding:17px}.history-card-title{font-size:13px;font-weight:800}.history-card-meta{font-size:10px;color:var(--muted);margin-top:6px}.history-card-actions{margin-top:13px;display:flex;justify-content:flex-end;gap:6px}.history-card-actions .btn{font-size:10px!important;padding:7px 10px!important}
 .review-panel{display:none;margin-top:12px;padding:16px 0 0;border-top:1px solid var(--line)}.review-panel.open{display:block}.review-question{padding:15px 0;border-top:1px solid var(--line)}.review-question:first-child{border-top:0}.review-qtitle{font-family:'Space Grotesk';font-size:13px;font-weight:800;margin-bottom:8px}.review-body{font-size:15px;line-height:1.8}.review-answer{margin-top:6px;font-size:10px;color:var(--muted)}.review-solution{margin-top:8px}.review-solution-body{display:none;margin-top:9px;font-size:14px;line-height:1.8}.review-solution-body.open{display:block}
 .empty{color:var(--muted);font-size:12px;padding:8px 0}.account-bottom{display:flex;justify-content:center;margin-top:25px}
-@media(max-width:900px){.kpi-grid{grid-template-columns:repeat(3,1fr)}.topic-cards{grid-template-columns:1fr 1fr}.history-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:620px){.account-profile{padding-top:50px}.profile-avatar-wrap{width:132px}.profile-avatar{width:132px;height:132px}.account-wrap{width:calc(100% - 28px)}.kpi-grid{grid-template-columns:1fr 1fr}.dashboard,.history-box{padding:19px}.dashboard-head{align-items:flex-start;flex-direction:column}.switch{width:100%}.switch button{flex:1}.chart{height:210px;gap:4px}.bar-track{height:160px}.topic-cards{grid-template-columns:1fr 1fr}.topic-line{grid-template-columns:100px 1fr 28px}.history-grid{grid-template-columns:1fr}}
+@media(max-width:900px){.kpi-grid{grid-template-columns:repeat(3,1fr)}.topic-cards{grid-template-columns:1fr 1fr}.history-grid{grid-template-columns:1fr 1fr}.streak-top{align-items:flex-start}.streak-current{min-width:118px}}
+@media(max-width:620px){.account-profile{padding-top:50px}.profile-avatar-wrap{width:132px}.profile-avatar{width:132px;height:132px}.account-wrap{width:calc(100% - 28px)}.kpi-grid{grid-template-columns:1fr 1fr}.dashboard,.history-box{padding:19px}.dashboard-head{align-items:flex-start;flex-direction:column}.switch{width:100%}.switch button{flex:1}.chart{height:210px;gap:4px}.bar-track{height:160px}.topic-cards{grid-template-columns:1fr 1fr}.topic-line{grid-template-columns:100px 1fr 28px}.history-grid{grid-template-columns:1fr}.streak-dashboard{padding:19px}.streak-top{flex-direction:column;align-items:stretch}.streak-current{width:100%;display:grid;grid-template-columns:auto 1fr auto;align-items:center;justify-items:start;gap:10px;text-align:left}.streak-current-flame{font-size:22px}.streak-current strong{font-size:25px;margin:0}.streak-current small{justify-self:end}.streak-stats{grid-template-columns:1fr 1fr}.streak-day{min-height:42px}.streak-day small{font-size:6px}}
  .account-security{max-width:420px;margin:20px auto 0;text-align:center}.security-toggle{border:0;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}.security-toggle:hover{color:var(--text)}.password-panel{margin-top:12px;padding:17px;background:var(--panel);border-radius:14px;text-align:left}.password-panel .field{margin-bottom:10px}.password-panel .submit{width:100%;margin-top:4px}.password-panel .notice{margin-top:10px}.password-mail-note{margin:10px 0 4px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);line-height:1.6}.password-mail-note strong{color:var(--text)}
 </style>
 </head>
@@ -50,6 +85,13 @@
   const saved=Object.values(cloudState.saved||{});
   const mocks=Array.isArray(cloudState.mocks)?cloudState.mocks:[];
   const exams=(await api('/api/exams/history').catch(()=>({history:[]}))).history||[];
+  let streakRecords=[];
+  try{
+    const {db}=await fb();
+    const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const snap=await getDocs(collection(db,'users',u.id,'streakDays'));
+    streakRecords=snap.docs.map(docSnap=>({id:docSnap.id,...(docSnap.data()||{})}));
+  }catch(error){console.warn('KARP streak-day history unavailable; using existing activity records:',error)}
 
   const topicName=v=>({A:'Algebra',C:'Combinatorics',G:'Geometry',N:'Number Theory'}[String(v||'').toUpperCase()]||String(v||''));
   function problemHref(p){if(p.sourceType==='custom'||p.customId)return '/problem.html?custom='+encodeURIComponent(p.customId||p.id);return '/problem.html?id='+encodeURIComponent(p.id)+(p.sourceConfig?'&config='+encodeURIComponent(p.sourceConfig):'')+(p.sourceIndex!=null?'&offset='+encodeURIComponent(p.sourceIndex):'');}
@@ -57,9 +99,63 @@
   function dateText(v){const d=v?new Date(v):null;return d&&!isNaN(d)?d.toLocaleString():'—';}
   function md(x){return DOMPurify.sanitize(marked.parse(String(x||''),{breaks:true}));}
 
+  function localDayKey(value){
+    if(typeof value==='string'&&/^\\d{4}-\\d{2}-\\d{2}$/.test(value))return value;
+    const d=value instanceof Date?value:new Date(value);
+    if(isNaN(d))return '';
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  function dateFromKey(key){
+    const parts=String(key||'').split('-').map(Number);
+    return parts.length===3?new Date(parts[0],parts[1]-1,parts[2],12):new Date(NaN);
+  }
+  function shiftDay(key,amount){
+    const d=dateFromKey(key);d.setDate(d.getDate()+amount);return localDayKey(d);
+  }
+  const activityByDay=new Map();
+  function addActivityDay(value,type){
+    const key=localDayKey(value);if(!key)return;
+    if(!activityByDay.has(key))activityByDay.set(key,new Set());
+    if(type)activityByDay.get(key).add(type);
+  }
+  streakRecords.forEach(record=>{
+    const key=record.day||record.id;
+    const types=Array.isArray(record.activityTypes)?record.activityTypes:[];
+    if(types.length)types.forEach(type=>addActivityDay(key,type));
+    else addActivityDay(key,'activity');
+  });
   const solvedDates=solved.flatMap(p=>Array.isArray(p.dates)?p.dates:[]);
-  const days=new Set(solvedDates.map(v=>{const d=new Date(v);return isNaN(d)?'':d.toISOString().slice(0,10)}).filter(Boolean));
-  let streak=0;for(let d=new Date();days.has(d.toISOString().slice(0,10));d.setDate(d.getDate()-1))streak++;
+  solvedDates.forEach(value=>addActivityDay(value,'problem_solved'));
+  mocks.filter(item=>item.completedAt||item.status==='completed').forEach(item=>addActivityDay(item.completedAt||item.createdAt,'mock_completed'));
+  exams.forEach(item=>addActivityDay(item.submittedAt,'exam_completed'));
+  const activeDayKeys=[...activityByDay.keys()].sort();
+  const activeDays=new Set(activeDayKeys);
+  const todayKey=localDayKey(new Date()),yesterdayKey=shiftDay(todayKey,-1);
+  const streakAnchor=activeDays.has(todayKey)?todayKey:(activeDays.has(yesterdayKey)?yesterdayKey:'');
+  let streak=0;
+  if(streakAnchor){for(let key=streakAnchor;activeDays.has(key);key=shiftDay(key,-1))streak++;}
+  let bestStreak=0,run=0,previousKey='';
+  activeDayKeys.forEach(key=>{
+    run=previousKey&&key===shiftDay(previousKey,1)?run+1:1;
+    bestStreak=Math.max(bestStreak,run);previousKey=key;
+  });
+  const activeToday=activeDays.has(todayKey);
+  const streakCalendarStart=shiftDay(todayKey,-34);
+  const calendarStart=shiftDay(streakCalendarStart,-dateFromKey(streakCalendarStart).getDay());
+  const streakCalendarCells=[];
+  for(let i=0;i<42;i++){
+    const key=shiftDay(calendarStart,i);
+    if(key>todayKey){streakCalendarCells.push('<span class="streak-day future" aria-hidden="true"></span>');continue;}
+    const types=[...(activityByDay.get(key)||[])];
+    const tags=types.map(type=>({problem_solved:'SOLVE',mock_completed:'MOCK',exam_completed:'EXAM',daily_solution_submitted:'PROOF'}[type]||'ACTIVE'));
+    const active=activeDays.has(key),today=key===todayKey;
+    streakCalendarCells.push('<span class="streak-day'+(active?' active':'')+(today?' today':'')+'" title="'+escapeHtml(key+(tags.length?' · '+tags.join(', '):''))+'"><b>'+Number(key.slice(-2))+'</b><small>'+escapeHtml(active?(tags.length?tags.slice(0,2).join(' · '):'ACTIVE'):'')+'</small></span>');
+  }
+  const streakMessage=activeToday
+    ?'You have completed a meaningful KARP activity today. Come back tomorrow to keep your streak alive.'
+    :streak>0
+      ?'Your streak is still alive. Complete one meaningful activity today to continue it.'
+      :'Start your streak today with a solved problem, a completed mock or exam, or a submitted proof.';
 
   function dataFor(mode){
     const now=new Date(),a=[];
@@ -85,9 +181,13 @@
       '<button class="profile-edit" id="profile-edit" type="button" aria-label="Change profile picture" title="Change profile picture">✎</button>'+
       '<input id="profile-picker" type="file" accept="image/*" hidden>'+
     '</div>'+
-    '<div class="profile-name">'+escapeHtml(u.name||'KARP Member')+'</div><div class="profile-email">'+escapeHtml(u.email||'')+'</div><div class="gem-balance-note">💎 Gem Balance: '+gemCount+' Gems</div>'+
+    '<div class="profile-name">'+escapeHtml(u.name||'KARP Member')+'</div><div class="profile-email">'+escapeHtml(u.email||'')+'</div><div class="gem-balance-note"><span class="gem-balance-icon">💎</span><span class="gem-balance-label">GEM BALANCE</span><strong class="gem-balance-count">'+gemCount+'</strong><span>Gems</span></div>'+
     '</section><section class="account-wrap">'+
     '<div class="kpi-grid"><div class="kpi"><strong>'+solved.length+'</strong><span>Solved</span></div><div class="kpi"><strong>'+streak+'</strong><span>Day streak</span></div><div class="kpi"><strong>'+saved.length+'</strong><span>Saved</span></div><div class="kpi"><strong>'+exams.length+'</strong><span>Exams</span></div><div class="kpi"><strong>'+mocks.length+'</strong><span>Mocks</span></div></div>'+
+    '<section class="streak-dashboard"><div class="streak-top"><div><div class="streak-kicker">DAILY PRACTICE</div><h2 class="streak-title">Keep your streak alive</h2><div class="streak-subtitle">'+escapeHtml(streakMessage)+'</div></div><div class="streak-current"><span class="streak-current-flame">🔥</span><strong>'+streak+'</strong><small>DAY STREAK</small></div></div>'+
+    '<div class="streak-stats"><div class="streak-stat"><span>Best streak</span><strong>'+bestStreak+' days</strong></div><div class="streak-stat"><span>Active days</span><strong>'+activeDays.size+'</strong></div><div class="streak-stat"><span>Today</span><strong>'+(activeToday?'Completed ✓':'Not yet')+'</strong></div></div>'+
+    '<div class="streak-calendar-head"><strong>Last six weeks</strong><span>One meaningful activity keeps a day active</span></div><div class="streak-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="streak-calendar">'+streakCalendarCells.join('')+'</div>'+
+    '<div class="streak-footnote"><strong>What counts?</strong> Marking a problem solved, completing a mock after real work, submitting an exam after at least one minute, or sending a Daily Problem proof (80+ characters). Simply visiting KARP, viewing pages, saving problems, or leaving a mock open does not count.</div></section>'+
     '<section class="dashboard"><div class="dashboard-head"><div><h2>Solved activity</h2><p>Daily, monthly and yearly progress.</p></div><div class="switch" id="activity-switch"><button class="active" data-mode="daily">Daily</button><button data-mode="monthly">Monthly</button><button data-mode="yearly">Yearly</button></div></div><div id="activity-chart">'+chartHtml('daily')+'</div></section>'+
     '<section class="dashboard"><div class="dashboard-head"><div><h2>Topic distribution</h2><p>How your solved problems are distributed across olympiad topics.</p></div></div>'+
       '<div class="topic-cards"><div class="topic-card"><small>Algebra</small><strong>'+totals.A+'</strong></div><div class="topic-card"><small>Geometry</small><strong>'+totals.G+'</strong></div><div class="topic-card"><small>Combinatorics</small><strong>'+totals.C+'</strong></div><div class="topic-card"><small>Number Theory</small><strong>'+totals.N+'</strong></div></div>'+
@@ -110,6 +210,15 @@
     '<div class="account-bottom">'+(u.role==='admin'?'<a class="btn" href="/admin.html">Admin</a>':'')+' <button class="btn" onclick="logout()">Log out</button></div>'+
     '</section></main>';
   shell('','Account',body);
+  if(u.lastSharedMockReward?.shareId&&u.lastSharedMockReward.recipientUid===u.id&&typeof showKarpGemCelebration==='function'){
+    const reward=u.lastSharedMockReward;
+    setTimeout(()=>showKarpGemCelebration({
+      amount:Math.max(1,Number(reward.amount)||1),
+      title:'A shared mock Gem is yours!',
+      message:'A KARP member completed your shared mock. You received '+Math.max(1,Number(reward.amount)||1)+' Gem'+(Number(reward.amount)===1?'':'s')+' as the author.',
+      rewardKey:'shared-mock:'+String(reward.shareId)+':'+String(u.id)
+    }),550);
+  }
 
   const passwordToggle=document.getElementById('password-toggle');
   const passwordPanel=document.getElementById('password-panel');
