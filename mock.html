@@ -524,20 +524,32 @@
   async function startMock(item){
     if(item&&item.id)mock=JSON.parse(JSON.stringify(item));if(!mock)return;
     if(mock.sharedShareId){
-      try{
-        const freshUser=await refreshSharedMockAuth();
-        if(!freshUser?.emailVerified){showAuthPrompt('Verify your email','Sign in with a verified KARP account before starting this shared mock.');return;}
-      }catch(error){
-        toast(error.message||'Could not refresh your KARP sign-in. Please sign in again.');
+      if(!mockAuth?.currentUser){
+        showAuthPrompt('Sign in','Sign in or create a KARP account before starting this shared mock.');
         return;
       }
     }else if(!mockAuth?.currentUser?.emailVerified){
       showAuthPrompt('Sign in','Sign in or create a KARP account with a verified email before starting a mock.');
       return;
     }
+    // Ask for fullscreen while the button's browser user-activation is still valid.
     const fullscreenAttempt=requestMockFullscreen();
     if(!(await fullscreenAttempt))return;
-    try{await saveMockDraft(mock)}catch(e){toast(e.message||'Could not save mock.');return}
+    try{
+      if(mock.sharedShareId){
+        const freshUser=await refreshSharedMockAuth();
+        if(!freshUser?.emailVerified){
+          if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
+          showAuthPrompt('Verify your email','Sign in with a verified KARP account before starting this shared mock.');
+          return;
+        }
+      }
+      await saveMockDraft(mock);
+    }catch(error){
+      if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
+      toast(error.message||'Could not prepare your mock. Please sign in again and retry.');
+      return;
+    }
     if(mock.sharedShareId){
       try{
         const attempt=await startOrResumeSharedAttempt(mock);
