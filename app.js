@@ -254,7 +254,7 @@ async function api(path, opts = {}) {
     }
   }
   if(path==='/api/me'){
-    return {user:user?{id:user.id,name:user.name,email:user.email,role:user.role||'user',roleUnverified:user.roleUnverified===true,createdAt:user.createdAt,photoURL:user.photoURL||'',gems:Number(user.gems)||0,requiresEmailVerification:user.requiresEmailVerification===true,emailVerified:!!auth.currentUser?.emailVerified}:null};
+    return {user:user?{id:user.id,name:user.name,email:user.email,role:user.role||'user',roleUnverified:user.roleUnverified===true,createdAt:user.createdAt,photoURL:user.photoURL||'',gems:Number(user.gems)||0,lastSharedMockReward:user.lastSharedMockReward||null,requiresEmailVerification:user.requiresEmailVerification===true,emailVerified:!!auth.currentUser?.emailVerified}:null};
   }
   if(path==='/api/logout'){await (await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js')).signOut(auth);__apiUserCache={uid:null,loaded:false,user:null};return {ok:true};}
   if(uid && (path.startsWith('/api/exams/history') || path.match(/^\/api\/exams\/[^/]+\/(register|submit)$/) || path.startsWith('/api/admin/'))){
@@ -526,6 +526,10 @@ async function api(path, opts = {}) {
     },{merge:true});
     try{
       await batch.commit();
+      const actualDuration=Math.max(0,Number(body.durationSeconds||0));
+      if(actualDuration>=60){
+        await karpRecordStreakActivity('exam_completed',{examId}).catch(error=>console.warn('Exam completed, but streak activity could not be recorded:',error));
+      }
       return {ok:true};
     }catch(e){
       if(e?.code==='permission-denied'){
@@ -651,6 +655,81 @@ async function ensureSignedIn(title,message){
   if(!u){showAuthPrompt(title,message);return null;}
   return u;
 }
+function karpLocalDayKey(date=new Date()){
+  const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+d;
+}
+async function karpRecordStreakActivity(activityType,details={}){
+  const allowed=new Set(['problem_solved','mock_completed','exam_completed','daily_solution_submitted']);
+  const type=String(activityType||'');
+  if(!allowed.has(type))throw new Error('Unsupported streak activity.');
+  const {db,auth}=await fb();await authReady();
+  const user=auth.currentUser;
+  if(!user?.uid||user.emailVerified!==true)return false;
+  const {doc,setDoc,arrayUnion,increment,serverTimestamp}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+  const day=karpLocalDayKey(),timezone=Intl.DateTimeFormat().resolvedOptions().timeZone||'';
+  const ref=doc(db,'users',user.uid,'streakDays',day);
+  await setDoc(ref,{
+    day,
+    activityTypes:arrayUnion(type),
+    activityCount:increment(1),
+    lastActivityAt:serverTimestamp(),
+    timezone:String(timezone).slice(0,80)
+  },{merge:true});
+  return day;
+}
+window.karpRecordStreakActivity=karpRecordStreakActivity;
+
+function showKarpGemCelebration(options={}){
+  const amount=Math.max(1,Math.min(999,Number(options.amount)||1));
+  const title=String(options.title||'A Gem is yours!').slice(0,90);
+  const message=String(options.message||'You earned a Gem for your work on KARP.').slice(0,240);
+  const rewardKey=String(options.rewardKey||'').slice(0,240);
+  const seenKey=rewardKey?'karp_gem_celebration_seen_'+rewardKey:'';
+  try{if(seenKey&&localStorage.getItem(seenKey)==='1')return false;if(seenKey)localStorage.setItem(seenKey,'1')}catch{}
+  document.getElementById('karp-gem-celebration')?.remove();
+  if(!document.getElementById('karp-gem-celebration-style')){
+    const style=document.createElement('style');style.id='karp-gem-celebration-style';
+    style.textContent=`
+      .karp-gem-overlay{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:22px;background:rgba(9,13,24,.76);backdrop-filter:blur(12px);animation:karpGemFade .22s ease both}
+      .karp-gem-card{position:relative;isolation:isolate;overflow:hidden;width:min(500px,100%);padding:38px 30px 28px;border:1px solid rgba(215,224,255,.38);border-radius:27px;background:radial-gradient(circle at 50% 0,rgba(107,149,255,.19),transparent 42%),linear-gradient(155deg,#151e35,#0d1324 68%,#111a30);color:#f7f9ff;text-align:center;box-shadow:0 28px 100px rgba(0,0,0,.46);animation:karpGemPop .48s cubic-bezier(.18,.8,.2,1) both}
+      .karp-gem-card:before{content:"";position:absolute;inset:-55%;z-index:-1;background:conic-gradient(from 20deg,transparent,rgba(121,183,255,.09),transparent,rgba(186,137,255,.11),transparent);animation:karpGemRotate 12s linear infinite}
+      .karp-gem-confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+      .karp-gem-confetti i{position:absolute;top:-18px;left:var(--x);width:7px;height:12px;border-radius:2px;background:hsl(var(--h),90%,70%);opacity:0;animation:karpGemFall var(--d) ease-in var(--delay) forwards}
+      .karp-gem-art{position:relative;width:124px;height:134px;margin:0 auto 16px;display:grid;place-items:center;filter:drop-shadow(0 12px 24px rgba(74,147,255,.32));animation:karpGemFloat 2.1s ease-in-out infinite}
+      .karp-gem-art:before{content:"";position:absolute;width:118px;height:118px;border-radius:50%;background:radial-gradient(circle,rgba(98,174,255,.28),rgba(118,105,255,.07) 52%,transparent 72%);animation:karpGemHalo 1.5s ease-in-out infinite alternate}
+      .karp-gem-art svg{position:relative;width:94px;height:108px;overflow:visible}
+      .karp-gem-kicker{font-size:10px;font-weight:850;letter-spacing:2.8px;color:#94b9ff;text-transform:uppercase}
+      .karp-gem-card h2{font:800 32px/1.06 'Space Grotesk',sans-serif;letter-spacing:-1.4px;margin:10px 0 12px;color:#fff}
+      .karp-gem-card p{max-width:370px;margin:0 auto 22px;color:#c4cde0;font-size:13px;line-height:1.8}
+      .karp-gem-amount{display:inline-flex;align-items:center;gap:8px;margin:0 auto 22px;padding:9px 17px;border:1px solid rgba(167,195,255,.38);border-radius:999px;background:rgba(93,135,221,.15);color:#dce9ff;font-size:14px;font-weight:850;box-shadow:inset 0 0 18px rgba(130,178,255,.08)}
+      .karp-gem-close{display:block;min-width:150px;margin:auto;border:0;border-radius:11px;padding:12px 20px;background:linear-gradient(100deg,#b8d8ff,#d6c8ff);color:#111a2d;font-weight:850}
+      .karp-gem-close:hover{filter:brightness(1.08)}
+      @keyframes karpGemFade{from{opacity:0}to{opacity:1}}
+      @keyframes karpGemPop{0%{opacity:0;transform:translateY(18px) scale(.9)}100%{opacity:1;transform:translateY(0) scale(1)}}
+      @keyframes karpGemFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-9px) rotate(2deg)}}
+      @keyframes karpGemHalo{from{transform:scale(.9);opacity:.55}to{transform:scale(1.1);opacity:1}}
+      @keyframes karpGemRotate{to{transform:rotate(360deg)}}
+      @keyframes karpGemFall{0%{opacity:0;transform:translateY(-10px) rotate(0)}10%{opacity:1}100%{opacity:.95;transform:translateY(600px) rotate(620deg)}}
+      @media(prefers-reduced-motion:reduce){.karp-gem-overlay,.karp-gem-card,.karp-gem-art,.karp-gem-art:before,.karp-gem-card:before,.karp-gem-confetti i{animation:none!important;opacity:1!important}}
+    `;
+    document.head.appendChild(style);
+  }
+  const pieces=Array.from({length:46},(_,i)=>{
+    const x=(i*43+7)%100,h=(i*59+31)%360,delay=((i*17)%85)/100,d=1.8+((i*13)%13)/10;
+    return '<i style="--x:'+x+'%;--h:'+h+';--delay:'+delay+'s;--d:'+d+'s"></i>';
+  }).join('');
+  const overlay=document.createElement('div');overlay.id='karp-gem-celebration';overlay.className='karp-gem-overlay';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-labelledby','karp-gem-title');
+  overlay.innerHTML='<section class="karp-gem-card"><div class="karp-gem-confetti">'+pieces+'</div><div class="karp-gem-art" aria-hidden="true"><svg viewBox="0 0 100 116" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="karp-gem-main" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e6f8ff"/><stop offset=".38" stop-color="#70c7ff"/><stop offset=".72" stop-color="#8d9aff"/><stop offset="1" stop-color="#d7b9ff"/></linearGradient><linearGradient id="karp-gem-side" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8af0ff"/><stop offset="1" stop-color="#6674e9"/></linearGradient></defs><path d="M50 4 90 39 50 110 10 39Z" fill="url(#karp-gem-main)" stroke="#e8f8ff" stroke-width="2"/><path d="M10 39 35 39 50 110Z" fill="url(#karp-gem-side)" opacity=".93"/><path d="M35 39 50 4 65 39 50 110Z" fill="#e9f9ff" opacity=".3"/><path d="M65 39 90 39 50 110Z" fill="#5265d8" opacity=".55"/><path d="M10 39 27 18 50 4 73 18 90 39" fill="none" stroke="#fff" stroke-width="2" opacity=".8"/><path d="M29 17 35 39 65 39 71 17" fill="none" stroke="#fff" stroke-width="1.5" opacity=".65"/><path d="M35 39 50 110 65 39" fill="none" stroke="#fff" stroke-width="1.3" opacity=".65"/><path d="M17 33 31 23" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".85"/></svg></div><div class="karp-gem-kicker">KARP REWARD</div><h2 id="karp-gem-title">'+escapeHtml(title)+'</h2><p>'+escapeHtml(message)+'</p><div class="karp-gem-amount">💎　+'+amount+' GEM'+(amount===1?'':'S')+'</div><button type="button" class="karp-gem-close">Collect Gem</button></section>';
+  const close=()=>overlay.remove();
+  overlay.querySelector('.karp-gem-close').addEventListener('click',close);
+  overlay.addEventListener('click',event=>{if(event.target===overlay)close()});
+  document.addEventListener('keydown',function keyHandler(event){if(event.key==='Escape'&&document.getElementById('karp-gem-celebration')===overlay){close();document.removeEventListener('keydown',keyHandler)}});
+  document.body.appendChild(overlay);
+  return true;
+}
+window.showKarpGemCelebration=showKarpGemCelebration;
+
 function toast(msg){let t=document.getElementById('toast');if(!t){t=document.createElement('div');t.id='toast';t.className='toast';document.body.appendChild(t)}t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
 
 async function karpUserState(){
