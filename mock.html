@@ -286,7 +286,8 @@
     const batch=writeBatch(db);
     batch.set(doc(db,'sharedMocks',shareId),payload);
     (mock.questions||[]).forEach((q,index)=>{
-      const solutions=Array.isArray(q.solutions)?q.solutions.filter(x=>typeof x==='string'&&x.trim()):[];
+      const rawSolutions=Array.isArray(q.solutions)?q.solutions:(typeof q.solution==='string'?[q.solution]:(typeof q.solutionEn==='string'?[q.solutionEn]:[]));
+      const solutions=rawSolutions.map(x=>typeof x==='string'?x:String(x?.solution||x?.text||x?.content||'')).filter(x=>x.trim());
       if(solutions.length)batch.set(doc(db,'sharedMocks',shareId,'solutions','q'+index),{questionIndex:index,solutions});
     });
     await batch.commit();
