@@ -124,6 +124,25 @@
       const sec=document.createElement('section');sec.className='review-question';sec.innerHTML='<h3>Question '+(i+1)+'</h3><div class="session-meta">'+esc([q.country,q.competition,q.year,q.problemNumber].filter(Boolean).join(' · '))+'</div>'+(q.imageUrl?'<img class="detail-image" src="'+esc(q.imageUrl)+'" alt="Problem image" loading="lazy" style="margin:10px 0 16px">':'')+'<div class="review-statement">'+md(q.statement)+'</div><div class="review-solution"><button class="btn">Show solution</button><div class="review-solution-body">'+((q.solutions||[]).map((s,j)=>'<div style="margin-top:8px"><div class="mock-kicker">SOLUTION '+(j+1)+'</div>'+md(s)+'</div>').join('')||'<div class="muted">No supplied solution.</div>')+'</div></div>';
       const b=sec.querySelector('button'),body=sec.querySelector('.review-solution-body');b.onclick=()=>{const open=body.classList.toggle('open');b.textContent=open?'Hide solution':'Show solution';if(open)renderMath(body)};host.appendChild(sec);
     });
+    if(item.sharedShareId&&item.solutionsLoaded===false){
+      const notice=document.createElement('div');
+      notice.className='saved-note';
+      notice.textContent='Your mock and Gem reward are completed, but the private solutions could not be loaded: '+String(item.solutionsLoadError||'Read permission denied');
+      const retry=document.createElement('button');
+      retry.className='btn';retry.type='button';retry.textContent='Retry loading solutions';
+      retry.onclick=async()=>{
+        retry.disabled=true;retry.textContent='Loading…';
+        try{
+          await loadSharedMockSolutions(item);
+          item.solutionsLoaded=true;
+          renderReview(item);
+        }catch(error){
+          retry.disabled=false;retry.textContent='Retry loading solutions';
+          notice.textContent='Solutions still could not be loaded: '+(error.message||error);
+        }
+      };
+      notice.appendChild(retry);host.prepend(notice);
+    }
     document.getElementById('review-back').onclick=()=>location.href='/mock.html';renderMath(host);
   }
 
@@ -419,10 +438,15 @@
   async function loadSharedMockSolutions(item=mock){
     if(!item?.sharedShareId||!Array.isArray(item.questions))return;
     const {db}=await fb();
-    const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-    const snap=await getDocs(collection(db,'sharedMocks',item.sharedShareId,'solutions'));
-    const solutionsByIndex=new Map(snap.docs.map(docSnap=>[Number(docSnap.data().questionIndex),Array.isArray(docSnap.data().solutions)?docSnap.data().solutions:[]]));
-    item.questions=item.questions.map((q,index)=>({...q,solutions:solutionsByIndex.get(index)||[]}));
+    const {doc,getDoc}=await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    // Read known q0, q1, ... documents individually. This uses the explicit
+    // document-get permission and does not require a collection list query.
+    const loaded=await Promise.all(item.questions.map(async(q,index)=>{
+      const snap=await getDoc(doc(db,'sharedMocks',item.sharedShareId,'solutions','q'+index));
+      const data=snap.exists()?snap.data()||{}:{};
+      return {...q,solutions:Array.isArray(data.solutions)?data.solutions:[]};
+    }));
+    item.questions=loaded;
   }
 
   async function refreshSharedMockAuth(){
@@ -446,7 +470,9 @@
     const shareId=String(item.sharedShareId||'');
     if(!shareId)throw new Error('Shared mock link information is missing.');
     const ref=doc(db,'sharedMocks',shareId,'participants',user.uid);
-    let snap=await getDoc(ref);
+    let snap;
+    try{snap=await getDoc(ref)}
+    catch(error){throw new Error('Could not read your shared attempt ('+(error.code||'firestore')+'): '+(error.message||error))}
     if(snap.exists()){
       const data=snap.data()||{};
       if(data.status==='completed'&&data.rewardProcessed===true)throw new Error('You have already completed this shared mock.');
@@ -473,13 +499,14 @@
         throw new Error('Could not verify the shared attempt after the write failed: '+(readError.message||readError));
       }
       if(!snap.exists()){
-        throw new Error('Firestore denied creation of the shared participant attempt ('+(error.code||'permission-denied')+'). Check the participant and share rules.');
+        throw new Error('Firestore denied creation of the shared participant attempt ('+(error.code||'permission-denied')+'): '+(error.message||error));
       }
       const existing=snap.data()||{};
       if(existing.status!=='active')throw new Error('This shared mock attempt is no longer active.');
       return {...existing,endsAtMs:sharedAttemptEndMs(existing)};
     }
-    snap=await getDoc(ref);
+    try{snap=await getDoc(ref)}
+    catch(error){throw new Error('The shared attempt was written but could not be read back ('+(error.code||'firestore')+'): '+(error.message||error))}
     if(!snap.exists())throw new Error('The shared attempt was created but could not be confirmed.');
     const saved=snap.data()||{};
     return {...saved,endsAtMs:sharedAttemptEndMs(saved)};
@@ -497,7 +524,7 @@
     if(attempt.status==='completed'&&attempt.rewardProcessed===true)return {already:true};
     if(attempt.status!=='active')throw new Error('This shared mock attempt is not active.');
     const endsAtMs=sharedAttemptEndMs(attempt);
-    if(!endsAtMs||Date.now()<endsAtMs)throw new Error('The full mock duration has not elapsed yet.');
+    if(!endsAtMs||Date.now()<endsAtMs+3000)throw new Error('The full mock duration has not elapsed yet. Please wait a few more seconds for the server clock.');
     if(!attempt.ownerUid||attempt.ownerUid===participantUid)throw new Error('Invalid shared mock owner.');
     const now=new Date().toISOString();
     const rewardFor=recipientUid=>({
@@ -645,7 +672,14 @@
     installMockFullscreen();installMockActivity();
   }
   function clock(s){const x=Math.max(0,Number(s||0));return String(Math.floor(x/3600)).padStart(2,'0')+':'+String(Math.floor(x%3600/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0')}
-  function tick(){seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));const el=document.getElementById('mock-timer');if(el)el.textContent=clock(seconds);const bucket=Math.floor(seconds/15);if(bucket!==lastSavedBucket){lastSavedBucket=bucket;activeSave()}if(seconds<=0)finishMock(true)}
+  function tick(){
+    seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));
+    const el=document.getElementById('mock-timer');if(el)el.textContent=clock(seconds);
+    const bucket=Math.floor(seconds/15);if(bucket!==lastSavedBucket){lastSavedBucket=bucket;activeSave()}
+    // Let Firestore's server clock pass the immutable deadline before sending
+    // the atomic completion + both Gem updates.
+    if(seconds<=0&&Date.now()>=Number(mock.endAt||0)+3500)finishMock(true);
+  }
   async function finishMock(auto){
     if(finished)return;
     if(mock?.sharedShareId&&(!auto||seconds>0)){toast('Shared mocks can only be completed after the full timer reaches zero.');return;}
@@ -655,7 +689,14 @@
         const reward=await completeSharedMockAttempt();
         mock.gemRewarded=!!(reward?.awarded||reward?.already);
         if(reward?.awarded)toast('Mock completed! +1 Gem for you and +1 Gem for the author.');
-        await loadSharedMockSolutions(mock);
+        try{
+          await loadSharedMockSolutions(mock);
+          mock.solutionsLoaded=true;
+        }catch(solutionError){
+          mock.solutionsLoaded=false;
+          mock.solutionsLoadError=solutionError.message||'Could not load private solutions.';
+          console.error('Shared mock was completed and rewards were processed, but solution reads failed:',solutionError);
+        }
         mock.sharedAttemptStatus='completed';
         mock.status='completed';
       }
@@ -673,7 +714,7 @@
         seconds=Math.max(0,Math.ceil((mock.endAt-Date.now())/1000));
         if(seconds===0){
           const note=document.querySelector('.session-note');
-          if(note)note.textContent='Time is up. The completion or reward sync did not finish. Your attempt is safe; retry below.';
+          if(note)note.textContent='Completion was not confirmed. No reward is being claimed yet. Retry the completion step.';
           let retry=document.getElementById('retry-shared-completion');
           if(!retry){
             retry=document.createElement('button');
