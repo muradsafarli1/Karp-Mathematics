@@ -637,7 +637,10 @@ function karpEnsureAuthUIStyles(){
 }
 function renderKarpSignInGate(title='Sign in',message='Sign in or create an account to continue.',backUrl='/'){
   karpEnsureAuthUIStyles();
-  document.body.innerHTML='<main class="karp-auth-gate"><section class="karp-auth-card">'+karpMathAvatarMarkup()+'<div class="karp-auth-kicker">KARP MATHEMATICS</div><h1>'+escapeHtml(title)+'</h1><p>'+escapeHtml(message)+'</p><div class="karp-auth-actions"><a class="btn primary" href="/login.html">Sign in</a><a class="btn" href="/signup.html">Create account</a></div><a class="karp-auth-back" href="'+escapeHtml(backUrl)+'">Back</a></section></main>';
+  const rawReturn=String(backUrl||'/');
+  const safeReturn=rawReturn.startsWith('/')&&!rawReturn.startsWith('//')?rawReturn:'/';
+  const returnQuery='?returnTo='+encodeURIComponent(safeReturn);
+  document.body.innerHTML='<main class="karp-auth-gate"><section class="karp-auth-card">'+karpMathAvatarMarkup()+'<div class="karp-auth-kicker">KARP MATHEMATICS</div><h1>'+escapeHtml(title)+'</h1><p>'+escapeHtml(message)+'</p><div class="karp-auth-actions"><a class="btn primary" href="/login.html'+returnQuery+'">Sign in</a><a class="btn" href="/signup.html'+returnQuery+'">Create account</a></div><a class="karp-auth-back" href="'+escapeHtml(safeReturn)+'">Back</a></section></main>';
 }
 function showAuthPrompt(title='Sign in to continue',message='Create an account or sign in to use this feature.'){
   const returnTo=location.pathname+location.search+location.hash;
